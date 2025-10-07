@@ -1,6 +1,8 @@
 #pragma once
+
 #include <petscsys.h>
 #include <Eigen/Dense>
+#include "types.hpp"
 
 // A simple wrapper function
 namespace mylib {
