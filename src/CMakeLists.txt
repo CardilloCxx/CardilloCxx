@@ -1,4 +1,4 @@
-add_library(${PROJECT_NAME} STATIC cardillo.cpp)
+add_library(${PROJECT_NAME} STATIC cardillo.cpp physics/physics_system.cpp io/vtk_writer.cpp solver/moreau.cpp)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

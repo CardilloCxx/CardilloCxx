@@ -5,6 +5,7 @@
 #include "misc/types.hpp"
 #include "misc/dofs.hpp"
 #include "bodies/point_mass.hpp"
+#include "physics/physics_system.hpp"
 
 // A simple wrapper function
 namespace cardillo {

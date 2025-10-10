@@ -21,6 +21,8 @@ int main(int argc, char** argv) {
     real_t mass = 3.14;
     PointMass point_mass = PointMass(mass);
 
+    
+
     // TODO:
     // - how to create a system of different particles
     // - distribut indices for each particle with start and offset (see misc/dofs.hpp)

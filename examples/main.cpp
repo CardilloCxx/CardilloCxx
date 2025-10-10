@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include <petsc.h>   // full PETSc API
 
-// run with mpirun -np 2 ./examples/example 
+// run with mpirun -np 2 ./s/example 
 int main(int argc, char** argv) {
     // Initialize MPI and PETSc
     MPI_Init(&argc, &argv);
