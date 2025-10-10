@@ -1,10 +1,10 @@
 #pragma once
 
-#include "mylib.hpp"
+#include "cardillo.hpp"
 
 #include <Eigen/Dense>
 
-namespace mylib {
+namespace cardillo {
 
 template<typename Scalar_>
 class RigidBody {
