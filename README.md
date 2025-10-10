@@ -1,4 +1,4 @@
-# PETRSC_cmake
+# CardilloMPI
 
 Minimal example how to create a library using CMake with PETSc and Eigen3 dependencies.
 
