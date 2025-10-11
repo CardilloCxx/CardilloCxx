@@ -26,18 +26,40 @@ int main() {
     auto M = sys.assembleMassMatrix();
     std::cout << "Mass matrix M (dense) size = " << M.rows() << " x " << M.cols() << "\n\n";
 
-    // Step a few times and export VTK each step
-    cardillo::io::VtkWriter writer("vtk_out", "points", 1);
+    // Configure visual planes (e.g., z=0 ground)
+    PhysicsSystem::Plane ground;
+    ground.center = Vector3r(0,0,-1);
+    ground.normal = Vector3r(0,0,1);
+    ground.up = Vector3r(0,1,0);
+    ground.sizeX = 5.0; ground.sizeY = 5.0;
+    sys.addRigidBody(ground);
+
+    // Add a cube visual off to the side
+    PhysicsSystem::Cube cube;
+    cube.center = Vector3r(2.0, 0.0, 0.0);
+    cube.halfExtents = Vector3r(0.5, 0.5, 0.5);
+    sys.addRigidBody(cube);
+
+    // Step a few times and export VTK every 5 steps
+    cardillo::io::VtkWriter writer("vtk_out", "points", 5);
     real_t dt = 0.01;
     for (int k = 0; k < 100; ++k) {
         cardillo::solver::midpointStep(sys, dt);
         writer.maybeWrite(k, sys);
 
-        // Print state
+        // Print state: grab the first visual point via ECS
         if (k % 20 == 0) {
-            const auto& masses = sys.masses();
-            std::cout << "Step " << k << ": sample x[0] = " << masses[0].x.transpose()
-                      << ", v[0] = " << masses[0].v.transpose() << "\n";
+            const auto& reg = sys.ecs();
+            auto view = reg.view<PhysicsSystem::C_VisualObject,
+                                 PhysicsSystem::C_PointVisualTag,
+                                 PhysicsSystem::C_Position3,
+                                 PhysicsSystem::C_LinearVelocity3>();
+            for (auto [e, pos, vel] : view.each()) {
+                (void)e;
+                std::cout << "Step " << k << ": sample x[0] = " << pos.value.transpose()
+                          << ", v[0] = " << vel.value.transpose() << "\n";
+                break;
+            }
         }
     }
 

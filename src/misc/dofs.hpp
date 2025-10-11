@@ -1,3 +1,6 @@
+// Prevent multiple inclusion
+#pragma once
+
 #include "types.hpp"
 
 

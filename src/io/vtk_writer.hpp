@@ -28,6 +28,20 @@ public:
     void write(int step, const cardillo::PhysicsSystem& sys);
 
 private:
+    // Helpers split from write for clarity
+    struct Collected {
+        std::vector<std::pair<Vector3r, std::pair<float, Vector3r>>> points; // pos, (mass, vel)
+        std::vector<cardillo::PhysicsSystem::Plane> planes;
+        std::vector<cardillo::PhysicsSystem::Cube> cubes;
+    };
+
+    Collected collect(const cardillo::PhysicsSystem& sys) const;
+    void writeHeader(std::ofstream& out, std::size_t ntotal) const;
+    void writePoints(std::ofstream& out, const Collected& data) const;
+    void writeVertices(std::ofstream& out, std::size_t np) const;
+    void writePolygons(std::ofstream& out, const Collected& data) const;
+    void writePointData(std::ofstream& out, const Collected& data) const;
+
     std::string m_outputDir;
     std::string m_baseName;
     int m_frequency;

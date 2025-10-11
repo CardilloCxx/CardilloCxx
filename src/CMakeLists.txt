@@ -2,6 +2,7 @@ add_library(${PROJECT_NAME} STATIC cardillo.cpp physics/physics_system.cpp io/vt
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${entt_SOURCE_DIR}/src
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -10,3 +11,7 @@ target_link_libraries(${PROJECT_NAME}
         PkgConfig::PETSC
         MPI::MPI_CXX
 )
+
+# Simple tests (no framework): build small executables
+add_executable(matrix_tests tests/matrix_tests.cpp)
+target_link_libraries(matrix_tests PRIVATE ${PROJECT_NAME})

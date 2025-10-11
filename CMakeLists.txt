@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(cardillo LANGUAGES C CXX)
 
+add_compile_options(-w)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,6 +40,15 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(Eigen)
+
+# EnTT (header-only) via FetchContent
+FetchContent_Declare(
+    EnTT
+    GIT_REPOSITORY https://github.com/skypjack/entt.git
+    GIT_TAG v3.13.2
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(EnTT)
 
 # MPI
 find_package(MPI REQUIRED)
