@@ -20,11 +20,11 @@ int main() {
         // tangential direction in XY plane
         Vector3r tan(-std::sin(theta), std::cos(theta), 0.0);
         Vector3r vel = v0 * tan;
-        sys.addPointMass(mass, pos, vel);
+    real_t pradius = 0.05;
+    sys.addPointMass(mass, pos, vel, pradius);
     }
 
-    auto M = sys.assembleMassMatrix();
-    std::cout << "Mass matrix M (dense) size = " << M.rows() << " x " << M.cols() << "\n\n";
+    // Mass matrix is now provided by DynamicsAssembler via MoreauSolver if needed
 
     // Configure visual planes (e.g., z=0 ground)
     PhysicsSystem::Plane ground;
@@ -43,8 +43,9 @@ int main() {
     // Step a few times and export VTK every 5 steps
     cardillo::io::VtkWriter writer("vtk_out", "points", 5);
     real_t dt = 0.01;
+    cardillo::solver::MoreauSolver solver(sys);
     for (int k = 0; k < 100; ++k) {
-        cardillo::solver::midpointStep(sys, dt);
+        solver.stepMidpoint(dt);
         writer.maybeWrite(k, sys);
 
         // Print state: grab the first visual point via ECS

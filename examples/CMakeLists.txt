@@ -7,6 +7,10 @@
 add_executable(pm_midpoint pm_midpoint.cpp)
 target_link_libraries(pm_midpoint PRIVATE cardillo)
 
+# Collisions demo writing scene and contacts VTK
+add_executable(collisions_demo collisions_demo.cpp)
+target_link_libraries(collisions_demo PRIVATE cardillo)
+
 # ECS physics engine example (requires EnTT)
 # add_executable(physics_engine physics_engine.cpp)
 # target_link_libraries(physics_engine PRIVATE cardillo)

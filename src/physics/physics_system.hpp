@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <vector>
+#include <optional>
 #include <functional>
 #include <entt/entt.hpp>
 #include <petscsys.h>
@@ -12,10 +13,7 @@
 namespace cardillo {
 
 // A minimal, standard-C++ physics system for frictionless point masses
-// with translational DOFs only (no rotations). Supports:
-// - adding point masses
-// - assembling the (diagonal) mass matrix
-// - providing pack/unpack helpers for solvers
+// with translational DOFs only (no rotations).
 class PhysicsSystem {
 public:
     PhysicsSystem();
@@ -34,13 +32,12 @@ public:
     struct Cube {
         Vector3r center{0,0,0};
         Vector3r halfExtents{0.5,0.5,0.5};
+        Matrix33r R = Matrix33r::Identity(); // orientation (columns are local axes)
     };
     // Rigid visuals (no physics yet)
     index_t addRigidBody(const Plane& p);
     index_t addRigidBody(const Cube& c);
-    void clearPlanes() { /* legacy no-op */ }
-    bool hasPlanes() const { return false; }
-    const std::vector<Plane> planes() const { return {}; }
+    index_t addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);
 
     // Expose ECS for external querying (read-only)
     const entt::registry& ecs() const { return m_reg; }
@@ -53,49 +50,48 @@ public:
     struct C_PointMassTag {};
     struct C_RigidBodyTag {};
     struct C_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
-    struct C_Cube { Vector3r halfExtents; };
+    struct C_Cube { Vector3r halfExtents; Matrix33r R; };
     struct C_VisualObject {};
     struct C_PointVisualTag {};
     struct C_PlaneVisualTag {};
     struct C_CubeVisualTag {};
-
-    // Add a point mass; returns an entity id encoded as index_t (for now)
-    index_t addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0);
-
-    index_t numQ() const { return m_q_dofs; }
-    index_t numV() const { return m_v_dofs; }
-
-    // Assemble diagonal mass matrix M (size: VxV)
-    Eigen::SparseMatrix<real_t> assembleMassMatrix() const;
-
-    // Assemble generalized force vector f (size: V); currently only gravity
-    VectorXr assembleForceVector() const;
-
-    // Cached mass diagonal (3*m per mass). Recomputed when masses/DOFs change.
-    const VectorXr& massDiagonal() const;
-
-    // State helpers
-    VectorXr packQ() const; // positions stacked
-    VectorXr packV() const; // velocities stacked
-    void unpackQ(const RefVectorXr& q);
-    void unpackV(const RefVectorXr& v);
-
-    // Removed public snapshot masses(); writer should query via forEachVisualPoint.
-
-private:
-    // DOF indices as components (internal)
-    // DOF indices as components
+    struct C_Collidable {};
+    struct C_Radius { real_t r; };
+    // DOF indices as components (public so assemblers can read them)
     struct C_PositionIndex3 { Index<3> idx; };
     struct C_LinearVelocityIndex3 { Index<3> idx; };
 
+    // No numQ/numV or DOF accessors here; DynamicsAssembler owns DOF scans
+
+    // State changed: positions/velocities modified
+    void markStateDirty() const { m_state_dirty = true; }
+    // Structure changes are picked up by assemblers directly from ECS; no flag needed
+    void markStructureDirty() const { /* no-op, kept for API compatibility */ }
+    // Forces changed: external forces like gravity updated
+    void markForcesDirty() const { m_forces_dirty = true; }
+
+    // Queries (non-consuming)
+    bool isStateDirty() const { return m_state_dirty; }
+    bool isStructureDirty() const { return m_structure_dirty; }
+    bool isForcesDirty() const { return m_forces_dirty; }
+
+    // Consumers (clear-on-read)
+    bool consumeStateDirty() const { bool b = m_state_dirty; m_state_dirty = false; return b; }
+    bool consumeStructureDirty() const { bool b = m_structure_dirty; m_structure_dirty = false; return b; }
+    bool consumeForcesDirty() const { bool b = m_forces_dirty; m_forces_dirty = false; return b; }
+
+private:
+
     entt::registry m_reg;
     Vector3r m_gravity;  // gravity vector
-    index_t m_q_dofs = 0;
-    index_t m_v_dofs = 0;
-    mutable VectorXr m_Mdiag;     // cached mass diagonal
-    mutable bool m_mass_dirty = true;
+    // no mass/structure caches here
 
-    void assignDofs_();
+    // System dirty flags (mutable so const getters/setters can flip)
+    mutable bool m_state_dirty = true;     // q or v changed outside of physics loop
+    mutable bool m_structure_dirty = true; // objects added/removed
+    mutable bool m_forces_dirty = true;    // external forces changed
+
+    // assignDofs_ moved to DynamicsAssembler
     entt::entity createRigidVisualEntity_(const Vector3r& center);
 };
 

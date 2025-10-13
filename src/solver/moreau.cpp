@@ -1,34 +1,47 @@
 #include "moreau.hpp"
+#include "projected_jacobi.hpp"
+#include <iostream>
 
 namespace cardillo::solver {
 
-void midpointStep(cardillo::PhysicsSystem& sys, real_t dt)
+void MoreauSolver::stepMidpoint(real_t dt)
 {
-    // Pack state
-    VectorXr qn = sys.packQ();
-    VectorXr vn = sys.packV();
+    m_dyn.refreshState();
+    const VectorXr& qn = m_dyn.q();
+    const VectorXr& vn = m_dyn.v();
+    const VectorXr& fn = m_dyn.f();
+    const VectorXr& MinvDiag = m_dyn.MinvDiag();
+    const index_t V0 = m_dyn.numV();
 
-    // Mass diagonal and forces
-    const VectorXr& Mdiag = sys.massDiagonal();
-    VectorXr fn = sys.assembleForceVector();
+    // External-only acceleration
+    VectorXr a_ext(m_dyn.numV());
+    for (index_t i = 0; i < m_dyn.numV(); ++i) a_ext[i] = MinvDiag[i] * fn[i];
 
-    VectorXr an(sys.numV());
-    an.setZero();
-    for (index_t i = 0; i < sys.numV(); ++i) an[i] = fn[i] / Mdiag[i];
-
-    VectorXr v_mid = vn + (real_t)0.5 * dt * an;
+    // 2) Midpoint position and preliminary velocity (external forces only)
     VectorXr q_mid = qn + (real_t)0.5 * dt * vn;
-    (void)q_mid; // not used for gravity-only, kept for future forces
+    VectorXr v_pre = vn + dt * a_ext;
 
-    // For state-independent forces (gravity-only here), reuse fn
-    VectorXr a_mid(sys.numV());
-    for (index_t i = 0; i < sys.numV(); ++i) a_mid[i] = fn[i] / Mdiag[i];
+    // 3) Evaluate contacts at midpoint positions: write q_mid into ECS (v stays vn)
+    m_dyn.writeStateToSystem(q_mid, vn);
+    m_dyn.refreshState(); // rebuild W,G based on midpoint; forces unchanged
+    const index_t V1 = m_dyn.numV();
 
-    VectorXr vnp1 = vn + dt * a_mid;
-    VectorXr qnp1 = qn + dt * v_mid;
+    // 4) Solve normal impulses p using W(q_mid), G, and preliminary velocity v_pre
+    ProjectedJacobiSolver pjs(m_dyn);
+    VectorXr p = pjs.iterateWithPreliminaryVelocity(v_pre, std::nullopt, 30);
+    const auto& W = m_dyn.W();
 
-    sys.unpackQ(qnp1);
-    sys.unpackV(vnp1);
+    // 5) Apply impulse: u_{n+1} = v_pre + Minv * W^T * p
+    const auto& Minv = m_dyn.Minv();
+    VectorXr deltaV = Minv * (W.transpose() * p);
+    VectorXr vnp1 = v_pre - deltaV;
+    std::cout << "[Moreau] percussion magnitude: " << p.norm() << std::endl;
+
+    // 6) Final position: q_{n+1} = q_mid + (h/2) * u_{n+1}
+    VectorXr qnp1 = q_mid + (real_t)0.5 * dt * vnp1;
+
+    // 7) Write back final state
+    m_dyn.writeStateToSystem(qnp1, vnp1);
 }
 
 }

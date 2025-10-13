@@ -33,42 +33,19 @@ void VtkWriter::setFrequency(int freq) { m_frequency = std::max(1, freq); }
 
 void VtkWriter::maybeWrite(int step, const cardillo::PhysicsSystem& sys)
 {
-    if (step % m_frequency == 0) write(step, sys);
+    if (step % m_frequency == 0) { write(step, sys); }
 }
 
 void VtkWriter::write(int step, const cardillo::PhysicsSystem& sys)
 {
-    // format step as 4-digit with leading zeros
-    std::ostringstream ss;
-    ss << m_baseName << '_' << std::setw(4) << std::setfill('0') << step << ".vtk";
-    std::string filename = ss.str();
-    std::string path = m_outputDir.empty() ? filename : (fs::path(m_outputDir) / filename).string();
-
-    std::ofstream out(path, std::ios::out | std::ios::trunc);
-    if (!out) return;
-
-    // Gather visuals from ECS and compute sizes
     Collected data = collect(sys);
-    const std::size_t np = data.points.size();
-    const std::size_t nplanes = data.planes.size();
-    const std::size_t ncubes = data.cubes.size();
-    const std::size_t nplane_pts = 4 * nplanes;
-    const std::size_t ncube_pts = 8 * ncubes;
-    const std::size_t ntotal = np + nplane_pts + ncube_pts;
+    writePointsOnly(step, data);
+    writeGeometryOnly(step, data);
 
-    // Legacy VTK ASCII PolyData with particle points + plane corners
-    writeHeader(out, ntotal);
-    writePoints(out, data);
-
-    // Vertices connectivity: one vertex per particle point only
-    writeVertices(out, np);
-
-    // Planes and cubes as quads (polygons)
-    writePolygons(out, data);
-
-    // POINT_DATA for all points: particles get mass/velocity, planes/cubes get zeros
-    writePointData(out, data);
-    out.close();
+    if (m_writeContacts) {
+        auto contacts = cardillo::collision::detectAll(sys);
+        writeContacts(step, contacts);
+    }
 }
 
 VtkWriter::Collected VtkWriter::collect(const cardillo::PhysicsSystem& sys) const {
@@ -79,10 +56,11 @@ VtkWriter::Collected VtkWriter::collect(const cardillo::PhysicsSystem& sys) cons
                             cardillo::PhysicsSystem::C_PointVisualTag,
                             cardillo::PhysicsSystem::C_Position3,
                             cardillo::PhysicsSystem::C_Mass,
-                            cardillo::PhysicsSystem::C_LinearVelocity3>();
-    for (auto [e, pos, m, v] : vpoints.each()) {
+                            cardillo::PhysicsSystem::C_LinearVelocity3,
+                            cardillo::PhysicsSystem::C_Radius>();
+    for (auto [e, pos, m, v, r] : vpoints.each()) {
         (void)e;
-        out.points.emplace_back(pos.value, std::make_pair(static_cast<float>(m.m), v.value));
+        out.points.emplace_back(pos.value, std::make_tuple(static_cast<float>(m.m), v.value, static_cast<float>(r.r)));
     }
     // Planes: project ECS plane component to public Plane struct
     auto vplanes = reg.view<cardillo::PhysicsSystem::C_VisualObject,
@@ -101,7 +79,7 @@ VtkWriter::Collected VtkWriter::collect(const cardillo::PhysicsSystem& sys) cons
                            cardillo::PhysicsSystem::C_Cube>();
     for (auto [e, pos, cb] : vcubes.each()) {
         (void)e;
-        cardillo::PhysicsSystem::Cube c; c.center = pos.value; c.halfExtents = cb.halfExtents;
+        cardillo::PhysicsSystem::Cube c; c.center = pos.value; c.halfExtents = cb.halfExtents; c.R = cb.R;
         out.cubes.push_back(c);
     }
     return out;
@@ -142,24 +120,27 @@ void VtkWriter::writePoints(std::ofstream& out, const Collected& data) const {
     }
     // cube points appended
     for (const auto& c : data.cubes) {
-        const float cx = static_cast<float>(c.center.x());
-        const float cy = static_cast<float>(c.center.y());
-        const float cz = static_cast<float>(c.center.z());
-        const float hx = static_cast<float>(c.halfExtents.x());
-        const float hy = static_cast<float>(c.halfExtents.y());
-        const float hz = static_cast<float>(c.halfExtents.z());
-        const float pts[8][3] = {
-            {cx - hx, cy - hy, cz - hz},
-            {cx + hx, cy - hy, cz - hz},
-            {cx + hx, cy + hy, cz - hz},
-            {cx - hx, cy + hy, cz - hz},
-            {cx - hx, cy - hy, cz + hz},
-            {cx + hx, cy - hy, cz + hz},
-            {cx + hx, cy + hy, cz + hz},
-            {cx - hx, cy + hy, cz + hz}
+        // Rotate local axes
+        Vector3r ex = c.R * Vector3r::UnitX();
+        Vector3r ey = c.R * Vector3r::UnitY();
+        Vector3r ez = c.R * Vector3r::UnitZ();
+        Vector3r vx = ex * c.halfExtents.x();
+        Vector3r vy = ey * c.halfExtents.y();
+        Vector3r vz = ez * c.halfExtents.z();
+        Vector3r p[8] = {
+            c.center - vx - vy - vz,
+            c.center + vx - vy - vz,
+            c.center + vx + vy - vz,
+            c.center - vx + vy - vz,
+            c.center - vx - vy + vz,
+            c.center + vx - vy + vz,
+            c.center + vx + vy + vz,
+            c.center - vx + vy + vz
         };
         for (int i = 0; i < 8; ++i) {
-            out << pts[i][0] << ' ' << pts[i][1] << ' ' << pts[i][2] << '\n';
+            out << static_cast<float>(p[i].x()) << ' '
+                << static_cast<float>(p[i].y()) << ' '
+                << static_cast<float>(p[i].z()) << '\n';
         }
     }
 }
@@ -203,18 +184,107 @@ void VtkWriter::writePointData(std::ofstream& out, const Collected& data) const 
     const std::size_t ntotal = np + nplane_pts + ncube_pts;
     out << "\nPOINT_DATA " << ntotal << "\n";
     out << "SCALARS mass float 1\nLOOKUP_TABLE default\n";
-    for (const auto& pt : data.points) out << pt.second.first << '\n';
+    for (const auto& pt : data.points) out << std::get<0>(pt.second) << '\n';
     for (std::size_t i = 0; i < nplane_pts; ++i) out << 0.0f << '\n';
     for (std::size_t i = 0; i < ncube_pts; ++i) out << 0.0f << '\n';
+
     out << "VECTORS velocity float\n";
     for (const auto& pt : data.points) {
-        const auto& v = pt.second.second;
+        const auto& v = std::get<1>(pt.second);
         out << static_cast<float>(v.x()) << ' '
             << static_cast<float>(v.y()) << ' '
             << static_cast<float>(v.z()) << '\n';
     }
     for (std::size_t i = 0; i < nplane_pts; ++i) out << "0 0 0\n";
     for (std::size_t i = 0; i < ncube_pts; ++i) out << "0 0 0\n";
+
+    out << "SCALARS radius float 1\nLOOKUP_TABLE default\n";
+    for (const auto& pt : data.points) out << std::get<2>(pt.second) << '\n';
+    for (std::size_t i = 0; i < nplane_pts; ++i) out << 0.0f << '\n';
+    for (std::size_t i = 0; i < ncube_pts; ++i) out << 0.0f << '\n';
+}
+
+auto VtkWriter::computeCounts(const Collected& data) const -> Counts {
+    Counts c;
+    c.np = data.points.size();
+    c.nplanes = data.planes.size();
+    c.ncubes = data.cubes.size();
+    c.nplane_pts = 4 * c.nplanes;
+    c.ncube_pts = 8 * c.ncubes;
+    c.ntotal = c.np + c.nplane_pts + c.ncube_pts;
+    return c;
+}
+
+std::string VtkWriter::buildPath(const std::string& prefix, int step) const {
+    std::ostringstream ss;
+    ss << prefix << '_' << std::setw(4) << std::setfill('0') << step << ".vtk";
+    std::string filename = ss.str();
+    return m_outputDir.empty() ? filename : (fs::path(m_outputDir) / filename).string();
+}
+
+void VtkWriter::writePointsOnly(int step, const Collected& data) const {
+    // dynamic points only to allow glyphs without affecting static geometry
+    std::string path = buildPath(m_baseName + "_pts", step);
+    std::ofstream out(path, std::ios::out | std::ios::trunc);
+    if (!out) return;
+    const std::size_t np = data.points.size();
+    writeHeader(out, np);
+    Collected onlyPts = data; onlyPts.planes.clear(); onlyPts.cubes.clear();
+    writePoints(out, onlyPts);
+    writeVertices(out, np);
+    writePointData(out, onlyPts);
+    out.close();
+}
+
+void VtkWriter::writeGeometryOnly(int step, const Collected& data) const {
+    // static geometry only (planes, cubes)
+    std::string path = buildPath(m_baseName + "_geo", step);
+    std::ofstream out(path, std::ios::out | std::ios::trunc);
+    if (!out) return;
+    const auto c = computeCounts(data);
+    const std::size_t ntotal = c.nplane_pts + c.ncube_pts;
+    writeHeader(out, ntotal);
+    Collected onlyGeo; // empty points
+    onlyGeo.planes = data.planes;
+    onlyGeo.cubes = data.cubes;
+    writePoints(out, onlyGeo);
+    writePolygons(out, onlyGeo);
+    // no POINT_DATA section for static geometry
+    out.close();
+}
+
+void VtkWriter::writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts) const {
+    if (!m_writeContacts) return;
+    if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
+    const std::string path = buildPath(m_contactsBase, step);
+    std::ofstream out(path, std::ios::out | std::ios::trunc);
+    if (!out) return;
+    const std::size_t n = contacts.size();
+    out << "# vtk DataFile Version 3.0\n";
+    out << "Collision contacts exported by cardillo\n";
+    out << "ASCII\n";
+    out << "DATASET POLYDATA\n";
+    out << "POINTS " << n << " float\n";
+    out.setf(std::ios::fixed); out << std::setprecision(6);
+    for (const auto& c : contacts) {
+        out << static_cast<float>(c.point.x()) << ' '
+            << static_cast<float>(c.point.y()) << ' '
+            << static_cast<float>(c.point.z()) << '\n';
+    }
+    out << "\nPOINT_DATA " << n << "\n";
+    out << "VECTORS normal float\n";
+    for (const auto& c : contacts) {
+        out << static_cast<float>(c.normal.x()) << ' '
+            << static_cast<float>(c.normal.y()) << ' '
+            << static_cast<float>(c.normal.z()) << '\n';
+    }
+    out << "SCALARS penetration float 1\nLOOKUP_TABLE default\n";
+    for (const auto& c : contacts) out << static_cast<float>(c.penetration) << '\n';
+    out << "SCALARS id_a int 1\nLOOKUP_TABLE default\n";
+    for (const auto& c : contacts) out << static_cast<int>(entt::to_integral(c.a)) << '\n';
+    out << "SCALARS id_b int 1\nLOOKUP_TABLE default\n";
+    for (const auto& c : contacts) out << static_cast<int>(entt::to_integral(c.b)) << '\n';
+    out.close();
 }
 
 } // namespace cardillo::io
