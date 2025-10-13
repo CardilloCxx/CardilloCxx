@@ -175,14 +175,14 @@ void DynamicsAssembler::rebuildW_() {
     auto b0 = velDofStart(c.b);
         const Vector3r& n = c.normal; // A -> B
         if (a0) {
-            wtrips.emplace_back(i, *a0 + 0, n[0]);
-            wtrips.emplace_back(i, *a0 + 1, n[1]);
-            wtrips.emplace_back(i, *a0 + 2, n[2]);
+            wtrips.emplace_back(i, *a0 + 0, -n[0]);
+            wtrips.emplace_back(i, *a0 + 1, -n[1]);
+            wtrips.emplace_back(i, *a0 + 2, -n[2]);
         }
         if (b0) {
-            wtrips.emplace_back(i, *b0 + 0, -n[0]);
-            wtrips.emplace_back(i, *b0 + 1, -n[1]);
-            wtrips.emplace_back(i, *b0 + 2, -n[2]);
+            wtrips.emplace_back(i, *b0 + 0, n[0]);
+            wtrips.emplace_back(i, *b0 + 1, n[1]);
+            wtrips.emplace_back(i, *b0 + 2, n[2]);
         }
     }
     m_W.resize(C, V);

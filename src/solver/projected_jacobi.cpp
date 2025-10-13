@@ -8,10 +8,7 @@ static inline VectorXr projected_jacobi_core(const Eigen::SparseMatrix<real_t>& 
 											 const VectorXr& b,
 											 real_t alpha,
 											 std::optional<RefVectorXr> p0,
-											 int iters) {
-
-    std::cout << "[PJ] W matrix: " << W << std::endl;
-    std::cout << "[PJ] G matrix: " << G << std::endl;
+											 real_t tol) {
 
 	const int C = G.rows();
 	if (C == 0) return VectorXr();
@@ -28,32 +25,42 @@ static inline VectorXr projected_jacobi_core(const Eigen::SparseMatrix<real_t>& 
 	if (p0.has_value() && p0->size() == C) p = p0.value();
 
 	VectorXr y(C);
-	for (int k = 0; k < iters; ++k) {
+    VectorXr p_prev(C); 
+
+    real_t err = std::numeric_limits<real_t>::max();
+    index_t iteration = 0;
+	while (err > tol && iteration < 100000) {
 		y = (G * p);
-		for (int i = 0; i < C; ++i) y[i] = Rdiag[i] * y[i] - p[i] + Rdiag[i] * b[i];
-		for (int i = 0; i < C; ++i) p[i] = std::max<real_t>(0, y[i]);
+        p_prev = p;
+        for (int i = 0; i < C; ++i) p[i] = std::min<real_t>(0, Rdiag[i] * y[i] - p[i] + Rdiag[i] * b[i]);
+
+        err = (p_prev - p).norm();
+        ++iteration;
+        if (iteration % 1000 == 0) {
+            std::cout << "[PJ] iteration " << iteration << ", err = " << err << "\n";
+        }
 	}
-	// no-op: debug print removed
+
+    std::cout << "[PJ] final iteration " << iteration << ", err = " << err << "\n";
 	return p;
 }
 
-VectorXr ProjectedJacobiSolver::iterate(std::optional<RefVectorXr> p0, int iters) {
+VectorXr ProjectedJacobiSolver::iterate(std::optional<RefVectorXr> p0, real_t tol) {
 	// Caller expected to have refreshed state
 	const auto& W = m_dyn.W();
 	const auto& G = m_dyn.G();
 	const VectorXr& v = m_dyn.v();
 	VectorXr b = W * v;
-	return projected_jacobi_core(G, W, b, m_alpha, p0, iters);
+	return projected_jacobi_core(G, W, b, m_alpha, p0, tol);
 }
 
 VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v_pre,
 															   std::optional<RefVectorXr> p0,
-															   int iters) {
+															   real_t tol) {
 	const auto& W = m_dyn.W();
 	const auto& G = m_dyn.G();
 	VectorXr b = W * v_pre;
-    std::cout << "[PJ] b vector: " << b.transpose() << std::endl;
-	return projected_jacobi_core(G, W, b, m_alpha, p0, iters);
+	return projected_jacobi_core(G, W, b, m_alpha, p0, tol);
 }
 
 } // namespace cardillo::solver

@@ -24,10 +24,10 @@ public:
 
     // Perform N iterations starting from optional initial p0 (else zeros)
     // Returns the resulting impulse vector p
-    VectorXr iterate(std::optional<RefVectorXr> p0 = std::nullopt, int iters = 20);
+    VectorXr iterate(std::optional<RefVectorXr> p0 = std::nullopt, real_t tol = 1e-5);
 
     // Iteration using a provided preliminary velocity v_pre for b = W * v_pre
-    VectorXr iterateWithPreliminaryVelocity(const VectorXr& v_pre, std::optional<RefVectorXr> p0 = std::nullopt, int iters = 20);
+    VectorXr iterateWithPreliminaryVelocity(const VectorXr& v_pre, std::optional<RefVectorXr> p0 = std::nullopt, real_t tol = 1e-5);
 
 private:
     cardillo::physics::DynamicsAssembler& m_dyn;
