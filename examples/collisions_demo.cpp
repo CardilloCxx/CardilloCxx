@@ -60,35 +60,39 @@ int main() {
     //     sys.addRigidBody(ny);
     // }
 
-    // Billard balls in a triangular arrangement
-    const real_t ball_radius = 0.2;
-    const real_t ball_dia = 2.0 * ball_radius;
-    const int rows = 5;
-    const real_t start_z = ball_radius + 0.01;
-    const Vector3r start_pos(-ball_dia * (rows-1) / 2.0, 0, start_z);
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j <= i; ++j) {
-            const Vector3r pos = start_pos + Vector3r(i * ball_radius * std::sqrt(3.0), (-i + 2.0*j) * ball_radius, 0);
-            const Vector3r vel = Vector3r::Zero();
+    // Billard balls in a triangular arrangement (pyramid 3D)
+    const real_t r = 0.2;
+    const real_t dia = 2.0 * r;
+    const int rows = 4;  // works well with (1,2,3) but 4 is unstable
 
-            // sys.addPointMass(1.0, pos + Vector3r::Random() * 0.001, vel, ball_radius);
-            sys.addPointMass(1.0, pos, vel, ball_radius);
+    const Vector3r base_center(0, 0, r + 0.01);
+
+    for (int k = 0; k < rows; ++k) {
+        int n = rows - k;  // spheres per edge in this layer
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < n - i; ++j) {
+                real_t x = (2.0 * i + (( j + k))) * r;
+                real_t y = std::sqrt(3.0) * (j + 1.0 / 3.0 * (k)) * r;
+                real_t z = std::sqrt(6.0) * 2.0 / 3.0 * k * r;
+                Vector3r pos = base_center + Vector3r(x, y, z);
+                Vector3r vel = Vector3r::Zero();
+                sys.addPointMass(1.0, pos, vel, r * 1.01);
+            }
         }
     }
-
-    // Bullet 
-    // sys.addPointMass(1.0, Vector3r(-5.0, 0.1, ball_radius), Vector3r(50.0, -0.01, 0.0), ball_radius);
-    sys.addPointMass(1.0, Vector3r(-5.0, 0.0, ball_radius), Vector3r(50.0, 0.0, 0.0), ball_radius);
-
-    // Ramp
-    {
-        PhysicsSystem::Plane ramp;
-        ramp.center = Vector3r(3.0, 0.0, 0.5);
-        ramp.normal = Eigen::AngleAxis<real_t>(-M_PI/6, Vector3r::UnitY()) * Vector3r(0,0,1);
-        ramp.up = Eigen::AngleAxis<real_t>(-M_PI/6, Vector3r::UnitY()) * Vector3r(0,1,0);
-        ramp.sizeX = 3.0; ramp.sizeY = 3.0;
-        sys.addRigidBody(ramp);
-    }
+//     // Bullet 
+//     // sys.addPointMass(1.0, Vector3r(-5.0, 0.1, ball_radius), Vector3r(50.0, -0.01, 0.0), ball_radius);
+//     sys.addPointMass(1.0, Vector3r(-5.0, 0.0, ball_radius), Vector3r(50.0, 0.0, 0.0), ball_radius);
+// 
+//     // Ramp
+//     {
+//         PhysicsSystem::Plane ramp;
+//         ramp.center = Vector3r(3.0, 0.0, 0.5);
+//         ramp.normal = Eigen::AngleAxis<real_t>(-M_PI/6, Vector3r::UnitY()) * Vector3r(0,0,1);
+//         ramp.up = Eigen::AngleAxis<real_t>(-M_PI/6, Vector3r::UnitY()) * Vector3r(0,1,0);
+//         ramp.sizeX = 3.0; ramp.sizeY = 3.0;
+//         sys.addRigidBody(ramp);
+//     }
 
     // Walls around the base plate
     {
@@ -115,18 +119,20 @@ int main() {
     }
 
     // Writers
-    cardillo::io::VtkWriter writer("vtk_out", "scene", 100);
+    cardillo::io::VtkWriter writer("vtk_out", "scene", 1000);
     writer.enableContactsOutput(true, "contacts");
 
     // Simulate
-    const real_t dt = 1e-4;
-    const real_t t1 = 3;
+    const real_t dt = 1e-5;
+    const real_t t1 = 0.1;
     const int steps = int(t1 / dt);
 
     cardillo::solver::MoreauSolver solver(sys);
+    real_t time = 0.0;
     for (int k = 0; k < steps; ++k) {
+        time += dt;
         solver.stepMidpoint(dt);
-        writer.maybeWrite(k, sys);
+        writer.maybeWrite(k, time, sys);
     }
 
     return 0;

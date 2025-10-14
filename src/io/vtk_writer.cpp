@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <iomanip>
 #include <sstream>
 
@@ -31,16 +32,18 @@ void VtkWriter::setBaseName(const std::string& name) { m_baseName = name; }
 
 void VtkWriter::setFrequency(int freq) { m_frequency = std::max(1, freq); }
 
-void VtkWriter::maybeWrite(int step, const cardillo::PhysicsSystem& sys)
+void VtkWriter::maybeWrite(int step, real_t time, const cardillo::PhysicsSystem& sys)
 {
-    if (step % m_frequency == 0) { write(step, sys); }
+    if (step % m_frequency == 0) { write(step, time, sys); }
 }
 
-void VtkWriter::write(int step, const cardillo::PhysicsSystem& sys)
+void VtkWriter::write(int step, real_t time, const cardillo::PhysicsSystem& sys)
 {
+    std::cout << "VtkWriter: writing step " << step << " at time " << time << std::endl;
+
     Collected data = collect(sys);
-    writePointsOnly(step, data);
-    writeGeometryOnly(step, data);
+    writePointsOnly(step, time, data);
+    writeGeometryOnly(step, time, data);
 
     if (m_writeContacts) {
         auto contacts = cardillo::collision::detectAll(sys);
@@ -85,13 +88,14 @@ VtkWriter::Collected VtkWriter::collect(const cardillo::PhysicsSystem& sys) cons
     return out;
 }
 
-void VtkWriter::writeHeader(std::ofstream& out, std::size_t ntotal) const {
+void VtkWriter::writeHeader(std::ofstream& out, real_t time, std::size_t ntotal) const {
     out << "# vtk DataFile Version 3.0\n";
     out << "Particles + planes exported by cardillo\n";
     out << "ASCII\n";
     out << "DATASET POLYDATA\n";
     out << "POINTS " << ntotal << " float\n";
     out.setf(std::ios::fixed); out << std::setprecision(6);
+    out << "TIME " << std::setprecision(8) << time << '\n';
 }
 
 void VtkWriter::writePoints(std::ofstream& out, const Collected& data) const {
@@ -222,13 +226,13 @@ std::string VtkWriter::buildPath(const std::string& prefix, int step) const {
     return m_outputDir.empty() ? filename : (fs::path(m_outputDir) / filename).string();
 }
 
-void VtkWriter::writePointsOnly(int step, const Collected& data) const {
+void VtkWriter::writePointsOnly(int step, real_t time, const Collected& data) const {
     // dynamic points only to allow glyphs without affecting static geometry
     std::string path = buildPath(m_baseName + "_pts", step);
     std::ofstream out(path, std::ios::out | std::ios::trunc);
     if (!out) return;
     const std::size_t np = data.points.size();
-    writeHeader(out, np);
+    writeHeader(out, time, np);
     Collected onlyPts = data; onlyPts.planes.clear(); onlyPts.cubes.clear();
     writePoints(out, onlyPts);
     writeVertices(out, np);
@@ -236,14 +240,14 @@ void VtkWriter::writePointsOnly(int step, const Collected& data) const {
     out.close();
 }
 
-void VtkWriter::writeGeometryOnly(int step, const Collected& data) const {
+void VtkWriter::writeGeometryOnly(int step, real_t time, const Collected& data) const {
     // static geometry only (planes, cubes)
     std::string path = buildPath(m_baseName + "_geo", step);
     std::ofstream out(path, std::ios::out | std::ios::trunc);
     if (!out) return;
     const auto c = computeCounts(data);
     const std::size_t ntotal = c.nplane_pts + c.ncube_pts;
-    writeHeader(out, ntotal);
+    writeHeader(out, time, ntotal);
     Collected onlyGeo; // empty points
     onlyGeo.planes = data.planes;
     onlyGeo.cubes = data.cubes;

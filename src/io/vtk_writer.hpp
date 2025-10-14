@@ -22,8 +22,8 @@ public:
     void setFrequency(int freq);
     void enableContactsOutput(bool enable, const std::string& base = "contacts") { m_writeContacts = enable; m_contactsBase = base; }
 
-    void maybeWrite(int step, const cardillo::PhysicsSystem& sys);
-    void write(int step, const cardillo::PhysicsSystem& sys);
+    void maybeWrite(int step, real_t time, const cardillo::PhysicsSystem& sys);
+    void write(int step, real_t time, const cardillo::PhysicsSystem& sys);
 private:
     // Helpers split from write for clarity
     struct Collected {
@@ -45,7 +45,7 @@ private:
     Collected collect(const cardillo::PhysicsSystem& sys) const;
     Counts computeCounts(const Collected& data) const;
     std::string buildPath(const std::string& prefix, int step) const;
-    void writeHeader(std::ofstream& out, std::size_t ntotal) const;
+    void writeHeader(std::ofstream& out, real_t time, std::size_t ntotal) const;
     void writePoints(std::ofstream& out, const Collected& data) const;
     void writeVertices(std::ofstream& out, std::size_t np) const;
     void writePolygons(std::ofstream& out, const Collected& data) const;
@@ -55,8 +55,8 @@ private:
 
 
     // Split-output helpers
-    void writePointsOnly(int step, const Collected& data) const;
-    void writeGeometryOnly(int step, const Collected& data) const;
+    void writePointsOnly(int step, real_t time, const Collected& data) const;
+    void writeGeometryOnly(int step, real_t time, const Collected& data) const;
 
     std::string m_outputDir;
     std::string m_baseName;

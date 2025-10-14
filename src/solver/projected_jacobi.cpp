@@ -41,7 +41,7 @@ static inline VectorXr projected_jacobi_core(const Eigen::SparseMatrix<real_t>& 
         }
 	}
 
-    std::cout << "[PJ] final iteration " << iteration << ", err = " << err << "\n";
+    // std::cout << "[PJ] final iteration " << iteration << ", err = " << err << "\n";
 	return p;
 }
 
