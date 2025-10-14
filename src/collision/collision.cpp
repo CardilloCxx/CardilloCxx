@@ -49,15 +49,17 @@ static std::optional<Contact> detect(const PlaneCollider& p, const SphereCollide
     if (penetration > 0) return std::nullopt;
         
     Vector3r contact = p.point + cu * p.u + cv * p.v; // closest point on finite plane
-    return Contact{s.e, p.e, contact, p.normal, penetration};
+    // return Contact{s.e, p.e, contact, p.normal, penetration};
+    return Contact{p.e, s.e, contact, p.normal, penetration};
 }
 
 static std::optional<Contact> detect(const SphereCollider& s, const PlaneCollider& p) {
     if (auto c = detect(p, s)) {
-        // swap so normal points from p->s consistently
-        Contact out = *c;
-        out.a = p.e; out.b = s.e; out.normal = out.normal; // swap normal?
-        return out;
+        // // swap so normal points from p->s consistently
+        // Contact out = *c;
+        // out.a = p.e; out.b = s.e; out.normal = out.normal; // swap normal?
+        // return out;
+        return c;
     }
     return std::nullopt;
 }
