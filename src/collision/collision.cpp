@@ -26,47 +26,83 @@ static std::optional<Contact> detect(const SphereCollider& a, const SphereCollid
     return std::nullopt;
 }
 
-static std::optional<Contact> detect(const SphereCollider& s, const PlaneCollider& p) {
+static std::optional<Contact> detect(const PlaneCollider& p, const SphereCollider& s) {
+    // distance center sphere and origin plane
+    Vector3r rel = s.center - p.point;
+
     // distance along normal
     const Vector3r n = p.normal;
-    real_t d = (s.center - p.point).dot(n);
-    if (std::abs(d) > s.radius) return std::nullopt; // no intersection with plane slab (infinite plane)
+    real_t d = rel.dot(n);
 
-    // project onto plane and clamp within rectangle bounds
-    Vector3r rel = s.center - p.point - d * n; // in-plane vector
+    if (d < -s.radius) return std::nullopt; // sphere behind plane
+
     // coordinates along plane axes
     real_t u = rel.dot(p.u);
     real_t v = rel.dot(p.v);
-    real_t cu = std::max(-p.hx, std::min(p.hx, u));
-    real_t cv = std::max(-p.hy, std::min(p.hy, v));
-    Vector3r closest = p.point + cu * p.u + cv * p.v; // closest point on finite plane
-    Vector3r diff = s.center - closest; // vector from plane to sphere
-    real_t dist = diff.norm();
-    if (dist <= s.radius) {
-        real_t penetration = s.radius - dist;
-        Vector3r nout;
-        if (dist > (real_t)1e-12) {
-            // normal should point sphere -> plane
-            nout = -diff / dist;
-        } else {
-            // use sign of signed distance d to choose direction consistently (sphere->plane)
-            nout = (d >= 0) ? -n : n;
-        }
-        Vector3r contact = closest; // approximate contact point at plane
-        return Contact{s.e, p.e, contact, nout, penetration};
-    }
-    return std::nullopt;
+    real_t cu = std::max(-p.hx, std::min(u, p.hx));
+    real_t cv = std::max(-p.hy, std::min(v, p.hy));
+
+    if ((u < -p.hx) || (p.hx < u) || (v < -p.hy) || (p.hy < v))
+        return std::nullopt;
+
+    real_t penetration = d - s.radius;
+    if (penetration > 0) return std::nullopt;
+        
+    Vector3r contact = p.point + cu * p.u + cv * p.v; // closest point on finite plane
+    return Contact{s.e, p.e, contact, p.normal, penetration};
 }
 
-static std::optional<Contact> detect(const PlaneCollider& p, const SphereCollider& s) {
-    if (auto c = detect(s, p)) {
+static std::optional<Contact> detect(const SphereCollider& s, const PlaneCollider& p) {
+    if (auto c = detect(p, s)) {
         // swap so normal points from p->s consistently
         Contact out = *c;
-        out.a = p.e; out.b = s.e; out.normal = -out.normal;
+        out.a = p.e; out.b = s.e; out.normal = out.normal; // swap normal?
         return out;
     }
     return std::nullopt;
 }
+
+// static std::optional<Contact> detect(const SphereCollider& s, const PlaneCollider& p) {
+//     // distance along normal
+//     const Vector3r n = p.normal;
+//     real_t d = (s.center - p.point).dot(n);
+//     if (std::abs(d) > s.radius) return std::nullopt; // no intersection with plane slab (infinite plane)
+
+//     // project onto plane and clamp within rectangle bounds
+//     Vector3r rel = s.center - p.point - d * n; // in-plane vector
+//     // coordinates along plane axes
+//     real_t u = rel.dot(p.u);
+//     real_t v = rel.dot(p.v);
+//     real_t cu = std::max(-p.hx, std::min(p.hx, u));
+//     real_t cv = std::max(-p.hy, std::min(p.hy, v));
+//     Vector3r closest = p.point + cu * p.u + cv * p.v; // closest point on finite plane
+//     Vector3r diff = s.center - closest; // vector from plane to sphere
+//     real_t dist = diff.norm();
+//     if (dist <= s.radius) {
+//         real_t penetration = s.radius - dist;
+//         Vector3r nout;
+//         if (dist > (real_t)1e-12) {
+//             // normal should point sphere -> plane
+//             nout = -diff / dist;
+//         } else {
+//             // use sign of signed distance d to choose direction consistently (sphere->plane)
+//             nout = (d >= 0) ? -n : n;
+//         }
+//         Vector3r contact = closest; // approximate contact point at plane
+//         return Contact{s.e, p.e, contact, nout, penetration};
+//     }
+//     return std::nullopt;
+// }
+
+// static std::optional<Contact> detect(const PlaneCollider& p, const SphereCollider& s) {
+//     if (auto c = detect(s, p)) {
+//         // swap so normal points from p->s consistently
+//         Contact out = *c;
+//         out.a = p.e; out.b = s.e; out.normal = -out.normal;
+//         return out;
+//     }
+//     return std::nullopt;
+// }
 
 static std::optional<Contact> detect(const SphereCollider& s, const AabbCollider& b) {
     Vector3r bmin = b.center - b.halfExtents;

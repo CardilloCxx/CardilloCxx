@@ -29,13 +29,14 @@ void MoreauSolver::stepMidpoint(real_t dt)
     // 4) Solve normal impulses p using W(q_mid), G, and preliminary velocity v_pre
     ProjectedJacobiSolver pjs(m_dyn);
     pjs.setAlpha((real_t)1.0);
-    VectorXr p = pjs.iterateWithPreliminaryVelocity(v_pre, std::nullopt, (real_t)1e-5);
+    VectorXr p = pjs.iterateWithPreliminaryVelocity(v_pre, std::nullopt, (real_t)1e-8);
     const auto& W = m_dyn.W();
 
     // 5) Apply impulse: u_{n+1} = v_pre + Minv * W^T * p
     const auto& Minv = m_dyn.Minv();
     VectorXr deltaV = Minv * (W.transpose() * p);
-    VectorXr vnp1 = v_pre - deltaV;
+    // VectorXr vnp1 = v_pre - deltaV;
+    VectorXr vnp1 = v_pre + deltaV;
 
     // 6) Final position: q_{n+1} = q_mid + (h/2) * u_{n+1}
     VectorXr qnp1 = q_mid + (real_t)0.5 * dt * vnp1;

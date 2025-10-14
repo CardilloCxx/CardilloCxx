@@ -32,7 +32,7 @@ static inline VectorXr projected_jacobi_core(const Eigen::SparseMatrix<real_t>& 
 	while (err > tol && iteration < 100000) {
 		y = (G * p);
         p_prev = p;
-        for (int i = 0; i < C; ++i) p[i] = std::min<real_t>(0, Rdiag[i] * y[i] - p[i] + Rdiag[i] * b[i]);
+        for (int i = 0; i < C; ++i) p[i] = -std::min<real_t>(0, Rdiag[i] * y[i] - p[i] + Rdiag[i] * b[i]);
 
         err = (p_prev - p).norm();
         ++iteration;

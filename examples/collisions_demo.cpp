@@ -71,12 +71,14 @@ int main() {
             const Vector3r pos = start_pos + Vector3r(i * ball_radius * std::sqrt(3.0), (-i + 2.0*j) * ball_radius, 0);
             const Vector3r vel = Vector3r::Zero();
 
-            sys.addPointMass(1.0, pos + Vector3r::Random() * 0.001, vel, ball_radius);
+            // sys.addPointMass(1.0, pos + Vector3r::Random() * 0.001, vel, ball_radius);
+            sys.addPointMass(1.0, pos, vel, ball_radius);
         }
     }
 
     // Bullet 
-    sys.addPointMass(1.0, Vector3r(-5.0, 0.1, ball_radius), Vector3r(50.0, -0.01, 0.0), ball_radius);
+    // sys.addPointMass(1.0, Vector3r(-5.0, 0.1, ball_radius), Vector3r(50.0, -0.01, 0.0), ball_radius);
+    sys.addPointMass(1.0, Vector3r(-5.0, 0.0, ball_radius), Vector3r(50.0, 0.0, 0.0), ball_radius);
 
     // Ramp
     {
@@ -117,8 +119,9 @@ int main() {
     writer.enableContactsOutput(true, "contacts");
 
     // Simulate
-    const int steps = 6000;
-    const real_t dt = 0.0005;
+    const real_t dt = 1e-4;
+    const real_t t1 = 3;
+    const int steps = int(t1 / dt);
 
     cardillo::solver::MoreauSolver solver(sys);
     for (int k = 0; k < steps; ++k) {

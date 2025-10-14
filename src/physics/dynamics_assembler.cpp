@@ -171,8 +171,8 @@ void DynamicsAssembler::rebuildW_() {
     wtrips.reserve(static_cast<size_t>(C) * 6); // up to 3 for a and 3 for b
     for (int i = 0; i < C; ++i) {
         const auto& c = m_contacts[i];
-    auto a0 = velDofStart(c.a);
-    auto b0 = velDofStart(c.b);
+        auto a0 = velDofStart(c.a);
+        auto b0 = velDofStart(c.b);
         const Vector3r& n = c.normal; // A -> B
         if (a0) {
             wtrips.emplace_back(i, *a0 + 0, -n[0]);
