@@ -119,20 +119,20 @@ int main() {
     }
 
     // Writers
-    cardillo::io::VtkWriter writer("vtk_out", "scene", 1000);
+    cardillo::io::VtkWriter writer("vtk_out", "scene", 100);
     writer.enableContactsOutput(true, "contacts");
 
     // Simulate
-    const real_t dt = 1e-5;
-    const real_t t1 = 0.1;
+    const real_t dt = 1e-3;
+    const real_t t1 = 5.0;
     const int steps = int(t1 / dt);
 
     cardillo::solver::MoreauSolver solver(sys);
     real_t time = 0.0;
     for (int k = 0; k < steps; ++k) {
-        time += dt;
-        solver.stepMidpoint(dt);
         writer.maybeWrite(k, time, sys);
+        solver.stepMidpoint(dt);
+        time += dt;
     }
 
     return 0;

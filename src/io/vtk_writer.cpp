@@ -95,7 +95,6 @@ void VtkWriter::writeHeader(std::ofstream& out, real_t time, std::size_t ntotal)
     out << "DATASET POLYDATA\n";
     out << "POINTS " << ntotal << " float\n";
     out.setf(std::ios::fixed); out << std::setprecision(6);
-    out << "TIME " << std::setprecision(8) << time << '\n';
 }
 
 void VtkWriter::writePoints(std::ofstream& out, const Collected& data) const {
