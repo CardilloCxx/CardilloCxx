@@ -5,7 +5,7 @@
 #include "../misc/types.hpp"
 #include "../physics/physics_system.hpp"
 // Optional: contacts writing support
-#include "../collision/collision.hpp"
+#include "../collision/types.hpp"
 
 namespace cardillo::io {
     
@@ -27,8 +27,9 @@ public:
 private:
     // Helpers split from write for clarity
     struct Collected {
-        // pos, (mass, vel, radius)
-        std::vector<std::pair<Vector3r, std::tuple<float, Vector3r, float>>> points;
+        // pos, (mass, vel, radius, partition)
+        // partition is float to allow NaN when unknown
+        std::vector<std::pair<Vector3r, std::tuple<float, Vector3r, float, float>>> points;
         std::vector<cardillo::PhysicsSystem::Plane> planes;
         std::vector<cardillo::PhysicsSystem::Cube> cubes;
     };

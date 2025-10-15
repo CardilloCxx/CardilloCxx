@@ -6,6 +6,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Optional: gprof profiling support
+option(ENABLE_GPROF "Enable gprof instrumentation (-pg)" OFF)
+if(ENABLE_GPROF)
+    message(STATUS "Building with gprof profiling (-pg)")
+    add_compile_options(-pg)
+    add_link_options(-pg)
+endif()
+
 # set a default build type if none was specified
 # see https://blog.kitware.com/cmake-and-the-default-build-type/
 set(default_build_type "Release")

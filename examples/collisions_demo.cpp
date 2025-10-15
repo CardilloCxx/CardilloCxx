@@ -1,12 +1,18 @@
 #include "cardillo.hpp"
 #include "io/vtk_writer.hpp"
 #include "solver/moreau.hpp"
+#include "physics/dynamics_assembler.hpp"
+#include <mpi.h>
 #include <Eigen/Geometry> // For AngleAxisr
 // collision/collision.hpp not needed directly when using VtkWriter::maybeWriteAll
 
 using namespace cardillo;
 
 int main() {
+    MPI_Init(nullptr, nullptr);
+    int worldRank = 0, worldSize = 1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
+    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
     PhysicsSystem sys;
     sys.setGravity(Vector3r(0,0,-9.81));
 
@@ -19,53 +25,53 @@ int main() {
         ground.sizeX = 6.0; ground.sizeY = 6.0;
         sys.addRigidBody(ground);
     }
-    // const real_t basin_half = 1.0;      // basin half-extent
-    // const real_t wall_height = 1.0;     // plane vertical center
-    // const real_t ang_deg = 60.0;        // tilt angle from vertical
-    // const real_t ang_rad = ang_deg * (M_PI / 180.0);
-    // const real_t s = std::sin(ang_rad); // horizontal component magnitude
-    // const real_t c = std::cos(ang_rad); // vertical component
-    // const real_t hmid = 0.5 * wall_height;
-    // const real_t plane_size = 3.0;
-    // {
-    //     PhysicsSystem::Plane px; // +X wall
-    //     px.center = Vector3r( basin_half, 0, hmid);
-    //     px.normal = Vector3r(-s, 0, c);
-    //     px.up = Vector3r(0,1,0);
-    //     px.sizeX = plane_size; px.sizeY = plane_size;
-    //     sys.addRigidBody(px);
-    // }
-    // {
-    //     PhysicsSystem::Plane nx; // -X wall
-    //     nx.center = Vector3r(-basin_half, 0, hmid);
-    //     nx.normal = Vector3r( s, 0, c);
-    //     nx.up = Vector3r(0,1,0);
-    //     nx.sizeX = plane_size; nx.sizeY = plane_size;
-    //     sys.addRigidBody(nx);
-    // }
-    // {
-    //     PhysicsSystem::Plane py; // +Y wall
-    //     py.center = Vector3r(0, basin_half, hmid);
-    //     py.normal = Vector3r(0, -s, c);
-    //     py.up = Vector3r(1,0,0);
-    //     py.sizeX = plane_size; py.sizeY = plane_size;
-    //     sys.addRigidBody(py);
-    // }
-    // {
-    //     PhysicsSystem::Plane ny; // -Y wall
-    //     ny.center = Vector3r(0, -basin_half, hmid);
-    //     ny.normal = Vector3r(0,  s, c);
-    //     ny.up = Vector3r(1,0,0);
-    //     ny.sizeX = plane_size; ny.sizeY = plane_size;
-    //     sys.addRigidBody(ny);
-    // }
+    const real_t basin_half = 1.0;      // basin half-extent
+    const real_t wall_height = 1.0;     // plane vertical center
+    const real_t ang_deg = 60.0;        // tilt angle from vertical
+    const real_t ang_rad = ang_deg * (M_PI / 180.0);
+    const real_t s = std::sin(ang_rad); // horizontal component magnitude
+    const real_t c = std::cos(ang_rad); // vertical component
+    const real_t hmid = 0.5 * wall_height;
+    const real_t plane_size = 3.0;
+    {
+        PhysicsSystem::Plane px; // +X wall
+        px.center = Vector3r( basin_half, 0, hmid);
+        px.normal = Vector3r(-s, 0, c);
+        px.up = Vector3r(0,1,0);
+        px.sizeX = plane_size; px.sizeY = plane_size;
+        sys.addRigidBody(px);
+    }
+    {
+        PhysicsSystem::Plane nx; // -X wall
+        nx.center = Vector3r(-basin_half, 0, hmid);
+        nx.normal = Vector3r( s, 0, c);
+        nx.up = Vector3r(0,1,0);
+        nx.sizeX = plane_size; nx.sizeY = plane_size;
+        sys.addRigidBody(nx);
+    }
+    {
+        PhysicsSystem::Plane py; // +Y wall
+        py.center = Vector3r(0, basin_half, hmid);
+        py.normal = Vector3r(0, -s, c);
+        py.up = Vector3r(1,0,0);
+        py.sizeX = plane_size; py.sizeY = plane_size;
+        sys.addRigidBody(py);
+    }
+    {
+        PhysicsSystem::Plane ny; // -Y wall
+        ny.center = Vector3r(0, -basin_half, hmid);
+        ny.normal = Vector3r(0,  s, c);
+        ny.up = Vector3r(1,0,0);
+        ny.sizeX = plane_size; ny.sizeY = plane_size;
+        sys.addRigidBody(ny);
+    }
 
     // Billard balls in a triangular arrangement (pyramid 3D)
-    const real_t r = 0.2;
+    const real_t r = 0.05;
     const real_t dia = 2.0 * r;
-    const int rows = 4;  // works well with (1,2,3) but 4 is unstable
+    const int rows = 20;  // works well with (1,2,3) but 4 is unstable
 
-    const Vector3r base_center(0, 0, r + 0.01);
+    const Vector3r base_center(0.0, 0.0, 5.0 + r + 0.01);
 
     for (int k = 0; k < rows; ++k) {
         int n = rows - k;  // spheres per edge in this layer
@@ -119,8 +125,12 @@ int main() {
     }
 
     // Writers
-    cardillo::io::VtkWriter writer("vtk_out", "scene", 100);
-    writer.enableContactsOutput(true, "contacts");
+    // Only rank 0 writes VTK to avoid file races
+    std::unique_ptr<cardillo::io::VtkWriter> writer;
+    if (worldRank == 0) {
+        writer = std::make_unique<cardillo::io::VtkWriter>("vtk_out", "scene", 100);
+        writer->enableContactsOutput(true, "contacts");
+    }
 
     // Simulate
     const real_t dt = 1e-3;
@@ -129,11 +139,14 @@ int main() {
 
     cardillo::solver::MoreauSolver solver(sys);
     real_t time = 0.0;
+    // Optional: initial frame at step 0
+    if (writer) writer->maybeWrite(0, time, sys);
     for (int k = 0; k < steps; ++k) {
-        writer.maybeWrite(k, time, sys);
         solver.stepMidpoint(dt);
         time += dt;
+        if (writer) writer->maybeWrite(k + 1, time, sys);
     }
 
+    MPI_Finalize();
     return 0;
 }

@@ -1,234 +1,189 @@
+
 #include "dynamics_assembler.hpp"
+#include "../collision/collision_manager.hpp"
+#include <algorithm>
 
 namespace cardillo::physics {
 
-std::optional<index_t> DynamicsAssembler::velDofStart(entt::entity e) const {
-    if (m_sys.ecs().any_of<PhysicsSystem::C_LinearVelocityIndex3>(e)) {
-        const auto& vi = m_sys.ecs().get<PhysicsSystem::C_LinearVelocityIndex3>(e);
-        return vi.idx.start;
-    }
-    return std::nullopt;
-}
-
 void DynamicsAssembler::updateContactsFromSystem() {
-    m_contacts = cardillo::collision::detectAll(m_sys);
+    cardillo::collision::CollisionManager mgr;
+    m_contacts = mgr.detectAll(m_sys);
     m_contacts_dirty = true;
-    m_G_dirty = true;
 }
 
-// ---------- Cached API ----------
+// ---------- Cached API (block-based) ----------
 
-const VectorXr& DynamicsAssembler::q() { return m_q; }
+const std::vector<VectorXr>& DynamicsAssembler::q() { return m_q; }
+const std::vector<VectorXr>& DynamicsAssembler::v() { return m_v; }
+const std::vector<VectorXr>& DynamicsAssembler::f() { return m_f; }
 
-const VectorXr& DynamicsAssembler::v() { return m_v; }
-
-const VectorXr& DynamicsAssembler::f() { return m_f; }
-
-const Eigen::SparseMatrix<real_t>& DynamicsAssembler::M() { return m_M; }
-
-const Eigen::SparseMatrix<real_t>& DynamicsAssembler::Minv() { return m_Minv; }
-
-const VectorXr& DynamicsAssembler::MinvDiag() { return m_MinvDiag; }
-
-const Eigen::SparseMatrix<real_t>& DynamicsAssembler::W() { return m_W; }
-
-const Eigen::SparseMatrix<real_t>& DynamicsAssembler::G() { return m_G; }
+const std::vector<VectorXr>& DynamicsAssembler::vBlocks() { return m_v; }
+const std::vector<MatrixXXr>& DynamicsAssembler::MinvBlocks() { return m_Minv_blocks; }
+const std::vector<MatrixXXr>& DynamicsAssembler::WBlocks() { return m_W_blocks; }
+const std::pair<int,int>& DynamicsAssembler::WBlocksFromContact(index_t contact) { return m_W_from_contact[(size_t)contact]; }
+const std::vector<int>& DynamicsAssembler::WBlocksFromBody(index_t body) { return m_W_from_body[(size_t)body]; }
 
 void DynamicsAssembler::setContacts(std::vector<collision::Contact> contacts) {
     m_contacts = std::move(contacts);
     m_contacts_dirty = true;
-    m_G_dirty = true;
 }
 
-void DynamicsAssembler::markContactsDirty() {
-    m_contacts_dirty = true;
-    m_G_dirty = true;
-}
+void DynamicsAssembler::markContactsDirty() { m_contacts_dirty = true; }
 
 // ---------- Rebuild helpers ----------
 
 void DynamicsAssembler::rebuildMass_() {
-    // Build mass diagonal directly from ECS
-    const index_t V = numV();
-    m_Mdiag = VectorXr::Zero(V);
-    {
-        const auto& reg = m_sys.ecs();
-        auto view = reg.view<PhysicsSystem::C_Mass, PhysicsSystem::C_LinearVelocityIndex3, PhysicsSystem::C_PhysicsObject>();
-        for (auto [e, m, vi] : view.each()) {
-            (void)e;
-            m_Mdiag.segment<3>(vi.idx.start).setConstant(m.m);
-        }
+    const int Nb = m_sys.numBodies();
+    m_Mass_blocks.assign(Nb, MatrixXXr());
+    m_Minv_blocks.assign(Nb, MatrixXXr());
+    const auto& reg = m_sys.ecs();
+    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    for (auto [e, bi] : view.each()) {
+        (void)e;
+        const int b = bi.b;
+        if (b < 0 || b >= Nb) continue;
+        m_Mass_blocks[(size_t)b] = m_sys.getMass(e);
+        m_Minv_blocks[(size_t)b] = m_sys.getMassInverse(e);
     }
-    std::vector<Eigen::Triplet<real_t>> tripsM;
-    tripsM.reserve(static_cast<size_t>(V));
-    for (index_t i = 0; i < V; ++i) if (m_Mdiag[i] != (real_t)0) tripsM.emplace_back(i, i, m_Mdiag[i]);
-    m_M.resize(V, V);
-    m_M.setFromTriplets(tripsM.begin(), tripsM.end());
-
-    // Build inverse mass as sparse diagonal
-    m_MinvDiag.resize(V);
-    std::vector<Eigen::Triplet<real_t>> trips;
-    trips.reserve(static_cast<size_t>(V));
-    for (index_t i = 0; i < V; ++i) {
-        real_t inv = (m_Mdiag[i] != 0) ? (1.0 / m_Mdiag[i]) : 0.0;
-        if (inv != (real_t)0) trips.emplace_back(i, i, inv);
-        m_MinvDiag[i] = inv;
-    }
-    m_Minv.resize(V, V);
-    m_Minv.setFromTriplets(trips.begin(), trips.end());
-    m_Minv.makeCompressed();
 }
 
 void DynamicsAssembler::rebuildForces_() {
-    // Compute f from gravity and masses
-    const Vector3r& g = m_sys.gravity();
-    const index_t V = numV();
-    m_f.resize(V);
-    for (index_t i = 0; i < V; i += 3) {
-        m_f[i+0] = m_Mdiag[i+0] * g[0];
-        m_f[i+1] = m_Mdiag[i+1] * g[1];
-        m_f[i+2] = m_Mdiag[i+2] * g[2];
+    const int Nb = m_sys.numBodies();
+    m_f.assign(Nb, VectorXr());
+    const auto& reg = m_sys.ecs();
+    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    for (auto [e, bi] : view.each()) {
+        const int b = bi.b;
+        if (b >= 0 && b < Nb) m_f[(size_t)b] = m_sys.getForce(e);
     }
 }
 
 void DynamicsAssembler::loadStateFromSystem() {
-    // Pack positions and velocities from ECS
-    m_q = VectorXr::Zero(numQ());
+    const int Nb = m_sys.numBodies();
+    m_q.assign(Nb, VectorXr());
+    m_v.assign(Nb, VectorXr());
     {
         const auto& reg = m_sys.ecs();
-        auto view = reg.view<PhysicsSystem::C_Position3, PhysicsSystem::C_PositionIndex3, PhysicsSystem::C_PhysicsObject>();
-        for (auto [e, x, qi] : view.each()) {
-            (void)e;
-            m_q.segment<3>(qi.idx.start) = x.value;
+        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+        for (auto [e, bi] : view.each()) {
+            const int b = bi.b;
+            if (b >= 0 && b < Nb) m_q[(size_t)b] = m_sys.getPosition(e);
         }
     }
-    m_v = VectorXr::Zero(numV());
     {
         const auto& reg = m_sys.ecs();
-        auto view = reg.view<PhysicsSystem::C_LinearVelocity3, PhysicsSystem::C_LinearVelocityIndex3, PhysicsSystem::C_PhysicsObject>();
-        for (auto [e, vel, vi] : view.each()) {
-            (void)e;
-            m_v.segment<3>(vi.idx.start) = vel.value;
+        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+        for (auto [e, bi] : view.each()) {
+            const int b = bi.b;
+            if (b >= 0 && b < Nb) m_v[(size_t)b] = m_sys.getVelocity(e);
         }
     }
 }
 
-void DynamicsAssembler::writeStateToSystem(const RefVectorXr& q, const RefVectorXr& v) {
-    // Unpack to ECS and mark system state dirty for next rebuild
-    {
-        const auto& reg = m_sys.ecs();
-        auto view = reg.view<PhysicsSystem::C_Position3, PhysicsSystem::C_PositionIndex3, PhysicsSystem::C_PhysicsObject>();
-        for (auto [e, x, qi] : view.each()) {
-            (void)e;
-            const_cast<PhysicsSystem::C_Position3&>(x).value = q.segment<3>(qi.idx.start);
-        }
-    }
-    {
-        const auto& reg = m_sys.ecs();
-        auto view = reg.view<PhysicsSystem::C_LinearVelocity3, PhysicsSystem::C_LinearVelocityIndex3, PhysicsSystem::C_PhysicsObject>();
-        for (auto [e, vel, vi] : view.each()) {
-            (void)e;
-            const_cast<PhysicsSystem::C_LinearVelocity3&>(vel).value = v.segment<3>(vi.idx.start);
-        }
+void DynamicsAssembler::writeStateToSystem(const std::vector<VectorXr>& q, const std::vector<VectorXr>& v) {
+    
+    const auto& reg = m_sys.ecs();
+    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_LinearVelocity3, PhysicsSystem::C_Position3, PhysicsSystem::C_PhysicsObject>();
+    for (auto [e, bi, vel, x] : view.each()) {
+        (void)e;
+        const int b = bi.b;
+        if (b >= 0 && b < (int)q.size())
+            const_cast<PhysicsSystem::C_Position3&>(x).value = q[(size_t)b];
+        if (b >= 0 && b < (int)v.size())
+            const_cast<PhysicsSystem::C_LinearVelocity3&>(vel).value = v[(size_t)b];
     }
     m_sys.markStateDirty();
 }
 
 void DynamicsAssembler::assignDofs() {
-    // Append-only DOF assignment: keep existing indices stable; assign to new entities only
-    const auto& reg = m_sys.ecs();
-    // Determine next free index based on existing velocity indices
-    index_t q_next = 0;
-    {
-        auto viewIdx = reg.view<PhysicsSystem::C_LinearVelocityIndex3, PhysicsSystem::C_PhysicsObject>();
-        for (auto [e, vi] : viewIdx.each()) {
-            (void)e;
-            q_next = std::max(q_next, vi.idx.start + (index_t)3);
-        }
-    }
+    auto& reg = const_cast<entt::registry&>(m_sys.ecs());
+    // Assign consecutive body indices to dynamic entities
+    int nextBody = 0;
     auto view = reg.view<PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_Position3, PhysicsSystem::C_LinearVelocity3>();
     for (auto e : view) {
-        auto entity = static_cast<entt::entity>(e);
-        auto& ncr = const_cast<entt::registry&>(m_sys.ecs());
-        const bool hasQi = ncr.all_of<PhysicsSystem::C_PositionIndex3>(entity);
-        const bool hasVi = ncr.all_of<PhysicsSystem::C_LinearVelocityIndex3>(entity);
-        if (hasQi && hasVi) continue;
-        auto& qi = ncr.get_or_emplace<PhysicsSystem::C_PositionIndex3>(entity).idx;
-        auto& vi = ncr.get_or_emplace<PhysicsSystem::C_LinearVelocityIndex3>(entity).idx;
-        qi.start = q_next;
-        vi.start = q_next;
-        q_next += 3;
+        entt::entity ent = static_cast<entt::entity>(e);
+        if (!reg.any_of<PhysicsSystem::C_BodyIndex>(ent)) {
+            reg.emplace<PhysicsSystem::C_BodyIndex>(ent, PhysicsSystem::C_BodyIndex{nextBody});
+            ++nextBody;
+        }
     }
-    // Update cached sizes from max assigned index
-    m_numQ = q_next;
-    m_numV = q_next;
+    // Update cached sizes; numQ/numV are now sums over per-entity DOFs (queried as needed)
+    m_numQ = 0; m_numV = 0;
+    for (auto e : view) {
+        m_numQ += (index_t)m_sys.getPosition(static_cast<entt::entity>(e)).size();
+        m_numV += (index_t)m_sys.getVelocity(static_cast<entt::entity>(e)).size();
+    }
 }
 
 void DynamicsAssembler::rebuildW_() {
-    const int C = static_cast<int>(m_contacts.size());
-    const index_t V = numV();
-    std::vector<Eigen::Triplet<real_t>> wtrips;
-    wtrips.reserve(static_cast<size_t>(C) * 6); // up to 3 for a and 3 for b
+    const int C = (int)m_contacts.size();
+    const int Nb = m_sys.numBodies();
+    m_W_blocks.clear(); m_W_blocks.reserve((size_t)C * 2);
+    m_W_from_contact.clear(); m_W_from_contact.reserve((size_t)C);
+    m_W_from_body.assign((size_t)Nb, {});
+    m_W_block_to_body.clear(); m_W_block_to_body.reserve((size_t)C * 2);
+    m_W_block_to_contact.clear(); m_W_block_to_contact.reserve((size_t)C * 2);
+
+    const auto& reg = m_sys.ecs();
     for (int i = 0; i < C; ++i) {
         const auto& c = m_contacts[i];
-        auto a0 = velDofStart(c.a);
-        auto b0 = velDofStart(c.b);
-        const Vector3r& n = c.normal; // A -> B
-        if (a0) {
-            wtrips.emplace_back(i, *a0 + 0, -n[0]);
-            wtrips.emplace_back(i, *a0 + 1, -n[1]);
-            wtrips.emplace_back(i, *a0 + 2, -n[2]);
+        bool aDyn = reg.any_of<PhysicsSystem::C_BodyIndex>(c.a);
+        bool bDyn = reg.any_of<PhysicsSystem::C_BodyIndex>(c.b);
+
+        int idxA = -1;
+        if (aDyn) {
+            idxA = (int)m_W_blocks.size();
+            m_W_blocks.push_back(c.wA);
+            m_W_block_to_body.push_back(reg.get<PhysicsSystem::C_BodyIndex>(c.a).b);
+            m_W_block_to_contact.push_back(i);
+            int b = reg.get<PhysicsSystem::C_BodyIndex>(c.a).b;
+            if (b >= 0 && b < Nb) m_W_from_body[(size_t)b].push_back(idxA);
         }
-        if (b0) {
-            wtrips.emplace_back(i, *b0 + 0, n[0]);
-            wtrips.emplace_back(i, *b0 + 1, n[1]);
-            wtrips.emplace_back(i, *b0 + 2, n[2]);
+
+        int idxB = -1;
+        if (bDyn) {
+            idxB = (int)m_W_blocks.size();
+            m_W_blocks.push_back(c.wB);
+            m_W_block_to_body.push_back(reg.get<PhysicsSystem::C_BodyIndex>(c.b).b);
+            m_W_block_to_contact.push_back(i);
+            int b = reg.get<PhysicsSystem::C_BodyIndex>(c.b).b;
+            if (b >= 0 && b < Nb) m_W_from_body[(size_t)b].push_back(idxB);
         }
+
+        m_W_from_contact.emplace_back(idxA, idxB);
     }
-    m_W.resize(C, V);
-    m_W.setFromTriplets(wtrips.begin(), wtrips.end());
-    m_W.makeCompressed();
     m_contacts_dirty = false;
-    m_G_dirty = true; // W changed, so G must be recomputed
-    (void)V; // no-op
 }
 
-void DynamicsAssembler::rebuildG_() {
-    // If structure changed, mass caches must be up-to-date before computing G
-    if (m_contacts_dirty) rebuildW_();
-
-    // Note: dimensions: W (C x V), Minv (V x V), W^T (V x C) -> G (C x C)
-    Eigen::SparseMatrix<real_t> B = (m_W * m_Minv).eval();
-    m_G = (B * m_W.transpose()).eval();
-    m_G.makeCompressed();
-    m_G_dirty = false;
-    (void)B; // no-op
+void DynamicsAssembler::rebuildBlocks_() {
+    const int Nb = m_sys.numBodies();
+    if ((int)m_q.size() != Nb) m_q.assign(Nb, VectorXr());
+    if ((int)m_v.size() != Nb) m_v.assign(Nb, VectorXr());
+    if ((int)m_f.size() != Nb) m_f.assign(Nb, VectorXr());
 }
 
 void DynamicsAssembler::refreshState() {
-
-    // Detect state changes via velocity/position updates
     bool structureChanged = false;
     if (m_sys.consumeStructureDirty()) {
         structureChanged = true;
         assignDofs();
+        rebuildBlocks_();
         rebuildMass_();
     }
 
-    // Positions/velocities: if changed, reload
     if (m_sys.consumeStateDirty() || structureChanged) {
         loadStateFromSystem();
     }
 
-    // Forces: if gravity/external changed or sizes changed, rebuild
     if (m_sys.consumeForcesDirty() || structureChanged) {
         rebuildForces_();
     }
-
-    // Contacts and dependent matrices
-    updateContactsFromSystem();
-    if (m_contacts_dirty || structureChanged) rebuildW_();
-    if (m_G_dirty || m_contacts_dirty || structureChanged) rebuildG_();
 }
+
+void DynamicsAssembler::refreshCollisions() {
+    updateContactsFromSystem();
+    rebuildW_();
+}
+
 
 } // namespace cardillo::physics

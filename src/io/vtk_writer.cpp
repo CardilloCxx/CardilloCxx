@@ -1,10 +1,15 @@
 #include "vtk_writer.hpp"
+#include "../collision/collision_manager.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <mpi.h>
+#include <limits>
+#include <cmath>
+#include "../partitioning/naive_partitioner.hpp"
 
 namespace fs = std::filesystem;
 
@@ -46,7 +51,8 @@ void VtkWriter::write(int step, real_t time, const cardillo::PhysicsSystem& sys)
     writeGeometryOnly(step, time, data);
 
     if (m_writeContacts) {
-        auto contacts = cardillo::collision::detectAll(sys);
+        cardillo::collision::CollisionManager mgr;
+        auto contacts = mgr.detectAll(sys);
         writeContacts(step, contacts);
     }
 }
@@ -63,7 +69,18 @@ VtkWriter::Collected VtkWriter::collect(const cardillo::PhysicsSystem& sys) cons
                             cardillo::PhysicsSystem::C_Radius>();
     for (auto [e, pos, m, v, r] : vpoints.each()) {
         (void)e;
-        out.points.emplace_back(pos.value, std::make_tuple(static_cast<float>(m.m), v.value, static_cast<float>(r.r)));
+        // Partition id: derive from BodyIndex using NaivePartitioner policy to avoid ECS dependency across ranks
+        float partVal = std::numeric_limits<float>::quiet_NaN();
+        if (reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(e)) {
+            int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(e).b;
+            int worldRank = 0, worldSize = 1;
+            MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
+            MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+            int Nb = sys.numBodies();
+            int bodiesPerRank = (Nb + worldSize - 1) / worldSize;
+            partVal = static_cast<float>(cardillo::partitioning::NaivePartitioner::ownerOf(b, worldSize, bodiesPerRank));
+        }
+        out.points.emplace_back(pos.value, std::make_tuple(static_cast<float>(m.m), v.value, static_cast<float>(r.r), partVal));
     }
     // Planes: project ECS plane component to public Plane struct
     auto vplanes = reg.view<cardillo::PhysicsSystem::C_VisualObject,
@@ -205,6 +222,18 @@ void VtkWriter::writePointData(std::ofstream& out, const Collected& data) const 
     for (const auto& pt : data.points) out << std::get<2>(pt.second) << '\n';
     for (std::size_t i = 0; i < nplane_pts; ++i) out << 0.0f << '\n';
     for (std::size_t i = 0; i < ncube_pts; ++i) out << 0.0f << '\n';
+
+    out << "SCALARS partition float 1\nLOOKUP_TABLE default\n";
+    for (const auto& pt : data.points) {
+        float pv = std::get<3>(pt.second);
+        if (std::isnan(pv)) {
+            out << "nan\n";
+        } else {
+            out << pv << '\n';
+        }
+    }
+    for (std::size_t i = 0; i < nplane_pts; ++i) out << "nan\n";
+    for (std::size_t i = 0; i < ncube_pts; ++i) out << "nan\n";
 }
 
 auto VtkWriter::computeCounts(const Collected& data) const -> Counts {

@@ -1,4 +1,16 @@
-add_library(${PROJECT_NAME} STATIC cardillo.cpp physics/physics_system.cpp io/vtk_writer.cpp solver/moreau.cpp solver/projected_jacobi.cpp collision/collision.cpp physics/dynamics_assembler.cpp)
+add_library(${PROJECT_NAME} STATIC
+    cardillo.cpp
+    physics/physics_system.cpp
+    io/vtk_writer.cpp
+    solver/moreau.cpp
+    solver/projected_jacobi.cpp
+    physics/dynamics_assembler.cpp
+    collision/broad_phase.cpp
+    collision/narrow_phase.cpp
+    collision/collision_manager.cpp
+    partitioning/naive_partitioner.cpp
+    comm/communication.cpp
+)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

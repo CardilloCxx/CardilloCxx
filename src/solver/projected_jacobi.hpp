@@ -17,21 +17,19 @@ namespace cardillo::solver {
 class ProjectedJacobiSolver {
 public:
     explicit ProjectedJacobiSolver(cardillo::physics::DynamicsAssembler& dyn)
-        : m_dyn(dyn) {}
+        : m_dyn(dyn) {
+        }
 
     void setAlpha(real_t a) { m_alpha = a; }
     real_t alpha() const { return m_alpha; }
 
-    // Perform N iterations starting from optional initial p0 (else zeros)
-    // Returns the resulting impulse vector p
-    VectorXr iterate(std::optional<RefVectorXr> p0 = std::nullopt, real_t tol = 1e-5);
-
-    // Iteration using a provided preliminary velocity v_pre for b = W * v_pre
-    VectorXr iterateWithPreliminaryVelocity(const VectorXr& v_pre, std::optional<RefVectorXr> p0 = std::nullopt, real_t tol = 1e-5);
+    // Convenience overload: accept per-body velocity blocks and flatten internally
+    std::vector<VectorXr> iterateWithPreliminaryVelocity(const std::vector<VectorXr>& v_pre_blocks, real_t tol = 1e-5);
 
 private:
     cardillo::physics::DynamicsAssembler& m_dyn;
     real_t m_alpha{(real_t)1};
+    std::optional<VectorXr> m_last_p = std::nullopt; // store last result for potential warm start
 };
 
 } // namespace cardillo::solver

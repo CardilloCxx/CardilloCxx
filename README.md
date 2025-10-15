@@ -16,3 +16,11 @@ make
 ```bash
 mpirun -np 4 ./examples/example
 ```
+
+## Benchmark
+![image](benchmark/benchmark_results.png)
+
+
+## Todos
+Check why we need to deduplicate contacts in naive_partitioner.cpp.
+Adaptive time steps?

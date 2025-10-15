@@ -1,48 +1,44 @@
 #include "moreau.hpp"
 #include "projected_jacobi.hpp"
-#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <limits>
 
 namespace cardillo::solver {
 
 void MoreauSolver::stepMidpoint(real_t dt)
 {
     m_dyn.refreshState();
-    const VectorXr& qn = m_dyn.q();
-    const VectorXr& vn = m_dyn.v();
-    const VectorXr& fn = m_dyn.f();
-    const VectorXr& MinvDiag = m_dyn.MinvDiag();
-    const index_t V0 = m_dyn.numV();
+    const auto& qnBlocks = m_dyn.q();
+    const auto& vnBlocks = m_dyn.v();
+    const auto& fnBlocks = m_dyn.f();
+    const auto& MinvBlocks = m_dyn.MinvBlocks();
+    const int Nb = (int)m_dyn.v().size();
 
     // External-only acceleration
-    VectorXr a_ext(m_dyn.numV());
-    for (index_t i = 0; i < m_dyn.numV(); ++i) a_ext[i] = MinvDiag[i] * fn[i];
+    std::vector<VectorXr> a_ext_blocks(Nb);
+    for (int b = 0; b < Nb; ++b) a_ext_blocks[(size_t)b] = MinvBlocks[(size_t)b] * fnBlocks[(size_t)b];
 
     // 2) Midpoint position and preliminary velocity (external forces only)
-    VectorXr q_mid = qn + (real_t)0.5 * dt * vn;
-    VectorXr v_pre = vn + dt * a_ext;
+    std::vector<VectorXr> q_mid_blocks(Nb), v_pre_blocks(Nb);
+    for (int b = 0; b < Nb; ++b) {
+        q_mid_blocks[(size_t)b] = qnBlocks[(size_t)b] + (real_t)0.5 * dt * vnBlocks[(size_t)b];
+        v_pre_blocks[(size_t)b] = vnBlocks[(size_t)b] + dt * a_ext_blocks[(size_t)b];
+    }
 
     // 3) Evaluate contacts at midpoint positions: write q_mid into ECS (v stays vn)
-    m_dyn.writeStateToSystem(q_mid, vn);
-    m_dyn.refreshState(); // rebuild W,G based on midpoint; forces unchanged
-    const index_t V1 = m_dyn.numV();
+    m_dyn.writeStateToSystem(q_mid_blocks, vnBlocks);
+    m_dyn.refreshCollisions();
 
     // 4) Solve normal impulses p using W(q_mid), G, and preliminary velocity v_pre
-    ProjectedJacobiSolver pjs(m_dyn);
-    pjs.setAlpha((real_t)1.0);
-    VectorXr p = pjs.iterateWithPreliminaryVelocity(v_pre, std::nullopt, (real_t)1e-8);
-    const auto& W = m_dyn.W();
+    std::vector<VectorXr> vnp1_blocks = m_pj.iterateWithPreliminaryVelocity(v_pre_blocks, (real_t)1e-5);
 
-    // 5) Apply impulse: u_{n+1} = v_pre + Minv * W^T * p
-    const auto& Minv = m_dyn.Minv();
-    VectorXr deltaV = Minv * (W.transpose() * p);
-    // VectorXr vnp1 = v_pre - deltaV;
-    VectorXr vnp1 = v_pre + deltaV;
+    // 5) Final position: q_{n+1} = q_mid + (h/2) * u_{n+1}
+    std::vector<VectorXr> qnp1_blocks(Nb);
+    for (int b = 0; b < Nb; ++b) qnp1_blocks[(size_t)b] = q_mid_blocks[(size_t)b] + (real_t)0.5 * dt * vnp1_blocks[(size_t)b];
 
-    // 6) Final position: q_{n+1} = q_mid + (h/2) * u_{n+1}
-    VectorXr qnp1 = q_mid + (real_t)0.5 * dt * vnp1;
-
-    // 7) Write back final state
-    m_dyn.writeStateToSystem(qnp1, vnp1);
+    // 6) Write back final state
+    m_dyn.writeStateToSystem(qnp1_blocks, vnp1_blocks);
 }
 
 }

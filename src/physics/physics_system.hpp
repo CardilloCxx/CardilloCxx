@@ -39,6 +39,13 @@ public:
     index_t addRigidBody(const Cube& c);
     index_t addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);
 
+    // Dynamics getters (Cache them inside the entity to avoid recomputation)
+    MatrixXXr getMass( entt::entity e ) const;        // Linear Inertia and Angular Inertia
+    MatrixXXr getMassInverse( entt::entity e ) const; // Linear Inertia and Angular Inertia
+    VectorXr getPosition( entt::entity e ) const;     // Linear and angular combined
+    VectorXr getVelocity( entt::entity e ) const;     // Linear and angular combined
+    VectorXr getForce( entt::entity e ) const;        // Linear and angular combined
+
     // Expose ECS for external querying (read-only)
     const entt::registry& ecs() const { return m_reg; }
 
@@ -57,11 +64,12 @@ public:
     struct C_CubeVisualTag {};
     struct C_Collidable {};
     struct C_Radius { real_t r; };
-    // DOF indices as components (public so assemblers can read them)
-    struct C_PositionIndex3 { Index<3> idx; };
-    struct C_LinearVelocityIndex3 { Index<3> idx; };
+    // Body index assigned by the assembler (stable across rebuilds unless structure changes)
+    struct C_BodyIndex { int b; };
 
     // No numQ/numV or DOF accessors here; DynamicsAssembler owns DOF scans
+    // Helper: number of dynamic bodies (with a body index)
+    int numBodies() const;
 
     // State changed: positions/velocities modified
     void markStateDirty() const { m_state_dirty = true; }
