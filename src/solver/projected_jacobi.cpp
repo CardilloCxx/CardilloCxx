@@ -15,7 +15,8 @@ namespace cardillo::solver {
 static inline std::vector<real_t> precompute_Rdiag(const std::vector<partitioning::ContactEdge>& edges,
 												   const std::vector<int>& relevantContacts,
 												   const std::vector<MatrixXXr>& MinvBlocks,
-												   real_t alpha) {
+												   real_t alpha,
+												   real_t compliance) {
 	const int C = (int)edges.size();
 	std::vector<real_t> Rdiag_local(C, 0);
 	for (int cid : relevantContacts) {
@@ -35,6 +36,8 @@ static inline std::vector<real_t> precompute_Rdiag(const std::vector<partitionin
 				Dii += wB.transpose() * (MinvB * wB);
 			}
 		}
+		// Add compliance to stabilize near-singular Dii
+		Dii += compliance;
 		Rdiag_local[cid] = (Dii > (real_t)0) ? (alpha / Dii) : (real_t)0;
 	}
 	return Rdiag_local;
@@ -71,31 +74,23 @@ std::vector<VectorXr> ProjectedJacobiSolver::iterateWithPreliminaryVelocity(cons
 	auto res = part.build(Nb, partEdges, false);
 
 	// Precompute R = alpha / D per relevant contact (allContacts includes boundary)
-	std::vector<real_t> Rdiag_local = precompute_Rdiag(partEdges, res.allContacts, MinvBlocksVec, alpha());
+	std::vector<real_t> Rdiag_local = precompute_Rdiag(partEdges, res.allContacts, MinvBlocksVec, alpha(), m_compliance);
 
 	// Initialize state
 	std::vector<VectorXr> u = v_pre_blocks;           // current body velocities
 	std::vector<VectorXr> u_prev = u;                 // previous iteration
 	const std::vector<VectorXr> u_free = v_pre_blocks;// preliminary velocities
 	VectorXr p = VectorXr::Zero(C);
-	if (m_last_p.has_value() && m_last_p->size() == C) p = m_last_p.value();
+	if (m_warmStart && m_last_p.has_value() && m_last_p->size() == C) p = m_last_p.value();
 
 	// Hoisted temporaries: per-body accumulator for W^T * p
 	std::vector<VectorXr> sumW_per_body((size_t)Nb);
 	for (int b = 0; b < Nb; ++b) sumW_per_body[(size_t)b].resize(u[(size_t)b].size());
 
-	// Build neighbor communication plans (bodies to send/recv per neighbor)
-	// std::unordered_map<int, std::vector<int>> sendBodies, recvBodies;
-	// for (const auto& h : res.halo) {
-	// 	sendBodies[h.remoteRank].push_back(h.localBody);
-	// 	recvBodies[h.remoteRank].push_back(h.remoteBody);
-	// }
-	// for (auto& kv : sendBodies) { auto& v = kv.second; std::sort(v.begin(), v.end()); v.erase(std::unique(v.begin(), v.end()), v.end()); }
-	// for (auto& kv : recvBodies) { auto& v = kv.second; std::sort(v.begin(), v.end()); v.erase(std::unique(v.begin(), v.end()), v.end()); }
-
 	// Main iteration loop
 	real_t err_global = std::numeric_limits<real_t>::max(); index_t iteration = 0;
-	while (iteration < 100000) {
+	int stagnant = 0; // backtracking patience counter
+	while (iteration < m_maxIterations) {
 		// Save previous u for error on local bodies
 		for (int b = res.bodyStart; b < res.bodyEnd; ++b) u_prev[(size_t)b] = u[(size_t)b];
 
@@ -105,8 +100,9 @@ std::vector<VectorXr> ProjectedJacobiSolver::iterateWithPreliminaryVelocity(cons
 			real_t y = 0;
 			if (idxA >= 0) y += Wblocks[(size_t)idxA].row(0) * u[blockToBody[(size_t)idxA]];
 			if (idxB >= 0) y += Wblocks[(size_t)idxB].row(0) * u[blockToBody[(size_t)idxB]];
-
-			p[cid] = -std::min<real_t>(0, Rdiag_local[cid] * y - p[cid]);
+			real_t p_new = -std::min<real_t>(0, Rdiag_local[cid] * y - p[cid]);
+			// Relaxation blending p
+			p[cid] = (real_t)1.0 * ((real_t)1.0 - m_relax) * p[cid] + m_relax * p_new;
 		}
 
 		// Exchange boundary p values: owner (bodyA owner) pushes p to neighbors
@@ -134,6 +130,9 @@ std::vector<VectorXr> ProjectedJacobiSolver::iterateWithPreliminaryVelocity(cons
 			std::cout << "[ProjectedJacobi] Iteration " << iteration << ", error = " << err_global << std::endl;
 		}
 	}
+
+	// Store p for warm start next call
+	m_last_p = p;
 
 	// Final synchronization: replicate all body velocities to every rank
 	cardillo::comm::Communication::replicateAllBodyVelocities(u, res);

@@ -3,10 +3,12 @@ add_library(${PROJECT_NAME} STATIC
     physics/physics_system.cpp
     io/vtk_writer.cpp
     solver/moreau.cpp
+    solver/CPG.cpp
     solver/projected_jacobi.cpp
     physics/dynamics_assembler.cpp
     collision/broad_phase.cpp
     collision/narrow_phase.cpp
+    collision/box_box_collision.cpp
     collision/collision_manager.cpp
     partitioning/naive_partitioner.cpp
     comm/communication.cpp

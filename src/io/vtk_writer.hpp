@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <limits>
 #include "../misc/types.hpp"
 #include "../physics/physics_system.hpp"
 // Optional: contacts writing support
@@ -27,11 +28,25 @@ public:
 private:
     // Helpers split from write for clarity
     struct Collected {
-        // pos, (mass, vel, radius, partition)
-        // partition is float to allow NaN when unknown
-        std::vector<std::pair<Vector3r, std::tuple<float, Vector3r, float, float>>> points;
+        struct PointOut {
+            Vector3r pos;
+            float mass = 0.0f;
+            Vector3r vel = Vector3r::Zero();
+            float radius = 0.0f;
+            float partition = -1.0f; // -1 when unknown
+            int entityId = -1;
+        };
+        std::vector<PointOut> points;
         std::vector<cardillo::PhysicsSystem::Plane> planes;
-        std::vector<cardillo::PhysicsSystem::Cube> cubes;
+        struct CubeOut {
+            cardillo::PhysicsSystem::Cube cube; // center, halfExtents, orientation
+            Vector3r vlin = Vector3r::Zero();   // linear velocity (world)
+            Vector3r omega = Vector3r::Zero();  // angular velocity (world)
+            float partition = -1.0f;            // -1 when unknown
+            int entityId = -1;
+            bool hasKinematics = false;         // whether vlin/omega are valid (dynamic)
+        };
+        std::vector<CubeOut> cubes;
     };
 
     struct Counts {

@@ -21,6 +21,10 @@ public:
                    const std::vector<ObbCollider>& obbs,
                    const std::vector<std::pair<int,int>>& pairs,
                    std::vector<Contact>& out) const;
+
+    void obbObb(const std::vector<ObbCollider>& obbs,
+                const std::vector<std::pair<int,int>>& pairs,
+                std::vector<Contact>& out) const;
 };
 
 }

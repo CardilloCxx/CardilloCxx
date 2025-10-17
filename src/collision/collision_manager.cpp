@@ -15,6 +15,7 @@ std::vector<Contact> CollisionManager::detectAll(const PhysicsSystem& sys) const
     std::vector<std::pair<int,int>> ss; ss.reserve(pairs.size());
     std::vector<std::pair<int,int>> sp; sp.reserve(pairs.size());
     std::vector<std::pair<int,int>> so; so.reserve(pairs.size());
+    std::vector<std::pair<int,int>> oo; oo.reserve(pairs.size());
 
     for (const auto& pr : pairs) {
         const auto& A = proxies[pr.i];
@@ -31,13 +32,16 @@ std::vector<Contact> CollisionManager::detectAll(const PhysicsSystem& sys) const
             so.emplace_back(A.index, B.index);
         } else if (tA == ColliderType::Obb && tB == ColliderType::Sphere) {
             so.emplace_back(B.index, A.index);
+        } else if (tA == ColliderType::Obb && tB == ColliderType::Obb) {
+            oo.emplace_back(A.index, B.index);
         }
-        // other type pairs currently unsupported (plane-plane, obb-obb, plane-obb)
+        // other type pairs currently unsupported (plane-plane, plane-obb)
     }
 
     m_narrow.sphereSphere(data.spheres, ss, contacts);
     m_narrow.spherePlane(data.spheres, data.planes, sp, contacts);
     m_narrow.sphereObb(data.spheres, data.obbs, so, contacts);
+    m_narrow.obbObb(data.obbs, oo, contacts);
 
     return contacts;
 }

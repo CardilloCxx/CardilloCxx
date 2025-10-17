@@ -45,6 +45,12 @@ public:
     const std::vector<std::vector<int>>& WBlocksFromBodyAll() const { return m_W_from_body; }
     const std::vector<int>& WBlockToBodyAll() const { return m_W_block_to_body; }
     const std::vector<int>& WBlockToContactAll() const { return m_W_block_to_contact; }
+    // Map dynamic-only contact index (used in W/G) back to original contact index in m_contacts
+    const std::vector<int>& dynamicContactToOriginalAll() const { return m_contact_index_orig; }
+    // Access underlying system (for debug / diagnostics)
+    const PhysicsSystem& system() const { return m_sys; }
+    // Expose current contacts (includes penetration and points) for biasing, debug, etc.
+    const std::vector<collision::Contact>& contacts() const { return m_contacts; }
 
     // DOF queries owned by the assembler (scan ECS indices)
     index_t numQ() const { return m_numQ; }
@@ -84,6 +90,7 @@ private:
     std::vector<std::vector<int>> m_W_from_body; // size Nb, each
     std::vector<int> m_W_block_to_body; // size Nc*2, maps W-block index -> body index (-1 for static)
     std::vector<int> m_W_block_to_contact; // size Nc*2, maps W-block index -> contact id
+    std::vector<int> m_contact_index_orig; // size Nc_dynamic, maps dynamic contact id -> original contact index
     std::vector<collision::Contact> m_contacts;
 
     // Dirty flags

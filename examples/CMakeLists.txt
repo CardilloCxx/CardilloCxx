@@ -11,6 +11,10 @@
 add_executable(collisions_demo collisions_demo.cpp)
 target_link_libraries(collisions_demo PRIVATE cardillo)
 
+# Rigid body test: static ground cube + two dynamic cubes; writes geometry and contacts
+add_executable(rigid_body_test rigid_body_test.cpp)
+target_link_libraries(rigid_body_test PRIVATE cardillo)
+
 # ECS physics engine example (requires EnTT)
 # add_executable(physics_engine physics_engine.cpp)
 # target_link_libraries(physics_engine PRIVATE cardillo)

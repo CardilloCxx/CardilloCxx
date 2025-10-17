@@ -28,15 +28,22 @@ public:
         Vector3r up{0,1,0};
         real_t sizeX{5}, sizeY{5}; // half extents for visualization
     };
-    // Axis-aligned cube visual
+    // Axis-aligned cube visual with quaternion orientation
     struct Cube {
         Vector3r center{0,0,0};
         Vector3r halfExtents{0.5,0.5,0.5};
-        Matrix33r R = Matrix33r::Identity(); // orientation (columns are local axes)
+    Quaternion4r q = Quaternion4r::Identity(); // orientation
     };
-    // Rigid visuals (no physics yet)
-    index_t addRigidBody(const Plane& p);
-    index_t addRigidBody(const Cube& c);
+    // Obstacle (static) visuals
+    index_t addObstacleBody(const Plane& p);
+    index_t addObstacleBody(const Cube& c);
+    // Dynamic rigid body creation: pose and spatial velocity
+    index_t addRigidBody(real_t mass,
+                         const Vector3r& position,
+                         const Quaternion4r& orientation,
+                         const Vector3r& linearVelocity,
+                         const Vector3r& angularVelocity,
+                         const Cube& shape);
     index_t addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);
 
     // Dynamics getters (Cache them inside the entity to avoid recomputation)
@@ -53,11 +60,13 @@ public:
     struct C_Mass { real_t m; };
     struct C_Position3 { Vector3r value; };
     struct C_LinearVelocity3 { Vector3r value; };
+    struct C_AngularVelocity3 { Vector3r value; };
+    struct C_Orientation { Quaternion4r q; };
     struct C_PhysicsObject {};
     struct C_PointMassTag {};
     struct C_RigidBodyTag {};
     struct C_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
-    struct C_Cube { Vector3r halfExtents; Matrix33r R; };
+    struct C_Cube { Vector3r halfExtents; };
     struct C_VisualObject {};
     struct C_PointVisualTag {};
     struct C_PlaneVisualTag {};

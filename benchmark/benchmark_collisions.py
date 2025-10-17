@@ -17,7 +17,14 @@ PNG_PATH = os.path.join(OUTPUT_DIR, 'benchmark_results.png')
 # OpenMPI setting to avoid vader single copy issues seen previously
 MPI_ENV = {
     'OMPI_MCA_btl_vader_single_copy_mechanism': 'none',
-    'GMON_OUT_PREFIX': 'gmon.out'
+    'GMON_OUT_PREFIX': 'gmon.out',
+    # Force single-threaded math to make CPU self-seconds comparable to wall time
+    'OMP_NUM_THREADS': '1',
+    'OPENBLAS_NUM_THREADS': '1',
+    'MKL_NUM_THREADS': '1',
+    'BLIS_NUM_THREADS': '1',
+    'VECLIB_MAXIMUM_THREADS': '1',
+    'EIGEN_DONT_PARALLELIZE': '1'
 }
 
 # Patterns to parse gprof flat profile lines for functions of interest
@@ -68,47 +75,64 @@ for ranks in RANKS:
 
     # gprof: if per-rank files exist (GMON_OUT_PREFIX), aggregate all, else use single
     print("Parsing gprof output...")
-    gprof_cmd = ['gprof', BINARY]
     gmon_files = sorted([str(p) for p in Path(BUILD_DIR).glob('gmon.out*')])
+
+    # Helper to parse a single gprof output text
+    def parse_gprof_text(text: str):
+        solver = 0.0
+        comm = 0.0
+        for line in text.splitlines():
+            parts = line.strip().split()
+            if len(parts) < 6:
+                continue
+            name = line.strip()
+            try:
+                self_sec = float(parts[2])
+            except ValueError:
+                continue
+            if SOLVER_PAT.search(name):
+                solver += self_sec
+            elif COMM_U_PAT.search(name) or COMM_P_PAT.search(name) or REPLICATE_PAT.search(name):
+                comm += self_sec
+        return solver, comm
+
+    # If we have per-rank gmon files, parse each for per-rank max and summed totals
+    per_rank_solver = []
+    per_rank_comm = []
     if gmon_files:
-        gprof_cmd += gmon_files
-    rc2, gout, gerr, _ = run(gprof_cmd, cwd=BUILD_DIR)
-    if rc2 != 0:
-        print(f"gprof failed for ranks={ranks}: rc={rc2}\nSTDERR:\n{gerr}")
-        gout = ''
-
-    # Aggregate times from flat profile
-    total_solver = 0.0
-    total_comm = 0.0
-
-    for line in gout.splitlines():
-        # Expected lines start with percent and seconds; we grab the self seconds column
-        # Example: ' 61.23    454.52   454.52    60000 ... name'
-        parts = line.strip().split()
-        if len(parts) < 6:
-            continue
-        # Find function name at end of line
-        name = line.strip()
-        # Self seconds is the 3rd column
-        try:
-            self_sec = float(parts[2])
-        except ValueError:
-            continue
-        if SOLVER_PAT.search(name):
-            total_solver += self_sec
-        elif COMM_U_PAT.search(name) or COMM_P_PAT.search(name) or REPLICATE_PAT.search(name):
-            total_comm += self_sec
+        for gf in gmon_files:
+            rc2, gout, gerr, _ = run(['gprof', BINARY, gf], cwd=BUILD_DIR)
+            if rc2 != 0:
+                print(f"gprof failed for {gf}: rc={rc2}\n{gerr}")
+                continue
+            s, c = parse_gprof_text(gout)
+            per_rank_solver.append(s)
+            per_rank_comm.append(c)
+        total_solver = float(sum(per_rank_solver)) if per_rank_solver else 0.0
+        total_comm = float(sum(per_rank_comm)) if per_rank_comm else 0.0
+        max_solver = float(max(per_rank_solver)) if per_rank_solver else 0.0
+        max_comm = float(max(per_rank_comm)) if per_rank_comm else 0.0
+    else:
+        # Single combined gmon (older MPI or no GMON_OUT_PREFIX). Parse once.
+        rc2, gout, gerr, _ = run(['gprof', BINARY], cwd=BUILD_DIR)
+        if rc2 != 0:
+            print(f"gprof failed for ranks={ranks}: rc={rc2}\nSTDERR:\n{gerr}")
+            gout = ''
+        total_solver, total_comm = parse_gprof_text(gout)
+        max_solver, max_comm = total_solver, total_comm
 
     results.append({
         'ranks': ranks,
         'wall_time_s': wall,
         'solver_time_s': total_solver,
-        'communication_time_s': total_comm
+        'communication_time_s': total_comm,
+        'solver_time_max_s': max_solver,
+        'communication_time_max_s': max_comm
     })
 
 # Write CSV
 with open(CSV_PATH, 'w', newline='') as f:
-    w = csv.DictWriter(f, fieldnames=['ranks','wall_time_s','solver_time_s','communication_time_s'])
+    w = csv.DictWriter(f, fieldnames=['ranks','wall_time_s','solver_time_s','communication_time_s','solver_time_max_s','communication_time_max_s'])
     w.writeheader()
     for row in results:
         w.writerow(row)
@@ -125,6 +149,8 @@ try:
     wall = [r['wall_time_s'] for r in results]
     solver = [r['solver_time_s'] for r in results]
     comm = [r['communication_time_s'] for r in results]
+    solver_max = [r.get('solver_time_max_s', 0.0) for r in results]
+    comm_max = [r.get('communication_time_max_s', 0.0) for r in results]
 
     plt.figure(figsize=(9,6))
     plt.plot(ranks, wall, '-o', label='Wall time (s)')
@@ -138,5 +164,20 @@ try:
     plt.tight_layout()
     plt.savefig(PNG_PATH, dpi=150)
     print(f"Wrote plot to {PNG_PATH}")
+
+    # Additional plot showing max-per-rank vs wall time (closer to critical path)
+    PNG_PATH_MAX = os.path.join(OUTPUT_DIR, 'benchmark_results_max.png')
+    plt.figure(figsize=(9,6))
+    plt.plot(ranks, wall, '-o', label='Wall time (s)')
+    plt.plot(ranks, solver_max, '-o', label='Solver time (max per rank, s)')
+    plt.plot(ranks, comm_max, '-o', label='Communication time (max per rank, s)')
+    plt.xlabel('Ranks')
+    plt.ylabel('Time (seconds)')
+    plt.title('collisions_demo (max per rank) vs MPI ranks')
+    plt.grid(True, linestyle='--', alpha=0.4)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(PNG_PATH_MAX, dpi=150)
+    print(f"Wrote plot to {PNG_PATH_MAX}")
 except Exception as e:
     print(f"Plotting failed: {e}\nYou can still use the CSV at {CSV_PATH}")

@@ -34,9 +34,16 @@ BroadPhaseData BroadPhase::collect(const PhysicsSystem& sys) const {
 
     // OBBs (cubes)
     {
-        auto view = reg.view<PhysicsSystem::C_Collidable, PhysicsSystem::C_CubeVisualTag, PhysicsSystem::C_Position3, PhysicsSystem::C_Cube>();
+        auto view = reg.view<PhysicsSystem::C_Collidable,
+                             PhysicsSystem::C_CubeVisualTag,
+                             PhysicsSystem::C_Position3,
+                             PhysicsSystem::C_Cube,
+                             PhysicsSystem::C_Orientation>();
         out.obbs.reserve(view.size_hint());
-        for (auto [e, pos, cb] : view.each()) out.obbs.push_back(ObbCollider{e, pos.value, cb.halfExtents, cb.R});
+        for (auto [e, pos, cb, ori] : view.each()) {
+            Matrix33r R = ori.q.toRotationMatrix();
+            out.obbs.push_back(ObbCollider{e, pos.value, cb.halfExtents, R});
+        }
     }
     return out;
 }

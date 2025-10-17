@@ -13,6 +13,13 @@ struct Contact {
     entt::entity b;       // entity id of second colliding object
     Vector3r point;       // contact point (on surface or midpoint between)
     Vector3r normal;      // normal pointing from a to b
+    // Body-space contact info (expressed in each body's local frame)
+    // For rigid bodies: normal_body = R^T * normal_world, point_body = R^T * (point_world - center_world)
+    // For point masses: identical to world (R = I, center at origin)
+    Vector3r pointA_body;
+    Vector3r pointB_body;
+    Vector3r normalA_body;
+    Vector3r normalB_body;
     MatrixXXr wA;         // contact Force directions for body A     (For point masses, this is just -normal)
     MatrixXXr wB;         // contact Force directions for body B     (For point masses, this is just normal)
     real_t penetration;   // overlap distance (> 0 means interpenetration)

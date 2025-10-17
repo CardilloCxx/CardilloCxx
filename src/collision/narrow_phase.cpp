@@ -1,4 +1,5 @@
 #include "narrow_phase.hpp"
+#include "box_box_collision.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -21,7 +22,12 @@ void NarrowPhase::sphereSphere(const std::vector<SphereCollider>& S,
             Vector3r contact = a.center + n * (a.radius - (real_t)0.5 * penetration);
             MatrixXXr wA(1,3); wA << -n[0], -n[1], -n[2];
             MatrixXXr wB(1,3); wB <<  n[0],  n[1],  n[2];
-            out.push_back(Contact{a.e, b.e, contact, n, wA, wB, penetration});
+            // For spheres: local frame is identity in our current model
+            Contact c{a.e, b.e, contact, n,
+                      contact, contact, // pointA_body, pointB_body
+                      n, n,             // normalA_body, normalB_body
+                      wA, wB, penetration};
+            out.push_back(c);
         }
     }
 }
@@ -51,7 +57,15 @@ void NarrowPhase::spherePlane(const std::vector<SphereCollider>& spheres,
             else nout = (d >= 0) ? -n : n;
             MatrixXXr wA(1,3); wA << -nout[0], -nout[1], -nout[2];
             MatrixXXr wB(1,3); wB <<  nout[0],  nout[1],  nout[2];
-            out.push_back(Contact{s.e, p.e, closest, nout, wA, wB, penetration});
+            // Sphere: identity local; Plane: define body space as plane frame with R=[u v n]
+            Matrix33r Rp; Rp.col(0) = p.u; Rp.col(1) = p.v; Rp.col(2) = p.normal;
+            Contact c{s.e, p.e, closest, nout,
+                      // point in body frames
+                      closest, Rp.transpose() * (closest - p.point),
+                      // normals in body frames
+                      nout, Rp.transpose() * nout,
+                      wA, wB, penetration};
+            out.push_back(c);
         }
     }
 }
@@ -98,8 +112,22 @@ void NarrowPhase::sphereObb(const std::vector<SphereCollider>& spheres,
             real_t penetration = s.radius - ((dist2 > 0) ? std::sqrt((double)dist2) : (real_t)0);
             MatrixXXr wA(1,3); wA << -n[0], -n[1], -n[2];
             MatrixXXr wB(1,3); wB <<  n[0],  n[1],  n[2];
-            out.push_back(Contact{s.e, b.e, closest, n, wA, wB, penetration});
+            Contact c{s.e, b.e, closest, n,
+                      closest, b.R.transpose() * (closest - b.center),
+                      n, b.R.transpose() * n,
+                      wA, wB, penetration};
+            out.push_back(c);
         }
+    }
+}
+
+void NarrowPhase::obbObb(const std::vector<ObbCollider>& obbs,
+                         const std::vector<std::pair<int,int>>& pairs,
+                         std::vector<Contact>& out) const {
+    for (auto [ia, ib] : pairs) {
+        const auto& A = obbs[ia];
+        const auto& B = obbs[ib];
+        boxbox::collideOBB(A, B, out);
     }
 }
 
