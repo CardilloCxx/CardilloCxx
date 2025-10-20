@@ -68,3 +68,4 @@ pkg_search_module(PETSC REQUIRED IMPORTED_TARGET PETSc>=3.15 petsc>=3.15)
 # Add subdirs
 add_subdirectory(src)
 add_subdirectory(examples)
+add_subdirectory(benchmarks/matrix_bench)
