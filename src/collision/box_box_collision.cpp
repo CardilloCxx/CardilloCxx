@@ -136,11 +136,12 @@ void collideOBB(const ObbCollider& A, const ObbCollider& B, std::vector<Contact>
     }
     real_t refSgn = (N.dot(Ref.R.col(refAxis)) > 0) ? (real_t)1 : (real_t)-1;
 
-    // Incident face selection: axis of Inc most anti-parallel to N
-    int incAxis = 0; real_t mind = std::numeric_limits<real_t>::max();
+    // Incident face selection: choose axis with largest |N·Inc.axis|, then orient opposite to N
+    int incAxis = 0; real_t maxAbs = (real_t)-1;
     for (int i=0;i<3;++i) {
         real_t d = N.dot(Inc.R.col(i));
-        if (d < mind) { mind = d; incAxis = i; }
+        real_t ad = std::abs(d);
+        if (ad > maxAbs) { maxAbs = ad; incAxis = i; }
     }
     real_t incSgn = (N.dot(Inc.R.col(incAxis)) > 0) ? (real_t)-1 : (real_t)1;
 
@@ -162,6 +163,36 @@ void collideOBB(const ObbCollider& A, const ObbCollider& B, std::vector<Contact>
         clipPolyAgainstPlane(poly, -v, -v.dot(fc) + hv);
         clipPolyAgainstPlane(poly,  N,  N.dot(fc)); // keep points behind/ref-side of the face
     };
+    
+    // Full-face containment check: are all incident face corners inside Ref rectangle and behind its plane?
+    bool fullContainment = true;
+    {
+        std::array<Vector3r,4> incCorners;
+        buildFacePolygon(Inc, incAxis, incSgn, polyInc); // polyInc currently holds these corners
+        for (const auto& pi : polyInc) {
+            Vector3r d = pi - fc;
+            real_t du = d.dot(u);
+            real_t dv = d.dot(v);
+            real_t planeSide = N.dot(pi) - N.dot(fc);
+            const real_t eps = (real_t)1e-7;
+            if (std::abs(du) > hu + eps || std::abs(dv) > hv + eps || planeSide > eps) {
+                fullContainment = false; break;
+            }
+        }
+    }
+
+    if (fullContainment) {
+        // Emit the four projections of the incident face corners onto the reference plane.
+        // This yields a stable 4-point manifold matching the intruding face footprint.
+        for (const auto& pi : polyInc) {
+            real_t distToPlane = N.dot(pi) - N.dot(fc);
+            Vector3r cp = pi - distToPlane * N;           // project onto Ref face plane
+            real_t pen = std::max<real_t>(0, -distToPlane); // penetration along N
+            emitContact(refA?A:B, refA?B:A, cp, N, pen, out);
+        }
+        return;
+    }
+
     clip(polyInc);
 
     if (polyInc.empty()) {

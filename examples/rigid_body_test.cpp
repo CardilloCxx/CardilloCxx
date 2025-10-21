@@ -9,7 +9,7 @@
 
 using namespace cardillo;
 
-int main() {
+int main(int argc, char** argv) {
     MPI_Init(nullptr, nullptr);
     int worldRank = 0, worldSize = 1;
     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
@@ -27,8 +27,74 @@ int main() {
         sys.addObstacleBody(ground);
     }
 
-    // Domino setup: a chain of upright OBB dominoes with increasing size, triggered by a moving sphere
-    // Fixed parameters (no env vars)
+    // // Block laying on the ground
+    // {
+    //     PhysicsSystem::Cube block;
+    //     block.center = Vector3r(0.0, 0.0, 0.24);
+    //     block.halfExtents = Vector3r(1.0, 1.0, 0.25); // thickness 0.25
+    //     Eigen::AngleAxis<real_t> rotAngleAxis( (real_t)(0.5 * M_PI / 180.0), Vector3r::UnitX() );
+    //     block.q = Quaternion4r(rotAngleAxis);
+    //     sys.addObstacleBody(block);
+    // }
+
+    // 2D pyramid stack of flat rectangular boxes (lying on the ground), with spacing
+    // Layout (top to bottom), centered around x=0:
+    //             [####]
+    //        [####]   [####]
+    //    [####]   [####]   [####]
+    // [####]   [####]   [####]   [####]
+//     {
+//         // Dimensions (full extents) of each box
+//         const real_t boxLenX = (real_t)0.6;  // length along X
+//         const real_t boxLenY = (real_t)0.2;  // depth along Y (into page)
+//         const real_t boxLenZ = (real_t)0.1;  // thickness along Z (height)
+//         const Vector3r half(boxLenX*(real_t)0.5, boxLenY*(real_t)0.5, boxLenZ*(real_t)0.5);
+// 
+//         // Spacing between boxes in the same row (gap along X)
+//         const real_t gapX = (real_t)0.3;
+//         // Vertical spacing between rows (additional to box height)
+//         const real_t gapZ = (real_t)0.01;
+//         // Base row count
+//         const int baseCount = 10;
+//         // Density for mass, or choose a fixed mass
+//         const real_t density = (real_t)60.0;
+// 
+//         auto boxMass = [&](const Vector3r& he){
+//             const real_t volume = (real_t)8.0 * he.x() * he.y() * he.z(); // full extents = 2*he
+//             return std::max((real_t)0.05, density * volume);
+//         };
+// 
+//         // Compute base row starting Z so that bottom boxes rest on ground (ground top at z=0)
+//         const real_t baseZ = half.z();
+// 
+//         // Build rows from bottom (row=0 has baseCount) to top (row=baseCount-1 has 1)
+//         for (int row = 0; row < baseCount; ++row) {
+//             int count = baseCount - row;
+// 
+//             // Total width of the row including gaps between boxes
+//             const real_t rowWidth = (real_t)count * boxLenX + (real_t)(count - 1) * gapX;
+//             // Leftmost X so that the row is centered around x=0
+//             const real_t xLeft = -(real_t)0.5 * rowWidth + (real_t)0.5 * boxLenX;
+// 
+//             // Z position for this row
+//             const real_t z = baseZ + (real_t)row * (boxLenZ + gapZ);
+// 
+//             for (int i = 0; i < count; ++i) {
+//                 const real_t x = xLeft + (real_t)i * (boxLenX + gapX);
+//                 const real_t y = (real_t)0.0; // centered along Y
+// 
+//                 PhysicsSystem::Cube cube;
+//                 cube.halfExtents = half; // flat rectangle
+//                 cube.q = Quaternion4r::Identity(); // lying flat on ground
+// 
+//                 const Vector3r center(x, y, z);
+//                 const real_t m = boxMass(half);
+//                 sys.addRigidBody(m, center, cube.q, Vector3r::Zero(), Vector3r::Zero(), cube);
+//             }
+//         }
+//     }
+
+//     // Domino setup: a chain of upright OBB dominoes with increasing size, triggered by a moving sphere
     const int N = 36;
     const real_t h0 = (real_t)0.1;  // initial height
     const real_t dh = (real_t)1.1; // growth per domino (stronger scaling)
@@ -76,19 +142,24 @@ int main() {
         sys.addPointMass(m, sPos, sVel, r);
     }
 
+
+
+    // Load config and wire into solver and writer
+    cardillo::config::Config cfg = (argc > 1)
+        ? cardillo::config::ConfigReader::fromFile(argv[1])
+        : cardillo::config::Config{}; // defaults from header
+    cardillo::solver::MoreauSolver solver(sys, cfg);
+
     // Writer (rank 0)
     std::unique_ptr<cardillo::io::VtkWriter> writer;
     if (worldRank == 0) {
-        writer = std::make_unique<cardillo::io::VtkWriter>("vtk_out", "rigid", 50);
+        writer = std::make_unique<cardillo::io::VtkWriter>("vtk_out", "rigid", cfg.output_interval_steps);
         writer->enableContactsOutput(true, "rigid_contacts");
     }
 
-    // Simulate a short settling (currently only translational DOFs are integrated)
-    cardillo::solver::MoreauSolver solver(sys);
-
     real_t t = 0.0;
-    const real_t T = 5.0;
-    const real_t dt = 1e-3;
+    const real_t T = cfg.sim_T;
+    const real_t dt = cfg.sim_dt;
     const int steps = (int)(T / dt);
     if (writer) writer->maybeWrite(0, t, sys);
     for (int k = 0; k < steps; ++k) {

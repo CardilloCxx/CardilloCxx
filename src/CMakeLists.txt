@@ -12,6 +12,7 @@ add_library(${PROJECT_NAME} STATIC
     collision/collision_manager.cpp
     partitioning/naive_partitioner.cpp
     comm/communication.cpp
+    config/config.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
