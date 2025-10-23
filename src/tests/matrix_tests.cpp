@@ -17,19 +17,20 @@ int main() {
     // Mass inverse blocks should be diag(1,1,1) and diag(1/2,1/2,1/2)
     cardillo::physics::DynamicsAssembler dyn(sys);
     dyn.assignDofs();
-    dyn.loadStateFromSystem();
     dyn.refreshState();
-    const auto& MinvBlocks = dyn.MinvBlocks();
-    assert((int)MinvBlocks.size() == 2);
-    for (int i = 0; i < 3; ++i) assert(std::abs(MinvBlocks[0](i,i) - 1.0) < 1e-12);
-    for (int i = 0; i < 3; ++i) assert(std::abs(MinvBlocks[1](i,i) - 0.5) < 1e-12);
+    const auto& offV = dyn.bodyVelOffsets();
+    const auto& MinvDiag = dyn.MinvDiag();
+    assert((int)offV.size() == 3); // 2 bodies + 1
+    // Body 0
+    for (int i = 0; i < 3; ++i) assert(std::abs(MinvDiag[offV[0] + i] - 1.0) < 1e-12);
+    // Body 1
+    for (int i = 0; i < 3; ++i) assert(std::abs(MinvDiag[offV[1] + i] - 0.5) < 1e-12);
 
     // Force blocks should be [m*g; m*g]
-    const auto& fBlocks = dyn.f();
-    assert((int)fBlocks.size() == 2);
+    const auto& f = dyn.fVec();
     Vector3r g(0,0,-9.81);
-    for (int i = 0; i < 3; ++i) assert(std::abs(fBlocks[0][i] - 1.0 * g[i]) < 1e-12);
-    for (int i = 0; i < 3; ++i) assert(std::abs(fBlocks[1][i] - 2.0 * g[i]) < 1e-12);
+    for (int i = 0; i < 3; ++i) assert(std::abs(f[offV[0] + i] - 1.0 * g[i]) < 1e-12);
+    for (int i = 0; i < 3; ++i) assert(std::abs(f[offV[1] + i] - 2.0 * g[i]) < 1e-12);
 
     std::cout << "matrix_tests OK\n";
     return 0;

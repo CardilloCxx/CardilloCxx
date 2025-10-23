@@ -10,12 +10,6 @@
 
 namespace cardillo::physics {
 
-struct WBlockEdge {
-    int bodyA;
-    int bodyB;
-    MatrixXXr WblockA; // dofP x dofV (currently 1x3)
-    MatrixXXr WblockB; // dofP x dofV (currently 1x3)
-};
 
 // Contracts:
 // - Provides cached assembly of state vectors (q, v), force vector f, mass matrix M,
@@ -28,23 +22,27 @@ public:
 
     // Legacy one-shot assembly helpers removed; use cached getters instead.
 
-    // Cached getters (rebuild on demand)
-    const std::vector<VectorXr>& q();
-    const std::vector<VectorXr>& v();
-    const std::vector<VectorXr>& f();
+    // Cached getters (rebuild on demand) as concatenated global vectors
+    const VectorXr& qVec();   // stacked positions
+    const VectorXr& vVec();   // stacked velocities
+    const VectorXr& fVec();   // stacked external forces
 
     // Block-level accessors (per-entity velocity blocks)
-    // Current implementation assumes 3 dofs per entity; structure can be generalized later.
-    const std::vector<VectorXr>& vBlocks();          // size Nb, each VectorXr size dofV
-    const std::vector<MatrixXXr>& MinvBlocks();      // size Nb, each MatrixXXr dofVxdofV
-    const std::vector<MatrixXXr>& WBlocks();         // size Nc * 2 each MatrixXXr dofPxdofV
-    const std::pair<int, int> & WBlocksFromContact(index_t contact);  
-    const std::vector<int>& WBlocksFromBody (index_t body); 
-    // Bulk accessors to internal mappings (avoid per-element calls in tight loops)
-    const std::vector<std::pair<int,int>>& WBlocksFromContactAll() const { return m_W_from_contact; }
-    const std::vector<std::vector<int>>& WBlocksFromBodyAll() const { return m_W_from_body; }
-    const std::vector<int>& WBlockToBodyAll() const { return m_W_block_to_body; }
-    const std::vector<int>& WBlockToContactAll() const { return m_W_block_to_contact; }
+    const std::vector<VectorXr>& vBlocks();          // DEPRECATED: temporary compatibility; will be removed
+    const std::vector<MatrixXXr>& MinvBlocks();      // DEPRECATED: will be removed
+
+    // New sparse contact Jacobian W (maps stacked velocities -> normal contact velocities)
+    // Rows correspond to dynamic contacts (contacts with at least one dynamic body)
+    // Columns correspond to stacked body velocity DOFs in body order, laid out contiguously per body
+    const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W() const { return m_W_sparse; }
+    // Prefix sums of column offsets per body in stacked velocity vector; size = Nb + 1
+    // Body b occupies columns [bodyVelOffsets()[b], bodyVelOffsets()[b+1])
+    const std::vector<int>& bodyVelOffsets() const { return m_body_vel_offsets; }
+    // Prefix sums for stacked position vector
+    const std::vector<int>& bodyPosOffsets() const { return m_body_pos_offsets; }
+
+    // Diagonal of block-diagonal Minv (size = total velocity dofs)
+    const VectorXr& MinvDiag() const { return m_Minv_diag; }
     // Map dynamic-only contact index (used in W/G) back to original contact index in m_contacts
     const std::vector<int>& dynamicContactToOriginalAll() const { return m_contact_index_orig; }
     // Access underlying system (for debug / diagnostics)
@@ -57,13 +55,10 @@ public:
     index_t numV() const { return m_numV; }
 
     // Update inputs / invalidate caches
-    void setContacts(std::vector<collision::Contact> contacts);
-    // Dirty markers: contacts (others live on PhysicsSystem)
-    void markContactsDirty();   // contact set or normals changed
 
     // Explicit state IO
     void loadStateFromSystem();
-    void writeStateToSystem(const std::vector<VectorXr>& q, const std::vector<VectorXr>& v);
+    void writeStateToSystem(const VectorXr& q_concat, const VectorXr& v_concat);
     // Assign contiguous DOF indices (3 per dynamic entity)
     void assignDofs();
 
@@ -79,22 +74,29 @@ private:
     const PhysicsSystem& m_sys;
 
     // Cached data
-    std::vector<VectorXr> m_q;
-    std::vector<VectorXr> m_v;
-    std::vector<VectorXr> m_f;
-    std::vector<MatrixXXr> m_Mass_blocks; // size Nb, each MatrixXXr dofVxdofV
-    std::vector<MatrixXXr> m_Minv_blocks; // size Nb, each MatrixXXr dofVxdofV
+    // Concatenated state
+    VectorXr m_q_vec;
+    VectorXr m_v_vec;
+    VectorXr m_f_vec;
+    // Legacy caches kept temporarily for compatibility with older code paths
+    std::vector<VectorXr> m_v_compat;
+    std::vector<MatrixXXr> m_Minv_blocks; // will be removed when all users migrate
 
-    std::vector<MatrixXXr> m_W_blocks; // size Nc * 2 each MatrixXXr dofPxdofV
-    std::vector<std::pair<int, int>> m_W_from_contact;
-    std::vector<std::vector<int>> m_W_from_body; // size Nb, each
-    std::vector<int> m_W_block_to_body; // size Nc*2, maps W-block index -> body index (-1 for static)
-    std::vector<int> m_W_block_to_contact; // size Nc*2, maps W-block index -> contact id
+    // Sparse contact Jacobian and supporting mappings
+    Eigen::SparseMatrix<real_t, Eigen::RowMajor> m_W_sparse; // (C_dynamic x totalV), RowMajor to allow efficient row access
+    std::vector<int> m_body_vel_offsets;    // size Nb+1, prefix sums for body velocity columns
+    std::vector<int> m_body_pos_offsets;    // size Nb+1, prefix sums for body position columns
+    VectorXr m_Minv_diag;                   // size totalV, diagonal of Minv
+    // Legacy block-based structures removed
+    std::vector<std::pair<int, int>> m_W_from_contact; // kept temporarily for debug migration if needed (unused)
+    std::vector<std::vector<int>> m_W_from_body;       // kept temporarily (unused)
+    std::vector<int> m_W_block_to_body;                // kept temporarily (unused)
+    std::vector<int> m_W_block_to_contact;             // kept temporarily (unused)
     std::vector<int> m_contact_index_orig; // size Nc_dynamic, maps dynamic contact id -> original contact index
     std::vector<collision::Contact> m_contacts;
 
     // Dirty flags
-    bool m_contacts_dirty{true};
+    // (unused) bool m_contacts_dirty{true};
 
     // Cached sizes
     index_t m_numQ{0};

@@ -9,6 +9,10 @@
 #include <petscsys.h>
 #include "../misc/types.hpp"
 #include "../misc/dofs.hpp"
+#include "../config/config.hpp"
+
+// fwd
+namespace cardillo { namespace collision { class CollisionCoal; } }
 
 namespace cardillo {
 
@@ -17,6 +21,16 @@ namespace cardillo {
 class PhysicsSystem {
 public:
     PhysicsSystem();
+    explicit PhysicsSystem(const config::Config& cfg);
+    ~PhysicsSystem();
+    // Global config accessible across subsystems
+    void setConfig(const config::Config& cfg) { m_cfg = cfg; setGravity(m_cfg.sim_gravity); }
+    const config::Config& config() const { return m_cfg; }
+
+    // Persistent collision manager (COAL) storage and access
+    collision::CollisionCoal& collisionManager();
+    const collision::CollisionCoal& collisionManager() const;
+
 
     void setGravity(const Vector3r& g);
     const Vector3r& gravity() const { return m_gravity; }
@@ -67,12 +81,16 @@ public:
     struct C_RigidBodyTag {};
     struct C_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
     struct C_Cube { Vector3r halfExtents; };
+    struct C_Friction { real_t mu; }; // optional friction coefficient per entity (>=0), absent => 0
     struct C_VisualObject {};
     struct C_PointVisualTag {};
     struct C_PlaneVisualTag {};
     struct C_CubeVisualTag {};
     struct C_Collidable {};
     struct C_Radius { real_t r; };
+    // Rigid-body type components (exactly one per rigid body kind)
+    struct C_RB_Cube { Vector3r halfExtents; };
+    struct C_RB_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
     // Body index assigned by the assembler (stable across rebuilds unless structure changes)
     struct C_BodyIndex { int b; };
 
@@ -110,6 +128,10 @@ private:
 
     // assignDofs_ moved to DynamicsAssembler
     entt::entity createRigidVisualEntity_(const Vector3r& center);
+
+    // Persistent subsystems
+    config::Config m_cfg{}; // global config
+    std::unique_ptr<collision::CollisionCoal> m_collision_mgr; // created on first use
 };
 
 } // namespace cardillo

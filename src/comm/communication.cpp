@@ -53,9 +53,7 @@ void Communication::exchangeBodyVelocitiesOwnerPush(
 
 void Communication::exchangePercussionsOwnerPush(
     VectorXr& p,
-    const cardillo::partitioning::PartitionerResult& res,
-    const std::vector<std::pair<int,int>>& contactToBlocks,
-    const std::vector<int>& blockToBody)
+    const cardillo::partitioning::PartitionerResult& res)
 {
     // Use precomputed neighbor plans for percussions
     const auto& neighbors = res.neighbors;
@@ -111,6 +109,77 @@ void Communication::replicateAllBodyVelocities(
         int n = sizes[(size_t)b]; if (n <= 0) continue;
         u[(size_t)b] = Eigen::Map<const VectorXr>(recvbuf.data() + offsets[(size_t)b], n);
     }
+}
+
+void Communication::exchangeBodyVelocitiesOwnerPushConcat(
+    VectorXr& u_concat,
+    const cardillo::partitioning::PartitionerResult& res,
+    const std::vector<int>& bodyOffsets)
+{
+    const auto& neighbors = res.neighbors;
+    const auto& sendLists = res.bodiesSendPerNeighbor;
+    const auto& recvLists = res.bodiesRecvPerNeighbor;
+
+    for (size_t i = 0; i < neighbors.size(); ++i) {
+        int nbr = neighbors[i];
+        const auto& bodies = sendLists[i];
+        int sendCount = (int)bodies.size();
+        const auto& recvBodies = recvLists[i];
+        int recvCount = (int)recvBodies.size();
+
+        // Determine dof for this neighbor exchange (assumed uniform as before)
+        int dof = 0;
+        if (sendCount > 0) {
+            int b0 = bodies[0];
+            dof = bodyOffsets[(size_t)b0 + 1] - bodyOffsets[(size_t)b0];
+        } else if (recvCount > 0) {
+            int b0 = recvBodies[0];
+            dof = bodyOffsets[(size_t)b0 + 1] - bodyOffsets[(size_t)b0];
+        }
+        static thread_local std::vector<real_t> sendBuf;
+        static thread_local std::vector<real_t> recvBuf;
+        sendBuf.resize((size_t)dof * (size_t)sendCount);
+        for (int j = 0; j < sendCount; ++j) {
+            int b = bodies[(size_t)j];
+            int off = bodyOffsets[(size_t)b];
+            std::copy(u_concat.data() + off, u_concat.data() + off + dof, sendBuf.data() + j * dof);
+        }
+        int recvDof = dof;
+        MPI_Sendrecv(&dof, 1, MPI_INT, nbr, 112,
+                     &recvDof, 1, MPI_INT, nbr, 112,
+                     MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        recvBuf.resize((size_t)recvDof * (size_t)recvCount);
+        MPI_Sendrecv(sendBuf.data(), (int)sendBuf.size(), MPI_DOUBLE, nbr, 113,
+                     recvBuf.data(), (int)recvBuf.size(), MPI_DOUBLE, nbr, 113,
+                     MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        for (int j = 0; j < recvCount; ++j) {
+            int b = recvBodies[(size_t)j];
+            int off = bodyOffsets[(size_t)b];
+            std::copy(recvBuf.data() + j * recvDof, recvBuf.data() + (j+1) * recvDof, u_concat.data() + off);
+        }
+    }
+}
+
+void Communication::replicateAllBodyVelocitiesConcat(
+    VectorXr& u_concat,
+    const cardillo::partitioning::PartitionerResult& res,
+    const std::vector<int>& bodyOffsets)
+{
+    const int Nb = (int)bodyOffsets.size() - 1;
+    // total size is last offset
+    int total = (Nb >= 0) ? bodyOffsets[(size_t)Nb] : 0;
+    std::vector<real_t> sendbuf((size_t)total, (real_t)0), recvbuf((size_t)total, (real_t)0);
+    // Pack local bodies only
+    for (int b = res.bodyStart; b < res.bodyEnd; ++b) {
+        int off = bodyOffsets[(size_t)b];
+        int n = bodyOffsets[(size_t)b+1] - off;
+        if (n > 0) std::copy(u_concat.data() + off, u_concat.data() + off + n, sendbuf.data() + off);
+    }
+    MPI_Allreduce(sendbuf.data(), recvbuf.data(), total, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    // Unpack
+    if ((int)u_concat.size() != total) u_concat.resize(total);
+    std::copy(recvbuf.data(), recvbuf.data() + total, u_concat.data());
 }
 
 }

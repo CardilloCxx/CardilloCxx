@@ -14,10 +14,10 @@ public:
     explicit CPG(cardillo::physics::DynamicsAssembler& dyn)
         : m_dyn(dyn) {}
 
-    std::vector<cardillo::VectorXr> solve(const std::vector<cardillo::VectorXr>& v_pre_blocks, real_t tol = (real_t)1e-5);
-    void G_times_p(const std::vector<cardillo::VectorXr>& p, std::vector<cardillo::VectorXr>& temp, std::vector<cardillo::VectorXr>& result);
-    void W_times_v(const std::vector<cardillo::VectorXr>& v, std::vector<cardillo::VectorXr>& result);
-    real_t x_dot_y(const std::vector<cardillo::VectorXr>& x, const std::vector<cardillo::VectorXr>& y);
+    cardillo::VectorXr solve(const cardillo::VectorXr& v_pre, real_t tol = (real_t)1e-5);
+    void G_times_p(const cardillo::VectorXr& p, cardillo::VectorXr& result);
+    void W_times_v(const cardillo::VectorXr& v, cardillo::VectorXr& result);
+    real_t x_dot_y(const cardillo::VectorXr& x, const cardillo::VectorXr& y);
     ~CPG();
 
 private:

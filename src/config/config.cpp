@@ -26,7 +26,13 @@ Config ConfigReader::fromFile(const std::string& path) {
     std::string line;
     while (std::getline(f, line)) {
         std::string s = trim(line);
-        if (s.empty() || s[0] == '#') continue;
+        if (s.empty()) continue;
+        // Strip inline comments starting with '#'
+        auto hashPos = s.find('#');
+        if (hashPos != std::string::npos) {
+            s = trim(s.substr(0, hashPos));
+        }
+        if (s.empty()) continue;
         auto pos = s.find('=');
         if (pos == std::string::npos) continue;
         std::string key = trim(s.substr(0, pos));
@@ -47,14 +53,70 @@ Config ConfigReader::fromFile(const std::string& path) {
         else if (key == "pj.compliance") {
             try { cfg.pj_compliance = static_cast<real_t>(std::stod(val)); cfg.has_pj_compliance = true; } catch (...) {}
         }
+        else if (key == "pj.nesterov") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            cfg.pj_nesterov = (v == "1" || v == "true" || v == "yes" || v == "on");
+        }
+        else if (key == "pj.nesterov_beta_threshold") {
+            try { cfg.pj_nesterov_beta_threshold = static_cast<real_t>(std::stod(val)); } catch (...) {}
+        }
+        else if (key == "pj.nesterov_restart_limit") {
+            try { cfg.pj_nesterov_restart_limit = std::max(0, std::stoi(val)); } catch (...) {}
+        }
+        else if (key == "pj.warmstart") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            cfg.pj_warmstart = (v == "1" || v == "true" || v == "yes" || v == "on");
+        }
+        else if (key == "debug.rb") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            cfg.debug_rb = (v == "1" || v == "true" || v == "yes" || v == "on");
+        }
+        else if (key == "debug.pj") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            cfg.debug_pj = (v == "1" || v == "true" || v == "yes" || v == "on");
+        }
         else if (key == "sim.T") {
             try { cfg.sim_T = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }
         else if (key == "sim.dt") {
             try { cfg.sim_dt = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }
+        else if (key == "sim.gravity") {
+            std::string v = val;
+            // Allow commas or spaces as separators
+            std::replace(v.begin(), v.end(), ',', ' ');
+            std::istringstream ss(v);
+            double gx=0, gy=0, gz=-9.81;
+            if (ss >> gx >> gy >> gz) {
+                cfg.sim_gravity = Vector3r((real_t)gx, (real_t)gy, (real_t)gz);
+            }
+        }
         else if (key == "output.interval_steps") {
             try { cfg.output_interval_steps = std::max(1, std::stoi(val)); } catch (...) {}
+        }
+        else if (key == "output.contacts_body_vectors") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            cfg.output_contacts_body_vectors = (v == "1" || v == "true" || v == "yes" || v == "on");
+        }
+        else if (key == "collision.broadphase") {
+            cfg.collision_broadphase = val;
+        }
+        else if (key == "collision.match_max_dist") {
+            try {
+                cfg.collision_match_max_dist = static_cast<real_t>(std::stod(val));
+                if (cfg.collision_match_max_dist < (real_t)0) cfg.collision_match_max_dist = (real_t)0;
+            } catch (...) {}
+        }
+        else if (key == "friction.enable") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            cfg.friction_enable = (v == "1" || v == "true" || v == "yes" || v == "on");
+        }
+        else if (key == "friction.combine") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            if (v == "min" || v == "arith" || v == "geom") cfg.friction_combine = v;
+        }
+        else if (key == "friction.default_mu") {
+            try { cfg.friction_default_mu = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }
     }
     return cfg;

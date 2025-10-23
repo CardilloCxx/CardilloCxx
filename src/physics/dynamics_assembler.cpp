@@ -1,144 +1,144 @@
 
 #include "dynamics_assembler.hpp"
-#include "../collision/collision_manager.hpp"
-#include <algorithm>
+#include "../collision/collision_coal.hpp"
+
 
 namespace cardillo::physics {
 
+namespace {
+// Build a 6-DoF W row for a rigid body side with sign s (+1 for B, -1 for A)
+static inline MatrixXXr buildWRowRigid(const Vector3r& n_world,
+                                       const Vector3r& r_body,
+                                       const Vector3r& n_body,
+                                       real_t s) {
+    MatrixXXr w(1,6); w.setZero();
+    // Translational contribution: s * n
+    w(0,0) = s * n_world.x();
+    w(0,1) = s * n_world.y();
+    w(0,2) = s * n_world.z();
+    // Rotational contribution in body frame: r_body x (s * n_body)
+    const Vector3r t_body = r_body.cross(s * n_body);
+    w(0,3) = t_body.x();
+    w(0,4) = t_body.y();
+    w(0,5) = t_body.z();
+    return w;
+}
+
+// Build a 3-DoF W row for a point-mass side with sign s (+1 for B, -1 for A)
+static inline MatrixXXr buildWRowPoint(const Vector3r& n_world, real_t s) {
+    MatrixXXr w(1,3); w.setZero();
+    w(0,0) = s * n_world.x();
+    w(0,1) = s * n_world.y();
+    w(0,2) = s * n_world.z();
+    return w;
+}
+} // anonymous namespace
+
 void DynamicsAssembler::updateContactsFromSystem() {
-    cardillo::collision::CollisionManager mgr;
-    m_contacts = mgr.detectAll(m_sys);
-    m_contacts_dirty = true;
+    auto& mgr = const_cast<cardillo::PhysicsSystem&>(m_sys).collisionManager();
+    if (m_sys.isStructureDirty()) mgr.rebuild();
+    mgr.applyTransforms();
+    m_contacts = mgr.detectAll();
 }
 
 // ---------- Cached API (block-based) ----------
 
-const std::vector<VectorXr>& DynamicsAssembler::q() { return m_q; }
-const std::vector<VectorXr>& DynamicsAssembler::v() { return m_v; }
-const std::vector<VectorXr>& DynamicsAssembler::f() { return m_f; }
+const VectorXr& DynamicsAssembler::qVec() { return m_q_vec; }
+const VectorXr& DynamicsAssembler::vVec() { return m_v_vec; }
+const VectorXr& DynamicsAssembler::fVec() { return m_f_vec; }
 
-const std::vector<VectorXr>& DynamicsAssembler::vBlocks() { return m_v; }
+// Deprecated block-style accessors (temporary)
+const std::vector<VectorXr>& DynamicsAssembler::vBlocks() { return m_v_compat; }
 const std::vector<MatrixXXr>& DynamicsAssembler::MinvBlocks() { return m_Minv_blocks; }
-const std::vector<MatrixXXr>& DynamicsAssembler::WBlocks() { return m_W_blocks; }
-const std::pair<int,int>& DynamicsAssembler::WBlocksFromContact(index_t contact) { return m_W_from_contact[(size_t)contact]; }
-const std::vector<int>& DynamicsAssembler::WBlocksFromBody(index_t body) { return m_W_from_body[(size_t)body]; }
-
-void DynamicsAssembler::setContacts(std::vector<collision::Contact> contacts) {
-    m_contacts = std::move(contacts);
-    m_contacts_dirty = true;
-}
-
-void DynamicsAssembler::markContactsDirty() { m_contacts_dirty = true; }
+// (Legacy WBlocks accessors removed)
 
 // ---------- Rebuild helpers ----------
 
 void DynamicsAssembler::rebuildMass_() {
     const int Nb = m_sys.numBodies();
-    m_Mass_blocks.assign(Nb, MatrixXXr());
-    m_Minv_blocks.assign(Nb, MatrixXXr());
+    const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
+    m_Minv_diag = VectorXr::Zero(totalV);
+    m_Minv_blocks.assign((size_t)Nb, MatrixXXr()); // deprecated compatibility only
     const auto& reg = m_sys.ecs();
-    // Point masses
-    {
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_PointMassTag>();
-        for (auto [e, bi] : view.each()) {
-            (void)e;
-            const int b = bi.b; if (b < 0 || b >= Nb) continue;
-            m_Mass_blocks[(size_t)b] = m_sys.getMass(e);
-            m_Minv_blocks[(size_t)b] = m_sys.getMassInverse(e);
-        }
-    }
-    // Rigid bodies
-    {
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_RigidBodyTag>();
-        for (auto [e, bi] : view.each()) {
-            (void)e;
-            const int b = bi.b; if (b < 0 || b >= Nb) continue;
-            m_Mass_blocks[(size_t)b] = m_sys.getMass(e);
-            m_Minv_blocks[(size_t)b] = m_sys.getMassInverse(e);
-        }
+    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    for (auto [e, bi] : view.each()) {
+        const int b = bi.b; if (b < 0 || b >= Nb) continue;
+        MatrixXXr Minv = m_sys.getMassInverse(e);
+        m_Minv_blocks[(size_t)b] = Minv; // deprecated
+        const int off = m_body_vel_offsets[(size_t)b];
+        const int n = (int)Minv.rows();
+        for (int i = 0; i < n; ++i) m_Minv_diag[off + i] = Minv(i,i);
     }
 }
 
 void DynamicsAssembler::rebuildForces_() {
     const int Nb = m_sys.numBodies();
-    m_f.assign(Nb, VectorXr());
+    const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
+    m_f_vec = VectorXr::Zero(totalV);
+    m_v_compat.assign((size_t)Nb, VectorXr());
     const auto& reg = m_sys.ecs();
-    // Point masses
-    {
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_PointMassTag>();
-        for (auto [e, bi] : view.each()) {
-            const int b = bi.b; if (b >= 0 && b < Nb) m_f[(size_t)b] = m_sys.getForce(e);
-        }
-    }
-    // Rigid bodies
-    {
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_RigidBodyTag>();
-        for (auto [e, bi] : view.each()) {
-            const int b = bi.b; if (b >= 0 && b < Nb) m_f[(size_t)b] = m_sys.getForce(e);
+    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    for (auto [e, bi] : view.each()) {
+        const int b = bi.b; if (b >= 0 && b < Nb) {
+            const VectorXr fb = m_sys.getForce(e);
+            const int off = m_body_vel_offsets[(size_t)b];
+            const int n = (int)fb.size();
+            if (n > 0) std::copy(fb.data(), fb.data() + n, m_f_vec.data() + off);
         }
     }
 }
 
 void DynamicsAssembler::loadStateFromSystem() {
     const int Nb = m_sys.numBodies();
-    m_q.assign(Nb, VectorXr());
-    m_v.assign(Nb, VectorXr());
-    {
-        const auto& reg = m_sys.ecs();
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
-        for (auto [e, bi] : view.each()) {
-            const int b = bi.b;
-            if (b >= 0 && b < Nb) m_q[(size_t)b] = m_sys.getPosition(e);
-        }
-    }
-    {
-        const auto& reg = m_sys.ecs();
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
-        for (auto [e, bi] : view.each()) {
-            const int b = bi.b;
-            if (b >= 0 && b < Nb) m_v[(size_t)b] = m_sys.getVelocity(e);
+    const int totalQ = (m_body_pos_offsets.empty() ? 0 : m_body_pos_offsets.back());
+    const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
+    m_q_vec = VectorXr::Zero(totalQ);
+    m_v_vec = VectorXr::Zero(totalV);
+    m_v_compat.assign((size_t)Nb, VectorXr()); // deprecated compatibility only
+    const auto& reg = m_sys.ecs();
+    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    for (auto [e, bi] : view.each()) {
+        const int b = bi.b;
+        if (b >= 0 && b < Nb) {
+            const VectorXr qb = m_sys.getPosition(e);
+            const VectorXr vb = m_sys.getVelocity(e);
+            const int offQ = m_body_pos_offsets[(size_t)b];
+            const int nQ = (int)qb.size();
+            if (nQ > 0) std::copy(qb.data(), qb.data() + nQ, m_q_vec.data() + offQ);
+            const int offV = m_body_vel_offsets[(size_t)b];
+            const int nV = (int)vb.size();
+            if (nV > 0) std::copy(vb.data(), vb.data() + nV, m_v_vec.data() + offV);
+            m_v_compat[(size_t)b] = vb; // deprecated
         }
     }
 }
 
-void DynamicsAssembler::writeStateToSystem(const std::vector<VectorXr>& q, const std::vector<VectorXr>& v) {
+void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v) {
     const auto& reg = m_sys.ecs();
-    // Point masses: q size 3, v size 3
-    {
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_PointMassTag, PhysicsSystem::C_LinearVelocity3, PhysicsSystem::C_Position3>();
-        for (auto [e, bi, vel, x] : view.each()) {
-            (void)e;
-            const int b = bi.b;
-            if (b >= 0 && b < (int)q.size() && q[(size_t)b].size() >= 3) {
-                const VectorXr& qb = q[(size_t)b];
-                const_cast<PhysicsSystem::C_Position3&>(x).value = Vector3r(qb[0], qb[1], qb[2]);
+    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    for (auto [e, bi] : view.each()) {
+        const int b = bi.b;
+        if (b >= 0 && b < (int)m_body_pos_offsets.size()-1) {
+            const int offQ = m_body_pos_offsets[(size_t)b];
+            const int nQ = m_body_pos_offsets[(size_t)b+1] - offQ;
+            VectorXr qb = (nQ>0) ? q.segment(offQ, nQ) : VectorXr(0);
+            if (qb.size() >= 3 && reg.any_of<PhysicsSystem::C_Position3>(e)) {
+                const_cast<PhysicsSystem::C_Position3&>(reg.get<PhysicsSystem::C_Position3>(e)).value = Vector3r(qb[0], qb[1], qb[2]);
             }
-            if (b >= 0 && b < (int)v.size() && v[(size_t)b].size() >= 3) {
-                const VectorXr& vb = v[(size_t)b];
-                const_cast<PhysicsSystem::C_LinearVelocity3&>(vel).value = Vector3r(vb[0], vb[1], vb[2]);
+            if (qb.size() >= 7 && reg.any_of<PhysicsSystem::C_Orientation>(e)) {
+                Quaternion4r qn(qb[3], qb[4], qb[5], qb[6]); qn.normalize();
+                const_cast<PhysicsSystem::C_Orientation&>(reg.get<PhysicsSystem::C_Orientation>(e)).q = qn;
             }
         }
-    }
-    // Rigid bodies: q size 7 ([x(3), w, px, py, pz]), v size 6 ([v(3), omega_body(3)])
-    {
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_RigidBodyTag,
-                              PhysicsSystem::C_LinearVelocity3, PhysicsSystem::C_AngularVelocity3,
-                              PhysicsSystem::C_Position3, PhysicsSystem::C_Orientation>();
-        for (auto [e, bi, vlin, vang, x, ori] : view.each()) {
-            (void)e;
-            const int b = bi.b;
-            if (b >= 0 && b < (int)q.size() && q[(size_t)b].size() >= 7) {
-                const VectorXr& qb = q[(size_t)b];
-                Vector3r xn(qb[0], qb[1], qb[2]);
-                Quaternion4r qn(qb[3], qb[4], qb[5], qb[6]);
-                qn.normalize();
-                const_cast<PhysicsSystem::C_Position3&>(x).value = xn;
-                const_cast<PhysicsSystem::C_Orientation&>(ori).q = qn;
+        if (b >= 0 && b < (int)m_body_vel_offsets.size()-1) {
+            const int offV = m_body_vel_offsets[(size_t)b];
+            const int nV = m_body_vel_offsets[(size_t)b+1] - offV;
+            VectorXr vb = (nV>0) ? v.segment(offV, nV) : VectorXr(0);
+            if (vb.size() >= 3 && reg.any_of<PhysicsSystem::C_LinearVelocity3>(e)) {
+                const_cast<PhysicsSystem::C_LinearVelocity3&>(reg.get<PhysicsSystem::C_LinearVelocity3>(e)).value = Vector3r(vb[0], vb[1], vb[2]);
             }
-            if (b >= 0 && b < (int)v.size() && v[(size_t)b].size() >= 6) {
-                const VectorXr& vb = v[(size_t)b];
-                const_cast<PhysicsSystem::C_LinearVelocity3&>(vlin).value = Vector3r(vb[0], vb[1], vb[2]);
-                const_cast<PhysicsSystem::C_AngularVelocity3&>(vang).value = Vector3r(vb[3], vb[4], vb[5]);
+            if (vb.size() >= 6 && reg.any_of<PhysicsSystem::C_AngularVelocity3>(e)) {
+                const_cast<PhysicsSystem::C_AngularVelocity3&>(reg.get<PhysicsSystem::C_AngularVelocity3>(e)).value = Vector3r(vb[3], vb[4], vb[5]);
             }
         }
     }
@@ -147,8 +147,9 @@ void DynamicsAssembler::writeStateToSystem(const std::vector<VectorXr>& q, const
 
 void DynamicsAssembler::assignDofs() {
     auto& reg = const_cast<entt::registry&>(m_sys.ecs());
-    // Assign consecutive body indices to dynamic entities
+    // Assign consecutive body indices to dynamic entities and compute DOF sizes in one pass
     int nextBody = 0;
+    m_numQ = 0; m_numV = 0;
     auto view = reg.view<PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_Position3, PhysicsSystem::C_LinearVelocity3>();
     for (auto e : view) {
         entt::entity ent = static_cast<entt::entity>(e);
@@ -156,100 +157,117 @@ void DynamicsAssembler::assignDofs() {
             reg.emplace<PhysicsSystem::C_BodyIndex>(ent, PhysicsSystem::C_BodyIndex{nextBody});
             ++nextBody;
         }
-    }
-    // Update cached sizes; numQ/numV are now sums over per-entity DOFs (queried as needed)
-    m_numQ = 0; m_numV = 0;
-    for (auto e : view) {
-        m_numQ += (index_t)m_sys.getPosition(static_cast<entt::entity>(e)).size();
-        m_numV += (index_t)m_sys.getVelocity(static_cast<entt::entity>(e)).size();
+        m_numQ += (index_t)m_sys.getPosition(ent).size();
+        m_numV += (index_t)m_sys.getVelocity(ent).size();
     }
 }
 
 void DynamicsAssembler::rebuildW_() {
-    const int C = (int)m_contacts.size();
+    const int C_all = (int)m_contacts.size();
     const int Nb = m_sys.numBodies();
-    m_W_blocks.clear(); m_W_blocks.reserve((size_t)C * 2);
-    m_W_from_contact.clear(); m_W_from_contact.reserve((size_t)C);
-    m_W_from_body.assign((size_t)Nb, {});
-    m_W_block_to_body.clear(); m_W_block_to_body.reserve((size_t)C * 2);
-    m_W_block_to_contact.clear(); m_W_block_to_contact.reserve((size_t)C * 2);
-    m_contact_index_orig.clear(); m_contact_index_orig.reserve((size_t)C);
+    m_contact_index_orig.clear();
+    m_contact_index_orig.reserve((size_t)C_all);
+
+    // Prepare sparse triplets for W
+    std::vector<Eigen::Triplet<real_t>> trips;
+    trips.reserve((size_t)C_all * 36); // allow room for tangential rows when friction is enabled
 
     const auto& reg = m_sys.ecs();
-    int dynContactId = 0; // index into dynamic contacts (those with at least one dynamic body)
-    for (int i = 0; i < C; ++i) {
+    const bool frictionEnabled = m_sys.config().friction_enable;
+
+    int dynContactId = 0; // index into dynamic contacts (rows in W)
+    for (int i = 0; i < C_all; ++i) {
         const auto& c = m_contacts[i];
-        bool aDyn = reg.any_of<PhysicsSystem::C_BodyIndex>(c.a);
-        bool bDyn = reg.any_of<PhysicsSystem::C_BodyIndex>(c.b);
+        const bool aDyn = reg.any_of<PhysicsSystem::C_BodyIndex>(c.a);
+        const bool bDyn = reg.any_of<PhysicsSystem::C_BodyIndex>(c.b);
+        // Skip static-static contacts
+        if (!aDyn && !bDyn) continue;
 
-        // Skip pure static-static contacts for W assembly; they don't contribute to impulses
-        if (!aDyn && !bDyn) {
-            continue;
-        }
-
-        int idxA = -1;
-        if (aDyn) {
-            idxA = (int)m_W_blocks.size();
-            // Extend W row for rigid body A: [ -n, r_A x (-n) ] where r_A = p - x_A (world), torque term expressed in body frame.
-            // Justification: y = n·(v_B + ω_B×r_B − v_A − ω_A×r_A) =
-            //   (-n)·v_A  + (−(r_A×n))·ω_A   +   (+n)·v_B  + ((r_B×n))·ω_B
-            MatrixXXr row = c.wA;
-            if (reg.any_of<PhysicsSystem::C_RigidBodyTag>(c.a)) {
-                // Build 1x6 row
-                MatrixXXr w(1,6); w.setZero();
-                // translational part
-                w(0,0) = row(0,0); if (row.cols() > 1) w(0,1) = row(0,1); if (row.cols() > 2) w(0,2) = row(0,2);
-                // torque part for A using body-space values from contact: r_body × (−n_body)
-                Vector3r t_body = c.pointA_body.cross(-c.normalA_body);
-                w(0,3) = t_body.x(); w(0,4) = t_body.y(); w(0,5) = t_body.z();
-                row = w;
+        auto emitDirForSide = [&](const Vector3r& dir_world, const Vector3r& r_body, const Vector3r& dir_body,
+                                   entt::entity ent, bool dyn, real_t s, int rowId) {
+            if (!dyn) return;
+            const int b = reg.get<PhysicsSystem::C_BodyIndex>(ent).b;
+            if (b < 0 || b >= Nb) return;
+            const int col0 = m_body_vel_offsets[(size_t)b];
+            if (reg.any_of<PhysicsSystem::C_RigidBodyTag>(ent)) {
+                MatrixXXr w = buildWRowRigid(dir_world, r_body, dir_body, s);
+                // 6-DoF block
+                for (int j = 0; j < w.cols(); ++j) {
+                    real_t val = w(0,j);
+                    if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
+                }
+            } else {
+                MatrixXXr w = buildWRowPoint(dir_world, s);
+                // 3-DoF block
+                for (int j = 0; j < w.cols(); ++j) {
+                    real_t val = w(0,j);
+                    if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
+                }
             }
-            m_W_blocks.push_back(row);
-            m_W_block_to_body.push_back(reg.get<PhysicsSystem::C_BodyIndex>(c.a).b);
-            m_W_block_to_contact.push_back(dynContactId);
-            int b = reg.get<PhysicsSystem::C_BodyIndex>(c.a).b;
-            if (b >= 0 && b < Nb) m_W_from_body[(size_t)b].push_back(idxA);
-        }
+        };
 
-        int idxB = -1;
-        if (bDyn) {
-            idxB = (int)m_W_blocks.size();
-            MatrixXXr row = c.wB;
-            if (reg.any_of<PhysicsSystem::C_RigidBodyTag>(c.b)) {
-                MatrixXXr w(1,6); w.setZero();
-                w(0,0) = row(0,0); if (row.cols() > 1) w(0,1) = row(0,1); if (row.cols() > 2) w(0,2) = row(0,2);
-                // torque part for B using body-space values from contact: r_body × (n_body)
-                Vector3r t_body = c.pointB_body.cross(c.normalB_body);
-                w(0,3) = t_body.x(); w(0,4) = t_body.y(); w(0,5) = t_body.z();
-                row = w;
-            }
-            m_W_blocks.push_back(row);
-            m_W_block_to_body.push_back(reg.get<PhysicsSystem::C_BodyIndex>(c.b).b);
-            m_W_block_to_contact.push_back(dynContactId);
-            int b = reg.get<PhysicsSystem::C_BodyIndex>(c.b).b;
-            if (b >= 0 && b < Nb) m_W_from_body[(size_t)b].push_back(idxB);
-        }
-
-        m_W_from_contact.emplace_back(idxA, idxB);
+        // Row 0 for this contact: normal
+        const int rowN = dynContactId;
+        emitDirForSide(c.normal, c.pointA_body, c.normalA_body, c.a, aDyn, (real_t)-1, rowN);
+        emitDirForSide(c.normal, c.pointB_body, c.normalB_body, c.b, bDyn, (real_t)+1, rowN);
         m_contact_index_orig.push_back(i);
         ++dynContactId;
+
+        // Optional rows: two tangential directions if friction enabled and mu > 0
+        if (frictionEnabled && c.friction_mu > (real_t)0) {
+            const int rowT1 = dynContactId;
+            emitDirForSide(c.tangent1, c.pointA_body, c.tangent1A_body, c.a, aDyn, (real_t)-1, rowT1);
+            emitDirForSide(c.tangent1, c.pointB_body, c.tangent1B_body, c.b, bDyn, (real_t)+1, rowT1);
+            m_contact_index_orig.push_back(i);
+            ++dynContactId;
+
+            const int rowT2 = dynContactId;
+            emitDirForSide(c.tangent2, c.pointA_body, c.tangent2A_body, c.a, aDyn, (real_t)-1, rowT2);
+            emitDirForSide(c.tangent2, c.pointB_body, c.tangent2B_body, c.b, bDyn, (real_t)+1, rowT2);
+            m_contact_index_orig.push_back(i);
+            ++dynContactId;
+        }
     }
-    m_contacts_dirty = false;
+
+    // Build W as C_dyn x totalV
+    const int C_dyn = dynContactId;
+    const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
+    m_W_sparse.resize(C_dyn, totalV);
+    m_W_sparse.setFromTriplets(trips.begin(), trips.end());
+    m_W_sparse.makeCompressed();
 }
 
-void DynamicsAssembler::rebuildBlocks_() {
-    const int Nb = m_sys.numBodies();
-    if ((int)m_q.size() != Nb) m_q.assign(Nb, VectorXr());
-    if ((int)m_v.size() != Nb) m_v.assign(Nb, VectorXr());
-    if ((int)m_f.size() != Nb) m_f.assign(Nb, VectorXr());
-}
+void DynamicsAssembler::rebuildBlocks_() { /* removed in sparse/concat refactor */ }
 
 void DynamicsAssembler::refreshState() {
     bool structureChanged = false;
     if (m_sys.consumeStructureDirty()) {
         structureChanged = true;
         assignDofs();
-        rebuildBlocks_();
+        // Recompute body offsets from ECS sizes
+        const int Nb = m_sys.numBodies();
+        m_body_vel_offsets.assign((size_t)Nb + 1, 0);
+        m_body_pos_offsets.assign((size_t)Nb + 1, 0);
+        // First gather sizes per body index
+        std::vector<int> vSizes((size_t)Nb, 0), qSizes((size_t)Nb, 0);
+        const auto& reg = m_sys.ecs();
+        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+        for (auto [e, bi] : view.each()) {
+            const int b = bi.b; if (b < 0 || b >= Nb) continue;
+            vSizes[(size_t)b] = (int)m_sys.getVelocity(e).size();
+            qSizes[(size_t)b] = (int)m_sys.getPosition(e).size();
+        }
+        // Then compute prefix sums in ascending body index order
+        int offV = 0, offQ = 0;
+        for (int b = 0; b < Nb; ++b) {
+            m_body_vel_offsets[(size_t)b] = offV;
+            m_body_pos_offsets[(size_t)b] = offQ;
+            offV += vSizes[(size_t)b];
+            offQ += qSizes[(size_t)b];
+        }
+        m_body_vel_offsets[(size_t)Nb] = offV;
+        m_body_pos_offsets[(size_t)Nb] = offQ;
+        m_numV = offV; m_numQ = offQ;
         rebuildMass_();
     }
 

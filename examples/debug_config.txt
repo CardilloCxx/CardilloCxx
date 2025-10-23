@@ -1,7 +1,7 @@
 ###############################################
 # Simulation settings
 ###############################################
-sim.T=80.0           # total simulation time (seconds)
+sim.T=2e-3           # total simulation time (seconds)
 sim.dt=1e-3         # time step (seconds)
 sim.gravity=0 0 -9.81  # gravity vector gx gy gz (space- or comma-separated). Example: sim.gravity=0,0,-9.81
 

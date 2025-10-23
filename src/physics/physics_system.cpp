@@ -1,4 +1,5 @@
 #include "physics_system.hpp"
+#include "../collision/collision_coal.hpp"
 
 namespace cardillo {
 
@@ -20,6 +21,12 @@ PhysicsSystem::PhysicsSystem() {
     m_gravity = Vector3r(0, 0, -9.81);
 }
 
+PhysicsSystem::~PhysicsSystem() = default;
+
+PhysicsSystem::PhysicsSystem(const config::Config& cfg) : PhysicsSystem() {
+    setConfig(cfg);
+}
+
 void PhysicsSystem::setGravity(const Vector3r& g) { m_gravity = g; m_forces_dirty = true; }
 
 // Entity creation
@@ -34,6 +41,8 @@ index_t PhysicsSystem::addPointMass(real_t mass, const Vector3r& x0, const Vecto
     m_reg.emplace<C_Position3>(e, C_Position3{x0});
     m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{v0});
     m_reg.emplace<C_Radius>(e, C_Radius{radius});
+    // Default friction coefficient from config unless already set
+    if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
     m_structure_dirty = true;
     return static_cast<index_t>(entt::to_integral(e));
 }
@@ -52,6 +61,13 @@ index_t PhysicsSystem::addObstacleBody(const Plane& p) {
     auto e = createRigidVisualEntity_(p.center);
     m_reg.emplace<C_PlaneVisualTag>(e);
     m_reg.emplace<C_Plane>(e, C_Plane{p.normal, p.up, p.sizeX, p.sizeY});
+    // Rigid-body default kinematics
+    m_reg.emplace<C_Orientation>(e, C_Orientation{Quaternion4r::Identity()});
+    m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{Vector3r::Zero()});
+    m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{Vector3r::Zero()});
+    // Attach unified rigid-body plane tag
+    m_reg.emplace<C_RB_Plane>(e, C_RB_Plane{p.normal, p.up, p.sizeX, p.sizeY});
+    if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
     return static_cast<index_t>(entt::to_integral(e));
 }
 
@@ -60,6 +76,13 @@ index_t PhysicsSystem::addObstacleBody(const Cube& c) {
     m_reg.emplace<C_CubeVisualTag>(e);
     m_reg.emplace<C_Cube>(e, C_Cube{c.halfExtents});
     m_reg.emplace<C_Orientation>(e, C_Orientation{c.q});
+    // Rigid-body default vels
+    m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{Vector3r::Zero()});
+    m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{Vector3r::Zero()});
+    // Attach unified rigid-body cube tag
+    m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{c.halfExtents});
+    // Default friction for obstacles as well
+    if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
     return static_cast<index_t>(entt::to_integral(e));
 }
 
@@ -82,6 +105,10 @@ index_t PhysicsSystem::addRigidBody(real_t mass,
     m_reg.emplace<C_Mass>(e, C_Mass{mass});
     m_reg.emplace<C_CubeVisualTag>(e);
     m_reg.emplace<C_Cube>(e, C_Cube{shape.halfExtents});
+    // Unified rigid-body type tag
+    m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{shape.halfExtents});
+    // Default friction coefficient (> 0) unless overridden later
+    if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
     m_structure_dirty = true;
     return static_cast<index_t>(entt::to_integral(e));
 }
@@ -207,6 +234,26 @@ int PhysicsSystem::numBodies() const {
     auto view = m_reg.view<C_BodyIndex, C_PhysicsObject>();
     for (auto e : view) (void)e, ++count;
     return count;
+}
+
+// ---------- Subsystems ----------
+
+cardillo::collision::CollisionCoal& PhysicsSystem::collisionManager() {
+    if (!m_collision_mgr) {
+        m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
+        m_collision_mgr->registerSystem(this);
+    }
+    return *m_collision_mgr;
+}
+
+const cardillo::collision::CollisionCoal& PhysicsSystem::collisionManager() const {
+    // const-correct lazy init: cast away const for creation then return const ref
+    if (!m_collision_mgr) {
+        auto* self = const_cast<PhysicsSystem*>(this);
+        self->m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
+        self->m_collision_mgr->registerSystem(self);
+    }
+    return *m_collision_mgr;
 }
 
 } // namespace cardillo

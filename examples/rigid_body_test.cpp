@@ -1,7 +1,6 @@
 #include "cardillo.hpp"
 #include "io/vtk_writer.hpp"
 #include "solver/moreau.hpp"
-#include "collision/collision_manager.hpp"
 #include <mpi.h>
 #include <iostream>
 #include <iomanip>
@@ -9,152 +8,270 @@
 
 using namespace cardillo;
 
+namespace {
+// Utility: compute mass from half extents and a density (with a small floor)
+inline real_t massFromDensity(const Vector3r& halfExtents, real_t density, real_t minMass = (real_t)0.05) {
+    const real_t volume = (real_t)8.0 * halfExtents.x() * halfExtents.y() * halfExtents.z();
+    return std::max(minMass, density * volume);
+}
+
+// Ground plate as a static cube obstacle
+void spawnGround(PhysicsSystem& sys, real_t halfThickness = (real_t)0.5, real_t halfSize = (real_t)15.0, real_t zTop = (real_t)0.0) {
+    PhysicsSystem::Cube ground;
+    ground.center = Vector3r(0.0, 0.0, zTop - halfThickness);
+    ground.halfExtents = Vector3r(halfSize, halfSize, halfThickness);
+    ground.q = Quaternion4r::Identity();
+    sys.addObstacleBody(ground);
+}
+
+// Classic Jenga tower: layers of rectangular blocks; each layer rotated 90 degrees relative to the previous.
+// Parameters:
+//  - layers: number of layers in Z
+//  - blockHalf: half extents of each block (in its local frame)
+//  - gap: small spacing between adjacent blocks in a layer
+//  - density: for mass computation
+//  - baseCenter: center of the bottom layer (z will be set to blockHalf.z())
+//  - blocksPerLayer: typically 3 for Jenga
+//  - extraLayerGap: additional vertical gap beyond block height
+void spawnJengaTower(
+    PhysicsSystem& sys,
+    int layers,
+    const Vector3r& blockHalf,
+    real_t gap,
+    real_t density,
+    const Vector3r& baseCenter,
+    int blocksPerLayer = 3,
+    real_t extraLayerGap = (real_t)0.0
+) {
+    if (layers <= 0 || blocksPerLayer <= 0) return;
+
+    const real_t fullX = (real_t)2.0 * blockHalf.x(); // block length (long)
+    const real_t fullY = (real_t)2.0 * blockHalf.y(); // block width (short)
+    const real_t fullZ = (real_t)2.0 * blockHalf.z(); // block height
+
+    // orientation: identity => block local x -> world x (length along X)
+    // 90 deg about Z => block local x -> world y (length along Y)
+    const Quaternion4r q0 = Quaternion4r::Identity();
+    const Quaternion4r q90 = Quaternion4r(Eigen::AngleAxis<real_t>((real_t)M_PI_2, Vector3r::UnitZ()));
+
+    // base z (bottom layer sits centered on baseCenter.z())
+    const real_t baseZ = baseCenter.z() + blockHalf.z();
+
+    for (int layer = 0; layer < layers; ++layer) {
+        const bool alongX = (layer % 2 == 0); // even layers: long axis along X
+        const Quaternion4r q = alongX ? q0 : q90;
+
+        // We always place blocks side-by-side across the *width* (fullY).
+        const real_t rowWidth = blocksPerLayer * fullY + (blocksPerLayer - 1) * gap;
+        // start offset is the center of the first block relative to baseCenter
+        const real_t firstOffset = -rowWidth * (real_t)0.5 + fullY * (real_t)0.5;
+
+        const real_t z = baseZ + (real_t)layer * (fullZ + extraLayerGap);
+
+        for (int i = 0; i < blocksPerLayer; ++i) {
+            // compute block center
+            Vector3r c = baseCenter;
+            const real_t step = fullY + gap;
+            const real_t offset = firstOffset + (real_t)i * step;
+
+            if (alongX) {
+                // block length along X, place blocks along Y (offset modifies Y)
+                c = Vector3r(baseCenter.x(), baseCenter.y() + offset, z);
+            } else {
+                // block length along Y (rotated), place blocks along X (offset modifies X)
+                c = Vector3r(baseCenter.x() + offset, baseCenter.y(), z);
+            }
+
+            PhysicsSystem::Cube blk;
+            blk.halfExtents = blockHalf;
+            blk.q = q;
+
+            const real_t m = massFromDensity(blockHalf, density);
+            sys.addRigidBody(m, c, blk.q, Vector3r::Zero(), Vector3r::Zero(), blk);
+        }
+    }
+}
+
+
+// Simple high-speed sphere "bullet"
+void spawnBulletSphere(PhysicsSystem& sys, real_t radius, real_t density, const Vector3r& startPos, const Vector3r& velocity, real_t massScale = (real_t)1.0) {
+    const real_t volume = (real_t)(4.0/3.0) * (real_t)M_PI * radius * radius * radius;
+    const real_t m = massScale * std::max((real_t)0.05, density * volume);
+    sys.addPointMass(m, startPos, velocity, radius);
+}
+
+// Domino tower (4-layer repeating motif), generalizable for even N x N base.
+// Dominos stand on their side: long axis in-plane, thickness in-plane, height upright (Z).
+void spawnDominoTowerStructure(
+    PhysicsSystem& sys,
+    int layers,
+    int N,
+    const Vector3r& half,
+    real_t density,
+    const Vector3r& baseCenter,
+    real_t gapLong = (real_t)0.002,
+    real_t extraLayerGap = (real_t)0.0
+) {
+    if (layers <= 0) return;
+    const real_t L = (real_t)2.0 * half.x(); // long edge (in-plane)
+    const real_t W = (real_t)2.0 * half.y(); // thickness (in-plane)
+    const real_t H = (real_t)2.0 * half.z(); // height (upright)
+    const real_t Offset = (real_t) 0.3 * W;
+
+    // Grid spacing is domino length minus thickness, per specification
+    const real_t s = std::max<real_t>((real_t)1e-6, L - (W - Offset));
+    const int Ncells = std::max(2, (N / 2) * 2); // ensure even
+
+    // A lambda function that places a domino between (i,j,k) and (i, j+1, k) or (i+1, j, k)
+    auto placeDomino = [&](int i, int j, int k, bool alongY) {
+        Vector3r c = baseCenter;
+        // compute position offsets
+        const real_t offsetX = ((real_t)i - (real_t)(Ncells - 1) * (real_t)0.5) * s - (0.5 * Offset) * alongY;
+        const real_t offsetY = ((real_t)j - (real_t)(Ncells - 1) * (real_t)0.5) * s - (0.5 * Offset) * !alongY;
+        c.x() += offsetX;
+        c.y() += offsetY;
+        const real_t z = baseCenter.z() + half.z() + (real_t)k * ( (real_t)2.0 * half.z() + extraLayerGap );
+        c.z() = z;  
+        PhysicsSystem::Cube domino;
+        domino.halfExtents = half;
+        if (alongY) {
+            // rotate 90 deg about Z to align long axis along Y
+            domino.q = Quaternion4r(Eigen::AngleAxis<real_t>((real_t)M_PI_2, Vector3r::UnitZ()));
+            c.x() -= (L/2.0 - W/2.0);
+            c.y() += (L/2.0 - W/2.0);
+        } else {
+            domino.q = Quaternion4r::Identity();
+        }
+        const real_t m = massFromDensity(half, density);
+        Vector3r vel = Vector3r::Zero();
+        // Give the domino in the 4th layer from the top, in the middle of y, in the most positive x a nudge
+        if (i == Ncells -1 && (j == Ncells /2 || j == Ncells /2 - 1) && k == layers -4) {
+            vel = Vector3r(4.0, 0.0, 1.0) * 2;
+        }
+        sys.addRigidBody(m, c, domino.q, vel, Vector3r::Zero(), domino);
+
+    };
+
+    // Place layers 
+    for (int layer = 0; layer < layers; ++layer) {
+        const int off = 2;
+        const int k = layer;
+        // Each layer is a grid of dominos
+        if((layer + off) % 4 == 0) 
+        {
+            // place all parrallel to x from (i, j) to (i, j+1) and (i, j+2) to (i, j+3) and so on
+            for (int i = 0; i < Ncells; ++i) {
+                for (int j = 0; j < Ncells; j +=2) {
+                    placeDomino(i, j, k, true);
+                }
+            }
+        }else if ((layer + off) % 4 == 1)
+        {
+            // First place parralel along y from (i, j) to (i+1, j) and (i+2, j) to (i+3, j) and so on at bottom and top only:
+            for(int i = 0; i < Ncells; i +=2)
+            {
+                placeDomino(i, 0, k, false);
+                placeDomino(i, Ncells -1, k, false);
+            }
+            // Then place parralel along x along at left and right only:
+            for(int j = 1; j < Ncells -1; j +=2)
+            {
+                placeDomino(0, j, k, true);
+                placeDomino(Ncells -1, j, k, true);
+            }
+            // now we fill the middle parralel to y from (i+1, j+1) to (i+2, j+1) and so on
+            for(int i =1; i < Ncells -1; i +=2)
+            {
+                for(int j =1; j < Ncells -1; j +=1)
+                {
+                    placeDomino(i, j, k, false);
+                }
+            }
+        }else if ((layer + off) % 4 == 2)
+        {
+            // place parallel to x left and right only:
+            for(int j = 0; j < Ncells; j +=2)
+            {
+                placeDomino(0, j, k, true);
+                placeDomino(Ncells -1, j, k, true);
+            }
+            // place parallel to y top and bottom only:
+            for(int i = 1; i < Ncells -1; i +=2)
+            {
+                placeDomino(i, 0, k, false);
+                placeDomino(i, Ncells -1, k, false);
+            }
+            // now fill the middle
+            for(int i =1; i < Ncells -1; i +=1)
+            {
+                for(int j =1; j < Ncells -1; j +=2)
+                {
+                    placeDomino(i, j, k, true);
+                }
+            }
+        }else if ((layer + off) % 4 == 3)
+        {
+            for(int i = 0; i < Ncells; i +=2)
+            {
+               for(int j = 0; j < Ncells; j ++)
+               {
+                     placeDomino(i, j, k, false);
+               }
+            }
+        }
+    }
+}
+} // namespace
+
 int main(int argc, char** argv) {
     MPI_Init(nullptr, nullptr);
     int worldRank = 0, worldSize = 1;
     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
     MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
 
-    PhysicsSystem sys;
-    sys.setGravity(Vector3r(0,0,-9.81));
-
-    // Ground plate as a static cube obstacle
-    {
-        PhysicsSystem::Cube ground;
-        ground.center = Vector3r(0.0, 0.0, -0.5);
-        ground.halfExtents = Vector3r(15.0, 15.0, 0.5); // thickness 0.5
-        ground.q = Quaternion4r::Identity();
-        sys.addObstacleBody(ground);
-    }
-
-    // // Block laying on the ground
-    // {
-    //     PhysicsSystem::Cube block;
-    //     block.center = Vector3r(0.0, 0.0, 0.24);
-    //     block.halfExtents = Vector3r(1.0, 1.0, 0.25); // thickness 0.25
-    //     Eigen::AngleAxis<real_t> rotAngleAxis( (real_t)(0.5 * M_PI / 180.0), Vector3r::UnitX() );
-    //     block.q = Quaternion4r(rotAngleAxis);
-    //     sys.addObstacleBody(block);
-    // }
-
-    // 2D pyramid stack of flat rectangular boxes (lying on the ground), with spacing
-    // Layout (top to bottom), centered around x=0:
-    //             [####]
-    //        [####]   [####]
-    //    [####]   [####]   [####]
-    // [####]   [####]   [####]   [####]
-//     {
-//         // Dimensions (full extents) of each box
-//         const real_t boxLenX = (real_t)0.6;  // length along X
-//         const real_t boxLenY = (real_t)0.2;  // depth along Y (into page)
-//         const real_t boxLenZ = (real_t)0.1;  // thickness along Z (height)
-//         const Vector3r half(boxLenX*(real_t)0.5, boxLenY*(real_t)0.5, boxLenZ*(real_t)0.5);
-// 
-//         // Spacing between boxes in the same row (gap along X)
-//         const real_t gapX = (real_t)0.3;
-//         // Vertical spacing between rows (additional to box height)
-//         const real_t gapZ = (real_t)0.01;
-//         // Base row count
-//         const int baseCount = 10;
-//         // Density for mass, or choose a fixed mass
-//         const real_t density = (real_t)60.0;
-// 
-//         auto boxMass = [&](const Vector3r& he){
-//             const real_t volume = (real_t)8.0 * he.x() * he.y() * he.z(); // full extents = 2*he
-//             return std::max((real_t)0.05, density * volume);
-//         };
-// 
-//         // Compute base row starting Z so that bottom boxes rest on ground (ground top at z=0)
-//         const real_t baseZ = half.z();
-// 
-//         // Build rows from bottom (row=0 has baseCount) to top (row=baseCount-1 has 1)
-//         for (int row = 0; row < baseCount; ++row) {
-//             int count = baseCount - row;
-// 
-//             // Total width of the row including gaps between boxes
-//             const real_t rowWidth = (real_t)count * boxLenX + (real_t)(count - 1) * gapX;
-//             // Leftmost X so that the row is centered around x=0
-//             const real_t xLeft = -(real_t)0.5 * rowWidth + (real_t)0.5 * boxLenX;
-// 
-//             // Z position for this row
-//             const real_t z = baseZ + (real_t)row * (boxLenZ + gapZ);
-// 
-//             for (int i = 0; i < count; ++i) {
-//                 const real_t x = xLeft + (real_t)i * (boxLenX + gapX);
-//                 const real_t y = (real_t)0.0; // centered along Y
-// 
-//                 PhysicsSystem::Cube cube;
-//                 cube.halfExtents = half; // flat rectangle
-//                 cube.q = Quaternion4r::Identity(); // lying flat on ground
-// 
-//                 const Vector3r center(x, y, z);
-//                 const real_t m = boxMass(half);
-//                 sys.addRigidBody(m, center, cube.q, Vector3r::Zero(), Vector3r::Zero(), cube);
-//             }
-//         }
-//     }
-
-//     // Domino setup: a chain of upright OBB dominoes with increasing size, triggered by a moving sphere
-    const int N = 36;
-    const real_t h0 = (real_t)0.1;  // initial height
-    const real_t dh = (real_t)1.1; // growth per domino (stronger scaling)
-    const real_t aspectW = (real_t)0.45; // width ~45% of height
-    const real_t aspectT = (real_t)0.10; // thickness ~10% of height (thin along chain)
-    const real_t gap = (real_t)0.015;    // spacing gap between dominoes
-    const real_t dens = (real_t)600.0;   // density for mass scaling
-
-    // Build dominoes left-to-right along +X with center-to-center spacing that accounts for width growth
-    real_t xCursor = -1.5; // start left of origin
-    real_t prevHalfW = 0.0;
-    std::vector<Vector3r> dominoCenters; dominoCenters.reserve(N);
-    for (int i = 0; i < N; ++i) {
-        real_t h = h0 * pow((real_t)dh, (real_t)i); // nonlinear height growth
-        real_t w = aspectW * h;                   // full width (X)
-        real_t t = aspectT * h;                   // full thickness (Y)
-        Vector3r he(w * 0.5, t * 0.5, h * 0.5);   // half extents
-        // spacing from previous: sum of half-widths + gap
-        if (i == 0) {
-            xCursor = -1.5 + he.x();
-        } else {
-            xCursor += prevHalfW + he.x() + gap;
-        }
-        prevHalfW = he.x();
-
-    PhysicsSystem::Cube dom; dom.halfExtents = he;
-    // Rotate 90 degrees around Z so the thin thickness (local Y) aligns with world X (chain direction)
-    dom.q = Eigen::AngleAxis<real_t>((real_t)M_PI_2, Vector3r::UnitZ());
-        Vector3r center(xCursor, 0.0, he.z());
-        dominoCenters.push_back(center);
-        // mass proportional to volume (volume = 8*he.x*he.y*he.z)
-        real_t volume = (real_t)8.0 * he.x() * he.y() * he.z();
-        real_t mass = std::max((real_t)0.1, dens * volume);
-        sys.addRigidBody(mass, center, dom.q, Vector3r::Zero(), Vector3r::Zero(), dom);
-    }
-
-    // Rolling sphere to kick the first domino (moves along +X toward the first domino)
-    {
-        const real_t r = (real_t)0.06;
-        const real_t vx = (real_t)2.0;
-        Vector3r firstC = dominoCenters.empty() ? Vector3r(0,0,0) : dominoCenters.front();
-        Vector3r sPos(firstC.x() - (real_t)0.55, 0.0, r); // start near the first domino
-        Vector3r sVel(vx, 0.0, 0.0);
-        const real_t m = 0.1 * dens * (4.0/3.0) * M_PI * r * r * r;
-        sys.addPointMass(m, sPos, sVel, r);
-    }
-
-
-
     // Load config and wire into solver and writer
     cardillo::config::Config cfg = (argc > 1)
         ? cardillo::config::ConfigReader::fromFile(argv[1])
         : cardillo::config::Config{}; // defaults from header
-    cardillo::solver::MoreauSolver solver(sys, cfg);
+    
+    if (argc == 0 && worldRank == 0) std::cout << "No config file provided, using defaults." << std::endl;
+    
+    // Initialize physics system with config (includes gravity, friction, etc.)
+    PhysicsSystem sys(cfg);
+
+    // Scene setup
+    spawnGround(sys, /*halfThickness*/ (real_t)0.5, /*halfSize*/ (real_t)15.0, /*zTop*/ (real_t)0.0);
+
+    // Build a domino tower near the origin (4x4 base), no bullet
+    {
+        // Domino dims: x=length/2, y=thickness/2, z=height/2
+        const Vector3r dominoHalf((real_t)0.048, (real_t)0.0075, (real_t)0.024); // length 8cm, thickness 1.5cm, height 4cm
+        const real_t density = (real_t)800.0;
+        const int layers = 51;  // 27 51
+        const int gridN = 32;   // 16 32
+        const Vector3r baseCenter(0.0, 0.0, 0.0);
+        const real_t gapLong = (real_t)0.004; // small longitudinal spacing
+        const real_t extraLayerGap = (real_t)-0.0001;
+        spawnDominoTowerStructure(sys, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap);
+    }
+// 
+//     // Bullet sphere to hit the tower at a corner 
+//     {
+//         const real_t radius = (real_t)0.025;
+//         const real_t density = (real_t)500.0; 
+//         const Vector3r startPos(-0.5, -0.5, radius);
+//         const Vector3r velocity(3.0, 3.0, 0.0); // towards tower center
+//         spawnBulletSphere(sys, radius, density, startPos, velocity, (real_t)2.0);
+//     }
+
+    // Setup Moreau solver
+    cardillo::solver::MoreauSolver solver(sys);
 
     // Writer (rank 0)
     std::unique_ptr<cardillo::io::VtkWriter> writer;
     if (worldRank == 0) {
         writer = std::make_unique<cardillo::io::VtkWriter>("vtk_out", "rigid", cfg.output_interval_steps);
-        writer->enableContactsOutput(true, "rigid_contacts");
+        // writer->enableContactsOutput(true, "rigid_contacts");
     }
 
     real_t t = 0.0;

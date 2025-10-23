@@ -1,5 +1,5 @@
 #include "vtk_writer.hpp"
-#include "../collision/collision_manager.hpp"
+#include "../collision/collision_coal.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -44,20 +44,25 @@ void VtkWriter::maybeWrite(int step, real_t time, const cardillo::PhysicsSystem&
 
 void VtkWriter::write(int step, real_t time, const cardillo::PhysicsSystem& sys)
 {
-    std::cout << "VtkWriter: writing step " << step << " at time " << time << std::endl;
-
     Collected data = collect(sys);
     writePointsOnly(step, time, data);
     writeGeometryOnly(step, time, data);
-
     if (m_writeContacts) {
-        cardillo::collision::CollisionManager mgr;
-        auto contacts = mgr.detectAll(sys);
-        writeContacts(step, contacts);
+        try {
+                auto& mgr = const_cast<cardillo::PhysicsSystem&>(sys).collisionManager();
+                if (sys.isStructureDirty()) mgr.rebuild();
+                mgr.applyTransforms();
+                auto contacts = mgr.detectAll();
+            const bool writeBody = sys.config().output_contacts_body_vectors;
+            writeContacts(step, contacts, writeBody);
+        } catch (...) {
+            // skip if not available
+        }
     }
 }
 
-VtkWriter::Collected VtkWriter::collect(const cardillo::PhysicsSystem& sys) const {
+VtkWriter::Collected VtkWriter::collect(const cardillo::PhysicsSystem& sys) const
+{
     Collected out;
     const auto& reg = sys.ecs();
     // Points: visual points with mass and velocity
@@ -88,7 +93,6 @@ VtkWriter::Collected VtkWriter::collect(const cardillo::PhysicsSystem& sys) cons
     }
     // Planes: project ECS plane component to public Plane struct
     auto vplanes = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                            cardillo::PhysicsSystem::C_PlaneVisualTag,
                             cardillo::PhysicsSystem::C_Position3,
                             cardillo::PhysicsSystem::C_Plane>();
     for (auto [e, pos, pl] : vplanes.each()) {
@@ -98,7 +102,6 @@ VtkWriter::Collected VtkWriter::collect(const cardillo::PhysicsSystem& sys) cons
     }
     // Cubes (visualized rigid bodies or obstacles)
     auto vcubes = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                           cardillo::PhysicsSystem::C_CubeVisualTag,
                            cardillo::PhysicsSystem::C_Position3,
                            cardillo::PhysicsSystem::C_Cube,
                            cardillo::PhysicsSystem::C_Orientation>();
@@ -369,7 +372,7 @@ void VtkWriter::writeGeometryOnly(int step, real_t time, const Collected& data) 
     out.close();
 }
 
-void VtkWriter::writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts) const {
+void VtkWriter::writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const {
     if (!m_writeContacts) return;
     if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
     const std::string path = buildPath(m_contactsBase, step);
@@ -397,31 +400,68 @@ void VtkWriter::writeContacts(int step, const std::vector<cardillo::collision::C
             << static_cast<float>(c.normal.y()) << ' '
             << static_cast<float>(c.normal.z()) << '\n';
     }
-    // Body-space normals
-    out << "VECTORS normalA_body float\n";
+    // World-space tangents
+    out << "VECTORS tangent1 float\n";
     for (const auto& c : contacts) {
-        out << static_cast<float>(c.normalA_body.x()) << ' '
-            << static_cast<float>(c.normalA_body.y()) << ' '
-            << static_cast<float>(c.normalA_body.z()) << '\n';
+        out << static_cast<float>(c.tangent1.x()) << ' '
+            << static_cast<float>(c.tangent1.y()) << ' '
+            << static_cast<float>(c.tangent1.z()) << '\n';
     }
-    out << "VECTORS normalB_body float\n";
+    out << "VECTORS tangent2 float\n";
     for (const auto& c : contacts) {
-        out << static_cast<float>(c.normalB_body.x()) << ' '
-            << static_cast<float>(c.normalB_body.y()) << ' '
-            << static_cast<float>(c.normalB_body.z()) << '\n';
+        out << static_cast<float>(c.tangent2.x()) << ' '
+            << static_cast<float>(c.tangent2.y()) << ' '
+            << static_cast<float>(c.tangent2.z()) << '\n';
     }
-    // Body-space contact points (as vectors for visualization)
-    out << "VECTORS pointA_body float\n";
-    for (const auto& c : contacts) {
-        out << static_cast<float>(c.pointA_body.x()) << ' '
-            << static_cast<float>(c.pointA_body.y()) << ' '
-            << static_cast<float>(c.pointA_body.z()) << '\n';
-    }
-    out << "VECTORS pointB_body float\n";
-    for (const auto& c : contacts) {
-        out << static_cast<float>(c.pointB_body.x()) << ' '
-            << static_cast<float>(c.pointB_body.y()) << ' '
-            << static_cast<float>(c.pointB_body.z()) << '\n';
+    if (writeBodyVectors) {
+        out << "VECTORS normalA_body float\n";
+        for (const auto& c : contacts) {
+            out << static_cast<float>(c.normalA_body.x()) << ' '
+                << static_cast<float>(c.normalA_body.y()) << ' '
+                << static_cast<float>(c.normalA_body.z()) << '\n';
+        }
+        out << "VECTORS normalB_body float\n";
+        for (const auto& c : contacts) {
+            out << static_cast<float>(c.normalB_body.x()) << ' '
+                << static_cast<float>(c.normalB_body.y()) << ' '
+                << static_cast<float>(c.normalB_body.z()) << '\n';
+        }
+        out << "VECTORS pointA_body float\n";
+        for (const auto& c : contacts) {
+            out << static_cast<float>(c.pointA_body.x()) << ' '
+                << static_cast<float>(c.pointA_body.y()) << ' '
+                << static_cast<float>(c.pointA_body.z()) << '\n';
+        }
+        out << "VECTORS pointB_body float\n";
+        for (const auto& c : contacts) {
+            out << static_cast<float>(c.pointB_body.x()) << ' '
+                << static_cast<float>(c.pointB_body.y()) << ' '
+                << static_cast<float>(c.pointB_body.z()) << '\n';
+        }
+        out << "VECTORS tangent1A_body float\n";
+        for (const auto& c : contacts) {
+            out << static_cast<float>(c.tangent1A_body.x()) << ' '
+                << static_cast<float>(c.tangent1A_body.y()) << ' '
+                << static_cast<float>(c.tangent1A_body.z()) << '\n';
+        }
+        out << "VECTORS tangent2A_body float\n";
+        for (const auto& c : contacts) {
+            out << static_cast<float>(c.tangent2A_body.x()) << ' '
+                << static_cast<float>(c.tangent2A_body.y()) << ' '
+                << static_cast<float>(c.tangent2A_body.z()) << '\n';
+        }
+        out << "VECTORS tangent1B_body float\n";
+        for (const auto& c : contacts) {
+            out << static_cast<float>(c.tangent1B_body.x()) << ' '
+                << static_cast<float>(c.tangent1B_body.y()) << ' '
+                << static_cast<float>(c.tangent1B_body.z()) << '\n';
+        }
+        out << "VECTORS tangent2B_body float\n";
+        for (const auto& c : contacts) {
+            out << static_cast<float>(c.tangent2B_body.x()) << ' '
+                << static_cast<float>(c.tangent2B_body.y()) << ' '
+                << static_cast<float>(c.tangent2B_body.z()) << '\n';
+        }
     }
     out << "SCALARS penetration float 1\nLOOKUP_TABLE default\n";
     for (const auto& c : contacts) out << static_cast<float>(c.penetration) << '\n';
@@ -429,6 +469,12 @@ void VtkWriter::writeContacts(int step, const std::vector<cardillo::collision::C
     for (const auto& c : contacts) out << static_cast<int>(entt::to_integral(c.a)) << '\n';
     out << "SCALARS id_b int 1\nLOOKUP_TABLE default\n";
     for (const auto& c : contacts) out << static_cast<int>(entt::to_integral(c.b)) << '\n';
+    // Per-contact combined friction coefficient
+    out << "SCALARS friction_mu float 1\nLOOKUP_TABLE default\n";
+    for (const auto& c : contacts) out << static_cast<float>(c.friction_mu) << '\n';
+    // Matched flag: 1 if this contact was matched to previous frame, else 0
+    out << "SCALARS matched int 1\nLOOKUP_TABLE default\n";
+    for (const auto& c : contacts) out << ((c.prev_global_out_index >= 0) ? 1 : 0) << '\n';
     out.close();
 }
 

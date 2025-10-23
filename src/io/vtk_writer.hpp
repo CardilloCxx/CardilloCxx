@@ -67,7 +67,7 @@ private:
     void writePolygons(std::ofstream& out, const Collected& data) const;
     void writePointData(std::ofstream& out, const Collected& data) const;
     
-    void writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts) const;
+    void writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const;
 
 
     // Split-output helpers

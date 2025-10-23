@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 #include <entt/entt.hpp>
 #include "../misc/types.hpp"
 #include "../physics/physics_system.hpp"
@@ -13,6 +14,10 @@ struct Contact {
     entt::entity b;       // entity id of second colliding object
     Vector3r point;       // contact point (on surface or midpoint between)
     Vector3r normal;      // normal pointing from a to b
+    // An orthonormal tangent frame spanning the contact plane (world space)
+    // The pair (tangent1, tangent2, normal) forms a right-handed ONB.
+    Vector3r tangent1;    // first tangent (world)
+    Vector3r tangent2;    // second tangent (world)
     // Body-space contact info (expressed in each body's local frame)
     // For rigid bodies: normal_body = R^T * normal_world, point_body = R^T * (point_world - center_world)
     // For point masses: identical to world (R = I, center at origin)
@@ -20,10 +25,44 @@ struct Contact {
     Vector3r pointB_body;
     Vector3r normalA_body;
     Vector3r normalB_body;
-    MatrixXXr wA;         // contact Force directions for body A     (For point masses, this is just -normal)
-    MatrixXXr wB;         // contact Force directions for body B     (For point masses, this is just normal)
+    Vector3r tangent1A_body; // first tangent in body A frame
+    Vector3r tangent2A_body; // second tangent in body A frame
+    Vector3r tangent1B_body; // first tangent in body B frame
+    Vector3r tangent2B_body; // second tangent in body B frame
     real_t penetration;   // overlap distance (> 0 means interpenetration)
+    real_t friction_mu{0}; // combined friction coefficient for the pair at this contact
+    // Global indices in the flattened contacts vector
+    // Index of this contact in the previous generation's flattened output; -1 if none (for warmstarting)
+    int prev_global_out_index{-1};
+    // Index of this contact in the current generation's flattened output (set during flatten)
+    int global_out_index{-1};
 };
+
+// Stable key for a contact pair (canonical entity order: a.id <= b.id)
+struct ContactPairKey {
+    entt::entity a{entt::null};
+    entt::entity b{entt::null};
+    static inline ContactPairKey make(entt::entity ea, entt::entity eb) {
+        if (entt::to_integral(ea) <= entt::to_integral(eb)) return {ea, eb};
+        return {eb, ea};
+    }
+    bool operator==(const ContactPairKey& other) const noexcept {
+        return a == other.a && b == other.b;
+    }
+};
+
+struct ContactPairKeyHash {
+    std::size_t operator()(const ContactPairKey& k) const noexcept {
+        // Combine 32-bit ids into 64-bit and hash
+        const uint64_t ia = static_cast<uint64_t>(entt::to_integral(k.a));
+        const uint64_t ib = static_cast<uint64_t>(entt::to_integral(k.b));
+        const uint64_t x = (ia << 32) ^ ib;
+        return std::hash<uint64_t>{}(x);
+    }
+};
+
+using ContactList = std::vector<Contact>;
+using ContactMap = std::unordered_map<ContactPairKey, ContactList, ContactPairKeyHash>;
 
 // Collider shapes resolved from ECS
 struct SphereCollider { entt::entity e; Vector3r center; real_t radius; };

@@ -26,6 +26,16 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
     "MinSizeRel" "RelWithDebInfo")
 endif()
 
+# Set release optimization flags
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Building with Release optimizations")
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options(-O3 -march=native -funroll-loops)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        add_compile_options(/O2)
+    endif()
+endif()
+
 # guard against in-source builds
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
     message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build 
