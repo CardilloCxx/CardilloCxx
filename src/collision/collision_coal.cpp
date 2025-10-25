@@ -11,13 +11,18 @@
 #include <coal/contact_patch.h>
 #include <coal/broadphase/broadphase.h>
 #include <coal/broadphase/default_broadphase_callbacks.h>
+// HeightField
+#include <coal/hfield.h>
 
 #include <memory>
 #include <optional>
 #include <cmath>
 #include <limits>
+#include <algorithm>
 #include "tangent_frame.hpp"
 #include "transform_utils.hpp"
+#include <chrono>
+#include <map>
 
 namespace cardillo::collision {
 CollisionCoal::~CollisionCoal() = default;
@@ -46,6 +51,28 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
     return X;
 }
 
+// Deduplicate contacts within a pair by proximity.
+// Keeps the deepest-penetrating contacts and drops others closer than minDist to any kept one.
+static inline void dedupeContactsForPair(ContactList& list, real_t minDist) {
+    if (list.size() <= 1 || minDist <= (real_t)0) return;
+    const real_t min2 = minDist * minDist;
+    // Sort indices by penetration descending (keep deeper contacts first)
+    std::vector<std::size_t> idx(list.size());
+    for (std::size_t i = 0; i < list.size(); ++i) idx[i] = i;
+    std::sort(idx.begin(), idx.end(), [&](std::size_t a, std::size_t b){ return list[a].penetration > list[b].penetration; });
+    std::vector<Contact> kept; kept.reserve(list.size());
+    for (std::size_t k = 0; k < idx.size(); ++k) {
+        const Contact& c = list[idx[k]];
+        bool tooClose = false;
+        for (const auto& sel : kept) {
+            const Vector3r d = c.point - sel.point;
+            if (d.squaredNorm() <= min2) { tooClose = true; break; }
+        }
+        if (!tooClose) kept.emplace_back(c);
+    }
+    list.swap(kept);
+}
+
 // Helper to populate a Contact from world data and entities
 static inline real_t combineFrictionMu(const entt::registry& reg, entt::entity a, entt::entity b, const std::string& method)
 {
@@ -66,20 +93,34 @@ static inline real_t combineFrictionMu(const entt::registry& reg, entt::entity a
 inline Contact makeContact(const entt::registry& reg,
                            entt::entity ea,
                            entt::entity eb,
-                           const Vector3r& p1W,
-                           const Vector3r& p2W,
-                           const Vector3r& nW,
+                           Vector3r p1W,
+                           Vector3r p2W,
+                           Vector3r nW,
                            real_t depth,
                            const std::string& frictionCombine)
 {
     // Canonicalize entity order so contact orientation is stable across frames
     entt::entity a_can = ea;
     entt::entity b_can = eb;
+
     Vector3r nW_can = nW;
     if (entt::to_integral(a_can) > entt::to_integral(b_can)) {
         std::swap(a_can, b_can);
-        nW_can = -nW_can; // keep normal pointing from A->B
+        // Keep normal pointing from A->B, and swap witness points to remain consistent
+        nW_can = -nW_can;
+        // std::swap(p1W, p2W);
     }
+
+    Vector3r a_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(a_can).value;
+    Vector3r b_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(b_can).value;
+
+
+    // Flip normals so they are pointing from A to B, this doesnt work for concave shapes
+    // We should only do this for meshes as coal does not guarantee normal direction consistency
+    if(nW_can.dot(b_pos - a_pos) < 0) {
+        nW_can = -nW_can;
+    }
+
     Contact c{}; c.a = a_can; c.b = b_can;
     // Precompute transforms for both bodies once
     const cardillo::collision::BodyXform XA = cardillo::collision::BodyXform::fromEcs(reg, c.a);
@@ -88,6 +129,7 @@ inline Contact makeContact(const entt::registry& reg,
     Vector3r nN = nW_can;
     real_t nlen = nN.norm();
     if (nlen > (real_t)0) nN /= nlen;
+
     c.normal = nN; // convention: from A -> B
     cardillo::collision::tangentFrameFromNormal(nN, c.tangent1, c.tangent2);
     c.point = (p1W + p2W) * (real_t)0.5;
@@ -141,15 +183,17 @@ inline void matchContactsForPair(const ContactList& prev, ContactList& curr, rea
 }
 
 // Append contacts for a pair into a map: prefer patch expansion; fall back to raw contacts
-inline void appendContactsFromPair(const entt::registry& reg,
+inline std::size_t appendContactsFromPair(const entt::registry& reg,
                                    entt::entity ea,
                                    entt::entity eb,
                                    const coal::CollisionResult& cres,
                                    const coal::ContactPatchResult& patch_res,
                                    ContactMap& outMap,
-                                   const std::string& frictionCombine)
+                                   const std::string& frictionCombine,
+                                   bool usePatchVertices)
 {
-    if (patch_res.numContactPatches() > 0) {
+    std::size_t appended = 0;
+    if (usePatchVertices && patch_res.numContactPatches() > 0) {
         for (std::size_t ip = 0; ip < patch_res.numContactPatches(); ++ip) {
             const coal::ContactPatch& patch = patch_res.getContactPatch(ip);
             const Vector3r nW(patch.getNormal().x(), patch.getNormal().y(), patch.getNormal().z());
@@ -161,9 +205,10 @@ inline void appendContactsFromPair(const entt::registry& reg,
                 const Vector3r p1W(p1Wc.x(), p1Wc.y(), p1Wc.z());
                 const Vector3r p2W(p2Wc.x(), p2Wc.y(), p2Wc.z());
                 addContactToMap(outMap, makeContact(reg, ea, eb, p1W, p2W, nW, depth, frictionCombine));
+                ++appended;
             }
         }
-        return;
+        return appended;
     }
 
     // Fallback: emit raw contacts from narrowphase result
@@ -173,7 +218,9 @@ inline void appendContactsFromPair(const entt::registry& reg,
         const Vector3r p1W(c0.nearest_points[0].x(), c0.nearest_points[0].y(), c0.nearest_points[0].z());
         const Vector3r p2W(c0.nearest_points[1].x(), c0.nearest_points[1].y(), c0.nearest_points[1].z());
         addContactToMap(outMap, makeContact(reg, ea, eb, p1W, p2W, nW, (real_t)c0.penetration_depth, frictionCombine));
+        ++appended;
     }
+    return appended;
 }
 }
 
@@ -203,7 +250,9 @@ CollisionCoal::ColliderKind CollisionCoal::inferKind_(entt::entity e) const {
     const auto& reg = m_sys->ecs();
     if (reg.any_of<PhysicsSystem::C_RB_Cube>(e)) return ColliderKind::Box;
     if (reg.any_of<PhysicsSystem::C_RB_Plane>(e)) return ColliderKind::Halfspace;
-    if (reg.any_of<PhysicsSystem::C_PointMassTag>(e) && reg.any_of<PhysicsSystem::C_Radius>(e)) return ColliderKind::Sphere;
+    if ((reg.any_of<PhysicsSystem::C_PointMassTag>(e) || reg.any_of<PhysicsSystem::C_RB_Sphere>(e)) && reg.any_of<PhysicsSystem::C_Radius>(e)) return ColliderKind::Sphere;
+    if (reg.any_of<PhysicsSystem::C_RB_Mesh>(e) && reg.any_of<PhysicsSystem::C_Mesh>(e)) return ColliderKind::Mesh;
+    if (reg.any_of<PhysicsSystem::C_RB_HeightField>(e) && reg.any_of<PhysicsSystem::C_HeightField>(e)) return ColliderKind::HeightField;
     throw std::runtime_error("CollisionCoal: unsupported collider entity; add appropriate tag/geometry.");
 }
 
@@ -224,6 +273,16 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
         case ColliderKind::Sphere: {
             const auto r = reg.get<PhysicsSystem::C_Radius>(e).r;
             return std::make_shared<coal::Sphere>((coal::CoalScalar)r);
+        }
+        case ColliderKind::Mesh: {
+            const auto& asset = m_sys->getMeshAsset(e);
+            if (!asset.bvh) throw std::runtime_error("COAL MeshLoader failed to load BVH for mesh entity");
+            return asset.bvh;
+        }
+        case ColliderKind::HeightField: {
+            const auto& asset = m_sys->getHeightFieldAsset(e);
+            if (!asset.hf) throw std::runtime_error("HeightField asset not loaded for entity");
+            return asset.hf;
         }
     }
     throw std::runtime_error("CollisionCoal: unknown collider kind");
@@ -287,6 +346,11 @@ void CollisionCoal::applyTransforms() {
     for (std::size_t i = 0; i < m_objects.size(); ++i) {
         entt::entity e = m_entities[i];
         auto* obj = m_objects[i].get();
+        const bool isDynamic = m_sys->ecs().any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
+        if (!isDynamic) {
+            // Static objects: transform was set at rebuild; no need to recompute each step
+            continue;
+        }
         // Do NOT apply object transform to halfspaces; their plane is encoded directly in the geometry.
         if (m_kinds[i] == ColliderKind::Halfspace) {
             coal::Transform3s X; X.setIdentity(); obj->setTransform(X);
@@ -309,9 +373,15 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     }
     if (!m_broadphase) return {};
 
+    // Measure pre-broadphase setup time (scene ensure, trivial inits) [removed detailed timing]
+
     // First collect potentially colliding pairs from broadphase.
     // We then run narrowphase per pair to get a pair-specific CollisionResult and expand to contact patches.
-    coal::CollisionCallBackCollect collect_cb(/*max_size*/ m_objects.size() * m_objects.size());
+    // NOTE: Avoid O(N^2) preallocation for callback storage (can dominate runtime when no pairs are returned).
+    // Reserve a modest multiple of N instead; let it grow if needed.
+    const std::size_t nObj = m_objects.size();
+    const std::size_t cbReserve = std::max<std::size_t>(nObj * 8, 256);
+    coal::CollisionCallBackCollect collect_cb(/*max_size*/ cbReserve);
     collect_cb.init();
     m_broadphase->collide(&collect_cb);
 
@@ -320,17 +390,30 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     const auto& pairs = collect_cb.getCollisionPairs();
     // Reserve buckets heuristically
     mapCurr.reserve(pairs.size());
+    // size for potential info
+
+    // Fast path: no potential pairs found; skip all downstream work
+    if (pairs.empty()) {
+        m_prevContactMap.clear();
+        if( m_sys && m_sys->config().debug_rb) {
+            std::printf("[Collision] no potential collision pairs found in broadphase.\n");
+        }
+        return {};
+    }
 
     // Prepare reusable request/result for collide and patch computation
     coal::CollisionRequest creq;
-    creq.num_max_contacts = 1024;      // per pair cap
-    creq.security_margin = -1e-6;      // include touching
+    creq.num_max_contacts = m_sys ? m_sys->config().collision_max_raw_contacts : 1024;      // per pair cap
+    // Use configurable security margin (>=0). A small positive value improves robustness for thin triangles
+    creq.security_margin = m_sys ? m_sys->config().collision_security_margin : (real_t)1e-5;
     creq.enable_contact = true;
     coal::CollisionResult cres;
 
     // Contact patch request/result
-    coal::ContactPatchRequest patch_req(/*max_num_patch*/ 4);
+    const std::size_t max_patch_req = m_sys ? m_sys->config().collision_max_patches : (std::size_t)4;
+    coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req);
     coal::ContactPatchResult patch_res(patch_req);
+    const bool usePatchVertices = m_sys ? m_sys->config().collision_use_patch_vertices : true;
 
     for (const auto& pr : pairs) {
         auto* o1 = pr.first;
@@ -354,7 +437,19 @@ std::vector<Contact> CollisionCoal::detectAll() const {
         // then append either expanded patch vertices or raw contacts via a single helper.
         patch_res.clear();
         coal::computeContactPatch(o1, o2, cres, patch_req, patch_res);
-        appendContactsFromPair(reg, ea, eb, cres, patch_res, mapCurr, frictionCombine);
+        
+        std::size_t appended = appendContactsFromPair(reg, ea, eb, cres, patch_res, mapCurr, frictionCombine, usePatchVertices);
+        (void)appended;
+    }
+    // Per-pair contact deduplication by proximity (optional)
+    const real_t minPairDist = m_sys ? m_sys->config().collision_min_pair_contact_distance : (real_t)0.0;
+    std::size_t totalBefore = 0, totalAfter = 0;
+    if (minPairDist > (real_t)0) {
+        for (auto& kv : mapCurr) {
+            totalBefore += kv.second.size();
+            dedupeContactsForPair(kv.second, minPairDist);
+            totalAfter += kv.second.size();
+        }
     }
     // Try to match current contacts to previous generation per pair (for warmstarting)
     const real_t maxMatchDist = m_sys ? m_sys->config().collision_match_max_dist : (real_t)0.02;
@@ -381,10 +476,15 @@ std::vector<Contact> CollisionCoal::detectAll() const {
             out.emplace_back(list[i]);
         }
     }
+
     // Optional simple diagnostics
     if (m_sys && m_sys->config().debug_rb) {
         std::printf("[Collision] matched %zu/%zu contacts (threshold = %.4g)\n",
                     totalMatched, totalContacts, (double)maxMatchDist);
+        if (minPairDist > (real_t)0) {
+            std::printf("[Collision] dedupe kept %zu/%zu contacts (min_pair_dist = %.4g)\n",
+                        totalAfter, totalBefore, (double)minPairDist);
+        }
     }
 
     // Update previous contact map for potential warmstarting (next iteration)

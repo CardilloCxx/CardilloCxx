@@ -27,12 +27,6 @@ public:
     const VectorXr& vVec();   // stacked velocities
     const VectorXr& fVec();   // stacked external forces
 
-    // Block-level accessors (per-entity velocity blocks)
-    const std::vector<VectorXr>& vBlocks();          // DEPRECATED: temporary compatibility; will be removed
-    const std::vector<MatrixXXr>& MinvBlocks();      // DEPRECATED: will be removed
-
-    // New sparse contact Jacobian W (maps stacked velocities -> normal contact velocities)
-    // Rows correspond to dynamic contacts (contacts with at least one dynamic body)
     // Columns correspond to stacked body velocity DOFs in body order, laid out contiguously per body
     const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W() const { return m_W_sparse; }
     // Prefix sums of column offsets per body in stacked velocity vector; size = Nb + 1
@@ -53,9 +47,7 @@ public:
     // DOF queries owned by the assembler (scan ECS indices)
     index_t numQ() const { return m_numQ; }
     index_t numV() const { return m_numV; }
-
-    // Update inputs / invalidate caches
-
+    
     // Explicit state IO
     void loadStateFromSystem();
     void writeStateToSystem(const VectorXr& q_concat, const VectorXr& v_concat);
@@ -78,9 +70,8 @@ private:
     VectorXr m_q_vec;
     VectorXr m_v_vec;
     VectorXr m_f_vec;
-    // Legacy caches kept temporarily for compatibility with older code paths
-    std::vector<VectorXr> m_v_compat;
-    std::vector<MatrixXXr> m_Minv_blocks; // will be removed when all users migrate
+    // Legacy caches removed
+    std::vector<VectorXr> m_v_compat; // kept temporarily for transition; unused in solvers
 
     // Sparse contact Jacobian and supporting mappings
     Eigen::SparseMatrix<real_t, Eigen::RowMajor> m_W_sparse; // (C_dynamic x totalV), RowMajor to allow efficient row access
@@ -89,9 +80,6 @@ private:
     VectorXr m_Minv_diag;                   // size totalV, diagonal of Minv
     // Legacy block-based structures removed
     std::vector<std::pair<int, int>> m_W_from_contact; // kept temporarily for debug migration if needed (unused)
-    std::vector<std::vector<int>> m_W_from_body;       // kept temporarily (unused)
-    std::vector<int> m_W_block_to_body;                // kept temporarily (unused)
-    std::vector<int> m_W_block_to_contact;             // kept temporarily (unused)
     std::vector<int> m_contact_index_orig; // size Nc_dynamic, maps dynamic contact id -> original contact index
     std::vector<collision::Contact> m_contacts;
 

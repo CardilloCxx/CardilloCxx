@@ -1,5 +1,5 @@
 #include "cardillo.hpp"
-#include "io/vtk_writer.hpp"
+#include "io/vtk_writer_binary.hpp"
 #include "solver/moreau.hpp"
 #include "physics/dynamics_assembler.hpp"
 #include <mpi.h>
@@ -150,10 +150,11 @@ int main() {
 
     // Writers
     // Only rank 0 writes VTK to avoid file races
-    std::unique_ptr<cardillo::io::VtkWriter> writer;
+    std::unique_ptr<cardillo::io::VtkWriterBinary> writer;
     if (worldRank == 0) {
-        writer = std::make_unique<cardillo::io::VtkWriter>("vtk_out", "scene", 5);
-        writer->enableContactsOutput(true, "contacts");
+        writer = std::make_unique<cardillo::io::VtkWriterBinary>("vtk_out", "scene", 5);
+        // contacts writing optional (off by default here); enable if needed
+        // writer->enableContactsOutput(true, "contacts");
     }
 
     // Simulate

@@ -33,15 +33,30 @@ struct Config {
 
     // Output settings
     int output_interval_steps{50}; // output.interval_steps - VTK write interval in steps
-    // Contact VTK detail: when true, include body-space normals/tangents/points in contacts VTK
+    int output_heightfield_stride{8}; // output.heightfield_stride - decimation factor for HeightField VTK
     bool output_contacts_body_vectors{false}; // output.contacts_body_vectors
+    std::string output_folder{"./vtk_out"}; // output.folder
+    std::string output_filename_prefix{"scene"}; // output.filename_prefix
+    bool output_write_contacts{false}; // output.write_contacts
 
     // Collision settings
     // collision.broadphase: one of [dynamic_aabb, dynamic_aabb_array, naive, sap, ssap]
     std::string collision_broadphase{"dynamic_aabb"};
+    // Security margin for collision request (>=0). Small positive helps robustness.
+    real_t collision_security_margin{(real_t)0.0}; // collision.security_margin
+    // Maximum raw contacts requested per pair from narrowphase
+    int collision_max_raw_contacts{1024};      // collision.max_raw_contacts
+    // Maximum number of contact patches requested per pair
+    std::size_t collision_max_patches{4};      // collision.max_patches
+    // Prefer using patch vertices over raw contacts when available
+    bool collision_use_patch_vertices{true};   // collision.use_patch_vertices
     // Maximum distance (in meters) to consider a current contact matched to a previous one
     // Used for warmstarting across steps. Set via `collision.match_max_dist`.
     real_t collision_match_max_dist{(real_t)0.02};
+    // Minimum separation between contacts within the same entity-entity pair (meters).
+    // Contacts closer than this will be deduplicated (keeping deeper penetrations).
+    // Set via `collision.min_pair_contact_distance`. Set to 0 to disable.
+    real_t collision_min_pair_contact_distance{(real_t)0.0};
     // Friction settings
     bool friction_enable{false};         // friction.enable - extend W with tangents
     std::string friction_combine{"min"}; // friction.combine - one of [min, arith, geom]
@@ -50,6 +65,7 @@ struct Config {
     // Debug/diagnostics
     bool debug_rb{false};   // debug.rb  - enable rigid-body contact/W diagnostics in Moreau
     bool debug_pj{false};   // debug.pj  - enable ProjectedJacobi iteration logging
+    bool debug_mesh{false}; // debug.mesh - print mesh normalization info (volume, COM, inertia)
 };
 
 class ConfigReader {

@@ -276,7 +276,6 @@ static inline void nesterov_loop(PJIterContext& ctx,
 		double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
 		double betak1 = (thk - 1.0) / thk1;
 		if (betak1 > beta_threshold) restart = true;
-
 		{
 			VectorXr a = yk - xk1; VectorXr b = xk1 - xk;
 			double d = global_segment_dot(ctx, a, b);

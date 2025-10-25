@@ -1,5 +1,5 @@
 #include "cardillo.hpp"
-#include "io/vtk_writer.hpp"
+#include "io/vtk_writer_binary.hpp"
 #include "solver/moreau.hpp"
 #include <mpi.h>
 #include <iostream>
@@ -97,7 +97,7 @@ void spawnJengaTower(
 void spawnBulletSphere(PhysicsSystem& sys, real_t radius, real_t density, const Vector3r& startPos, const Vector3r& velocity, real_t massScale = (real_t)1.0) {
     const real_t volume = (real_t)(4.0/3.0) * (real_t)M_PI * radius * radius * radius;
     const real_t m = massScale * std::max((real_t)0.05, density * volume);
-    sys.addPointMass(m, startPos, velocity, radius);
+    sys.addRigidBodySphere(m, startPos, Quaternion4r::Identity(), velocity, Vector3r::Zero(), radius);
 }
 
 // Domino tower (4-layer repeating motif), generalizable for even N x N base.
@@ -238,40 +238,52 @@ int main(int argc, char** argv) {
     
     // Initialize physics system with config (includes gravity, friction, etc.)
     PhysicsSystem sys(cfg);
-
-    // Scene setup
-    spawnGround(sys, /*halfThickness*/ (real_t)0.5, /*halfSize*/ (real_t)15.0, /*zTop*/ (real_t)0.0);
-
-    // Build a domino tower near the origin (4x4 base), no bullet
     {
-        // Domino dims: x=length/2, y=thickness/2, z=height/2
-        const Vector3r dominoHalf((real_t)0.048, (real_t)0.0075, (real_t)0.024); // length 8cm, thickness 1.5cm, height 4cm
-        const real_t density = (real_t)800.0;
-        const int layers = 51;  // 27 51
-        const int gridN = 32;   // 16 32
-        const Vector3r baseCenter(0.0, 0.0, 0.0);
-        const real_t gapLong = (real_t)0.004; // small longitudinal spacing
-        const real_t extraLayerGap = (real_t)-0.0001;
-        spawnDominoTowerStructure(sys, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap);
+        const std::string exrPath = "./res/heightmaps/mountain_height.exr";
+        const real_t x_dim = (real_t)50.0;  // meters across X
+        const real_t y_dim = (real_t)50.0;  // meters across Y
+        const real_t z_scale = (real_t)200.0; // height scaling
+        const real_t min_height = (real_t)0.0; // clamp
+        const Vector3r pos(0.0, 0.0, 0.0);
+        const Quaternion4r q = Quaternion4r::Identity();
+        sys.addObstacleHeightField(pos, q, exrPath, x_dim, y_dim, z_scale, min_height);
     }
-// 
-//     // Bullet sphere to hit the tower at a corner 
-//     {
-//         const real_t radius = (real_t)0.025;
-//         const real_t density = (real_t)500.0; 
-//         const Vector3r startPos(-0.5, -0.5, radius);
-//         const Vector3r velocity(3.0, 3.0, 0.0); // towards tower center
-//         spawnBulletSphere(sys, radius, density, startPos, velocity, (real_t)2.0);
-//     }
+
+    // // Build a domino tower near the origin (4x4 base), no bullet
+    // {
+    //     // Domino dims: x=length/2, y=thickness/2, z=height/2
+    //     const Vector3r dominoHalf((real_t)0.048, (real_t)0.0075, (real_t)0.024); // length 8cm, thickness 1.5cm, height 4cm
+    //     const real_t density = (real_t)800.0;
+    //     const int layers = 7;  // 27 51
+    //     const int gridN = 4;   // 16 32
+    //     const Vector3r baseCenter(-3.0, 0.0, 0.0);
+    //     const real_t gapLong = (real_t)0.004; // small longitudinal spacing
+    //     const real_t extraLayerGap = (real_t)-0.0001;
+    //     spawnDominoTowerStructure(sys, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap);
+    // }
+
+    // Drop a few rigid-body spheres onto the mountain
+    {
+        const real_t radius = (real_t)0.01;
+        const real_t mass = (real_t)1.0;
+        const int n = 5;
+        for (int i = -n; i <= n; ++i) {
+            for (int j = -n; j <= n; ++j) {
+                Vector3r start((real_t)i * radius * 2.0, (real_t)j * radius * 2.0, (real_t)9.0);
+                sys.addRigidBodySphere(mass, start, Quaternion4r::Identity(), Vector3r::Zero(), Vector3r::Zero(), radius);
+            }
+        }
+    }
 
     // Setup Moreau solver
     cardillo::solver::MoreauSolver solver(sys);
 
     // Writer (rank 0)
-    std::unique_ptr<cardillo::io::VtkWriter> writer;
+    std::unique_ptr<cardillo::io::VtkWriterBinary> writer;
     if (worldRank == 0) {
-        writer = std::make_unique<cardillo::io::VtkWriter>("vtk_out", "rigid", cfg.output_interval_steps);
-        // writer->enableContactsOutput(true, "rigid_contacts");
+        writer = std::make_unique<cardillo::io::VtkWriterBinary>(cfg.output_folder, cfg.output_filename_prefix, cfg.output_interval_steps);
+        writer->setHeightFieldStride(cfg.output_heightfield_stride);
+        if (cfg.output_write_contacts) writer->enableContactsOutput(true, cfg.output_filename_prefix + "_contacts");
     }
 
     real_t t = 0.0;

@@ -36,7 +36,7 @@ static inline MatrixXXr buildWRowPoint(const Vector3r& n_world, real_t s) {
 
 void DynamicsAssembler::updateContactsFromSystem() {
     auto& mgr = const_cast<cardillo::PhysicsSystem&>(m_sys).collisionManager();
-    if (m_sys.isStructureDirty()) mgr.rebuild();
+    if (m_sys.consumeStructureDirty()) mgr.rebuild();
     mgr.applyTransforms();
     m_contacts = mgr.detectAll();
 }
@@ -47,27 +47,22 @@ const VectorXr& DynamicsAssembler::qVec() { return m_q_vec; }
 const VectorXr& DynamicsAssembler::vVec() { return m_v_vec; }
 const VectorXr& DynamicsAssembler::fVec() { return m_f_vec; }
 
-// Deprecated block-style accessors (temporary)
-const std::vector<VectorXr>& DynamicsAssembler::vBlocks() { return m_v_compat; }
-const std::vector<MatrixXXr>& DynamicsAssembler::MinvBlocks() { return m_Minv_blocks; }
-// (Legacy WBlocks accessors removed)
-
 // ---------- Rebuild helpers ----------
 
 void DynamicsAssembler::rebuildMass_() {
     const int Nb = m_sys.numBodies();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     m_Minv_diag = VectorXr::Zero(totalV);
-    m_Minv_blocks.assign((size_t)Nb, MatrixXXr()); // deprecated compatibility only
+
     const auto& reg = m_sys.ecs();
     auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b; if (b < 0 || b >= Nb) continue;
-        MatrixXXr Minv = m_sys.getMassInverse(e);
-        m_Minv_blocks[(size_t)b] = Minv; // deprecated
+        // Get inverse mass diagonal directly
+        VectorXr MinvDiag = m_sys.getMassInverseDiag(e);
         const int off = m_body_vel_offsets[(size_t)b];
-        const int n = (int)Minv.rows();
-        for (int i = 0; i < n; ++i) m_Minv_diag[off + i] = Minv(i,i);
+        const int n = (int)MinvDiag.size();
+        for (int i = 0; i < n; ++i) m_Minv_diag[off + i] = MinvDiag[i];
     }
 }
 
@@ -237,8 +232,6 @@ void DynamicsAssembler::rebuildW_() {
     m_W_sparse.makeCompressed();
 }
 
-void DynamicsAssembler::rebuildBlocks_() { /* removed in sparse/concat refactor */ }
-
 void DynamicsAssembler::refreshState() {
     bool structureChanged = false;
     if (m_sys.consumeStructureDirty()) {
@@ -248,6 +241,7 @@ void DynamicsAssembler::refreshState() {
         const int Nb = m_sys.numBodies();
         m_body_vel_offsets.assign((size_t)Nb + 1, 0);
         m_body_pos_offsets.assign((size_t)Nb + 1, 0);
+        
         // First gather sizes per body index
         std::vector<int> vSizes((size_t)Nb, 0), qSizes((size_t)Nb, 0);
         const auto& reg = m_sys.ecs();

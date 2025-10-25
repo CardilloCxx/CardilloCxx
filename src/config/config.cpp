@@ -75,6 +75,10 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
             cfg.debug_pj = (v == "1" || v == "true" || v == "yes" || v == "on");
         }
+        else if (key == "debug.mesh") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            cfg.debug_mesh = (v == "1" || v == "true" || v == "yes" || v == "on");
+        }
         else if (key == "sim.T") {
             try { cfg.sim_T = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }
@@ -91,20 +95,56 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.sim_gravity = Vector3r((real_t)gx, (real_t)gy, (real_t)gz);
             }
         }
+        else if (key == "output.write_contacts") {
+            cfg.output_write_contacts = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
+        }
         else if (key == "output.interval_steps") {
             try { cfg.output_interval_steps = std::max(1, std::stoi(val)); } catch (...) {}
+        }
+        else if (key == "output.heightfield_stride") {
+            try { cfg.output_heightfield_stride = std::max(1, std::stoi(val)); } catch (...) {}
         }
         else if (key == "output.contacts_body_vectors") {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
             cfg.output_contacts_body_vectors = (v == "1" || v == "true" || v == "yes" || v == "on");
         }
+        else if (key == "output.folder") {
+            cfg.output_folder = val;
+        }
+        else if (key == "output.filename_prefix") {
+            cfg.output_filename_prefix = val;
+        }
         else if (key == "collision.broadphase") {
             cfg.collision_broadphase = val;
+        }
+        else if (key == "collision.max_raw_contacts") {
+            try { cfg.collision_max_raw_contacts = std::max(1, std::stoi(val)); } catch (...) {}
+        }
+        else if (key == "collision.max_patches") {
+            try {
+                int v = std::max(0, std::stoi(val));
+                cfg.collision_max_patches = static_cast<std::size_t>(v);
+            } catch (...) {}
+        }
+        else if (key == "collision.use_patch_vertices") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            cfg.collision_use_patch_vertices = (v == "1" || v == "true" || v == "yes" || v == "on");
         }
         else if (key == "collision.match_max_dist") {
             try {
                 cfg.collision_match_max_dist = static_cast<real_t>(std::stod(val));
                 if (cfg.collision_match_max_dist < (real_t)0) cfg.collision_match_max_dist = (real_t)0;
+            } catch (...) {}
+        }
+        else if (key == "collision.min_pair_contact_distance") {
+            try {
+                cfg.collision_min_pair_contact_distance = static_cast<real_t>(std::stod(val));
+                if (cfg.collision_min_pair_contact_distance < (real_t)0) cfg.collision_min_pair_contact_distance = (real_t)0;
+            } catch (...) {}
+        }
+        else if (key == "collision.security_margin") {
+            try {
+                cfg.collision_security_margin = static_cast<real_t>(std::stod(val));
             } catch (...) {}
         }
         else if (key == "friction.enable") {

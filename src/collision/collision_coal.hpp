@@ -10,6 +10,11 @@
 // Include COAL headers for complete types (we use unique_ptr to these types)
 #include <coal/broadphase/broadphase.h>
 #include <coal/collision_object.h>
+#include <coal/mesh_loader/loader.h>
+#include <coal/BVH/BVH_model.h>
+
+// Forward declare PhysicsSystem in the correct namespace
+namespace cardillo { class PhysicsSystem; }
 
 namespace cardillo::collision {
 
@@ -19,7 +24,7 @@ public:
     ~CollisionCoal();
 
     // Attach to a PhysicsSystem (not owned)
-    void registerSystem(const PhysicsSystem* sys) { m_sys = sys; }
+    void registerSystem(const cardillo::PhysicsSystem* sys) { m_sys = sys; }
 
     // (Re)build the COAL scene from ECS collidables (creates geometries & objects and registers them in broadphase)
     void rebuild();
@@ -34,7 +39,7 @@ public:
     void clear();
 
 private:
-    enum class ColliderKind { Box, Sphere, Halfspace };
+    enum class ColliderKind { Box, Sphere, Halfspace, Mesh, HeightField };
 
     // Helpers
     void ensureBroadphaseFromConfig_();
@@ -43,7 +48,7 @@ private:
     coal::Transform3s makeTransformFromQ_(const VectorXr& q) const;
 
     // Backrefs
-    const PhysicsSystem* m_sys = nullptr; // not owned
+    const cardillo::PhysicsSystem* m_sys = nullptr; // not owned
 
     // COAL scene storage
     std::unique_ptr<coal::BroadPhaseCollisionManager> m_broadphase; // manager chosen from config
