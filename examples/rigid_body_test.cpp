@@ -224,7 +224,7 @@ void spawnDominoTowerStructure(
 } // namespace
 
 int main(int argc, char** argv) {
-    MPI_Init(nullptr, nullptr);
+    PetscInitialize(&argc, &argv, nullptr, nullptr);
     int worldRank = 0, worldSize = 1;
     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
     MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
@@ -297,6 +297,6 @@ int main(int argc, char** argv) {
         if (writer) writer->maybeWrite(k+1, t, sys);
     }
 
-    MPI_Finalize();
+    PetscFinalize();
     return 0;
 }
