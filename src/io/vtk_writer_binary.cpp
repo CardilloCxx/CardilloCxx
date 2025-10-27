@@ -1,6 +1,7 @@
 #include "vtk_writer_binary.hpp"
 #include "../collision/collision_coal.hpp"
 #include "vtk_sphere_util.hpp"
+#include <cmath>
 #include <coal/hfield.h>
 #include <mpi.h>
 #include <filesystem>
@@ -270,6 +271,17 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                 Vector3r p = R * (r * v) + pos.value;
                 mo.vertices.push_back(p);
             }
+            // Generate spherical UVs from the canonical unit sphere vertices
+            mo.uvs.reserve(unitVerts.size());
+            for (const auto& uvv : unitVerts) {
+                const real_t vx = uvv.x();
+                const real_t vy = uvv.y();
+                const real_t vz = uvv.z();
+                float u = static_cast<float>(std::atan2((double)vy, (double)vx) / (2.0 * M_PI) + 0.5);
+                float v = static_cast<float>(std::acos((double)vz) / M_PI);
+                mo.uvs.emplace_back(u, v);
+            }
+            mo.hasUV = true;
             mo.triangles = unitTris;
             // Kinematics
             if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
@@ -421,6 +433,10 @@ void VtkWriterBinary::writePointDataPts(std::ofstream& out, const Collected& dat
     out << "VECTORS velocity float\n";
     for (const auto& pt : data.points) { writeBE(out, f32(pt.vel.x())); writeBE(out, f32(pt.vel.y())); writeBE(out, f32(pt.vel.z())); }
 
+    // entity velocity: emit the entity's linear velocity (for particles this is the same as the point velocity)
+    out << "VECTORS entity_velocity float\n";
+    for (const auto& pt : data.points) { writeBE(out, f32(pt.vel.x())); writeBE(out, f32(pt.vel.y())); writeBE(out, f32(pt.vel.z())); }
+
     // radius
     out << "SCALARS radius float 1\nLOOKUP_TABLE default\n";
     for (const auto& pt : data.points) writeBE(out, pt.radius);
@@ -479,6 +495,34 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
         }
     }
 
+    // angular velocity: planes zero, cubes repeated per-corner, meshes repeated per-vertex
+    out << "VECTORS angular_velocity float\n";
+    for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
+    for (const auto& co : data.cubes) {
+        Vector3r omega = co.hasKinematics ? co.omega : Vector3r::Zero();
+        for (int i = 0; i < 8; ++i) { writeBE(out, f32(omega.x())); writeBE(out, f32(omega.y())); writeBE(out, f32(omega.z())); }
+    }
+    for (const auto& m : data.meshes) {
+        for (const auto& pw : m.vertices) {
+            Vector3r omega = m.hasKinematics ? m.omega : Vector3r::Zero();
+            writeBE(out, f32(omega.x())); writeBE(out, f32(omega.y())); writeBE(out, f32(omega.z()));
+        }
+    }
+
+    // entity velocity: planes zero, cubes repeated per-corner, meshes repeated per-vertex
+    out << "VECTORS entity_velocity float\n";
+    for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
+    for (const auto& co : data.cubes) {
+        Vector3r vlin = co.hasKinematics ? co.vlin : Vector3r::Zero();
+        for (int i = 0; i < 8; ++i) { writeBE(out, f32(vlin.x())); writeBE(out, f32(vlin.y())); writeBE(out, f32(vlin.z())); }
+    }
+    for (const auto& m : data.meshes) {
+        for (const auto& pw : m.vertices) {
+            Vector3r vlin = m.hasKinematics ? m.vlin : Vector3r::Zero();
+            writeBE(out, f32(vlin.x())); writeBE(out, f32(vlin.y())); writeBE(out, f32(vlin.z()));
+        }
+    }
+
     // partition: planes -1, cubes replicated, meshes replicated
     out << "SCALARS partition float 1\nLOOKUP_TABLE default\n";
     for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, -1.f);
@@ -495,12 +539,29 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
 void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const Collected& data) const {
     std::size_t nmesh_pts = 0; bool any = false;
     for (const auto& m : data.meshes) { nmesh_pts += m.vertices.size(); any = any || m.hasUV; }
-    if (!any) return;
+    // If there are cubes present, we will emit UVs for them (simple 0/1 corner UVs).
+    if (!any && data.cubes.empty()) return;
     const std::size_t nplane_pts = 4*data.planes.size();
     const std::size_t ncube_pts = 8*data.cubes.size();
     out << "TEXTURE_COORDINATES tex 2 float\n";
-    // No UVs for planes/cubes
-    for (std::size_t i = 0; i < nplane_pts + ncube_pts; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); }
+    // Planes: no UVs (emit zeros)
+    for (std::size_t i = 0; i < nplane_pts; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); }
+
+    // Cubes: emit simple corner UVs (u,v in {0,1}) matching the cube corner order used in writePointsBlock
+    for (const auto& c : data.cubes) {
+        // half extents in meters
+        const float hx = static_cast<float>(c.cube.halfExtents.x());
+        const float hy = static_cast<float>(c.cube.halfExtents.y());
+        for (int i = 0; i < 8; ++i) {
+            float lx = (i==1||i==2||i==5||i==6) ? hx : -hx;
+            float ly = (i==2||i==3||i==6||i==7) ? hy : -hy;
+            float u = lx + hx;
+            float v = ly + hy;
+            writeBE(out, u); writeBE(out, v);
+        }
+    }
+
+    // Meshes: emit UVs or zeros
     for (const auto& m : data.meshes) {
         if (m.hasUV && m.uvs.size() == m.vertices.size()) {
             for (const auto& uv : m.uvs) { writeBE(out, uv.x()); writeBE(out, uv.y()); }
@@ -508,6 +569,8 @@ void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const Coll
             for (std::size_t i = 0; i < m.vertices.size(); ++i) { writeBE(out, 0.f); writeBE(out, 0.f); }
         }
     }
+
+    // 
 }
 
 void VtkWriterBinary::writePointsOnly(int step, real_t /*time*/, const Collected& data) const {

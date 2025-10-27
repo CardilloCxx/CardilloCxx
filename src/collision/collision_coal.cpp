@@ -111,15 +111,22 @@ inline Contact makeContact(const entt::registry& reg,
         // std::swap(p1W, p2W);
     }
 
+    // // Fallback: if mesh normals weren't available or didn't trigger a flip,
+    // // fall back to the previous heuristic using body center directions.
+    // if (!flipped) {
+    //     if (nW_can.dot(b_pos - a_pos) < 0) {
+    //         nW_can = -nW_can;
+    //     }
+    // }
+
     Vector3r a_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(a_can).value;
     Vector3r b_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(b_can).value;
 
 
-    // Flip normals so they are pointing from A to B, this doesnt work for concave shapes
-    // We should only do this for meshes as coal does not guarantee normal direction consistency
-    if(nW_can.dot(b_pos - a_pos) < 0) {
-        nW_can = -nW_can;
-    }
+    // // Flip normals so they are pointing from A to B, this doesnt work for concave shapes
+    // if(nW_can.dot(b_pos - a_pos) < 0) {
+    //     nW_can = -nW_can;
+    // }
 
     Contact c{}; c.a = a_can; c.b = b_can;
     // Precompute transforms for both bodies once

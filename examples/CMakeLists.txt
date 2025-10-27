@@ -7,10 +7,6 @@
 # add_executable(pm_midpoint pm_midpoint.cpp)
 # target_link_libraries(pm_midpoint PRIVATE cardillo)
 
-# Collisions demo writing scene and contacts VTK
-add_executable(collisions_demo collisions_demo.cpp)
-target_link_libraries(collisions_demo PRIVATE cardillo)
-
 # Rigid body test: static ground cube + two dynamic cubes; writes geometry and contacts
 add_executable(rigid_body_test rigid_body_test.cpp)
 target_link_libraries(rigid_body_test PRIVATE cardillo)

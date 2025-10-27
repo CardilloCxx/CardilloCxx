@@ -13,8 +13,11 @@
 #include "../misc/dofs.hpp"
 #include "../config/config.hpp"
 // COAL types for mesh assets
+// match installed COAL include layout (lowercase paths)
 #include <coal/BVH/BVH_model.h>
-// COAL HeightField
+#include <coal/collision_object.h>
+#include <coal/broadphase/broadphase.h>
+// HeightField collider
 #include <coal/hfield.h>
 
 // fwd
