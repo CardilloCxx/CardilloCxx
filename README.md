@@ -76,3 +76,29 @@ https://www.researchgate.net/profile/Dinesh-Manocha/publication/2807460_Collisio
    howpublished = {https://github.com/coal-library/coal},
    year = {2015--2024}
 }
+
+## Building COAL locally
+
+1. Clone and build COAL:
+
+```bash
+wget https://github.com/coal-library/coal/releases/download/v3.0.2/coal-3.0.2.tar.gz
+tar -xvf coal-3.0.2.tar.gz
+cd coal-3.0.2
+curl -fsSL https://pixi.sh/install.sh | sh
+pixi run test
+```
+
+This will create `lib/` and `include/` in the COAL build directory.
+
+2. Point CardilloMPI to the COAL build when configuring CMake:
+
+```bash
+cd CardilloMPI
+mkdir -p build && cd build
+cmake .. -DCMAKE_PREFIX_PATH=<....>/coal-3.0.2/build
+cmake --build . -- -j$(nproc)
+```
+
+This README's COAL instructions assume the repository contains a copy of COAL under `lib/coal-3.0.2`. Adjust paths if you placed it elsewhere.
+
