@@ -85,8 +85,8 @@ void MoreauSolver::stepMidpoint(real_t dt)
         cardillo::solver::CPG cpg(m_dyn);
         vnp1 = cpg.solve(v_pre, (real_t)1e-5);
     } else {
-    // Use configured absolute tolerance for PJ
-    vnp1 = m_pj.iterateWithPreliminaryVelocity(v_pre, m_sys.config().pj_tol_abs);
+        // Use configured absolute tolerance for PJ
+        vnp1 = m_pj.iterateWithPreliminaryVelocity(v_pre, m_sys.config().pj_tol_abs);
     }
 
     // 5) Final position: q_{n+1} = q_mid + (h/2) * B(q_mid) * u_{n+1}
