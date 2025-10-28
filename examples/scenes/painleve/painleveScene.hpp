@@ -24,25 +24,21 @@ public:
         const real_t phi = (real_t)(31.0 * M_PI / 180.0);
         const real_t mass = (real_t)1.0;
         const real_t l = (real_t)1.0;
-        // const real_t thickness = (real_t)0.05;
-        const real_t thickness = (real_t)1.0;
-        
-        const Vector3r position((real_t)0.0, (real_t)0.0, l * std::sin(phi) + 0.5 * thickness * std::cos(phi));
-        // const Vector3r position((real_t)0.0, (real_t)0.0, l * std::sin(phi) + 1.0 * thickness * std::cos(phi));
-        const Quaternion4r orientation(Eigen::AngleAxis<real_t>(phi, Vector3r::UnitY()));
-        PhysicsSystem::Cube rodShape;
-        rodShape.halfExtents = Vector3r(l, thickness * (real_t)0.5, thickness * (real_t)0.5);
-        rodShape.q = orientation;
+        const real_t thickness = (real_t)0.2;
+        const Vector3r position((real_t)0.0, (real_t)0.0, l * std::sin(phi) + 1.0 * thickness * std::cos(phi));
+        PhysicsSystem::Capsule rodShape;
+        rodShape.radius = thickness * (real_t)0.5;
+        rodShape.halfLength = l;
+        const Quaternion4r capsuleOrientation(Eigen::AngleAxis<real_t>(M_PI_2 -phi, Vector3r::UnitY()));
         const real_t v0 = (real_t)30.0;
-        const Vector3r linearVelocity(v0, 0.0, 0.0);
-        sys.addRigidBody(mass, position, orientation, linearVelocity, Vector3r::Zero(), rodShape);
+        const Vector3r linearVelocity(-v0, 0.0, 0.0);
+        sys.addRigidBodyCapsule(mass, position, capsuleOrientation, linearVelocity, Vector3r::Zero(), rodShape);
 
         const auto& reg = sys.ecs();
         entt::entity rodEntity = entt::null;
         for (auto entity : reg.view<cardillo::PhysicsSystem::C_RigidBodyTag>()) {
             rodEntity = entity; break;
         }
-
         
         // Print Inertia and other stats from physics system:
         const real_t* inertiaDiag = reg.get<cardillo::PhysicsSystem::C_InertiaDiag>(rodEntity).I.data();

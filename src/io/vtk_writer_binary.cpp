@@ -71,6 +71,103 @@ static inline float partitionFromBodyIndex_(const cardillo::PhysicsSystem& sys, 
     return -1.f;
 }
 
+namespace {
+
+void generateCapsuleMesh(int segmentsCircumference,
+                         int segmentsHemisphere,
+                         int segmentsCylinder,
+                         real_t radius,
+                         real_t halfLength,
+                         std::vector<Vector3r>& vertices,
+                         std::vector<Eigen::Vector3i>& triangles)
+{
+    vertices.clear();
+    triangles.clear();
+    if (radius <= (real_t)0) return;
+    const int nCirc = std::max(segmentsCircumference, 3);
+    const int nHem = std::max(segmentsHemisphere, 1);
+    const int nCyl = std::max(segmentsCylinder, 1);
+
+    const real_t pi = std::acos(static_cast<real_t>(-1));
+    const real_t halfPi = pi * (real_t)0.5;
+
+    auto addRing = [&](real_t z, real_t ringRadius) {
+        std::vector<int> idx;
+        idx.reserve(nCirc);
+        for (int i = 0; i < nCirc; ++i) {
+            const real_t angle = static_cast<real_t>(2.0 * pi * i / nCirc);
+            const real_t cx = ringRadius * std::cos(angle);
+            const real_t cy = ringRadius * std::sin(angle);
+            idx.push_back(static_cast<int>(vertices.size()));
+            vertices.emplace_back(cx, cy, z);
+        }
+        return idx;
+    };
+
+    std::vector<std::vector<int>> rings;
+    rings.reserve(nHem * 2 + nCyl + 2);
+
+    const int bottomPole = static_cast<int>(vertices.size());
+    vertices.emplace_back(0, 0, -halfLength - radius);
+
+    for (int i = 1; i < nHem; ++i) {
+        const real_t theta = (static_cast<real_t>(i) / nHem) * halfPi;
+        const real_t ringRadius = radius * std::sin(theta);
+        const real_t z = -halfLength - radius * std::cos(theta);
+        rings.push_back(addRing(z, ringRadius));
+    }
+
+    rings.push_back(addRing(-halfLength, radius));
+
+    for (int i = 1; i < nCyl; ++i) {
+        const real_t t = static_cast<real_t>(i) / nCyl;
+        const real_t z = -halfLength + t * (halfLength * 2);
+        rings.push_back(addRing(z, radius));
+    }
+
+    rings.push_back(addRing(halfLength, radius));
+
+    for (int i = nHem - 1; i >= 1; --i) {
+        const real_t theta = (static_cast<real_t>(i) / nHem) * halfPi;
+        const real_t ringRadius = radius * std::sin(theta);
+        const real_t z = halfLength + radius * std::cos(theta);
+        rings.push_back(addRing(z, ringRadius));
+    }
+
+    const int topPole = static_cast<int>(vertices.size());
+    vertices.emplace_back(0, 0, halfLength + radius);
+
+    if (rings.empty()) return;
+
+    const auto& firstRing = rings.front();
+    for (int j = 0; j < nCirc; ++j) {
+        const int a = bottomPole;
+        const int b = firstRing[j];
+        const int c = firstRing[(j + 1) % nCirc];
+        triangles.emplace_back(a, b, c);
+    }
+
+    for (std::size_t i = 0; i + 1 < rings.size(); ++i) {
+        const auto& r0 = rings[i];
+        const auto& r1 = rings[i + 1];
+        for (int j = 0; j < nCirc; ++j) {
+            const int jn = (j + 1) % nCirc;
+            triangles.emplace_back(r0[j], r1[j], r0[jn]);
+            triangles.emplace_back(r0[jn], r1[j], r1[jn]);
+        }
+    }
+
+    const auto& lastRing = rings.back();
+    for (int j = 0; j < nCirc; ++j) {
+        const int a = lastRing[j];
+        const int b = lastRing[(j + 1) % nCirc];
+        const int c = topPole;
+        triangles.emplace_back(a, b, c);
+    }
+}
+
+} // namespace
+
 VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSystem& sys) const {
     Collected out;
     const auto& reg = sys.ecs();
@@ -130,6 +227,38 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
         }
     }
 
+    // Capsules (emitted as triangle meshes)
+    {
+        auto vcaps = reg.view<cardillo::PhysicsSystem::C_VisualObject,
+                               cardillo::PhysicsSystem::C_Capsule,
+                               cardillo::PhysicsSystem::C_Position3,
+                               cardillo::PhysicsSystem::C_Orientation>();
+        for (auto [e, cap, pos, ori] : vcaps.each()) {
+            std::vector<Vector3r> verts;
+            std::vector<Eigen::Vector3i> tris;
+            generateCapsuleMesh(4, 4, 1, cap.radius, cap.halfLength, verts, tris);
+            if (verts.empty() || tris.empty()) continue;
+            MeshOut mo;
+            mo.entityId = static_cast<int>(entt::to_integral(e));
+            mo.partition = partitionFromBodyIndex_(sys, reg, e);
+            mo.center = pos.value;
+            mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
+            const Matrix33r R = ori.q.toRotationMatrix();
+            mo.vertices.reserve(verts.size());
+            for (const auto& v : verts) {
+                mo.vertices.push_back(R * v + pos.value);
+            }
+            mo.triangles = std::move(tris);
+            if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
+                mo.vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
+                const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
+                mo.omega = omega_body;
+                mo.hasKinematics = true;
+            }
+            out.meshes.push_back(std::move(mo));
+        }
+    }
+
     // Meshes
     {
         auto vmeshes = reg.view<cardillo::PhysicsSystem::C_VisualObject,
@@ -162,8 +291,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                     if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
                         const auto& vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
                         const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
-                        Vector3r omega_world = R * omega_body;
-                        mo.vlin = vlin; mo.omega = omega_world; mo.hasKinematics = true;
+                        mo.vlin = vlin; mo.omega = omega_body; mo.hasKinematics = true;
                     }
                     out.meshes.push_back(std::move(mo));
                 }
@@ -256,7 +384,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                                  cardillo::PhysicsSystem::C_Radius,
                                  cardillo::PhysicsSystem::C_Position3,
                                  cardillo::PhysicsSystem::C_Orientation>();
-    for (auto [e, rad, pos, ori] : vspheres.each()) {
+        for (auto [e, rad, pos, ori] : vspheres.each()) {
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
@@ -285,8 +413,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
                 const auto& vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
                 const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
-                Vector3r omega_world = R * omega_body;
-                mo.vlin = vlin; mo.omega = omega_world; mo.hasKinematics = true;
+                mo.vlin = vlin; mo.omega = omega_body; mo.hasKinematics = true;
             }
             out.meshes.push_back(std::move(mo));
         }

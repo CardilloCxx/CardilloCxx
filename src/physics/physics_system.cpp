@@ -7,6 +7,7 @@
 #include <fstream>
 #include "../io/heightmap_loader.hpp"
 #include <coal/hfield.h>
+#include <coal/shape/geometric_shapes.h>
 
 namespace cardillo {
 
@@ -23,6 +24,17 @@ inline Vector3r boxInertiaDiag(real_t m, const Vector3r& he) {
 inline Vector3r sphereInertiaDiag(real_t m, real_t r) {
     const real_t c = (real_t)2.0/5.0 * m * r * r;
     return Vector3r(c, c, c);
+}
+
+inline Vector3r capsuleInertiaDiag(real_t m, real_t radius, real_t halfLength) {
+    coal::Capsule capsule((coal::CoalScalar)radius, (coal::CoalScalar)(halfLength * 2));
+    const real_t volume = static_cast<real_t>(capsule.computeVolume());
+    if (volume <= (real_t)0) return Vector3r::Zero();
+    const auto Iunit = capsule.computeMomentofInertia();
+    const real_t scale = m / volume;
+    return Vector3r(static_cast<real_t>(Iunit(0,0)),
+                    static_cast<real_t>(Iunit(1,1)),
+                    static_cast<real_t>(Iunit(2,2))) * scale;
 }
 
 // Helper to populate common rigid body components
@@ -78,7 +90,6 @@ index_t PhysicsSystem::addPointMass(real_t mass, const Vector3r& x0, const Vecto
     m_structure_dirty = true;
     return static_cast<index_t>(entt::to_integral(e));
 }
-
 // Helper: create a purely visual/collidable rigid-like entity (no physics)
 entt::entity PhysicsSystem::createRigidVisualEntity_(const Vector3r& center) {
     auto e = m_reg.create();
@@ -217,6 +228,22 @@ index_t PhysicsSystem::addRigidBodySphere(real_t mass,
     m_reg.emplace<C_Radius>(e, C_Radius{radius});
     m_reg.emplace<C_RB_Sphere>(e);
     m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{sphereInertiaDiag(mass, radius)});
+    m_structure_dirty = true;
+    return static_cast<index_t>(entt::to_integral(e));
+}
+
+index_t PhysicsSystem::addRigidBodyCapsule(real_t mass,
+                                           const Vector3r& position,
+                                           const Quaternion4r& orientation,
+                                           const Vector3r& linearVelocity,
+                                           const Vector3r& angularVelocity,
+                                           const Capsule& shape) {
+    auto e = m_reg.create();
+    emplaceRigidBodyCommon(m_reg, e, mass, position, orientation, linearVelocity, angularVelocity, m_cfg.friction_default_mu);
+    m_reg.emplace<C_CapsuleVisualTag>(e);
+    m_reg.emplace<C_Capsule>(e, C_Capsule{shape.radius, shape.halfLength});
+    m_reg.emplace<C_RB_Capsule>(e, C_RB_Capsule{shape.radius, shape.halfLength});
+    m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{capsuleInertiaDiag(mass, shape.radius, shape.halfLength)});
     m_structure_dirty = true;
     return static_cast<index_t>(entt::to_integral(e));
 }
@@ -651,4 +678,4 @@ const PhysicsSystem::HeightFieldAsset& PhysicsSystem::getHeightFieldAsset(entt::
     return it2->second;
 }
 
-} // namespace cardillo
+} // namespace cardillo::

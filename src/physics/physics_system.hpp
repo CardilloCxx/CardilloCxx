@@ -57,6 +57,10 @@ public:
         Vector3r halfExtents{0.5,0.5,0.5};
     Quaternion4r q = Quaternion4r::Identity(); // orientation
     };
+    struct Capsule {
+        real_t radius{0.5};
+        real_t halfLength{0.5};
+    };
     // Obstacle (static) visuals
     index_t addObstacleBody(const Plane& p);
     index_t addObstacleBody(const Cube& c);
@@ -72,6 +76,12 @@ public:
                          const Vector3r& linearVelocity,
                          const Vector3r& angularVelocity,
                          const Cube& shape);
+    index_t addRigidBodyCapsule(real_t mass,
+                                const Vector3r& position,
+                                const Quaternion4r& orientation,
+                                const Vector3r& linearVelocity,
+                                const Vector3r& angularVelocity,
+                                const Capsule& shape);
     // Mesh-based rigid body (collision via COAL BVH, visual via VTK mesh output)
     index_t addRigidBodyMesh(real_t mass,
                              const Vector3r& position,
@@ -153,11 +163,13 @@ public:
     struct C_RigidBodyTag {};
     struct C_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
     struct C_Cube { Vector3r halfExtents; };
+    struct C_Capsule { real_t radius; real_t halfLength; };
     struct C_Friction { real_t mu; }; // optional friction coefficient per entity (>=0), absent => 0
     struct C_VisualObject {};
     struct C_PointVisualTag {};
     struct C_PlaneVisualTag {};
     struct C_CubeVisualTag {};
+    struct C_CapsuleVisualTag {};
     struct C_Collidable {};
     struct C_Radius { real_t r; };
     // Mesh components
@@ -172,6 +184,7 @@ public:
     struct C_RB_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
     struct C_RB_Mesh { };
     struct C_RB_Sphere { };
+    struct C_RB_Capsule { real_t radius; real_t halfLength; };
 
     // Body index assigned by the assembler (stable across rebuilds unless structure changes)
     struct C_BodyIndex { int b; };

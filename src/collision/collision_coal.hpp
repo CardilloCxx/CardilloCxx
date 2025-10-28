@@ -39,7 +39,7 @@ public:
     void clear();
 
 private:
-    enum class ColliderKind { Box, Sphere, Halfspace, Mesh, HeightField };
+    enum class ColliderKind { Box, Sphere, Halfspace, Mesh, HeightField, Capsule };
 
     // Helpers
     void ensureBroadphaseFromConfig_();

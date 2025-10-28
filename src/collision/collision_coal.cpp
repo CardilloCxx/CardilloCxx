@@ -256,6 +256,7 @@ void CollisionCoal::ensureBroadphaseFromConfig_() {
 CollisionCoal::ColliderKind CollisionCoal::inferKind_(entt::entity e) const {
     const auto& reg = m_sys->ecs();
     if (reg.any_of<PhysicsSystem::C_RB_Cube>(e)) return ColliderKind::Box;
+    if (reg.any_of<PhysicsSystem::C_RB_Capsule>(e)) return ColliderKind::Capsule;
     if (reg.any_of<PhysicsSystem::C_RB_Plane>(e)) return ColliderKind::Halfspace;
     if ((reg.any_of<PhysicsSystem::C_PointMassTag>(e) || reg.any_of<PhysicsSystem::C_RB_Sphere>(e)) && reg.any_of<PhysicsSystem::C_Radius>(e)) return ColliderKind::Sphere;
     if (reg.any_of<PhysicsSystem::C_RB_Mesh>(e) && reg.any_of<PhysicsSystem::C_Mesh>(e)) return ColliderKind::Mesh;
@@ -280,6 +281,11 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
         case ColliderKind::Sphere: {
             const auto r = reg.get<PhysicsSystem::C_Radius>(e).r;
             return std::make_shared<coal::Sphere>((coal::CoalScalar)r);
+        }
+        case ColliderKind::Capsule: {
+            const auto& cap = reg.get<PhysicsSystem::C_RB_Capsule>(e);
+            return std::make_shared<coal::Capsule>((coal::CoalScalar)cap.radius,
+                                                   (coal::CoalScalar)(cap.halfLength * 2));
         }
         case ColliderKind::Mesh: {
             const auto& asset = m_sys->getMeshAsset(e);
