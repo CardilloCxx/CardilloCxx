@@ -28,30 +28,49 @@ target_link_libraries(${PROJECT_NAME}
         MPI::MPI_CXX
 )
 
-# COAL collision library is required
-set(COAL_HINT_ROOT "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/install")
-if (EXISTS "${COAL_HINT_ROOT}")
-    set(CMAKE_PREFIX_PATH "${COAL_HINT_ROOT};${CMAKE_PREFIX_PATH}")
-endif()
-find_path(COAL_INCLUDE_DIR NAMES coal/collision.h
-    HINTS ${COAL_HINT_ROOT}/include
-    PATH_SUFFIXES include
+# # COAL collision library is required
+# # set(COAL_HINT_ROOT "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/install")
+# set(COAL_HINT_ROOT "/home/jonas/gitprojects/coal_new/")
+# if (EXISTS "${COAL_HINT_ROOT}")
+#     set(CMAKE_PREFIX_PATH "${COAL_HINT_ROOT};${CMAKE_PREFIX_PATH}")
+# endif()
+# find_path(COAL_INCLUDE_DIR NAMES coal/collision.h
+#     HINTS ${COAL_HINT_ROOT}/include
+#     PATH_SUFFIXES include
+# )
+# # if (NOT COAL_INCLUDE_DIR AND EXISTS "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/include")
+# #     set(COAL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/include")
+# # endif()
+# find_library(COAL_LIBRARY NAMES coal
+#     HINTS ${COAL_HINT_ROOT}/build/lib ${COAL_HINT_ROOT}/build/lib64 #"${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/build/lib"
+# )
+# if (NOT COAL_INCLUDE_DIR OR NOT COAL_LIBRARY)
+#     message(FATAL_ERROR "COAL is required but not found. Set COAL_INCLUDE_DIR and COAL_LIBRARY or install COAL under lib/coal-3.0.2.")
+# endif()
+# target_include_directories(${PROJECT_NAME} PUBLIC ${COAL_INCLUDE_DIR})
+# # COAL build tree may also generate headers in build/include; add it if present
+# # if (EXISTS "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/build/include")
+# #     target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/build/include")
+# # endif()
+# if (EXISTS ${COAL_HINT_ROOT}/build/include)
+#     target_include_directories(${PROJECT_NAME} PUBLIC ${COAL_HINT_ROOT}/build/include)
+# endif()
+# target_link_libraries(${PROJECT_NAME} PUBLIC ${COAL_LIBRARY})
+# target_compile_definitions(${PROJECT_NAME} PUBLIC CARDILLO_HAVE_COAL=1)
+
+add_dependencies(${PROJECT_NAME} coal_project)
+
+# Include and link directories after install
+target_include_directories(${PROJECT_NAME} PUBLIC
+    "${COAL_INSTALL_DIR}/cmeel.prefix/include/"
 )
-if (NOT COAL_INCLUDE_DIR AND EXISTS "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/include")
-    set(COAL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/include")
-endif()
-find_library(COAL_LIBRARY NAMES coal
-    HINTS ${COAL_HINT_ROOT}/lib ${COAL_HINT_ROOT}/lib64 "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/build/lib"
+
+target_link_directories(${PROJECT_NAME} PUBLIC
+    "${COAL_INSTALL_DIR}/cmeel.prefix/lib/"
 )
-if (NOT COAL_INCLUDE_DIR OR NOT COAL_LIBRARY)
-    message(FATAL_ERROR "COAL is required but not found. Set COAL_INCLUDE_DIR and COAL_LIBRARY or install COAL under lib/coal-3.0.2.")
-endif()
-target_include_directories(${PROJECT_NAME} PUBLIC ${COAL_INCLUDE_DIR})
-# COAL build tree may also generate headers in build/include; add it if present
-if (EXISTS "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/build/include")
-    target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_SOURCE_DIR}/../lib/coal-3.0.2/build/include")
-endif()
-target_link_libraries(${PROJECT_NAME} PUBLIC ${COAL_LIBRARY})
+
+target_link_libraries(${PROJECT_NAME} INTERFACE coal)
+
 target_compile_definitions(${PROJECT_NAME} PUBLIC CARDILLO_HAVE_COAL=1)
 
 # Optional: enable EXR loading via tinyexr (header-only). Define CARDILLO_USE_TINYEXR to turn it on if header is provided.

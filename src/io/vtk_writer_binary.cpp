@@ -124,9 +124,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
                 const auto& vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
                 const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
-                Matrix33r R = co.cube.q.toRotationMatrix();
-                Vector3r omega_world = R * omega_body;
-                co.vlin = vlin; co.omega = omega_world; co.hasKinematics = true;
+                co.vlin = vlin; co.omega = omega_body; co.hasKinematics = true;
             }
             out.cubes.push_back(co);
         }

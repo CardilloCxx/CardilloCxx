@@ -308,8 +308,8 @@ VectorXr PhysicsSystem::getForce(entt::entity e) const {
         if (m_reg.all_of<C_InertiaDiag>(e)) {
             const Vector3r w = m_reg.get<C_AngularVelocity3>(e).value; // body-frame
             Vector3r Idiag = m_reg.get<C_InertiaDiag>(e).I;
-            const Vector3r Iw(Idiag.x()*w.x(), Idiag.y()*w.y(), Idiag.z()*w.z());
-            tau = - w.cross(Iw);
+            const Vector3r Iw = Idiag.cwiseProduct(w);
+            tau = -w.cross(Iw);
         }
         VectorXr out(6); out.setZero();
         out[0] = fg[0]; out[1] = fg[1]; out[2] = fg[2];

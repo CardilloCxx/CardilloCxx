@@ -24,8 +24,11 @@ public:
         const real_t phi = (real_t)(31.0 * M_PI / 180.0);
         const real_t mass = (real_t)1.0;
         const real_t l = (real_t)1.0;
-        const real_t thickness = (real_t)0.05;
+        // const real_t thickness = (real_t)0.05;
+        const real_t thickness = (real_t)1.0;
+        
         const Vector3r position((real_t)0.0, (real_t)0.0, l * std::sin(phi) + 0.5 * thickness * std::cos(phi));
+        // const Vector3r position((real_t)0.0, (real_t)0.0, l * std::sin(phi) + 1.0 * thickness * std::cos(phi));
         const Quaternion4r orientation(Eigen::AngleAxis<real_t>(phi, Vector3r::UnitY()));
         PhysicsSystem::Cube rodShape;
         rodShape.halfExtents = Vector3r(l, thickness * (real_t)0.5, thickness * (real_t)0.5);

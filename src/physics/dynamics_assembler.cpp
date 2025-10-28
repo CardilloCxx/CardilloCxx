@@ -138,6 +138,7 @@ void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v)
         }
     }
     m_sys.markStateDirty();
+    m_sys.markForcesDirty();
 }
 
 void DynamicsAssembler::assignDofs() {

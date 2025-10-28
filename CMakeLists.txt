@@ -85,16 +85,33 @@ if(NOT PETSC_FOUND)
     message(WARNING "PETSc not found. Building without PETSc integration. If you need PETSc, install it or set PKG_CONFIG_PATH so pkg-config can find PETSc.")
 endif()
 
-# Try to find locally-built COAL via pkg-config (coal.pc is provided in coal's build/)
-pkg_search_module(COAL QUIET IMPORTED_TARGET coal)
-if(COAL_FOUND)
-    message(STATUS "Found COAL: ${COAL_VERSION}")
-    add_definitions(-DHAVE_COAL)
-    include_directories(${COAL_INCLUDEDIR})
-    link_directories(${COAL_LIBDIR})
-else()
-    message(WARNING "COAL not found via pkg-config. If you built COAL locally, add its build directory to CMAKE_PREFIX_PATH or PKG_CONFIG_PATH (e.g. -DCMAKE_PREFIX_PATH=/home/$USER/BA/lib/coal-3.0.2/build)")
-endif()
+# # Try to find locally-built COAL via pkg-config (coal.pc is provided in coal's build/)
+# pkg_search_module(COAL QUIET IMPORTED_TARGET coal)
+# if(COAL_FOUND)
+#     message(STATUS "Found COAL: ${COAL_VERSION}")
+#     add_definitions(-DHAVE_COAL)
+#     include_directories(${COAL_INCLUDEDIR})
+#     link_directories(${COAL_LIBDIR})
+# else()
+#     message(WARNING "COAL not found via pkg-config. If you built COAL locally, add its build directory to CMAKE_PREFIX_PATH or PKG_CONFIG_PATH (e.g. -DCMAKE_PREFIX_PATH=/home/$USER/BA/lib/coal-3.0.2/build)")
+# endif()
+
+# Python3
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+include_directories( ${PYTHON3_INCLUDE_DIRS})
+
+include(ExternalProject)
+
+# Coal via pip (via ExternalProject_Add)
+set(COAL_INSTALL_DIR ${CMAKE_BINARY_DIR}/external/coal)
+
+ExternalProject_Add(coal_project
+    PREFIX ${CMAKE_BINARY_DIR}/_deps/coal
+    DOWNLOAD_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ${Python3_EXECUTABLE} -m pip install coal -t ${COAL_INSTALL_DIR}
+    INSTALL_COMMAND ""
+)
 
 # If PETSc was discovered via pkg-config, expose a macro and include dirs
 if(PETSC_FOUND)

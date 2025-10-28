@@ -13,6 +13,8 @@
 #include "scenes/rotating_ball/RotatingBallScene.hpp"
 #include "scenes/chain/ChainScene.hpp"
 #include "scenes/rail/RailScene.hpp"
+#include "scenes/dzhanibekov/dzhanibekov.hpp"
+#include "scenes/dzhanibekov/dzhanibekov.hpp"
 
 using namespace cardillo;
 
@@ -33,10 +35,11 @@ int main(int argc, char** argv) {
     PhysicsSystem sys(cfg);
     // HeightmapScene scene;
     // DominoScene scene;
-    // PainleveScene scene;
+    PainleveScene scene;
     // RotatingBallScene scene;
     // ChainScene scene;
-    RailScene scene;
+    // RailScene scene;
+    // DzhanibekovScene scene;
 
     scene.populate(sys);
 
