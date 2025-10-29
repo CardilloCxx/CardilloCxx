@@ -118,10 +118,10 @@ void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v)
             const int nQ = m_body_pos_offsets[(size_t)b+1] - offQ;
             VectorXr qb = (nQ>0) ? q.segment(offQ, nQ) : VectorXr(0);
             if (qb.size() >= 3 && reg.any_of<PhysicsSystem::C_Position3>(e)) {
-                const_cast<PhysicsSystem::C_Position3&>(reg.get<PhysicsSystem::C_Position3>(e)).value = Vector3r(qb[0], qb[1], qb[2]);
+                const_cast<PhysicsSystem::C_Position3&>(reg.get<PhysicsSystem::C_Position3>(e)).value = qb.head<3>();
             }
             if (qb.size() >= 7 && reg.any_of<PhysicsSystem::C_Orientation>(e)) {
-                Quaternion4r qn(qb[3], qb[4], qb[5], qb[6]); qn.normalize();
+                Quaternion4r qn(qb.tail<4>()); qn.normalize();
                 const_cast<PhysicsSystem::C_Orientation&>(reg.get<PhysicsSystem::C_Orientation>(e)).q = qn;
             }
         }
@@ -130,10 +130,10 @@ void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v)
             const int nV = m_body_vel_offsets[(size_t)b+1] - offV;
             VectorXr vb = (nV>0) ? v.segment(offV, nV) : VectorXr(0);
             if (vb.size() >= 3 && reg.any_of<PhysicsSystem::C_LinearVelocity3>(e)) {
-                const_cast<PhysicsSystem::C_LinearVelocity3&>(reg.get<PhysicsSystem::C_LinearVelocity3>(e)).value = Vector3r(vb[0], vb[1], vb[2]);
+                const_cast<PhysicsSystem::C_LinearVelocity3&>(reg.get<PhysicsSystem::C_LinearVelocity3>(e)).value = vb.head<3>();
             }
             if (vb.size() >= 6 && reg.any_of<PhysicsSystem::C_AngularVelocity3>(e)) {
-                const_cast<PhysicsSystem::C_AngularVelocity3&>(reg.get<PhysicsSystem::C_AngularVelocity3>(e)).value = Vector3r(vb[3], vb[4], vb[5]);
+                const_cast<PhysicsSystem::C_AngularVelocity3&>(reg.get<PhysicsSystem::C_AngularVelocity3>(e)).value = vb.tail<3>();
             }
         }
     }
