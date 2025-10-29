@@ -75,17 +75,21 @@ void MoreauSolver::stepMidpoint(real_t dt)
     // 2) Midpoint position and preliminary velocity (external forces only)
     VectorXr a_ext = MinvDiag.cwiseProduct(fn);
     VectorXr q_mid = qn;
-    VectorXr v_pre = vn + dt * a_ext;
+    VectorXr v_free = vn + dt * a_ext;
     integrate_quaternions(q_mid, qn, vn, offQ, offV, Nb, dt, 0.5);
 
     // 3) Evaluate contacts at midpoint positions: write q_mid into ECS (v stays vn)
     m_dyn.writeStateToSystem(q_mid, vn);
     m_dyn.refreshCollisions();
 
-    // 4) Solve normal impulses p using W(q_mid), G, and preliminary velocity v_pre
+    // 4) Solve normal impulses p using W(q_mid), G, and contact free velocity v_free
     VectorXr vnp1;
-    if (false) { cardillo::solver::CPG cpg(m_dyn); vnp1 = cpg.solve(v_pre, (real_t)1e-5); } 
-    else vnp1 = m_pj.iterateWithPreliminaryVelocity(v_pre, m_sys.config().pj_tol_abs);
+    if (false) {
+        cardillo::solver::CPG cpg(m_dyn); 
+        vnp1 = cpg.solve(v_free, (real_t)1e-5); 
+    } else {
+        vnp1 = m_pj.iterateWithPreliminaryVelocity(v_free, m_sys.config().pj_tol_abs);
+    }
 
     // 5) Final position: q_{n+1} = q_mid + (h/2) * B(q_mid) * u_{n+1}
     VectorXr qnp1 = q_mid;

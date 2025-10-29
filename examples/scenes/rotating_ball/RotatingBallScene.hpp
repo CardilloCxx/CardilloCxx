@@ -13,25 +13,20 @@ public:
     void populate(cardillo::PhysicsSystem& sys) override {
         using namespace cardillo;
 
-        // Ground plane (thin cube) for visual + collision
-        PhysicsSystem::Cube ground;
-        const real_t groundHalfThickness = (real_t)0.01;
-        const real_t groundHalfSize = (real_t)50.0;
-        ground.center = Vector3r(0.0, 0.0, -groundHalfThickness);
-        ground.halfExtents = Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness);
-        ground.q = Quaternion4r::Identity();
+        // Ground plane for visual + collision
+        PhysicsSystem::Plane ground;
         sys.addObstacleBody(ground);
 
         const real_t mass = (real_t)1.0;
         const real_t radius = (real_t)0.1; // 10 cm radius
         
         // High-spin sphere dropped from height
-        const Vector3r position1(0.0, 0.0, 0.25);
+        const Vector3r position1(0.0, 0.0, 1.0);
         const Vector3r angularVelocity1((real_t)0.0, (real_t)50.0, (real_t)0.0);
         sys.addRigidBodySphere(mass, position1, Quaternion4r::Identity(), Vector3r::Zero(), angularVelocity1, radius);
 
         // Lower-spin sphere
-        const Vector3r position2(0.0, 1.0, 0.25);
+        const Vector3r position2(0.0, 1.0, 1.0);
         const Vector3r angularVelocity2((real_t)0.0, (real_t)10.0, (real_t)0.0);
         sys.addRigidBodySphere(mass, position2, Quaternion4r::Identity(), Vector3r::Zero(), angularVelocity2, radius);
     }

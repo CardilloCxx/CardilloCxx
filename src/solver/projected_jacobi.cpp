@@ -137,14 +137,14 @@ static inline PJIterContext build_context(
 	return ctx;
 }
 
-// Compute provisional gradient step z = p_old - R * (W * u_in)
-static inline VectorXr provisional_step(PJIterContext& ctx, const VectorXr& u_in, const VectorXr& p_old)
+// Compute provisional gradient step z = p_in - R * (W * u_in)
+static inline VectorXr provisional_step(PJIterContext& ctx, const VectorXr& u_in, const VectorXr& p_in)
 {
 	const auto& W = ctx.W; const auto& Rdiag = ctx.Rdiag; const auto& res = ctx.res;
 	ctx.y_contact.noalias() = W * u_in;
-	VectorXr z = p_old; // start from old p
+	VectorXr z = VectorXr::Zero(p_in.size());
 	for (int cid : res.allContacts) {
-		z[cid] = p_old[cid] - Rdiag[cid] * ctx.y_contact[cid];
+		z[cid] = p_in[cid] - Rdiag[cid] * ctx.y_contact[cid];
 	}
 	return z;
 }
@@ -152,6 +152,7 @@ static inline VectorXr provisional_step(PJIterContext& ctx, const VectorXr& u_in
 // Project per-contact groups: 1-row -> unilateral; 3-rows -> Coulomb cone (disk in tangential plane)
 static inline void project_groups(const PJIterContext& ctx, const VectorXr& z, const VectorXr& p_old, VectorXr& p_proj)
 {
+	// TODO: is this valid?
 	p_proj = p_old; // copy, then overwrite affected entries
 	const auto& groups = ctx.contactRowGroups; const auto& mus = ctx.groupMu;
 	for (size_t gi = 0; gi < groups.size(); ++gi) {
@@ -177,29 +178,29 @@ static inline void project_groups(const PJIterContext& ctx, const VectorXr& z, c
 }
 
 // Apply relaxation and exchange p; then update u and exchange u
-static inline void relax_exchange_update(PJIterContext& ctx, const VectorXr& u_free,
-										 const VectorXr& p_old, const VectorXr& p_proj,
-										 VectorXr& p_inout, VectorXr& u_out)
+static inline void relax_exchange_update(PJIterContext& ctx, const VectorXr& u_old, 
+									     const VectorXr& p_old, VectorXr& u_new, VectorXr& p_new)
 {
 	const auto& W = ctx.W; const auto& Minv = ctx.MinvDiag; const auto& bodyOffsets = ctx.bodyOffsets; const auto& res = ctx.res;
-	for (int cid : res.allContacts) {
-		const real_t p_new = p_proj[cid];
-		p_inout[cid] = ((real_t)1 - ctx.relax) * p_old[cid] + ctx.relax * p_new;
-	}
-	cardillo::comm::Communication::exchangePercussionsOwnerPush(p_inout, res);
-	ctx.tmp_concat.noalias() = W.transpose() * p_inout;
-	u_out = u_free + Minv.cwiseProduct(ctx.tmp_concat);
-	cardillo::comm::Communication::exchangeBodyVelocitiesOwnerPushConcat(u_out, res, bodyOffsets);
+	// for (int cid : res.allContacts) {
+	// 	const real_t p_new = p_proj[cid];
+	// 	p_inout[cid] = ((real_t)1 - ctx.relax) * p_old[cid] + ctx.relax * p_new;
+	// }
+	// cardillo::comm::Communication::exchangePercussionsOwnerPush(p_new, res);
+	ctx.tmp_concat.noalias() = W.transpose() * (p_new - p_old);
+	u_new = u_old + Minv.cwiseProduct(ctx.tmp_concat);
+	// cardillo::comm::Communication::exchangeBodyVelocitiesOwnerPushConcat(u_new, res, bodyOffsets);
 }
 
 // One Projected-Jacobi sweep: update p with current u, then compute new u
-static inline void pj_sweep(PJIterContext& ctx, const VectorXr& u_in, const VectorXr& u_free,
-							VectorXr& p_inout, VectorXr& u_out)
+static inline void pj_sweep(PJIterContext& ctx, const VectorXr& u_in, 
+						    const VectorXr& p_in, VectorXr& u_out,
+							VectorXr& p_out)
 {
-	const VectorXr z = provisional_step(ctx, u_in, p_inout);
-	VectorXr p_proj;
-	project_groups(ctx, z, p_inout, p_proj);
-	relax_exchange_update(ctx, u_free, p_inout, p_proj, p_inout, u_out);
+	const VectorXr z = provisional_step(ctx, u_in, p_in);
+	// VectorXr p_proj;
+	project_groups(ctx, z, p_in, p_out);
+	relax_exchange_update(ctx, u_in, p_in, u_out, p_out);
 }
 
 // Compute global L2 norm of difference across local body segments
@@ -234,40 +235,45 @@ namespace {
 
 // Standard fixed-point iteration loop
 static inline void standard_loop(PJIterContext& ctx,
-								VectorXr& u, const VectorXr& u_free, VectorXr& p) {
+								 VectorXr& u, VectorXr& p) {
 	ctx.err_global = std::numeric_limits<real_t>::max();
 	ctx.iteration = 0;
 	VectorXr u_prev = u;
+	VectorXr p_prev = p;
 	while (ctx.iteration < ctx.maxIterations) {
-		u_prev = u;
-		pj_sweep(ctx, u_prev, u_free, p, u);
+		pj_sweep(ctx, u_prev, p_prev, u, p);
 		ctx.err_global = global_segment_norm(ctx, u, u_prev);
 		++ctx.iteration;
 		if (ctx.err_global <= ctx.tol) break;
 		if (ctx.debug && ctx.worldRank == 0 && (ctx.iteration % 1000 == 0)) {
 			std::cout << "[ProjectedJacobi] Iteration " << ctx.iteration << ", error = " << ctx.err_global << std::endl;
 		}
+		u_prev = u;
+		p_prev = p;
 	}
 }
 
 // Nesterov-accelerated loop
 static inline void nesterov_loop(PJIterContext& ctx,
-								VectorXr& u, const VectorXr& u_free, VectorXr& p,
+								VectorXr& u, VectorXr& p,
 								double beta_threshold, int restart_limit) {
 	ctx.err_global = std::numeric_limits<real_t>::max();
 	ctx.iteration = 0;
-	VectorXr xk = u;
-	VectorXr yk = xk;
-	VectorXr xk1 = xk;
+	VectorXr xuk = u;
+	VectorXr xpk = p;
+	VectorXr xuk1 = u;
+	VectorXr xpk1 = p;
+	VectorXr yuk = u;
+	VectorXr ypk = p;
 	double thk = 1.0;
 	real_t err_prev = std::numeric_limits<real_t>::infinity();
 	int restarts = 0;
 	bool momentum_disabled = false;
 	while (ctx.iteration < ctx.maxIterations) {
-		pj_sweep(ctx, yk, u_free, p, xk1);
-		ctx.err_global = global_segment_norm(ctx, xk1, yk);
+		pj_sweep(ctx, yuk, ypk, xuk1, xpk1);
+		ctx.err_global = global_segment_norm(ctx, xuk1, yuk);
 		++ctx.iteration;
-		if (ctx.err_global <= ctx.tol) { xk = xk1; break; }
+		if (ctx.err_global <= ctx.tol) break;
 
 		bool restart = false;
 		if (!std::isfinite((double)ctx.err_global)) restart = true;
@@ -277,26 +283,32 @@ static inline void nesterov_loop(PJIterContext& ctx,
 		double betak1 = (thk - 1.0) / thk1;
 		if (betak1 > beta_threshold) restart = true;
 		{
-			VectorXr a = yk - xk1; VectorXr b = xk1 - xk;
+			// only consider velocity step to be important
+			VectorXr a = yuk - xuk1; VectorXr b = xuk1 - xuk;
 			double d = global_segment_dot(ctx, a, b);
 			if (d > 0.0) restart = true;
 		}
 		if (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0) restart = true;
 
 		if (restart) {
-			yk = xk1;
+			yuk = xuk1;
+			ypk = xpk1;
+			xuk = xuk1;
+			xpk = xpk1;
 			thk = 1.0;
-			xk = xk1;
 			if (++restarts >= restart_limit) momentum_disabled = true;
 		} else {
 			if (momentum_disabled) {
-				yk = xk1;
+				yuk = xuk1;
+				ypk = xpk1;
 				thk = 1.0;
 			} else {
-				yk = xk1 + (real_t)betak1 * (xk1 - xk);
+				yuk = xuk1 + (real_t)betak1 * (xuk1 - xuk);
+				ypk = xpk1 + (real_t)betak1 * (xpk1 - xpk);
 				thk = thk1;
 			}
-			xk = xk1;
+			xuk = xuk1;
+			xpk = xpk1;
 		}
 		err_prev = ctx.err_global;
 
@@ -305,16 +317,18 @@ static inline void nesterov_loop(PJIterContext& ctx,
 					  << ", beta = " << betak1 << std::endl;
 		}
 	}
-	u = xk;
+
+	u = xuk1;
+	p = xpk1;
 }
 
 }
 
-VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v_pre, real_t tol) {
+VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v_free, real_t tol) {
 	// Use sparse W and block-diagonal Minv
 	const auto& Wref = m_dyn.W();
 	const int C = (int)Wref.rows();
-	if (C == 0 || Wref.nonZeros() == 0) return v_pre; // no contacts, return preliminary velocity as-is
+	if (C == 0 || Wref.nonZeros() == 0) return v_free; // no contacts, return preliminary velocity as-is
 
 	int worldRank = 0;
 	MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
@@ -323,9 +337,7 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v
 	PJIterContext ctx = build_context(m_dyn, alpha(), m_compliance);
 	const auto& bodyOffsets = ctx.bodyOffsets;
 
-	// Initialize state
-	VectorXr u = v_pre;                  // current stacked velocities
-	const VectorXr u_free = v_pre;       // preliminary velocities
+	// Initialize impulses
 	VectorXr p = VectorXr::Zero(C);
 	if (m_warmStart && m_wsProvider != nullptr) {
 		const auto& contactsAll = m_dyn.contacts();
@@ -344,6 +356,9 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v
 		}
 	}
 
+	// initial guess for next velcoity iteration
+	VectorXr u = v_free + ctx.MinvDiag.cwiseProduct(ctx.W.transpose() * p);
+
 	// Configure iteration context
 	ctx.worldRank = worldRank;
 	ctx.maxIterations = m_maxIterations;
@@ -352,18 +367,18 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v
 	ctx.debug = m_debug;
 
 	// Initial ghost exchanges to ensure consistent data across ranks before first sweep
-	cardillo::comm::Communication::exchangeBodyVelocitiesOwnerPushConcat(u, ctx.res, ctx.bodyOffsets);
-	if (m_warmStart) {
-		cardillo::comm::Communication::exchangePercussionsOwnerPush(p, ctx.res);
-	}
+	// cardillo::comm::Communication::exchangeBodyVelocitiesOwnerPushConcat(u, ctx.res, ctx.bodyOffsets);
+	// if (m_warmStart) {
+	// 	cardillo::comm::Communication::exchangePercussionsOwnerPush(p, ctx.res);
+	// }
 
 	if (!m_useNesterov) {
-		standard_loop(ctx, u, u_free, p);
+		standard_loop(ctx, u, p);
 		if (m_debug && worldRank == 0) {
 			std::cout << "[ProjectedJacobi] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
 	} else {
-		nesterov_loop(ctx, u, u_free, p, m_nest_beta_threshold, m_nest_restart_limit);
+		nesterov_loop(ctx, u, p, m_nest_beta_threshold, m_nest_restart_limit);
 		if (m_debug && worldRank == 0) {
 			std::cout << "[ProjectedJacobi+Nesterov] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
@@ -389,7 +404,7 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v
 	}
 
 	// Final synchronization: replicate all body velocities to every rank
-	cardillo::comm::Communication::replicateAllBodyVelocitiesConcat(u, ctx.res, ctx.bodyOffsets);
+	// cardillo::comm::Communication::replicateAllBodyVelocitiesConcat(u, ctx.res, ctx.bodyOffsets);
 
 	return u;
 }
