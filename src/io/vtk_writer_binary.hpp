@@ -94,7 +94,8 @@ private:
     void writeMeshTextureCoordinates(std::ofstream& out, const Collected& data) const;
 
     // Contacts (binary legacy VTK)
-    void writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const;
+    void writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors,
+                       cardillo::solver::WarmstartProvider* warmstartProvider) const;
 
     void writePointsOnly(int step, real_t time, const Collected& data) const;
     void writeGeometryOnly(int step, real_t time, const Collected& data) const;

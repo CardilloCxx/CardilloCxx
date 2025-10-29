@@ -13,9 +13,9 @@ namespace cardillo::solver {
 
 class MoreauSolver {
 public:
-	explicit MoreauSolver(cardillo::PhysicsSystem& sys)
-			: m_sys(sys), m_dyn(sys), m_wsCache(),
-			  m_pj(m_dyn, sys.config(), sys.config().pj_warmstart ? &m_wsCache : nullptr) {
+		explicit MoreauSolver(cardillo::PhysicsSystem& sys)
+			: m_sys(sys), m_dyn(sys),
+			  m_pj(m_dyn, sys.config(), sys.config().pj_warmstart ? sys.warmstartProvider() : nullptr) {
 		// Build initial DOF layout, offsets, and load state
 		m_dyn.refreshState();
 	}
@@ -29,7 +29,7 @@ public:
 private:
 	cardillo::PhysicsSystem& m_sys;
 	cardillo::physics::DynamicsAssembler m_dyn;
-	cardillo::solver::WarmstartCache m_wsCache; // persists across steps
+	// warmstart provider is owned by the PhysicsSystem; no local member here
 	cardillo::solver::ProjectedJacobiSolver m_pj;
 };
 

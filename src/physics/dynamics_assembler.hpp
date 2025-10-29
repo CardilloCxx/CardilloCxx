@@ -78,8 +78,7 @@ private:
     std::vector<int> m_body_vel_offsets;    // size Nb+1, prefix sums for body velocity columns
     std::vector<int> m_body_pos_offsets;    // size Nb+1, prefix sums for body position columns
     VectorXr m_Minv_diag;                   // size totalV, diagonal of Minv
-    // Legacy block-based structures removed
-    std::vector<std::pair<int, int>> m_W_from_contact; // kept temporarily for debug migration if needed (unused)
+
     std::vector<int> m_contact_index_orig; // size Nc_dynamic, maps dynamic contact id -> original contact index
     std::vector<collision::Contact> m_contacts;
 

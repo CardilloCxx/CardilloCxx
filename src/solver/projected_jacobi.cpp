@@ -327,9 +327,9 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v
 	VectorXr u = v_pre;                  // current stacked velocities
 	const VectorXr u_free = v_pre;       // preliminary velocities
 	VectorXr p = VectorXr::Zero(C);
-	if (m_warmStart && m_wsCache != nullptr) {
+	if (m_warmStart && m_wsProvider != nullptr) {
 		const auto& contactsAll = m_dyn.contacts();
-		std::vector<ContactImpulse> hints = m_wsCache->makeHint(contactsAll);
+		std::vector<ContactImpulse> hints = m_wsProvider->makeHint(contactsAll);
 		const auto& dynToOrig = m_dyn.dynamicContactToOriginalAll();
 		// Expand per-contact hints into row vector according to grouped rows
 		for (const auto& rows : ctx.contactRowGroups) {
@@ -370,7 +370,7 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v
 	}
 
 	// Store last impulses into cache for next step warmstarting
-	if (m_wsCache != nullptr) {
+	if (m_wsProvider != nullptr) {
 		const auto& contactsAll = m_dyn.contacts();
 		const auto& dynToOrig = m_dyn.dynamicContactToOriginalAll();
 		std::vector<ContactImpulse> lastImp(contactsAll.size());
@@ -385,7 +385,7 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v
 			if (rows.size() > 2) ci.pt2 = p[rows[2]]; else ci.pt2 = (real_t)0;
 			lastImp[(size_t)origIdx] = ci;
 		}
-		m_wsCache->store(contactsAll, lastImp);
+		m_wsProvider->store(contactsAll, lastImp);
 	}
 
 	// Final synchronization: replicate all body velocities to every rank

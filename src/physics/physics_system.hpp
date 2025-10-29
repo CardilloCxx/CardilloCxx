@@ -20,6 +20,9 @@
 // HeightField collider
 #include <coal/hfield.h>
 
+// forward-declare warmstart provider interface to avoid include cycles
+namespace cardillo { namespace solver { class WarmstartProvider; } }
+
 // fwd
 namespace cardillo { namespace collision { class CollisionCoal; } }
 
@@ -152,6 +155,9 @@ public:
     // Expose ECS for external querying (read-only)
     const entt::registry& ecs() const { return m_reg; }
 
+    // Access to warmstart provider owned by the system (may be nullptr)
+    cardillo::solver::WarmstartProvider* warmstartProvider() const { return m_warmstart_provider.get(); }
+
     // Public ECS component/tag types for queries
     struct C_Mass { real_t m; };
     struct C_Position3 { Vector3r value; };
@@ -236,6 +242,9 @@ private:
     // Persistent subsystems
     config::Config m_cfg{}; // global config
     std::unique_ptr<collision::CollisionCoal> m_collision_mgr; // created on first use
+
+    // Warmstart provider (strategy owned by system). Default implementation is WarmstartCache.
+    std::unique_ptr<cardillo::solver::WarmstartProvider> m_warmstart_provider;
 
     // Shared mesh cache (keyed by path + scale)
     mutable std::unordered_map<std::string, MeshAsset> m_meshCache;

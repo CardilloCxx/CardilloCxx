@@ -1,6 +1,7 @@
 #include "vtk_writer_binary.hpp"
 #include "../collision/collision_coal.hpp"
 #include "vtk_sphere_util.hpp"
+#include "../solver/warmstart.hpp"
 #include <cmath>
 #include <coal/hfield.h>
 #include <mpi.h>
@@ -45,10 +46,10 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSy
         try {
             auto& mgr = const_cast<cardillo::PhysicsSystem&>(sys).collisionManager();
             if (sys.consumeStructureDirty()) mgr.rebuild();
-            mgr.applyTransforms();
-            auto contacts = mgr.detectAll();
+            // Reuse last computed contacts (avoid re-running collision detection in the writer)
+            const auto& contacts = mgr.lastFlattenedContacts();
             const bool writeBody = sys.config().output_contacts_body_vectors;
-            writeContacts(step, contacts, writeBody);
+            writeContacts(step, contacts, writeBody, sys.warmstartProvider());
         } catch (...) {
             // skip if collision manager not available
         }
@@ -768,7 +769,8 @@ void VtkWriterBinary::writeDynamicGeometry(int step, const Collected& data) cons
     out.close();
 }
 
-void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const {
+void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors,
+                                    cardillo::solver::WarmstartProvider* warmstartProvider) const {
     if (!m_writeContacts) return;
     if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
     const std::string path = buildPath(m_contactsBase, step);
@@ -810,6 +812,44 @@ void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collis
     }
     out << "SCALARS penetration float 1\nLOOKUP_TABLE default\n";
     for (const auto& c : contacts) writeBE(out, f32(c.penetration));
+
+    // If a warmstart provider is available, emit percussion data (pn, tangential magnitude, and vector)
+    if (warmstartProvider != nullptr) {
+        // normal impulse magnitude
+        out << "SCALARS pn float 1\nLOOKUP_TABLE default\n";
+        for (const auto& c : contacts) {
+            float pn = 0.f;
+            if (c.prev_global_out_index >= 0) {
+                auto opt = warmstartProvider->get(c.prev_global_out_index);
+                if (opt) pn = static_cast<float>(opt->pn);
+            }
+            writeBE(out, pn);
+        }
+
+        // tangential magnitude (sqrt(pt1^2 + pt2^2))
+        out << "SCALARS pt_mag float 1\nLOOKUP_TABLE default\n";
+        for (const auto& c : contacts) {
+            float ptmag = 0.f;
+            if (c.prev_global_out_index >= 0) {
+                auto opt = warmstartProvider->get(c.prev_global_out_index);
+                if (opt) ptmag = static_cast<float>(std::sqrt((double)opt->pt1*opt->pt1 + (double)opt->pt2*opt->pt2));
+            }
+            writeBE(out, ptmag);
+        }
+
+        // percussion vector in world coordinates: pn*normal + pt1*tangent1 + pt2*tangent2
+        out << "VECTORS percussion float\n";
+        for (const auto& c : contacts) {
+            Vector3r pvec = Vector3r::Zero();
+            if (c.prev_global_out_index >= 0) {
+                auto opt = warmstartProvider->get(c.prev_global_out_index);
+                if (opt) {
+                    pvec = (real_t)opt->pn * c.normal + (real_t)opt->pt1 * c.tangent1 + (real_t)opt->pt2 * c.tangent2;
+                }
+            }
+            writeBE(out, f32(pvec.x())); writeBE(out, f32(pvec.y())); writeBE(out, f32(pvec.z()));
+        }
+    }
     out << "SCALARS id_a int 1\nLOOKUP_TABLE default\n";
     for (const auto& c : contacts) writeBE(out, int32_t((int)entt::to_integral(c.a)));
     out << "SCALARS id_b int 1\nLOOKUP_TABLE default\n";

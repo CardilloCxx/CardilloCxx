@@ -21,7 +21,7 @@ class ProjectedJacobiSolver {
 public:
     explicit ProjectedJacobiSolver(cardillo::physics::DynamicsAssembler& dyn,
                                    const cardillo::config::Config& cfg,
-                                   WarmstartCache* cache)
+                                   WarmstartProvider* cache)
         : m_dyn(dyn)
         , m_alpha(cfg.pj_alpha)
         , m_compliance(std::max<real_t>(0, cfg.pj_compliance))
@@ -32,7 +32,7 @@ public:
         , m_useNesterov(cfg.pj_nesterov)
         , m_nest_beta_threshold((double)cfg.pj_nesterov_beta_threshold)
         , m_nest_restart_limit(std::max(0, cfg.pj_nesterov_restart_limit))
-        , m_wsCache(cache)
+        , m_wsProvider(cache)
     {}
 
     real_t alpha() const { return m_alpha; }
@@ -52,7 +52,7 @@ private:
     bool m_useNesterov{false};
     double m_nest_beta_threshold{0.995};
     int m_nest_restart_limit{4};
-    WarmstartCache* m_wsCache{nullptr};
+    WarmstartProvider* m_wsProvider{nullptr};
 };
 
 } // namespace cardillo::solver

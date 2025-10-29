@@ -35,6 +35,10 @@ public:
     // Run broadphase + narrowphase and return contacts
     std::vector<Contact> detectAll() const;
 
+    // Access the last flattened contact vector produced by the most recent detectAll() call.
+    // Returns an empty vector if detectAll() has not been run yet.
+    const std::vector<Contact>& lastFlattenedContacts() const { return m_last_flattened; }
+
     // Clear all internal caches/objects
     void clear();
 
@@ -60,6 +64,7 @@ private:
 
     // Last generation grouped contacts (for potential warmstarting)
     mutable ContactMap m_prevContactMap; // updated at end of detectAll
+    mutable std::vector<Contact> m_last_flattened; // flattened contacts from last detectAll()
 };
 
 } // namespace cardillo::collision

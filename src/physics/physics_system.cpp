@@ -1,5 +1,6 @@
 #include "physics_system.hpp"
 #include "../collision/collision_coal.hpp"
+#include "../solver/warmstart.hpp"
 #include <coal/mesh_loader/loader.h>
 #include <coal/BVH/BVH_model.h>
 #include <sstream>
@@ -63,6 +64,8 @@ inline void emplaceRigidBodyCommon(entt::registry& reg,
 PhysicsSystem::PhysicsSystem() {
     PetscPrintf(PETSC_COMM_WORLD, "Hello from PETSc + Eigen!\n");
     m_gravity = Vector3r(0, 0, -9.81);
+    // Default warmstart provider: simple global-index cache
+    m_warmstart_provider = std::make_unique<cardillo::solver::WarmstartCache>();
 }
 
 PhysicsSystem::~PhysicsSystem() = default;
@@ -295,7 +298,7 @@ VectorXr PhysicsSystem::getPosition(entt::entity e) const {
         Quaternion4r qn = m_reg.get<C_Orientation>(e).q;
         qn.normalize();
         VectorXr q(7);
-        q.head<3>(0) = x;
+        q.head<3>() = x;
         q.tail<4>() = qn.coeffs();
         return q;
     }

@@ -502,6 +502,7 @@ std::vector<Contact> CollisionCoal::detectAll() const {
 
     // Update previous contact map for potential warmstarting (next iteration)
     m_prevContactMap = std::move(mapCurr);
+    m_last_flattened = out;
     return out;
 }
 

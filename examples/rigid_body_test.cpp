@@ -36,8 +36,8 @@ int main(int argc, char** argv) {
     // HeightmapScene scene;
     // DominoScene scene;
     // PainleveScene scene;
-    // RotatingBallScene scene;
-    ChainScene scene;
+    RotatingBallScene scene;
+    // ChainScene scene;
     // RailScene scene;
     // DzhanibekovScene scene;
 
