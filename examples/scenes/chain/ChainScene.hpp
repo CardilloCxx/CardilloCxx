@@ -30,7 +30,7 @@ public:
         const std::string meshPath = "res/meshes/chain_link.obj";
 
         // Desired physical height of one link (meters)
-        const int N = 8;
+        const int N = 80;
         const real_t linkHeight = (real_t)0.05;
         const real_t spacing = (real_t)0.75 * linkHeight;
         const real_t startHeight = linkHeight + (N * spacing);
@@ -51,6 +51,12 @@ public:
             // Start at rest
             Vector3r vlin = Vector3r::Zero();
             Vector3r omega = Vector3r::Zero();
+
+            if (i == N-1) {
+                // Give the last link an initial push
+                vlin = Vector3r(100.0, 0.0, 100.0);
+            }
+
             sys.addRigidBodyMesh(mass, pos, ori, vlin, omega, meshPath, scale);
         }
     }

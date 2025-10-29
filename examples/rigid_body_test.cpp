@@ -35,9 +35,9 @@ int main(int argc, char** argv) {
     PhysicsSystem sys(cfg);
     // HeightmapScene scene;
     // DominoScene scene;
-    PainleveScene scene;
+    // PainleveScene scene;
     // RotatingBallScene scene;
-    // ChainScene scene;
+    ChainScene scene;
     // RailScene scene;
     // DzhanibekovScene scene;
 

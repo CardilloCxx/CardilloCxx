@@ -9,9 +9,60 @@
 
 namespace cardillo::solver {
 
+inline VectorXr B_times_u(const VectorXr& q, const VectorXr& u)
+{
+    const int nq = static_cast<int>(q.size());
+    const int nu = static_cast<int>(u.size());
+    VectorXr qdot = VectorXr::Zero(nq);
+
+    // Position derivative (common to both)
+    qdot.head(3) = u.head(3);
+
+    // If not a rigid body, return here
+    if (nq != 7 || nu != 6) return qdot;
+
+    const real_t w = q(6);
+    const Vector3r p = q.segment<3>(3);
+    const Vector3r omega = u.tail<3>();
+
+    // dq/dt = 0.5 * [ w*I + [p]_x ; -p^T ] * ω
+    qdot.segment<3>(3) = 0.5 * (w * omega + p.cross(omega));
+    qdot(6) = -0.5 * p.dot(omega);
+
+    return qdot;
+}
+
+inline void integrate_quaternions(
+    VectorXr& q_out,
+    const VectorXr& q_in,
+    const VectorXr& v_in,
+    const std::vector<int>& offQ,
+    const std::vector<int>& offV,
+    int Nb,
+    real_t dt,
+    real_t scale)
+{
+    for (int b = 0; b < Nb; ++b) {
+        const int q0 = offQ[b], qnxt = offQ[b + 1];
+        const int v0 = offV[b], vnxt = offV[b + 1];
+        const int nq = qnxt - q0, nv = vnxt - v0;
+        if (nq == 0 || nv == 0) continue;
+
+        auto q_seg = q_in.segment(q0, nq);
+        auto v_seg = v_in.segment(v0, nv);
+        auto q_out_seg = q_out.segment(q0, nq);
+
+        const auto qdot = B_times_u(q_seg, v_seg);
+        if (qdot.size() != nq) continue;
+
+        q_out_seg = q_seg + scale * dt * qdot;
+        if (nq == 7) q_out_seg.tail<4>().normalize();
+    }
+}
+
 void MoreauSolver::stepMidpoint(real_t dt)
 {
-    const bool dbg = [](){ const char* e = std::getenv("MOREAU_DEBUG"); if (!e) return false; std::string v(e); return v=="1" || v=="true"; }();
+    // 1) Get current state vectors
     m_dyn.refreshState();
     const auto& qn = m_dyn.qVec();
     const auto& vn = m_dyn.vVec();
@@ -21,86 +72,24 @@ void MoreauSolver::stepMidpoint(real_t dt)
     const auto& offV = m_dyn.bodyVelOffsets();
     const int Nb = (int)offV.size() - 1;
 
-    // External-only acceleration
-    VectorXr a_ext = MinvDiag.cwiseProduct(fn);
-
-    // Helper: apply B(q) * u (maps velocity block to qdot)
-    auto B_times_u = [](const VectorXr& q, const VectorXr& u) -> VectorXr {
-        if (q.size() == 3 && u.size() == 3) {
-            // point mass: qdot = [v]
-            return u;
-        } else if (q.size() == 7 && u.size() == 6) {
-            // rigid body: q = [x(3), w, px, py, pz], u = [v(3), omega_body(3)]
-            VectorXr qdot(7);
-            // position part
-            qdot.head<3>() = u.head<3>();
-            // quaternion kinematics in body frame: [p_dot; w_dot] = 0.5 * [ w I + [p]_x; -p^T ] * omega
-            const real_t w = q(6);
-            const Vector3r p = q.segment<3>(3);
-            const Vector3r om = u.tail<3>();
-            qdot.segment<3>(3) = (real_t)0.5 * (w * om + p.cross(om));
-            qdot(6) = (real_t)0.5 * (-(p.dot(om)));
-            return qdot;
-        }
-        // Fallback: sizes unknown
-        return VectorXr::Zero(q.size());
-    };
-
-    auto normalize_quat_in_q = [](VectorXr& q) {
-        if (q.size() == 7) {
-            q.tail<4>().normalize(); // inplace normalization
-        }
-    };
-
     // 2) Midpoint position and preliminary velocity (external forces only)
+    VectorXr a_ext = MinvDiag.cwiseProduct(fn);
     VectorXr q_mid = qn;
     VectorXr v_pre = vn + dt * a_ext;
-    for (int b = 0; b < Nb; ++b) {
-        int q0 = offQ[(size_t)b], qnxt = offQ[(size_t)b+1]; int nq = qnxt - q0;
-        int v0 = offV[(size_t)b], vnxt = offV[(size_t)b+1]; int nv = vnxt - v0;
-        if (nq > 0 && nv > 0) {
-            VectorXr qdot_mid = B_times_u(qn.segment(q0, nq), vn.segment(v0, nv));
-            if (qdot_mid.size() == nq) {
-                q_mid.segment(q0, nq) = qn.segment(q0, nq) + (real_t)0.5 * dt * qdot_mid;
-                VectorXr qb = q_mid.segment(q0, nq);
-                normalize_quat_in_q(qb);
-                if (qb.size() == nq) q_mid.segment(q0, nq) = qb;
-            }
-        }
-    }
+    integrate_quaternions(q_mid, qn, vn, offQ, offV, Nb, dt, 0.5);
 
     // 3) Evaluate contacts at midpoint positions: write q_mid into ECS (v stays vn)
     m_dyn.writeStateToSystem(q_mid, vn);
     m_dyn.refreshCollisions();
 
     // 4) Solve normal impulses p using W(q_mid), G, and preliminary velocity v_pre
-    // Default: Projected Jacobi; override with env USE_CPG=1 to use Conjugate Projected Gradient
-    bool useCPG = false;
-    if (const char* env = std::getenv("USE_CPG")) { useCPG = (std::string(env) == "1" || std::string(env) == "true"); }
     VectorXr vnp1;
-    if (useCPG) {
-        cardillo::solver::CPG cpg(m_dyn);
-        vnp1 = cpg.solve(v_pre, (real_t)1e-5);
-    } else {
-        // Use configured absolute tolerance for PJ
-        vnp1 = m_pj.iterateWithPreliminaryVelocity(v_pre, m_sys.config().pj_tol_abs);
-    }
+    if (false) { cardillo::solver::CPG cpg(m_dyn); vnp1 = cpg.solve(v_pre, (real_t)1e-5); } 
+    else vnp1 = m_pj.iterateWithPreliminaryVelocity(v_pre, m_sys.config().pj_tol_abs);
 
     // 5) Final position: q_{n+1} = q_mid + (h/2) * B(q_mid) * u_{n+1}
     VectorXr qnp1 = q_mid;
-    for (int b = 0; b < Nb; ++b) {
-        int q0 = offQ[(size_t)b], qnxt = offQ[(size_t)b+1]; int nq = qnxt - q0;
-        int v0 = offV[(size_t)b], vnxt = offV[(size_t)b+1]; int nv = vnxt - v0;
-        if (nq > 0 && nv > 0) {
-            VectorXr qdot_np1 = B_times_u(q_mid.segment(q0, nq), vnp1.segment(v0, nv));
-            if (qdot_np1.size() == nq) {
-                qnp1.segment(q0, nq) = q_mid.segment(q0, nq) + (real_t)0.5 * dt * qdot_np1;
-                VectorXr qb = qnp1.segment(q0, nq);
-                normalize_quat_in_q(qb);
-                if (qb.size() == nq) qnp1.segment(q0, nq) = qb;
-            }
-        }
-    }
+    integrate_quaternions(qnp1, q_mid, vnp1, offQ, offV, Nb, dt, 0.5);
 
     // 6) Write back final state to ECS
     m_dyn.writeStateToSystem(qnp1, vnp1);
