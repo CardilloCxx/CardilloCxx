@@ -295,8 +295,8 @@ VectorXr PhysicsSystem::getPosition(entt::entity e) const {
         Quaternion4r qn = m_reg.get<C_Orientation>(e).q;
         qn.normalize();
         VectorXr q(7);
-        q[0] = x[0]; q[1] = x[1]; q[2] = x[2];
-        q[3] = qn.w(); q[4] = qn.x(); q[5] = qn.y(); q[6] = qn.z();
+        q.head<3>(0) = x;
+        q.tail<4>() = qn.coeffs();
         return q;
     }
     // Point mass

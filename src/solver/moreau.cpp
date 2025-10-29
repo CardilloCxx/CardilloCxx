@@ -31,16 +31,15 @@ void MoreauSolver::stepMidpoint(real_t dt)
             return u;
         } else if (q.size() == 7 && u.size() == 6) {
             // rigid body: q = [x(3), w, px, py, pz], u = [v(3), omega_body(3)]
-            VectorXr qdot(7); qdot.setZero();
+            VectorXr qdot(7);
             // position part
-            qdot[0] = u[0]; qdot[1] = u[1]; qdot[2] = u[2];
-            const real_t w = q[3];
-            const Eigen::Vector3d p(q[4], q[5], q[6]);
-            const Eigen::Vector3d om(u[3], u[4], u[5]);
-            // quaternion kinematics in body frame: [w_dot; p_dot] = 0.5 * [ -p^T; w I + [p]_x ] * omega
-            const real_t wdot = (real_t)0.5 * (-(p.dot(om)));
-            const Eigen::Vector3d pdot = (real_t)0.5 * (w * om + p.cross(om));
-            qdot[3] = wdot; qdot[4] = (real_t)pdot.x(); qdot[5] = (real_t)pdot.y(); qdot[6] = (real_t)pdot.z();
+            qdot.head<3>() = u.head<3>();
+            // quaternion kinematics in body frame: [p_dot; w_dot] = 0.5 * [ w I + [p]_x; -p^T ] * omega
+            const real_t w = q(6);
+            const Vector3r p = q.segment<3>(3);
+            const Vector3r om = u.tail<3>();
+            qdot.segment<3>(3) = (real_t)0.5 * (w * om + p.cross(om));
+            qdot(6) = (real_t)0.5 * (-(p.dot(om)));
             return qdot;
         }
         // Fallback: sizes unknown
@@ -49,9 +48,7 @@ void MoreauSolver::stepMidpoint(real_t dt)
 
     auto normalize_quat_in_q = [](VectorXr& q) {
         if (q.size() == 7) {
-            Quaternion4r qq(q[3], q[4], q[5], q[6]);
-            qq.normalize();
-            q[3] = qq.w(); q[4] = qq.x(); q[5] = qq.y(); q[6] = qq.z();
+            q.tail<4>().normalize(); // inplace normalization
         }
     };
 
