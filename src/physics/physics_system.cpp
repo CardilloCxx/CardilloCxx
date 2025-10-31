@@ -1,4 +1,5 @@
 #include "physics_system.hpp"
+#include "force_interaction.hpp"
 #include "../collision/collision_coal.hpp"
 #include "../solver/warmstart.hpp"
 #include <coal/mesh_loader/loader.h>
@@ -176,7 +177,7 @@ index_t PhysicsSystem::addObstacleHeightField(const Vector3r& position,
 }
 
 // Dynamic rigid body
-index_t PhysicsSystem::addRigidBody(real_t mass,
+entt::entity PhysicsSystem::addRigidBody(real_t mass,
                                     const Vector3r& position,
                                     const Quaternion4r& orientation,
                                     const Vector3r& linearVelocity,
@@ -189,11 +190,12 @@ index_t PhysicsSystem::addRigidBody(real_t mass,
     m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{shape.halfExtents});
     m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{boxInertiaDiag(mass, shape.halfExtents)});
     m_structure_dirty = true;
-    return static_cast<index_t>(entt::to_integral(e));
+    return e;
 }
 
+
 // Mesh-based rigid body
-index_t PhysicsSystem::addRigidBodyMesh(real_t mass,
+entt::entity PhysicsSystem::addRigidBodyMesh(real_t mass,
                                         const Vector3r& position,
                                         const Quaternion4r& orientation,
                                         const Vector3r& linearVelocity,
@@ -214,11 +216,11 @@ index_t PhysicsSystem::addRigidBodyMesh(real_t mass,
         m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{Idiag});
     }
     m_structure_dirty = true;
-    return static_cast<index_t>(entt::to_integral(e));
+    return e;
 }
 
 // Sphere rigid body
-index_t PhysicsSystem::addRigidBodySphere(real_t mass,
+entt::entity PhysicsSystem::addRigidBodySphere(real_t mass,
                                          const Vector3r& position,
                                          const Quaternion4r& orientation,
                                          const Vector3r& linearVelocity,
@@ -232,10 +234,10 @@ index_t PhysicsSystem::addRigidBodySphere(real_t mass,
     m_reg.emplace<C_RB_Sphere>(e);
     m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{sphereInertiaDiag(mass, radius)});
     m_structure_dirty = true;
-    return static_cast<index_t>(entt::to_integral(e));
+    return e;
 }
 
-index_t PhysicsSystem::addRigidBodyCapsule(real_t mass,
+entt::entity PhysicsSystem::addRigidBodyCapsule(real_t mass,
                                            const Vector3r& position,
                                            const Quaternion4r& orientation,
                                            const Vector3r& linearVelocity,
@@ -248,7 +250,25 @@ index_t PhysicsSystem::addRigidBodyCapsule(real_t mass,
     m_reg.emplace<C_RB_Capsule>(e, C_RB_Capsule{shape.radius, shape.halfLength});
     m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{capsuleInertiaDiag(mass, shape.radius, shape.halfLength)});
     m_structure_dirty = true;
-    return static_cast<index_t>(entt::to_integral(e));
+    return e;
+}
+
+// Lazy-create and return the ForceInteractionManager owned by this system
+cardillo::physics::ForceInteractionManager& PhysicsSystem::forceManager()
+{
+    if (!m_force_mgr) {
+        m_force_mgr = std::make_unique<cardillo::physics::ForceInteractionManager>();
+    }
+    return *m_force_mgr;
+}
+
+// Passthrough to add a SpringConstraint into the internal manager. Ensures the constraint
+// has the system's registry pointer so recomputeDeformations() can read entity state.
+size_t PhysicsSystem::addConstraint(const cardillo::physics::SpringConstraint& c)
+{
+    cardillo::physics::SpringConstraint cp = c; // copy
+    cp.registry = &m_reg; // ensure registry points to this system's registry
+    return forceManager().addConstraint(cp);
 }
 
 // ---------- Dynamics getters ----------

@@ -1,6 +1,8 @@
 
 #include "dynamics_assembler.hpp"
 #include "../collision/collision_coal.hpp"
+#include "force_interaction.hpp"
+#include <Eigen/Cholesky>
 
 
 namespace cardillo::physics {
@@ -53,6 +55,7 @@ void DynamicsAssembler::rebuildMass_() {
     const int Nb = m_sys.numBodies();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     m_Minv_diag = VectorXr::Zero(totalV);
+    m_M_diag = VectorXr::Zero(totalV);
 
     const auto& reg = m_sys.ecs();
     auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
@@ -62,7 +65,11 @@ void DynamicsAssembler::rebuildMass_() {
         VectorXr MinvDiag = m_sys.getMassInverseDiag(e);
         const int off = m_body_vel_offsets[(size_t)b];
         const int n = (int)MinvDiag.size();
-        for (int i = 0; i < n; ++i) m_Minv_diag[off + i] = MinvDiag[i];
+        for (int i = 0; i < n; ++i) {
+            const real_t inv = MinvDiag[i];
+            m_Minv_diag[off + i] = inv;
+            m_M_diag[off + i] = (inv > (real_t)0) ? (real_t)1 / inv : (real_t)0;
+        }
     }
 }
 
@@ -233,6 +240,190 @@ void DynamicsAssembler::rebuildW_() {
     m_W_sparse.makeCompressed();
 }
 
+// Rebuild auxiliary block matrices derived from W and current contacts/state.
+void DynamicsAssembler::rebuidInteractionW_()
+{
+    // Build m_Wg from force interactions (spring constraints) and assemble global K/D
+    auto &mgr = const_cast<cardillo::PhysicsSystem&>(m_sys).forceManager();
+    auto &constraints = mgr.constraints();
+    const int numSprings = (int)constraints.size();
+    const int Cdyn = 6 * numSprings; // 6 rows per spring
+    const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
+
+    // Prepare triplets for Wg (Cdyn x totalV) and K/D (Cdyn x Cdyn)
+    std::vector<Eigen::Triplet<real_t>> tripsWg;
+    std::vector<Eigen::Triplet<real_t>> tripsWgamma;
+    std::vector<Eigen::Triplet<real_t>> tripsK;
+    std::vector<Eigen::Triplet<real_t>> tripsD;
+    tripsWg.reserve((size_t)numSprings * 12 * 6);
+    tripsWgamma.reserve((size_t)numSprings * 12 * 6);
+    tripsK.reserve((size_t)numSprings * 36);
+    tripsD.reserve((size_t)numSprings * 36);
+
+    // For each constraint, build local Wg blocks and append into global matrices
+    const auto &reg = m_sys.ecs();
+    m_gcat = VectorXr::Zero(Cdyn);
+    m_gdotcat = VectorXr::Zero(Cdyn);
+    for (int i = 0; i < numSprings; ++i) {
+        auto &c = constraints[(size_t)i];
+        // Ensure per-constraint cached values are up-to-date (registry should already be set by passthrough)
+        c.recomputeDeformations();
+
+        Matrix6r WgA, WgB, WgammaA, WgammaB;
+        c.computeWBlocks(WgA, WgB, WgammaA, WgammaB);
+
+        const int row0 = 6 * i;
+
+        // Store concatenated g and gdot
+        m_gcat.segment<6>(row0) = c.g;
+        m_gdotcat.segment<6>(row0) = c.gdot;
+
+        // Body A
+        if (c.bodyA != entt::null && reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(c.bodyA)) {
+            int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(c.bodyA).b;
+            if (b >= 0 && b < (int)m_body_vel_offsets.size()-1) {
+                int col0 = m_body_vel_offsets[(size_t)b];
+                int nV = m_body_vel_offsets[(size_t)b+1] - col0;
+                int nCopy = std::min(6, nV);
+                for (int r = 0; r < 6; ++r) {
+                    for (int j = 0; j < nCopy; ++j) {
+                        real_t val = WgA(r,j);
+                        if (val != (real_t)0) tripsWg.emplace_back(row0 + r, col0 + j, val);
+                    }
+                }
+                // Wgamma contributions for Body A
+                for (int r = 0; r < 6; ++r) {
+                    for (int j = 0; j < nCopy; ++j) {
+                        real_t val = WgammaA(r,j);
+                        if (val != (real_t)0) tripsWgamma.emplace_back(row0 + r, col0 + j, val);
+                    }
+                }
+            }
+        }
+
+        // Body B
+        if (c.bodyB != entt::null && reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(c.bodyB)) {
+            int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(c.bodyB).b;
+            if (b >= 0 && b < (int)m_body_vel_offsets.size()-1) {
+                int col0 = m_body_vel_offsets[(size_t)b];
+                int nV = m_body_vel_offsets[(size_t)b+1] - col0;
+                int nCopy = std::min(6, nV);
+                for (int r = 0; r < 6; ++r) {
+                    for (int j = 0; j < nCopy; ++j) {
+                        real_t val = WgB(r,j);
+                        if (val != (real_t)0) tripsWg.emplace_back(row0 + r, col0 + j, val);
+                    }
+                }
+                // Wgamma contributions for Body B
+                for (int r = 0; r < 6; ++r) {
+                    for (int j = 0; j < nCopy; ++j) {
+                        real_t val = WgammaB(r,j);
+                        if (val != (real_t)0) tripsWgamma.emplace_back(row0 + r, col0 + j, val);
+                    }
+                }
+            }
+        }
+
+        // Assemble K and D block-diagonal entries for this constraint
+        for (int r = 0; r < 6; ++r) {
+            for (int ccol = 0; ccol < 6; ++ccol) {
+                real_t kval = c.K(r, ccol);
+                real_t dval = c.D(r, ccol);
+                if (kval != (real_t)0) tripsK.emplace_back(row0 + r, row0 + ccol, kval);
+                if (dval != (real_t)0) tripsD.emplace_back(row0 + r, row0 + ccol, dval);
+            }
+        }
+    }
+
+    // Build sparse matrices
+    m_Wg.resize(Cdyn, totalV);
+    m_Wg.setFromTriplets(tripsWg.begin(), tripsWg.end());
+    m_Wg.makeCompressed();
+
+    m_Wgamma.resize(Cdyn, totalV);
+    m_Wgamma.setFromTriplets(tripsWgamma.begin(), tripsWgamma.end());
+    m_Wgamma.makeCompressed();
+
+    m_K.resize(Cdyn, Cdyn);
+    m_K.setFromTriplets(tripsK.begin(), tripsK.end());
+    m_K.makeCompressed();
+
+    m_D.resize(Cdyn, Cdyn);
+    m_D.setFromTriplets(tripsD.begin(), tripsD.end());
+    m_D.makeCompressed();
+
+    // Invalidate previous S factorization
+    m_S_llt.reset();
+}
+
+bool DynamicsAssembler::buildAndFactorS(real_t dt)
+{
+    // Ensure current blocks are built
+    rebuidInteractionW_();
+    const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
+   
+    Eigen::SparseMatrix<real_t> Msp(totalV, totalV);
+    std::vector<Eigen::Triplet<real_t>> tripsM;
+    tripsM.reserve((size_t)totalV);
+    for (int i = 0; i < totalV; ++i) {
+        real_t mval = m_M_diag[i];
+        if (mval != (real_t)0) tripsM.emplace_back(i, i, mval);
+    }
+    Msp.setFromTriplets(tripsM.begin(), tripsM.end());
+
+    // Diagnostics: print sizes and sparsity of contributing matrices so we can trace zero-entries
+    std::cerr << "[DynamicsAssembler] S-assembly inputs: totalV=" << totalV
+              << " Msp.nnz=" << Msp.nonZeros()
+              << " m_M_diag_nonzero=" << (int)(std::count_if(m_M_diag.data(), m_M_diag.data()+totalV, [](real_t v){return v!=0;}))
+              << " m_Wg(" << m_Wg.rows() << "," << m_Wg.cols() << ").nnz=" << m_Wg.nonZeros()
+              << " m_K(" << m_K.rows() << "," << m_K.cols() << ").nnz=" << m_K.nonZeros()
+              << " m_Wgamma(" << m_Wgamma.rows() << "," << m_Wgamma.cols() << ").nnz=" << m_Wgamma.nonZeros()
+              << " m_D.nnz=" << m_D.nonZeros() << std::endl;
+
+    // Build S = M + dt^2 * Wg^T * K * Wg + dt * Wgamma^T * D * Wgamma
+    Eigen::SparseMatrix<real_t> Sterm1(totalV, totalV);
+    Eigen::SparseMatrix<real_t> Sterm2(totalV, totalV);
+
+    if (m_Wg.rows() > 0 && m_K.rows() > 0) {
+        // compute dt^2 * (Wg^T * (K * Wg))
+        Sterm1 = (dt * dt) * (m_Wg.transpose() * (m_K * m_Wg));
+        std::cerr << "[DynamicsAssembler] Sterm1 built; nnz=" << Sterm1.nonZeros() << std::endl;
+    }
+
+    if (m_Wgamma.rows() > 0 && m_D.rows() > 0) {
+        // compute dt * (Wgamma^T * (D * Wgamma))
+        Sterm2 = dt * (m_Wgamma.transpose() * (m_D * m_Wgamma));
+        std::cerr << "[DynamicsAssembler] Sterm2 built; nnz=" << Sterm2.nonZeros() << std::endl;
+    }
+
+    m_S = Msp + Sterm1 + Sterm2;
+    m_S.makeCompressed();
+
+    // Factorize S using SimplicialLLT for self-adjoint positive definite matrices
+    try {
+        m_S_llt.emplace();
+        m_S_llt->compute(m_S);
+        if (m_S_llt->info() != Eigen::Success) {
+            m_S_llt.reset();
+            return false;
+        }
+    } catch (...) {
+        m_S_llt.reset();
+        return false;
+    }
+    return true;
+}
+
+VectorXr DynamicsAssembler::solveWithS(const VectorXr& rhs) const
+{
+    if (!m_S_llt.has_value()) throw std::runtime_error("S factorization not available");
+    Eigen::VectorXd rhsd = rhs.cast<double>();
+    Eigen::VectorXd x = m_S_llt->solve(rhsd);
+    VectorXr out((index_t)x.size());
+    for (int i = 0; i < (int)x.size(); ++i) out[i] = (real_t)x[i];
+    return out;
+}
+
 void DynamicsAssembler::refreshState() {
     bool structureChanged = false;
     if (m_sys.consumeStructureDirty()) {
@@ -275,9 +466,11 @@ void DynamicsAssembler::refreshState() {
     }
 }
 
-void DynamicsAssembler::refreshCollisions() {
+void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt) {
     updateContactsFromSystem();
     rebuildW_();
+
+    if (!buildAndFactorS(dt)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
 }
 
 

@@ -31,6 +31,8 @@ private:
 	cardillo::physics::DynamicsAssembler m_dyn;
 	// warmstart provider is owned by the PhysicsSystem; no local member here
 	cardillo::solver::ProjectedJacobiSolver m_pj;
+	// Constraint-space Lagrange multipliers for generalized springs (size = C_dyn)
+	VectorXr m_Lambda_g;
 };
 
 // No legacy free function; use MoreauSolver directly

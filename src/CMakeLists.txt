@@ -8,7 +8,7 @@ add_library(${PROJECT_NAME} STATIC
     solver/CPG.cpp
     solver/projected_jacobi.cpp
     physics/dynamics_assembler.cpp
-    # deprecated collision pipeline moved under collision/depracted (not built)
+    physics/force_interaction.cpp
     collision/collision_coal.cpp
     partitioning/naive_partitioner.cpp
     comm/communication.cpp

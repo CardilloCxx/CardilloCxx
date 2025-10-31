@@ -38,7 +38,7 @@ public:
     real_t alpha() const { return m_alpha; }
     
     // Concatenated API: accept stacked preliminary velocities and return stacked velocities
-    VectorXr iterateWithPreliminaryVelocity(const VectorXr& v_pre, real_t tol = 1e-5);
+    VectorXr iterateWithPreliminaryVelocity(const VectorXr& v_pre, VectorXr& rhs, real_t tol = 1e-5);
 
 private:
     cardillo::physics::DynamicsAssembler& m_dyn;

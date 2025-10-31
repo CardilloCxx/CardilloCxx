@@ -59,7 +59,7 @@ public:
 
     // Check system dirty flags and structural updates once per step and rebuild caches as needed
     void refreshState();
-    void refreshCollisions();
+    void refreshCollisionsAndSprings( real_t dt );
 
 
 private:
@@ -78,6 +78,42 @@ private:
     std::vector<int> m_body_vel_offsets;    // size Nb+1, prefix sums for body velocity columns
     std::vector<int> m_body_pos_offsets;    // size Nb+1, prefix sums for body position columns
     VectorXr m_Minv_diag;                   // size totalV, diagonal of Minv
+    VectorXr m_M_diag;                      // size totalV, diagonal of M (non-inverted)
+
+    // Additional per-contact/block matrices used by solvers
+    // Wg maps constraint-space generalized g/constraint DOFs to global velocity DOFs (same shape as m_W_sparse)
+    Eigen::SparseMatrix<real_t> m_Wg;
+    // W_gamma often is the gamma-related Jacobian (negated Wg for one side); keep as sparse
+    Eigen::SparseMatrix<real_t> m_Wgamma;
+
+    // Contact-space stiffness/constraint matrices (sparse). Dimensions: C_dyn x C_dyn
+    Eigen::SparseMatrix<real_t> m_K; // stiffness in constraint space (C_dyn x C_dyn)
+    Eigen::SparseMatrix<real_t> m_D; // damping in constraint space (C_dyn x C_dyn)
+
+    // Effective mass S in velocity DOF space and its Cholesky factorization
+    Eigen::SparseMatrix<real_t> m_S; // size totalV x totalV
+    std::optional<Eigen::SimplicialLLT<Eigen::SparseMatrix<real_t>>> m_S_llt; // lazily constructed
+
+    // Concatenated spring deformations and rates
+    VectorXr m_gcat;
+    VectorXr m_gdotcat;
+
+public:
+    // Accessors for newly added matrices
+    const Eigen::SparseMatrix<real_t>& WgSparse() const { return m_Wg; }
+    const Eigen::SparseMatrix<real_t>& WgammaSparse() const { return m_Wgamma; }
+    const Eigen::SparseMatrix<real_t>& Kmat() const { return m_K; }
+    const Eigen::SparseMatrix<real_t>& Dmat() const { return m_D; }
+
+    // Accessors for concatenated spring deformations and rates
+    const VectorXr& gcat() const { return m_gcat; }
+    const VectorXr& gdotcat() const { return m_gdotcat; }
+
+    // Build and factorize the effective mass matrix S = M + dt^2 * Wg * K * Wg^T + h * W_gamma * D * W_gamma^T
+    // Returns true on successful factorization.
+    bool buildAndFactorS(real_t dt);
+    // Solve S x = rhs using the precomputed factorization. Factorization must be valid.
+    VectorXr solveWithS(const VectorXr& rhs) const;
 
     std::vector<int> m_contact_index_orig; // size Nc_dynamic, maps dynamic contact id -> original contact index
     std::vector<collision::Contact> m_contacts;
@@ -93,7 +129,7 @@ private:
     void rebuildMass_();
     void rebuildForces_();
     void rebuildW_();
-    void rebuildBlocks_();
+    void rebuidInteractionW_();
 };
 
 } // namespace cardillo::physics

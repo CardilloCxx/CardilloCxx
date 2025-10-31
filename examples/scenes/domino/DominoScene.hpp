@@ -23,15 +23,27 @@ public:
         sys.addObstacleBody(ground);
 
         // Domino dims: x=length/2, y=thickness/2, z=height/2
-        const Vector3r dominoHalf((real_t)0.048, (real_t)0.0075, (real_t)0.024); // length 9.6cm, thickness 1.5cm, height 4.8cm
+        const Vector3r dominoHalf((real_t)0.024, (real_t)0.00375, (real_t)0.012); // length 9.6cm, thickness 1.5cm, height 4.8cm
         const real_t density = (real_t)800.0;
-        const int layers = 7;
-        const int gridN = 4;
-        const Vector3r baseCenter(-3.0, 0.0, 0.0);
+        const int layers = 103;
+        const int gridN = 6;
+        const Vector3r baseCenter(0.0, 0.0, 0.0);
         const real_t gapLong = (real_t)0.004; // small longitudinal spacing
         const real_t extraLayerGap = (real_t)-0.0001;
 
         spawnDominoTowerStructure(sys, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap);
+
+        // bullet
+        {
+            sys.addRigidBodySphere(
+                (real_t)2.0,
+                Vector3r(0.25, 0.0, 2.0),
+                Quaternion4r::Identity(),
+                Vector3r(-20.0, 0.0, 0.0),
+                Vector3r::Zero(),
+                (real_t)0.01
+            );
+        }
     }
 
 private:
@@ -84,9 +96,9 @@ private:
             const real_t m = massFromDensity(half, density);
             Vector3r vel = Vector3r::Zero();
             // Give the domino in the 4th layer from the top, in the middle of y, in the most positive x a nudge
-            if (i == Ncells -1 && (j == Ncells /2 || j == Ncells /2 - 1) && k == layers -4) {
-                vel = Vector3r(4.0, 0.0, 1.0) * 2;
-            }
+            // if (i == Ncells -1 && (j == Ncells /2 || j == Ncells /2 - 1) && k == layers -4) {
+            //     vel = Vector3r(4.0, 0.0, 1.0) * 2;
+            // }
             sys.addRigidBody(m, c, domino.q, vel, Vector3r::Zero(), domino);
 
         };

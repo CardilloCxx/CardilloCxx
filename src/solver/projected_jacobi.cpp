@@ -12,24 +12,32 @@
 namespace cardillo::solver {
 
 // Precompute R = alpha / diag(G + compliance I) for relevant contacts
-// G = W * Minv * W^T, with Minv diagonal (given as MinvDiag)
+// Now G = W * S^{-1} * W^T where S is the effective mass assembled and factorized
+// We compute the diagonal entries Dii = w_row * (S^{-1} * w_row^T) and form R = alpha / (Dii + compliance)
 static inline VectorXr precompute_Rdiag_sparse(
+	cardillo::physics::DynamicsAssembler& dyn,
 	const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W,
-	const VectorXr& MinvDiag,
 	const std::vector<int>& relevantContacts,
 	real_t alpha,
 	real_t compliance)
 {
 	const int C = (int)W.rows();
+	const int totalV = (W.cols() > 0) ? W.cols() : 0;
 	VectorXr R = VectorXr::Zero(C);
+
 	for (int cid : relevantContacts) {
 		if (cid < 0 || cid >= C) continue;
-		real_t Dii = 0;
+		// Build sparse row into a dense vector rhs (size totalV)
+		VectorXr wvec = VectorXr::Zero((index_t)totalV);
+		
 		for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
-			const int col = it.col();
-			const real_t w = it.value();
-			Dii += w * w * MinvDiag[col];
+			const int col = it.col(); const real_t val = it.value();
+			wvec[col] = val;
 		}
+
+		VectorXr x = dyn.solveWithS(wvec);
+		real_t Dii = (real_t)wvec.dot(x);
+
 		Dii += compliance;
 		R[cid] = (Dii > (real_t)0) ? (alpha / Dii) : (real_t)0;
 	}
@@ -40,7 +48,7 @@ static inline VectorXr precompute_Rdiag_sparse(
 namespace {
 struct PJIterContext {
 	const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W;
-	const VectorXr& MinvDiag;
+	cardillo::physics::DynamicsAssembler* dyn; // pointer to assembler (for S-solve etc.)
 	std::vector<int> bodyOffsets;
 	partitioning::PartitionerResult res;
 	VectorXr Rdiag;
@@ -99,7 +107,6 @@ static inline PJIterContext build_context(
 	real_t compliance)
 {
 	const auto& W = dyn.W();
-	const auto& MinvDiagVec = dyn.MinvDiag();
 	const auto& bodyOffsets = dyn.bodyVelOffsets();
 	const int C = (int)W.rows();
 
@@ -123,9 +130,9 @@ static inline PJIterContext build_context(
 	int Nb = (int)bodyOffsets.size() - 1;
 	auto res = part.build(Nb, partEdges, false);
 
-	PJIterContext ctx{dyn.W(), dyn.MinvDiag(), std::vector<int>{}, std::move(res), VectorXr()};
+	PJIterContext ctx{dyn.W(), &dyn, std::vector<int>{}, std::move(res), VectorXr()};
 	ctx.bodyOffsets = dyn.bodyVelOffsets();
-	ctx.Rdiag = precompute_Rdiag_sparse(W, MinvDiagVec, ctx.res.allContacts, alpha, compliance);
+	ctx.Rdiag = precompute_Rdiag_sparse(dyn, W, ctx.res.allContacts, alpha, compliance);
 	// Build contact row groups and per-contact mu
 	const ContactGroups cg = build_contact_groups(dyn);
 	ctx.contactRowGroups = cg.rows;
@@ -179,16 +186,13 @@ static inline void project_groups(const PJIterContext& ctx, const VectorXr& z, c
 
 // Apply relaxation and exchange p; then update u and exchange u
 static inline void relax_exchange_update(PJIterContext& ctx, const VectorXr& u_old, 
-									     const VectorXr& p_old, VectorXr& u_new, VectorXr& p_new)
+										 const VectorXr& p_old, VectorXr& u_new, VectorXr& p_new)
 {
-	const auto& W = ctx.W; const auto& Minv = ctx.MinvDiag; const auto& bodyOffsets = ctx.bodyOffsets; const auto& res = ctx.res;
-	// for (int cid : res.allContacts) {
-	// 	const real_t p_new = p_proj[cid];
-	// 	p_inout[cid] = ((real_t)1 - ctx.relax) * p_old[cid] + ctx.relax * p_new;
-	// }
+	const auto& W = ctx.W; cardillo::physics::DynamicsAssembler* dyn = ctx.dyn; const auto& bodyOffsets = ctx.bodyOffsets; const auto& res = ctx.res;
 	// cardillo::comm::Communication::exchangePercussionsOwnerPush(p_new, res);
 	ctx.tmp_concat.noalias() = W.transpose() * (p_new - p_old);
-	u_new = u_old + Minv.cwiseProduct(ctx.tmp_concat);
+	// Use effective-mass solve (S^{-1}) to update u
+	u_new = u_old + dyn->solveWithS(ctx.tmp_concat);
 	// cardillo::comm::Communication::exchangeBodyVelocitiesOwnerPushConcat(u_new, res, bodyOffsets);
 }
 
@@ -324,11 +328,10 @@ static inline void nesterov_loop(PJIterContext& ctx,
 
 }
 
-VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v_free, real_t tol) {
-	// Use sparse W and block-diagonal Minv
+VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& u_n, VectorXr& rhs, real_t tol) {
+	// Use sparse W and the effective-mass S (assembled & factorized in DynamicsAssembler)
 	const auto& Wref = m_dyn.W();
 	const int C = (int)Wref.rows();
-	if (C == 0 || Wref.nonZeros() == 0) return v_free; // no contacts, return preliminary velocity as-is
 
 	int worldRank = 0;
 	MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
@@ -356,8 +359,10 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& v
 		}
 	}
 
-	// initial guess for next velcoity iteration
-	VectorXr u = v_free + ctx.MinvDiag.cwiseProduct(ctx.W.transpose() * p);
+	// initial guess for next velocity iteration
+	VectorXr u = u_n + m_dyn.solveWithS(rhs + Wref.transpose() * p);
+	
+	if (C == 0 || Wref.nonZeros() == 0) return u; // no contacts, return preliminary velocity as-is
 
 	// Configure iteration context
 	ctx.worldRank = worldRank;

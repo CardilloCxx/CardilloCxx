@@ -5,10 +5,7 @@
 #include <cmath>
 
 // Chain scene: loads a chain link mesh and creates a hanging chain of links.
-// The top link is static and placed at height 1.0 m above ground. Subsequent
-// links hang below it with alternating 90 degree rotations (about the X axis)
-// to interlock. The mesh is assumed to represent a single chain-link of unit
-// canonical height; we scale so that the link height in world space is 1.0 m.
+// The top link is static and placed at height 1.0 m above ground.
 class ChainScene : public SceneBase {
 public:
     ChainScene() = default;
@@ -30,7 +27,7 @@ public:
         const std::string meshPath = "res/meshes/chain_link.obj";
 
         // Desired physical height of one link (meters)
-        const int N = 80;
+        const int N = 10;
         const real_t linkHeight = (real_t)0.05;
         const real_t spacing = (real_t)0.75 * linkHeight;
         const real_t startHeight = linkHeight + (N * spacing);
@@ -54,7 +51,7 @@ public:
 
             if (i == N-1) {
                 // Give the last link an initial push
-                vlin = Vector3r(100.0, 0.0, 100.0);
+                vlin = Vector3r(-10.0, 0.0, -10.0);
             }
 
             sys.addRigidBodyMesh(mass, pos, ori, vlin, omega, meshPath, scale);

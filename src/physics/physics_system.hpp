@@ -26,6 +26,9 @@ namespace cardillo { namespace solver { class WarmstartProvider; } }
 // fwd
 namespace cardillo { namespace collision { class CollisionCoal; } }
 
+// forward-declare force interaction types (defined in force_interaction.hpp)
+namespace cardillo { namespace physics { class ForceInteractionManager; struct SpringConstraint; } }
+
 namespace cardillo {
 
 // A minimal, standard-C++ physics system for frictionless point masses
@@ -72,21 +75,22 @@ public:
                             const Quaternion4r& orientation,
                             const std::string& meshPath,
                             const Vector3r& scale = Vector3r(1,1,1));
-    // Dynamic rigid body creation: pose and spatial velocity
-    index_t addRigidBody(real_t mass,
+    // Dynamic rigid body creation: pose and spatial velocity. Returns the
+    // created entt::entity so callers can keep the handle to create constraints.
+    entt::entity addRigidBody(real_t mass,
                          const Vector3r& position,
                          const Quaternion4r& orientation,
                          const Vector3r& linearVelocity,
                          const Vector3r& angularVelocity,
                          const Cube& shape);
-    index_t addRigidBodyCapsule(real_t mass,
+    entt::entity addRigidBodyCapsule(real_t mass,
                                 const Vector3r& position,
                                 const Quaternion4r& orientation,
                                 const Vector3r& linearVelocity,
                                 const Vector3r& angularVelocity,
                                 const Capsule& shape);
     // Mesh-based rigid body (collision via COAL BVH, visual via VTK mesh output)
-    index_t addRigidBodyMesh(real_t mass,
+    entt::entity addRigidBodyMesh(real_t mass,
                              const Vector3r& position,
                              const Quaternion4r& orientation,
                              const Vector3r& linearVelocity,
@@ -102,7 +106,7 @@ public:
                                    real_t z_scale = (real_t)1.0,
                                    real_t min_height = (real_t)0.0);
     // Sphere-based rigid body (with rotation and inertia)
-    index_t addRigidBodySphere(real_t mass,
+    entt::entity addRigidBodySphere(real_t mass,
                                const Vector3r& position,
                                const Quaternion4r& orientation,
                                const Vector3r& linearVelocity,
@@ -154,9 +158,19 @@ public:
 
     // Expose ECS for external querying (read-only)
     const entt::registry& ecs() const { return m_reg; }
+    // Mutable ECS access when external systems need to emplace components
+    entt::registry& ecs() { return m_reg; }
 
     // Access to warmstart provider owned by the system (may be nullptr)
     cardillo::solver::WarmstartProvider* warmstartProvider() const { return m_warmstart_provider.get(); }
+
+    // Access to the owned ForceInteractionManager (creates it on system init).
+    // The manager stores and updates spring constraints.
+    cardillo::physics::ForceInteractionManager& forceManager();
+
+    // Passthrough to add a SpringConstraint into the internal manager.
+    // Returns the manager-local index of the created constraint.
+    size_t addConstraint(const cardillo::physics::SpringConstraint& c);
 
     // Public ECS component/tag types for queries
     struct C_Mass { real_t m; };
@@ -245,6 +259,8 @@ private:
 
     // Warmstart provider (strategy owned by system). Default implementation is WarmstartCache.
     std::unique_ptr<cardillo::solver::WarmstartProvider> m_warmstart_provider;
+    // Owned force interaction manager (lazy-created)
+    std::unique_ptr<cardillo::physics::ForceInteractionManager> m_force_mgr;
 
     // Shared mesh cache (keyed by path + scale)
     mutable std::unordered_map<std::string, MeshAsset> m_meshCache;
