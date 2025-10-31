@@ -16,6 +16,7 @@
 #include "scenes/dzhanibekov/dzhanibekov.hpp"
 #include "scenes/dzhanibekov/dzhanibekov.hpp"
 #include "scenes/springTest/SpringTestScene.hpp"
+#include "scenes/rodAssembly/RodAssemblyScene.hpp"
 
 using namespace cardillo;
 
@@ -36,7 +37,8 @@ int main(int argc, char** argv) {
     PhysicsSystem sys(cfg);
     // HeightmapScene scene;
     // DominoScene scene;
-    SpringTestScene scene;
+    // SpringTestScene scene;
+    RodAssemblyScene scene;
     // ChainScene scene;
     // PainleveScene scene;
     // RotatingBallScene scene;

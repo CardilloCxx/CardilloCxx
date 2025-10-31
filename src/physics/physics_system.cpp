@@ -203,13 +203,37 @@ entt::entity PhysicsSystem::addRigidBodyMesh(real_t mass,
                                         const std::string& meshPath,
                                         const Vector3r& scale) {
     auto e = m_reg.create();
-    emplaceRigidBodyCommon(m_reg, e, mass, position, orientation, linearVelocity, angularVelocity, m_cfg.friction_default_mu);
     // Visual + collider markers
     m_reg.emplace<C_MeshVisualTag>(e);
     m_reg.emplace<C_Mesh>(e, C_Mesh{meshPath, scale});
     m_reg.emplace<C_RB_Mesh>(e);
     // Compute and store diagonal inertia using normalized asset metadata if available
+    
+    emplaceRigidBodyCommon(m_reg, e, mass, position, orientation, linearVelocity, angularVelocity, m_cfg.friction_default_mu);
+
     const MeshAsset& asset = getMeshAsset(e);
+
+    // The stored asset.bvh contains vertices in a normalized frame:
+    //   Vnorm = Rpa.transpose() * (Vscaled - com)
+    // To place that normalized geometry at the caller's requested
+    // (position, orientation) we must solve for q_new and pos_new such that
+    //   Pw = orientation * (Rpa * Vnorm + com) + position
+    // which equals
+    //   Pw = (orientation * Rpa) * Vnorm + (position + orientation * com)
+    // Therefore the orientation to apply to the normalized BVH is
+    //   q_new = orientation * Quaternion(Rpa)
+    // and the position is
+    //   pos_new = position + orientation * com
+    const Matrix33r Rpa = asset.Rpa;
+    const Vector3r com = asset.com;
+    Quaternion4r q_rpa(Rpa);
+    Quaternion4r q_new = orientation * q_rpa;
+    Vector3r pos_new = position + (orientation * com);
+
+    // replace position and orientation with adjusted versions
+    m_reg.get<C_Position3>(e).value = pos_new;
+    m_reg.get<C_Orientation>(e).q = q_new;
+
     if (asset.bvh && asset.volume != (real_t)0.0) {
         const real_t rho = mass / asset.volume; // density implied by mass
         Vector3r Idiag = rho * asset.inertia_diag_unit.cwiseMax(Vector3r::Zero());
