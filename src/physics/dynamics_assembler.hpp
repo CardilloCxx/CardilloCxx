@@ -37,6 +37,7 @@ public:
 
     // Diagonal of block-diagonal Minv (size = total velocity dofs)
     const VectorXr& MinvDiag() const { return m_Minv_diag; }
+    const VectorXr& MDiag() const { return m_M_diag; }
     // Map dynamic-only contact index (used in W/G) back to original contact index in m_contacts
     const std::vector<int>& dynamicContactToOriginalAll() const { return m_contact_index_orig; }
     // Access underlying system (for debug / diagnostics)
@@ -86,34 +87,50 @@ private:
     // W_gamma often is the gamma-related Jacobian (negated Wg for one side); keep as sparse
     Eigen::SparseMatrix<real_t> m_Wgamma;
 
-    // Contact-space stiffness/constraint matrices (sparse). Dimensions: C_dyn x C_dyn
-    Eigen::SparseMatrix<real_t> m_K; // stiffness in constraint space (C_dyn x C_dyn)
-    Eigen::SparseMatrix<real_t> m_D; // damping in constraint space (C_dyn x C_dyn)
+   
+    // Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)
+    VectorXr m_Cdiag; // size = numSprings
+    // Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)
+    VectorXr m_Adiag; // size = numDampers
 
-    // Effective mass S in velocity DOF space and its Cholesky factorization
-    Eigen::SparseMatrix<real_t> m_S; // size totalV x totalV
-    std::optional<Eigen::SimplicialLLT<Eigen::SparseMatrix<real_t>>> m_S_llt; // lazily constructed
+    // Extended block matrix S (sparse) and its sparse factorization
+    Eigen::SparseMatrix<real_t> m_S_sparse; // size extV x extV
+    // Use SimplicialLDLT (sparse LDL^T) on the symmetric S matrix. We store the factorization on double
+    // because Eigen's sparse Cholesky routines operate on double precision in practice.
+    std::optional<Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>>> m_S_sparse_ldlt; // lazily constructed
 
-    // Concatenated spring deformations and rates
-    VectorXr m_gcat;
-    VectorXr m_gdotcat;
+    // Store Lagrange multipliers (they are being integrated)
+    VectorXr m_Lambda_g;
+    VectorXr m_Lambda_gamma;
 
 public:
     // Accessors for newly added matrices
     const Eigen::SparseMatrix<real_t>& WgSparse() const { return m_Wg; }
     const Eigen::SparseMatrix<real_t>& WgammaSparse() const { return m_Wgamma; }
-    const Eigen::SparseMatrix<real_t>& Kmat() const { return m_K; }
-    const Eigen::SparseMatrix<real_t>& Dmat() const { return m_D; }
 
-    // Accessors for concatenated spring deformations and rates
-    const VectorXr& gcat() const { return m_gcat; }
-    const VectorXr& gdotcat() const { return m_gdotcat; }
+    // Per-spring diagonal C/A
+    const VectorXr& Cdiag() const { return m_Cdiag; }
+    const VectorXr& Adiag() const { return m_Adiag; }
+
+    // Counts
+    // Number of spring rows (rows in m_Wg / length of m_Cdiag)
+    int numSprings() const { return (int)m_Cdiag.size(); }
+    int numDampers() const { return (int)m_Adiag.size(); }
+
+    // Accessors for Lagrange multipliers
+    const VectorXr& Lambda_g() const { return m_Lambda_g; }
+    const VectorXr& Lambda_gamma() const { return m_Lambda_gamma; }
+    void setLambda_g(const VectorXr& lam) { m_Lambda_g = lam; }
+    void setLambda_gamma(const VectorXr& lam) { m_Lambda_gamma = lam; }
+
+    // Extended block matrix S (sparse) accessor and solver
+    const Eigen::SparseMatrix<real_t>& SSparse() const { return m_S_sparse; }
 
     // Build and factorize the effective mass matrix S = M + dt^2 * Wg * K * Wg^T + h * W_gamma * D * W_gamma^T
     // Returns true on successful factorization.
     bool buildAndFactorS(real_t dt);
-    // Solve S x = rhs using the precomputed factorization. Factorization must be valid.
-    VectorXr solveWithS(const VectorXr& rhs) const;
+    // Solve the full extended system S * x = rhs_ext and return the complete solution (ext-length)
+    VectorXr solveS(const VectorXr& rhs_ext) const;
 
     std::vector<int> m_contact_index_orig; // size Nc_dynamic, maps dynamic contact id -> original contact index
     std::vector<collision::Contact> m_contacts;

@@ -80,57 +80,29 @@ void MoreauSolver::stepMidpoint(real_t dt)
     m_dyn.writeStateToSystem(q_mid, vn);
     m_dyn.refreshCollisionsAndSprings(dt);
 
-    // Debug: dump spring/contact-level information to help diagnose no-motion
-    {
-        const auto &mgr = m_sys.forceManager();
-        const auto &cons = mgr.constraints();
-        std::cerr << "[Moreau] after refresh: numSprings=" << cons.size() << std::endl;
-        for (size_t i = 0; i < cons.size(); ++i) {
-            const auto &c = cons[i];
-            std::cerr << "  [Spring " << i << "] xA=" << c.xA.transpose()
-                      << " xB=" << c.xB.transpose()
-                      << " g=" << c.g.transpose()
-                      << " gdot=" << c.gdot.transpose()
-                      << " K.norm=" << c.K.norm()
-                      << " D.norm=" << c.D.norm()
-                      << std::endl;
-        }
-    }
 
-    // 4) Build rhs = h*(f_ext - dt^2 * Wg * Lambda_g)
+    // 4) Build the full extended RHS and solve the extended system S * x = b
     const auto& Wg = m_dyn.WgSparse();
-    const auto& Kg = m_dyn.Kmat();
-    const int Cg = (int)Wg.rows();
+    const auto& M_diag = m_dyn.MDiag();
+    const int totalV = (m_dyn.bodyVelOffsets().empty() ? 0 : m_dyn.bodyVelOffsets().back());
+    const int nSprings = (int)m_dyn.Cdiag().size();
+    const int nDampers = (int)m_dyn.Adiag().size();
+    const int extV = totalV + nSprings + nDampers;
+    const auto& Cdiag = m_dyn.Cdiag();
 
-    // rhs = dt * f_ext - dt^2 * Wg^T * Lambda_g (Wg is Cg x totalV)
-    VectorXr rhs = dt * fn;
-    if (Cg > 0) {
-        m_Lambda_g = (1.0 / dt) * Kg * m_dyn.gcat();
-        rhs -= dt * dt * Wg.transpose() * m_Lambda_g;
-    }
+    // Lambda vectors may be uninitialized on first step; copy locally and ensure correct sizes
+    VectorXr Lambda_g = m_dyn.Lambda_g();
+    if ((int)Lambda_g.size() != nSprings) Lambda_g = VectorXr::Zero(nSprings);
 
-    std::cout << "[Moreau] Building rhs: dt=" << dt << " fn=" << fn.transpose()
-              << " dt^2 * Wg^T * Lambda_g=" << (dt*dt * Wg.transpose() * m_Lambda_g).transpose()
-              << " rhs=" << rhs.transpose() << std::endl;
+    VectorXr rhs = VectorXr::Zero((index_t)extV);
+    rhs.segment(0, totalV) =  M_diag.cwiseProduct(vn) + dt * fn;
+    if (nSprings > 0) rhs.segment(totalV, nSprings) = - (1.0 / (dt * dt)) * Cdiag.cwiseProduct(Lambda_g);
 
-    // 5) Solve normal impulses p using W(q_mid), G, and contact free velocity v_free
-    // Debug: print sizes and vectors to help diagnose why bodies might not move
-    {
-        const auto& W = m_dyn.W();
-        const auto& Wg2 = m_dyn.WgSparse();
-        std::cerr << "[Moreau] sizes: W(rows,cols) = (" << W.rows() << "," << W.cols() << ")"
-                  << " Wg(rows,cols) = (" << Wg2.rows() << "," << Wg2.cols() << ")"
-                  << " fn.size=" << fn.size() << " rhs.size=" << rhs.size()
-                  << " m_Lambda_g.size=" << m_Lambda_g.size() << std::endl;
-
-        // Print a few useful vectors
-        std::cerr << "  fn = " << fn.transpose() << std::endl;
-        std::cerr << "  m_Lambda_g = (size=" << m_Lambda_g.size() << ") ";
-        if (m_Lambda_g.size() > 0) std::cerr << m_Lambda_g.transpose();
-        std::cerr << std::endl;
-        std::cerr << "  rhs = " << rhs.transpose() << std::endl;
-    }
-    VectorXr vnp1 = m_pj.iterateWithPreliminaryVelocity(vn, rhs, m_sys.config().pj_tol_abs);
+    // 5) Solve extended system
+    auto xnp1 = m_pj.solve(rhs, m_sys.config().pj_tol_abs);
+    // auto xnp1 = m_dyn.solveS(rhs);                             // No contacts
+    VectorXr vnp1 = xnp1.segment(0, totalV);
+    if (nSprings > 0) m_dyn.setLambda_g(xnp1.segment(totalV, nSprings)); else m_dyn.setLambda_g(VectorXr(0));
 
     // 6) Final position: q_{n+1} = q_mid + (h/2) * B(q_mid) * u_{n+1}
     VectorXr qnp1 = q_mid;
@@ -138,16 +110,6 @@ void MoreauSolver::stepMidpoint(real_t dt)
 
     // 7) Write back final state to ECS
     m_dyn.writeStateToSystem(qnp1, vnp1);
-
-    // 8) For no-damping tests, keep Lambda_g as diagnostic: K * g at current (already set above)
-    (void)Kg; // suppress unused warning if logs disabled
-
-    // Debug: print updated Lambda_g
-    {
-        std::cerr << "[Moreau] updated m_Lambda_g (size=" << m_Lambda_g.size() << ") ";
-        if (m_Lambda_g.size() > 0) std::cerr << m_Lambda_g.transpose();
-        std::cerr << std::endl;
-    }
 }
 
 }

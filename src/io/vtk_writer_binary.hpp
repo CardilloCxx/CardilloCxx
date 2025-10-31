@@ -31,6 +31,8 @@ public:
 
     // Optional contacts output
     void enableContactsOutput(bool enable, const std::string& baseName) { m_writeContacts = enable; m_contactsBase = baseName; }
+    // Optional springs output: writes one POINT per spring (attachment A) and a VECTORS field pointing to attachment B
+    void enableSpringsOutput(bool enable, const std::string& baseName) { m_writeSprings = enable; m_springsBase = baseName; }
 
 private:
     struct PointOut {
@@ -108,6 +110,8 @@ private:
     int m_hfStride{8}; // decimation stride for heightfield VTK output
     bool m_writeContacts{false};
     std::string m_contactsBase{"contacts"};
+    bool m_writeSprings{false};
+    std::string m_springsBase{"springs"};
     mutable bool m_staticGeoWritten{false};
 };
 

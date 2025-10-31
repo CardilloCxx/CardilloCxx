@@ -24,7 +24,7 @@ public:
                                    WarmstartProvider* cache)
         : m_dyn(dyn)
         , m_alpha(cfg.pj_alpha)
-        , m_compliance(std::max<real_t>(0, cfg.pj_compliance))
+        
         , m_relax(std::clamp<real_t>(cfg.pj_relaxation, 0, 1))
         , m_maxIterations(std::max(1, cfg.pj_max_iterations))
         , m_warmStart(cfg.pj_warmstart)
@@ -38,13 +38,12 @@ public:
     real_t alpha() const { return m_alpha; }
     
     // Concatenated API: accept stacked preliminary velocities and return stacked velocities
-    VectorXr iterateWithPreliminaryVelocity(const VectorXr& v_pre, VectorXr& rhs, real_t tol = 1e-5);
+    VectorXr solve(VectorXr& rhs, real_t tol = 1e-5);
 
 private:
     cardillo::physics::DynamicsAssembler& m_dyn;
     real_t m_alpha{(real_t)1};
     // No internal row-vector warmstart fallback; only via external cache when enabled
-    real_t m_compliance{(real_t)0};
     real_t m_relax{(real_t)1};
     int m_maxIterations{1000000};
     bool m_warmStart{true};

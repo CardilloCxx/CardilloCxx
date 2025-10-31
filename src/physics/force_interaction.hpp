@@ -50,9 +50,6 @@ struct SpringConstraint
     Vector3r xA = Vector3r::Zero();
     Vector3r xB = Vector3r::Zero();
 
-    // Derived deformation vectors (6x1): [pos_error; rot_error]
-    Vector6r g = Vector6r::Zero();
-    Vector6r gdot = Vector6r::Zero();
 
     // Each constraint holds a pointer to the ECS registry provided at construction
     // The constructor reads the current
@@ -82,7 +79,7 @@ struct SpringConstraint
     void fixRotation();
 
     // Compute world-space attachment transforms and positions from body states.
-    // This updates RA, RB, xA, xB and g/gdot (position/rotation error and rate).
+    // This updates RA, RB, xA, xB
     // It does NOT modify global assembler structures; it only computes local
     // cached quantities per-constraint.
     void recomputeDeformations();

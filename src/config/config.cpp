@@ -50,9 +50,7 @@ Config ConfigReader::fromFile(const std::string& path) {
         else if (key == "pj.alpha") {
             try { cfg.pj_alpha = static_cast<real_t>(std::stod(val)); cfg.has_pj_alpha = true; } catch (...) {}
         }
-        else if (key == "pj.compliance") {
-            try { cfg.pj_compliance = static_cast<real_t>(std::stod(val)); cfg.has_pj_compliance = true; } catch (...) {}
-        }
+        
         else if (key == "pj.nesterov") {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
             cfg.pj_nesterov = (v == "1" || v == "true" || v == "yes" || v == "on");

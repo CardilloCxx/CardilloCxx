@@ -12,7 +12,6 @@ struct Config {
     real_t pj_tol_abs{(real_t)1e-4};    // pj.tol_abs
     real_t pj_relaxation{(real_t)0.9};  // pj.relaxation
     real_t pj_alpha{(real_t)0.3};       // pj.alpha
-    real_t pj_compliance{(real_t)1e-6}; // pj.compliance
     bool   pj_nesterov{false};          // pj.nesterov (enable Nesterov acceleration)
     real_t pj_nesterov_beta_threshold{(real_t)0.995}; // pj.nesterov_beta_threshold
     int    pj_nesterov_restart_limit{4};              // pj.nesterov_restart_limit
@@ -23,7 +22,7 @@ struct Config {
     bool has_pj_max_iterations{false};
     bool has_pj_tol_abs{false};
     bool has_pj_relaxation{false};
-    bool has_pj_compliance{false};
+    
 
     // Simulation settings
     real_t sim_T{(real_t)5.0};   // sim.T - total simulation time

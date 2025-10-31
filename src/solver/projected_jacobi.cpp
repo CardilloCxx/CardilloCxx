@@ -12,33 +12,24 @@
 namespace cardillo::solver {
 
 // Precompute R = alpha / diag(G + compliance I) for relevant contacts
-// Now G = W * S^{-1} * W^T where S is the effective mass assembled and factorized
-// We compute the diagonal entries Dii = w_row * (S^{-1} * w_row^T) and form R = alpha / (Dii + compliance)
+// G = W * Minv * W^T, with Minv diagonal (given as MinvDiag)
 static inline VectorXr precompute_Rdiag_sparse(
-	cardillo::physics::DynamicsAssembler& dyn,
 	const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W,
+	const VectorXr& MinvDiag,
 	const std::vector<int>& relevantContacts,
-	real_t alpha,
-	real_t compliance)
+	real_t alpha)
 {
 	const int C = (int)W.rows();
-	const int totalV = (W.cols() > 0) ? W.cols() : 0;
 	VectorXr R = VectorXr::Zero(C);
 
 	for (int cid : relevantContacts) {
 		if (cid < 0 || cid >= C) continue;
-		// Build sparse row into a dense vector rhs (size totalV)
-		VectorXr wvec = VectorXr::Zero((index_t)totalV);
-		
+		real_t Dii = 0;
 		for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
-			const int col = it.col(); const real_t val = it.value();
-			wvec[col] = val;
+			const int col = it.col();
+			const real_t w = it.value();
+			Dii += w * w * MinvDiag[col];
 		}
-
-		VectorXr x = dyn.solveWithS(wvec);
-		real_t Dii = (real_t)wvec.dot(x);
-
-		Dii += compliance;
 		R[cid] = (Dii > (real_t)0) ? (alpha / Dii) : (real_t)0;
 	}
 	return R;
@@ -58,6 +49,13 @@ struct PJIterContext {
 	// Iteration runtime state and buffers
 	VectorXr y_contact;   // contact-space buffer (size = #contacts)
 	VectorXr tmp_concat;  // velocity-space buffer (size = concat dofs)
+
+	// Dimensions
+	int nV{0};  // velocity dofs
+	int nP{0};  // percussion dofs
+	int nS{0};  // spring dofs (lagrange multipliers)
+	int nD{0};  // damper dofs (gamma rows)
+
 	// Controls and diagnostics for the loop
 	int worldRank{0};
 	int maxIterations{1000000};
@@ -103,8 +101,7 @@ static inline ContactGroups build_contact_groups(const cardillo::physics::Dynami
 
 static inline PJIterContext build_context(
 	cardillo::physics::DynamicsAssembler& dyn,
-	real_t alpha,
-	real_t compliance)
+	real_t alpha)
 {
 	const auto& W = dyn.W();
 	const auto& bodyOffsets = dyn.bodyVelOffsets();
@@ -132,13 +129,19 @@ static inline PJIterContext build_context(
 
 	PJIterContext ctx{dyn.W(), &dyn, std::vector<int>{}, std::move(res), VectorXr()};
 	ctx.bodyOffsets = dyn.bodyVelOffsets();
-	ctx.Rdiag = precompute_Rdiag_sparse(dyn, W, ctx.res.allContacts, alpha, compliance);
+	// Use Minv diagonal from DynamicsAssembler when computing diagonal of G = W * Minv * W^T
+	ctx.Rdiag = precompute_Rdiag_sparse(W, dyn.MinvDiag(), ctx.res.allContacts, alpha);
+	// Populate dimension helpers: velocity dofs, percussion (contact) rows, and spring dofs
+	const int dofConcat = (ctx.bodyOffsets.empty() ? 0 : ctx.bodyOffsets.back());
+	ctx.nV = dofConcat;
+	ctx.nP = C;
+	ctx.nS = (int)dyn.Cdiag().size();
+	ctx.nD = (int)dyn.Adiag().size();
 	// Build contact row groups and per-contact mu
 	const ContactGroups cg = build_contact_groups(dyn);
 	ctx.contactRowGroups = cg.rows;
 	ctx.groupMu = cg.mu;
 	// allocate buffers
-	const int dofConcat = (ctx.bodyOffsets.empty() ? 0 : ctx.bodyOffsets.back());
 	ctx.y_contact = VectorXr::Zero(C);
 	ctx.tmp_concat = VectorXr::Zero(dofConcat);
 	return ctx;
@@ -185,26 +188,29 @@ static inline void project_groups(const PJIterContext& ctx, const VectorXr& z, c
 }
 
 // Apply relaxation and exchange p; then update u and exchange u
-static inline void relax_exchange_update(PJIterContext& ctx, const VectorXr& u_old, 
-										 const VectorXr& p_old, VectorXr& u_new, VectorXr& p_new)
+static inline void relax_exchange_update(PJIterContext& ctx, const VectorXr& x_old, 
+										 const VectorXr& p_old, VectorXr& x_new, VectorXr& p_new)
 {
 	const auto& W = ctx.W; cardillo::physics::DynamicsAssembler* dyn = ctx.dyn; const auto& bodyOffsets = ctx.bodyOffsets; const auto& res = ctx.res;
 	// cardillo::comm::Communication::exchangePercussionsOwnerPush(p_new, res);
-	ctx.tmp_concat.noalias() = W.transpose() * (p_new - p_old);
+
 	// Use effective-mass solve (S^{-1}) to update u
-	u_new = u_old + dyn->solveWithS(ctx.tmp_concat);
+	// Build extended RHS [tmp_concat; 0; 0] and solve full S * delta_x = rhs_ext, then apply only velocity part
+	VectorXr rhs_ext = VectorXr::Zero(ctx.nV + ctx.nS + ctx.nD);
+	rhs_ext.segment(0,  ctx.nV) = W.transpose() * (p_new - p_old);
+	x_new = x_old + dyn->solveS(rhs_ext);
+
 	// cardillo::comm::Communication::exchangeBodyVelocitiesOwnerPushConcat(u_new, res, bodyOffsets);
 }
 
 // One Projected-Jacobi sweep: update p with current u, then compute new u
-static inline void pj_sweep(PJIterContext& ctx, const VectorXr& u_in, 
-						    const VectorXr& p_in, VectorXr& u_out,
+static inline void pj_sweep(PJIterContext& ctx, const VectorXr& x_in, 
+						    const VectorXr& p_in, VectorXr& x_out,
 							VectorXr& p_out)
 {
-	const VectorXr z = provisional_step(ctx, u_in, p_in);
-	// VectorXr p_proj;
+	const VectorXr z = provisional_step(ctx, x_in.segment(0, ctx.nV), p_in);
 	project_groups(ctx, z, p_in, p_out);
-	relax_exchange_update(ctx, u_in, p_in, u_out, p_out);
+	relax_exchange_update(ctx, x_in, p_in, x_out, p_out);
 }
 
 // Compute global L2 norm of difference across local body segments
@@ -328,16 +334,17 @@ static inline void nesterov_loop(PJIterContext& ctx,
 
 }
 
-VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& u_n, VectorXr& rhs, real_t tol) {
+VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	// Use sparse W and the effective-mass S (assembled & factorized in DynamicsAssembler)
 	const auto& Wref = m_dyn.W();
 	const int C = (int)Wref.rows();
+	const int Nv = (Wref.cols() > 0) ? Wref.cols() : 0;
 
 	int worldRank = 0;
 	MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
 
 	// Build iteration context and precomputations
-	PJIterContext ctx = build_context(m_dyn, alpha(), m_compliance);
+	PJIterContext ctx = build_context(m_dyn, alpha());
 	const auto& bodyOffsets = ctx.bodyOffsets;
 
 	// Initialize impulses
@@ -359,10 +366,11 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& u
 		}
 	}
 
-	// initial guess for next velocity iteration
-	VectorXr u = u_n + m_dyn.solveWithS(rhs + Wref.transpose() * p);
-	
-	if (C == 0 || Wref.nonZeros() == 0) return u; // no contacts, return preliminary velocity as-is
+	// Initialize state vector x consisting of velocities and lagrange multipliers (springs)
+	rhs.segment(0, Nv).noalias() += Wref.transpose() * p;
+	VectorXr x = m_dyn.solveS(rhs);
+
+	if (C == 0 || Wref.nonZeros() == 0) return x; // no contacts, return preliminary velocity as-is
 
 	// Configure iteration context
 	ctx.worldRank = worldRank;
@@ -378,12 +386,12 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& u
 	// }
 
 	if (!m_useNesterov) {
-		standard_loop(ctx, u, p);
+		standard_loop(ctx, x, p);
 		if (m_debug && worldRank == 0) {
 			std::cout << "[ProjectedJacobi] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
 	} else {
-		nesterov_loop(ctx, u, p, m_nest_beta_threshold, m_nest_restart_limit);
+		nesterov_loop(ctx, x, p, m_nest_beta_threshold, m_nest_restart_limit);
 		if (m_debug && worldRank == 0) {
 			std::cout << "[ProjectedJacobi+Nesterov] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
@@ -411,7 +419,7 @@ VectorXr ProjectedJacobiSolver::iterateWithPreliminaryVelocity(const VectorXr& u
 	// Final synchronization: replicate all body velocities to every rank
 	// cardillo::comm::Communication::replicateAllBodyVelocitiesConcat(u, ctx.res, ctx.bodyOffsets);
 
-	return u;
+	return x;
 }
 
 } // namespace cardillo::solver

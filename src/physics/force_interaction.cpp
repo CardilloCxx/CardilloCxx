@@ -1,6 +1,7 @@
 // Implementation of generalized spring constraint deformation and Jacobians
 #include "force_interaction.hpp"
 #include <limits>
+#include <cmath>
 
 namespace cardillo {
 namespace physics {
@@ -55,25 +56,12 @@ void SpringConstraint::recomputeDeformations()
     xA = posA + RA * rA_local;
     xB = posB + RB * rB_local;
 
-    // Position error (B relative to A minus rest translation)
-    g.template head<3>() = xB - xA - rest_translation;
-
-    // Rotation error: use relative quaternion and convert to angle-axis (small-angle vector)
-    cardillo::Quaternion4r q_rel = qa.conjugate() * qb;
-    q_rel.normalize();
-    cardillo::AngleAxis3r aa(q_rel);
-    cardillo::Vector3r rot_vec_world = RA * (aa.axis() * aa.angle()); // axis in world
-    g.template tail<3>() = rot_vec_world - rest_rotation;
-
     // Velocities at attachments (world-frame)
     cardillo::Vector3r wA_world = RA * wA;
     cardillo::Vector3r wB_world = RB * wB;
     cardillo::Vector3r vA_attach = vA + wA_world.cross(RA * rA_local);
     cardillo::Vector3r vB_attach = vB + wB_world.cross(RB * rB_local);
 
-    // Rate of change
-    gdot.template head<3>() = vB_attach - vA_attach;
-    gdot.template tail<3>() = wB_world - wA_world;
 
     // Transform local (body-A) K/D into world frame so assemblers can
     // read K/D directly. The 6x6 transform is block-diagonal with RA

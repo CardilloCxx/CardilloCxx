@@ -67,6 +67,9 @@ int main(int argc, char** argv) {
         if (writer) writer->maybeWrite(k+1, t, sys);
     }
 
+    if (worldRank == 0) {
+        std::cout << "Simulation finished — exiting cleanly." << std::endl;
+    }
     PetscFinalize();
     return 0;
 }
