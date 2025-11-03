@@ -17,6 +17,9 @@
 #include "scenes/dzhanibekov/dzhanibekov.hpp"
 #include "scenes/springTest/SpringTestScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
+#include "scenes/net/NetScene.hpp"
+#include "scenes/hangbride/HangbrideScene.hpp"
+#include "scenes/softbody/SoftbodyTestScene.hpp"
 
 using namespace cardillo;
 
@@ -38,7 +41,10 @@ int main(int argc, char** argv) {
     // HeightmapScene scene;
     // DominoScene scene;
     // SpringTestScene scene;
-    RodAssemblyScene scene;
+    // RodAssemblyScene scene;
+    // NetScene scene;
+    // HangbrideScene scene;
+    SoftbodyTestScene scene;
     // ChainScene scene;
     // PainleveScene scene;
     // RotatingBallScene scene;

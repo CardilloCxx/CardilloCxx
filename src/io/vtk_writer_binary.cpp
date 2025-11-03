@@ -330,6 +330,42 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
         }
     }
 
+    // Softbody surfaces (deformed meshes driven by point-mass nodes)
+    {
+        auto vsb = reg.view<cardillo::PhysicsSystem::C_VisualObject,
+                             cardillo::PhysicsSystem::C_SoftBodySurface>();
+        for (auto [e, surf] : vsb.each()) {
+            // Build a MeshOut by sampling current positions of the nodes
+            MeshOut mo;
+            mo.entityId = static_cast<int>(entt::to_integral(e));
+            mo.partition = -1.0f; // visualization-only
+            mo.center = Vector3r::Zero();
+            mo.isDynamic = true; // nodes move over time
+            // Gather vertex positions from node entities
+            mo.vertices.reserve(surf.nodes.size());
+            mo.perVertexVelocity.reserve(surf.nodes.size());
+            const auto& reg2 = reg;
+            for (entt::entity nodeEnt : surf.nodes) {
+                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::PhysicsSystem::C_Position3>(nodeEnt)) {
+                    mo.vertices.push_back(reg2.get<cardillo::PhysicsSystem::C_Position3>(nodeEnt).value);
+                } else {
+                    mo.vertices.emplace_back(Vector3r::Zero());
+                }
+                // Per-vertex velocity (default to zero if missing)
+                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(nodeEnt)) {
+                    mo.perVertexVelocity.push_back(reg2.get<cardillo::PhysicsSystem::C_LinearVelocity3>(nodeEnt).value);
+                } else {
+                    mo.perVertexVelocity.emplace_back(Vector3r::Zero());
+                }
+            }
+            mo.hasPerVertexVelocity = (mo.perVertexVelocity.size() == mo.vertices.size());
+            // Copy triangles directly
+            mo.triangles = surf.triangles;
+            mo.hasUV = false;
+            out.meshes.push_back(std::move(mo));
+        }
+    }
+
     // HeightFields (emit as meshes with UVs, decimated by stride)
     {
         auto vhfs = reg.view<cardillo::PhysicsSystem::C_VisualObject,
@@ -614,7 +650,7 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
 
     out << "\nPOINT_DATA " << ntotal << "\n";
 
-    // velocity: planes zero, cubes computed, meshes zero (rigid approx optional)
+    // velocity: planes zero, cubes computed, meshes: use per-vertex velocities if present, else rigid approx/zero
     out << "VECTORS velocity float\n";
     for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
     for (const auto& co : data.cubes) {
@@ -642,12 +678,17 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
             writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
         }
     }
-    // Mesh vertices velocities based on rigid kinematics if available
+    // Mesh vertices velocities: softbodies provide per-vertex values; otherwise use rigid kinematics if available
     for (const auto& m : data.meshes) {
-        for (const auto& pw : m.vertices) {
-            Vector3r v = Vector3r::Zero();
-            if (m.hasKinematics) { Vector3r r = pw - m.center; v = m.vlin + m.omega.cross(r); }
-            writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
+        const bool usePV = m.hasPerVertexVelocity && (m.perVertexVelocity.size() == m.vertices.size());
+        if (usePV) {
+            for (const auto& v : m.perVertexVelocity) { writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z())); }
+        } else {
+            for (const auto& pw : m.vertices) {
+                Vector3r v = Vector3r::Zero();
+                if (m.hasKinematics) { Vector3r r = pw - m.center; v = m.vlin + m.omega.cross(r); }
+                writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
+            }
         }
     }
 
@@ -665,7 +706,7 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
         }
     }
 
-    // entity velocity: planes zero, cubes repeated per-corner, meshes repeated per-vertex
+    // entity velocity: planes zero; cubes repeated per-corner; meshes: for softbodies reuse per-vertex velocity
     out << "VECTORS entity_velocity float\n";
     for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
     for (const auto& co : data.cubes) {
@@ -673,9 +714,14 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
         for (int i = 0; i < 8; ++i) { writeBE(out, f32(vlin.x())); writeBE(out, f32(vlin.y())); writeBE(out, f32(vlin.z())); }
     }
     for (const auto& m : data.meshes) {
-        for (const auto& pw : m.vertices) {
-            Vector3r vlin = m.hasKinematics ? m.vlin : Vector3r::Zero();
-            writeBE(out, f32(vlin.x())); writeBE(out, f32(vlin.y())); writeBE(out, f32(vlin.z()));
+        const bool usePV = m.hasPerVertexVelocity && (m.perVertexVelocity.size() == m.vertices.size());
+        if (usePV) {
+            for (const auto& v : m.perVertexVelocity) { writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z())); }
+        } else {
+            for (const auto& pw : m.vertices) {
+                Vector3r vlin = m.hasKinematics ? m.vlin : Vector3r::Zero();
+                writeBE(out, f32(vlin.x())); writeBE(out, f32(vlin.y())); writeBE(out, f32(vlin.z()));
+            }
         }
     }
 
@@ -692,16 +738,26 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
     for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, int32_t(m.entityId)); }
 }
 
+// (Normals output removed intentionally)
+
 void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const Collected& data) const {
     std::size_t nmesh_pts = 0; bool any = false;
     for (const auto& m : data.meshes) { nmesh_pts += m.vertices.size(); any = any || m.hasUV; }
-    // If there are cubes present, we will emit UVs for them (simple 0/1 corner UVs).
-    if (!any && data.cubes.empty()) return;
+    // Always emit a TCOORDS block for geometry so viewers can texture planes/cubes even if meshes lack UVs
     const std::size_t nplane_pts = 4*data.planes.size();
     const std::size_t ncube_pts = 8*data.cubes.size();
     out << "TEXTURE_COORDINATES tex 2 float\n";
-    // Planes: no UVs (emit zeros)
-    for (std::size_t i = 0; i < nplane_pts; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); }
+    // Planes: emit UVs in meters, matching the corner order in writePointsBlock
+    // Corner order is c0=(-hx,-hy), c1=(+hx,-hy), c2=(+hx,+hy), c3=(-hx,+hy) in the plane's local (a,b) frame.
+    for (const auto& po : data.planes) {
+        const float hx = static_cast<float>(po.p.sizeX);
+        const float hy = static_cast<float>(po.p.sizeY);
+        // Map local coordinates to [0, 2*hx] x [0, 2*hy]
+        writeBE(out, 0.f);        writeBE(out, 0.f);        // c0: (-hx,-hy) -> (0,0)
+        writeBE(out, 2.f*hx);     writeBE(out, 0.f);        // c1: (+hx,-hy) -> (2hx,0)
+        writeBE(out, 2.f*hx);     writeBE(out, 2.f*hy);     // c2: (+hx,+hy) -> (2hx,2hy)
+        writeBE(out, 0.f);        writeBE(out, 2.f*hy);     // c3: (-hx,+hy) -> (0,2hy)
+    }
 
     // Cubes: emit simple corner UVs (u,v in {0,1}) matching the cube corner order used in writePointsBlock
     for (const auto& c : data.cubes) {

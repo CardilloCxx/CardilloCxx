@@ -4,6 +4,7 @@ add_library(${PROJECT_NAME} STATIC
     io/vtk_writer_binary.cpp
     io/vtk_sphere_util.cpp
     io/heightmap_loader.cpp
+    io/softbody_loader.cpp
     solver/moreau.cpp
     solver/CPG.cpp
     solver/projected_jacobi.cpp

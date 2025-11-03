@@ -58,6 +58,9 @@ private:
         std::vector<Eigen::Vector3i> triangles;    // indices local to this mesh block
         std::vector<Eigen::Vector2f> uvs;          // optional
         bool hasUV{false};
+        // Optional per-vertex velocities (used for softbody visual surfaces)
+        std::vector<Vector3r> perVertexVelocity;   // same size as vertices when present
+        bool hasPerVertexVelocity{false};
         // Kinematics for per-vertex velocities (rigid assumption)
         Vector3r center{Vector3r::Zero()};
         Vector3r vlin{Vector3r::Zero()};

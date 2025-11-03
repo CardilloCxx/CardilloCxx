@@ -115,6 +115,19 @@ public:
   
     index_t addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);
 
+    // Create a mass-spring soft body from an OBJ file by instantiating one point mass per vertex
+    // and connecting unique triangle edges with 3D translational springs (x,y,z).
+    // Returns the list of created point-mass entities to allow callers to further constrain or query them.
+    // Single general overload with defaults for pose, velocities, and total mass.
+    std::vector<entt::entity> addSoftBody(const std::string& objPath,
+                                          real_t stiffness,
+                                          real_t damping,
+                                          const Vector3r& position = Vector3r::Zero(),
+                                          const Quaternion4r& orientation = Quaternion4r::Identity(),
+                                          const Vector3r& linearVelocity = Vector3r::Zero(),
+                                          const Vector3r& angularVelocity = Vector3r::Zero(),
+                                          real_t totalMass = (real_t)0.0);
+
     // Dynamics getters (Cache them inside the entity to avoid recomputation)
     MatrixXXr getMass( entt::entity e ) const;        // Linear Inertia and Angular Inertia
     // Inverse mass diagonal (vector) for the entity's velocity-space dofs.
@@ -192,6 +205,12 @@ public:
     struct C_CapsuleVisualTag {};
     struct C_Collidable {};
     struct C_Radius { real_t r; };
+    // Softbody visual surface: stores mesh topology (triangles) and the node entities driving vertices
+    struct C_SoftBodyVisualTag {};
+    struct C_SoftBodySurface {
+        std::vector<Eigen::Vector3i> triangles;    // topology (indices into nodes)
+        std::vector<entt::entity> nodes;           // one node per original OBJ vertex
+    };
     // Mesh components
     struct C_Mesh { std::string path; Vector3r scale{1,1,1}; };
     struct C_MeshVisualTag {};

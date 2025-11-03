@@ -2,6 +2,7 @@
 #include "force_interaction.hpp"
 #include "../collision/collision_coal.hpp"
 #include "../solver/warmstart.hpp"
+#include "../io/softbody_loader.hpp"
 #include <coal/mesh_loader/loader.h>
 #include <coal/BVH/BVH_model.h>
 #include <sstream>
@@ -293,6 +294,70 @@ size_t PhysicsSystem::addConstraint(const cardillo::physics::SpringConstraint& c
     cardillo::physics::SpringConstraint cp = c; // copy
     cp.registry = &m_reg; // ensure registry points to this system's registry
     return forceManager().addConstraint(cp);
+}
+
+// Create a mass-spring soft body from an OBJ: one point-mass per vertex, springs along triangle edges
+// Overload with pose + velocities + total mass (uniform per-vertex mass)
+std::vector<entt::entity> PhysicsSystem::addSoftBody(const std::string& objPath,
+                                                     real_t stiffness,
+                                                     real_t damping,
+                                                     const Vector3r& position,
+                                                     const Quaternion4r& orientation,
+                                                     const Vector3r& linearVelocity,
+                                                     const Vector3r& angularVelocity,
+                                                     real_t totalMass)
+{
+    std::vector<entt::entity> nodes;
+    cardillo::io::SoftBodyMesh sb;
+    if (!cardillo::io::load_obj_softbody(objPath, sb)) {
+        std::printf("[SoftBody] Failed to load OBJ: %s\n", objPath.c_str());
+        return nodes;
+    }
+
+    const size_t N = sb.positions.size();
+    if (N == 0) return nodes;
+
+    // Uniform mass per vertex (fallback to small default if non-positive totalMass)
+    real_t nodeMass = (totalMass > (real_t)0) ? (totalMass / (real_t)N) : (real_t)0.02;
+    const real_t nodeRadius = (real_t)0.02;
+
+    Matrix33r R = orientation.toRotationMatrix();
+    nodes.reserve(N);
+    for (const auto& p0 : sb.positions) {
+        Vector3r pw = position + R * p0;
+        Vector3r vw = linearVelocity + angularVelocity.cross(pw - position);
+        index_t id = addPointMass(nodeMass, pw, vw, nodeRadius);
+        nodes.push_back(entt::entity(static_cast<uint32_t>(id)));
+    }
+
+    // Edge springs
+    for (const auto& e : sb.edges) {
+        int i = e.first;
+        int j = e.second;
+        if (i >= 0 && j >= 0 && (size_t)i < nodes.size() && (size_t)j < nodes.size()) {
+            entt::entity A = nodes[(size_t)i];
+            entt::entity B = nodes[(size_t)j];
+            physics::SpringConstraint sc(m_reg, A, B, Vector3r::Zero(), Vector3r::Zero());
+            sc.addTranslationalSpring(Vector3r::UnitX(), stiffness, damping);
+            sc.addTranslationalSpring(Vector3r::UnitY(), stiffness, damping);
+            sc.addTranslationalSpring(Vector3r::UnitZ(), stiffness, damping);
+            addConstraint(sc);
+        }
+    }
+
+    // Create a visual surface entity to represent the softbody as a mesh
+    if (!sb.triangles.empty()) {
+        entt::entity surf = m_reg.create();
+        m_reg.emplace<C_VisualObject>(surf);
+        m_reg.emplace<C_SoftBodyVisualTag>(surf);
+        C_SoftBodySurface surfComp;
+        surfComp.triangles = sb.triangles;
+        surfComp.nodes = nodes;
+        m_reg.emplace<C_SoftBodySurface>(surf, std::move(surfComp));
+    }
+
+    m_structure_dirty = true;
+    return nodes;
 }
 
 // ---------- Dynamics getters ----------
