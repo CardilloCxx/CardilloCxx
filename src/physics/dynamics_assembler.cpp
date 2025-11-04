@@ -157,10 +157,12 @@ void DynamicsAssembler::assignDofs() {
     auto view = reg.view<PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_Position3, PhysicsSystem::C_LinearVelocity3>();
     for (auto e : view) {
         entt::entity ent = static_cast<entt::entity>(e);
-        if (!reg.any_of<PhysicsSystem::C_BodyIndex>(ent)) {
-            reg.emplace<PhysicsSystem::C_BodyIndex>(ent, PhysicsSystem::C_BodyIndex{nextBody});
-            ++nextBody;
-        }
+        // if (!reg.any_of<PhysicsSystem::C_BodyIndex>(ent)) {
+        //     reg.emplace<PhysicsSystem::C_BodyIndex>(ent, PhysicsSystem::C_BodyIndex{nextBody});
+        //     ++nextBody;
+        // }
+        reg.emplace_or_replace<PhysicsSystem::C_BodyIndex>(ent, PhysicsSystem::C_BodyIndex{nextBody});
+        ++nextBody;
         m_numQ += (index_t)m_sys.getPosition(ent).size();
         m_numV += (index_t)m_sys.getVelocity(ent).size();
     }
@@ -474,7 +476,8 @@ VectorXr DynamicsAssembler::solveS(const VectorXr& rhs_ext) const
 
 void DynamicsAssembler::refreshState() {
     bool structureChanged = false;
-    if (m_sys.consumeStructureDirty()) {
+    // if (m_sys.consumeStructureDirty()) {
+    if (true) {
         structureChanged = true;
         assignDofs();
         // Recompute body offsets from ECS sizes
@@ -503,6 +506,8 @@ void DynamicsAssembler::refreshState() {
         m_body_pos_offsets[(size_t)Nb] = offQ;
         m_numV = offV; m_numQ = offQ;
         rebuildMass_();
+        m_sys.collisionManager().rebuild();
+
     }
 
     if (m_sys.consumeStateDirty() || structureChanged) {
