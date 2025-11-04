@@ -20,6 +20,7 @@
 #include "scenes/net/NetScene.hpp"
 #include "scenes/hangbride/HangbrideScene.hpp"
 #include "scenes/softbody/SoftbodyTestScene.hpp"
+#include "scenes/parcel/ParcelScene.hpp"
 
 using namespace cardillo;
 
@@ -44,12 +45,13 @@ int main(int argc, char** argv) {
     // RodAssemblyScene scene;
     // NetScene scene;
     // HangbrideScene scene;
-    SoftbodyTestScene scene;
+    // SoftbodyTestScene scene;
     // ChainScene scene;
     // PainleveScene scene;
     // RotatingBallScene scene;
     // RailScene scene;
     // DzhanibekovScene scene;
+    ParcelScene scene;
 
     scene.populate(sys);
 
@@ -72,6 +74,12 @@ int main(int argc, char** argv) {
     for (int k = 0; k < steps; ++k) {
         solver.stepMidpoint(dt);
         t += dt;
+        scene.maybeSpawnParcel(sys, t);
+        scene.resetPosition(sys);
+        // sys.markForcesDirty();
+        // sys.markStructureDirty();
+        // sys.markStateDirty();
+        // sys.
         if (writer) writer->maybeWrite(k+1, t, sys);
     }
 

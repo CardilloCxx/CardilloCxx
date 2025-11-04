@@ -18,7 +18,7 @@ namespace cardillo::physics {
 // - Rebuilds lazily on demand.
 class DynamicsAssembler {
 public:
-    explicit DynamicsAssembler(const PhysicsSystem& sys) : m_sys(sys) {}
+    explicit DynamicsAssembler(PhysicsSystem& sys) : m_sys(sys) {}
 
     // Legacy one-shot assembly helpers removed; use cached getters instead.
 
@@ -64,7 +64,7 @@ public:
 
 
 private:
-    const PhysicsSystem& m_sys;
+    PhysicsSystem& m_sys;
 
     // Cached data
     // Concatenated state

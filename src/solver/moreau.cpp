@@ -80,7 +80,6 @@ void MoreauSolver::stepMidpoint(real_t dt)
     m_dyn.writeStateToSystem(q_mid, vn);
     m_dyn.refreshCollisionsAndSprings(dt);
 
-
     // 4) Build the full extended RHS and solve the extended system S * x = b
     const auto& Wg = m_dyn.WgSparse();
     const auto& M_diag = m_dyn.MDiag();
