@@ -7,6 +7,7 @@
 #include <optional>
 #include <functional>
 #include <unordered_map>
+#include <type_traits>
 #include <entt/entt.hpp>
 #include <petscsys.h>
 #include "../misc/types.hpp"
@@ -26,8 +27,8 @@ namespace cardillo { namespace solver { class WarmstartProvider; } }
 // fwd
 namespace cardillo { namespace collision { class CollisionCoal; } }
 
-// forward-declare force interaction types (defined in force_interaction.hpp)
-namespace cardillo { namespace physics { class ForceInteractionManager; struct SpringConstraint; } }
+// forward-declare new constraint pattern types (defined in constraints.hpp)
+namespace cardillo { namespace physics { class ConstraintPattern; class LinearDistanceConstraint; } }
 
 namespace cardillo {
 
@@ -177,13 +178,23 @@ public:
     // Access to warmstart provider owned by the system (may be nullptr)
     cardillo::solver::WarmstartProvider* warmstartProvider() const { return m_warmstart_provider.get(); }
 
-    // Access to the owned ForceInteractionManager (creates it on system init).
-    // The manager stores and updates spring constraints.
-    cardillo::physics::ForceInteractionManager& forceManager();
+    // New constraint-pattern API -------------------------------------------
+    // Access all constraint patterns (mutable and const)
+    std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() { return m_constraints_new; }
+    const std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() const { return m_constraints_new; }
 
-    // Passthrough to add a SpringConstraint into the internal manager.
-    // Returns the manager-local index of the created constraint.
-    size_t addConstraint(const cardillo::physics::SpringConstraint& c);
+    // Add a general constraint pattern (ownership transferred). Returns index.
+    size_t addConstraint(std::unique_ptr<cardillo::physics::ConstraintPattern> pattern);
+
+    // Convenience: construct and add a constraint pattern in-place.
+    // Usage: sys.addConstraint<physics::LinearDistanceConstraint>(reg, a, b, rA, rB, k, d);
+    template <typename Pattern, typename... Args>
+    size_t addConstraint(Args&&... args) {
+        static_assert(std::is_base_of<cardillo::physics::ConstraintPattern, Pattern>::value,
+                      "Pattern must derive from ConstraintPattern");
+        return addConstraint(std::unique_ptr<cardillo::physics::ConstraintPattern>(
+            new Pattern(std::forward<Args>(args)...)));
+    }
 
     // Public ECS component/tag types for queries
     struct C_Mass { real_t m; };
@@ -225,6 +236,10 @@ public:
     struct C_RB_Sphere { };
     struct C_RB_Capsule { real_t radius; real_t halfLength; };
 
+    // One-shot external wrench components (cleared every force rebuild)
+    struct C_ExternalForce { Vector3r f; };
+    struct C_ExternalTorque { Vector3r tau; };
+
     // Body index assigned by the assembler (stable across rebuilds unless structure changes)
     struct C_BodyIndex { int b; };
 
@@ -234,8 +249,8 @@ public:
 
     // State changed: positions/velocities modified
     void markStateDirty() const { m_state_dirty = true; }
-    // Structure changes are picked up by assemblers directly from ECS; no flag needed
-    void markStructureDirty() const { /* no-op, kept for API compatibility */ }
+    // Mark that structure changed (objects added/removed or dynamics tags changed)
+    void markStructureDirty() const { m_structure_dirty = true; m_num_bodies_dirty = true; }
     // Forces changed: external forces like gravity updated
     void markForcesDirty() const { m_forces_dirty = true; }
 
@@ -248,6 +263,15 @@ public:
     bool consumeStateDirty() const { bool b = m_state_dirty; m_state_dirty = false; return b; }
     bool consumeStructureDirty() const { bool b = m_structure_dirty; m_structure_dirty = false; return b; }
     bool consumeForcesDirty() const { bool b = m_forces_dirty; m_forces_dirty = false; return b; }
+
+    void applyForce(entt::entity e, const Vector3r& force_world, const Vector3r& torque_world);
+    void makeStatic(entt::entity e);
+
+    // Minimal setters
+    void setPosition(entt::entity e, const Vector3r& p);
+    void setOrientation(entt::entity e, const Quaternion4r& q);
+    void setLinearVelocity(entt::entity e, const Vector3r& v);
+    void setAngularVelocity(entt::entity e, const Vector3r& w);
 
 private:
     // Helper to add common rigid-body components
@@ -269,6 +293,10 @@ private:
     mutable bool m_structure_dirty = true; // objects added/removed
     mutable bool m_forces_dirty = true;    // external forces changed
 
+    // Cached number of bodies (entities with C_BodyIndex & C_PhysicsObject)
+    mutable int m_num_bodies_cached = -1;
+    mutable bool m_num_bodies_dirty = true;
+
     // assignDofs_ moved to DynamicsAssembler
     entt::entity createRigidVisualEntity_(const Vector3r& center);
 
@@ -278,8 +306,8 @@ private:
 
     // Warmstart provider (strategy owned by system). Default implementation is WarmstartCache.
     std::unique_ptr<cardillo::solver::WarmstartProvider> m_warmstart_provider;
-    // Owned force interaction manager (lazy-created)
-    std::unique_ptr<cardillo::physics::ForceInteractionManager> m_force_mgr;
+    // New constraint-pattern storage (owned by the system)
+    std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>> m_constraints_new;
 
     // Shared mesh cache (keyed by path + scale)
     mutable std::unordered_map<std::string, MeshAsset> m_meshCache;

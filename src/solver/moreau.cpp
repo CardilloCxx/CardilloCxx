@@ -1,7 +1,6 @@
 #include "moreau.hpp"
 #include "projected_jacobi.hpp"
 #include "CPG.h"
-#include "../physics/force_interaction.hpp"
 #include <vector>
 #include <algorithm>
 #include <limits>

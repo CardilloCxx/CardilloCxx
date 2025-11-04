@@ -1,7 +1,7 @@
 
 #include "dynamics_assembler.hpp"
+#include "constraints.hpp"
 #include "../collision/collision_coal.hpp"
-#include "force_interaction.hpp"
 #include <Eigen/Cholesky>
 #include <cmath>
 
@@ -89,6 +89,12 @@ void DynamicsAssembler::rebuildForces_() {
             if (n > 0) std::copy(fb.data(), fb.data() + n, m_f_vec.data() + off);
         }
     }
+        // One-shot: clear external force/torque components after assembling forces
+        auto &reg_mut = const_cast<entt::registry&>(m_sys.ecs());
+        auto viewF = reg_mut.view<PhysicsSystem::C_ExternalForce>();
+        for (auto e : viewF) { reg_mut.get<PhysicsSystem::C_ExternalForce>(e).f.setZero(); }
+        auto viewT = reg_mut.view<PhysicsSystem::C_ExternalTorque>();
+        for (auto e : viewT) { reg_mut.get<PhysicsSystem::C_ExternalTorque>(e).tau.setZero(); }
 }
 
 void DynamicsAssembler::loadStateFromSystem() {
@@ -157,10 +163,6 @@ void DynamicsAssembler::assignDofs() {
     auto view = reg.view<PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_Position3, PhysicsSystem::C_LinearVelocity3>();
     for (auto e : view) {
         entt::entity ent = static_cast<entt::entity>(e);
-        // if (!reg.any_of<PhysicsSystem::C_BodyIndex>(ent)) {
-        //     reg.emplace<PhysicsSystem::C_BodyIndex>(ent, PhysicsSystem::C_BodyIndex{nextBody});
-        //     ++nextBody;
-        // }
         reg.emplace_or_replace<PhysicsSystem::C_BodyIndex>(ent, PhysicsSystem::C_BodyIndex{nextBody});
         ++nextBody;
         m_numQ += (index_t)m_sys.getPosition(ent).size();
@@ -244,98 +246,84 @@ void DynamicsAssembler::rebuildW_() {
 }
 
 // Rebuild auxiliary block matrices derived from W and current contacts/state.
-void DynamicsAssembler::rebuidInteractionW_()
+void DynamicsAssembler::rebuildInteractionW_()
 {
-    // Build m_Wg from force interactions (spring constraints) and assemble global K/D
-    auto &mgr = const_cast<cardillo::PhysicsSystem&>(m_sys).forceManager();
-    auto &constraints = mgr.constraints();
-    const int numSprings = (int)constraints.size();
-    // const int Cdyn = 6 * numSprings; // 6 rows per spring
+    // Build m_Wg/m_Wgamma and diagonals from new constraint patterns first, then legacy springs
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
-
-    // Prepare triplets for Wg (Cdyn x totalV) and K/D (Cdyn x Cdyn)
-    std::vector<Eigen::Triplet<real_t>> tripsWg;
-    std::vector<Eigen::Triplet<real_t>> tripsWgamma;
-    std::vector<Eigen::Triplet<real_t>> tripsK;
-    std::vector<Eigen::Triplet<real_t>> tripsD;
-    tripsWg.reserve((size_t)numSprings * 12 * 6);
-    tripsWgamma.reserve((size_t)numSprings * 12 * 6);
-    tripsK.reserve((size_t)numSprings * 36);
-    tripsD.reserve((size_t)numSprings * 36);
-
-    // For each constraint, build a single-row Wg/Wgamma (scalar spring along spring-normal)
     const auto &reg = m_sys.ecs();
 
-    // Per-row diagonals for actual Wg/Wgamma rows (only for constraints that produce a row)
-    std::vector<real_t> Crows; Crows.reserve((size_t)numSprings);
-    std::vector<real_t> Arows; Arows.reserve((size_t)numSprings);
+    std::vector<Eigen::Triplet<real_t>> tripsWg;
+    std::vector<Eigen::Triplet<real_t>> tripsWgamma;
+    tripsWg.reserve(1024);
+    tripsWgamma.reserve(1024);
+
+    // Per-row diagonals for C and A
+    std::vector<real_t> Crows; Crows.reserve(256);
+    std::vector<real_t> Arows; Arows.reserve(256);
     int springRowCounter = 0;
     int damperRowCounter = 0;
-    const real_t KD_EPS = (real_t)1e-12; // minimum effective stiffness/damping to consider
-    for (int i = 0; i < numSprings; ++i) {
-        auto &c = constraints[(size_t)i];
-        c.recomputeDeformations();
+    const real_t EPS_C = (real_t)1e-10;
+    const real_t EPS_A = (real_t)1e-10;
 
-        // Determine spring normal (direction from A to B); fallback to global z
-        Vector3r delta = c.xB - c.xA;
-        real_t nrm = delta.norm();
-        Vector3r n_world;
-        if (nrm > (real_t)1e-8) n_world = delta / nrm; else n_world = Vector3r((real_t)0, (real_t)0, (real_t)1);
-
-        // Effective scalar stiffness/damping along normal: n^T K_trans n, n^T D_trans n
-        Matrix3r Kt = c.K.block<3,3>(0,0);
-        Matrix3r Dt = c.D.block<3,3>(0,0);
-        real_t k_eff = n_world.dot(Kt * n_world);
-        real_t d_eff = n_world.dot(Dt * n_world);
-
-        // Only accept positive, finite, and sufficiently large effective values
-        if (k_eff > KD_EPS) Crows.push_back((real_t)(1.0 / k_eff));
-        if (d_eff > KD_EPS) Arows.push_back((real_t)(1.0 / d_eff));
-
-        // Build Wg (spring rows) and Wgamma (damper rows) separately. A constraint
-        // may contribute a row to neither, one, or both matrices depending on its K/D.
-        // We'll maintain separate row counters for springs and dampers below.
-        // To avoid duplicating row-building code, create a small lambda that emits
-        // triplets into a target vector for a given row index.
-        auto emitRowForSide = [&](std::vector<Eigen::Triplet<real_t>>& tripsTarget, int rowIndex, entt::entity ent, real_t sign) {
-            if (!reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(ent)) return;
-            int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(ent).b;
-            if (b < 0 || b >= (int)m_body_vel_offsets.size()-1) return;
-            int col0 = m_body_vel_offsets[(size_t)b];
-            int nV = m_body_vel_offsets[(size_t)b+1] - col0;
-            if (reg.any_of<cardillo::PhysicsSystem::C_RigidBodyTag>(ent)) {
-                Vector3r n_body = (ent == c.bodyA) ? c.RA.transpose() * n_world : c.RB.transpose() * n_world;
-                MatrixXXr w = buildWRowRigid(n_world, (ent == c.bodyA) ? c.rA_local : c.rB_local, n_body, sign);
-                int nCopy = std::min((int)w.cols(), nV);
-                for (int j = 0; j < nCopy; ++j) {
-                    real_t val = w(0,j);
-                    if (val != (real_t)0) tripsTarget.emplace_back(rowIndex, col0 + j, val);
-                }
-            } else {
-                MatrixXXr w = buildWRowPoint(n_world, sign);
-                int nCopy = std::min((int)w.cols(), nV);
-                for (int j = 0; j < nCopy; ++j) {
-                    real_t val = w(0,j);
-                    if (val != (real_t)0) tripsTarget.emplace_back(rowIndex, col0 + j, val);
-                }
+    auto emitRowFromRow6 = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const cardillo::Matrixr<1,6>& row){
+        if (!reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(ent)) return;
+        int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(ent).b;
+        if (b < 0 || b >= (int)m_body_vel_offsets.size()-1) return;
+        int col0 = m_body_vel_offsets[(size_t)b];
+        int nV = m_body_vel_offsets[(size_t)b+1] - col0;
+        if (reg.any_of<cardillo::PhysicsSystem::C_RigidBodyTag>(ent)) {
+            // 6-DoF block
+            int nCopy = std::min(6, nV);
+            for (int j = 0; j < nCopy; ++j) {
+                real_t v = row(0,j);
+                if (v != (real_t)0) trg.emplace_back(rowIndex, col0 + j, v);
             }
-        };
-        
-        // Emit rows into Wg and/or Wgamma depending on whether the spring or damper
-        // has non-zero effective stiffness/damping respectively.
-        if (k_eff > KD_EPS) {
-            int springRow = springRowCounter++;
-            emitRowForSide(tripsWg, springRow, c.bodyA, (real_t)-1);
-            emitRowForSide(tripsWg, springRow, c.bodyB, (real_t)+1);
+        } else {
+            // 3-DoF translational only
+            int nCopy = std::min(3, nV);
+            for (int j = 0; j < nCopy; ++j) {
+                real_t v = row(0,j);
+                if (v != (real_t)0) trg.emplace_back(rowIndex, col0 + j, v);
+            }
         }
-        if (d_eff > KD_EPS) {
-            int damperRow = damperRowCounter++;
-            emitRowForSide(tripsWgamma, damperRow, c.bodyA, (real_t)-1);
-            emitRowForSide(tripsWgamma, damperRow, c.bodyB, (real_t)+1);
+    };
+    auto emitRowFromMat = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const MatrixXXr& w){
+        if (!reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(ent)) return;
+        int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(ent).b;
+        if (b < 0 || b >= (int)m_body_vel_offsets.size()-1) return;
+        int col0 = m_body_vel_offsets[(size_t)b];
+        int nV = m_body_vel_offsets[(size_t)b+1] - col0;
+        int cols = (int)w.cols();
+        int nCopy = std::min(cols, nV);
+        for (int j = 0; j < nCopy; ++j) {
+            real_t v = w(0,j);
+            if (v != (real_t)0) trg.emplace_back(rowIndex, col0 + j, v);
+        }
+    };
+
+    // 1) New constraint patterns
+    const auto& patterns = m_sys.constraintPatterns();
+    for (const auto& uptr : patterns) {
+        if (!uptr) continue;
+        auto cr = uptr->getConstraint();
+        // Spring part
+        if (cr.C(0,0) < 1 / EPS_C) {
+            Crows.push_back(cr.C(0,0));
+            int row = springRowCounter++;
+            emitRowFromRow6(tripsWg, row, cr.a, cr.WgA);
+            emitRowFromRow6(tripsWg, row, cr.b, cr.WgB);
+        }
+        // Damper part
+        if (cr.A(0,0) < 1 / EPS_A) {
+            Arows.push_back(cr.A(0,0));
+            int row = damperRowCounter++;
+            emitRowFromRow6(tripsWgamma, row, cr.a, cr.WgammaA);
+            emitRowFromRow6(tripsWgamma, row, cr.b, cr.WgammaB);
         }
     }
 
-    // Build sparse matrices: m_Wg is nSprings x totalV, m_Wgamma is nDampers x totalV
+
+    // Build sparse matrices from accumulated triplets
     const int nSprings = (int)Crows.size();
     const int nDampers = (int)Arows.size();
     m_Wg.resize(nSprings, totalV);
@@ -360,7 +348,7 @@ void DynamicsAssembler::rebuidInteractionW_()
 bool DynamicsAssembler::buildAndFactorS(real_t dt)
 {
     // Ensure current blocks are built
-    rebuidInteractionW_();
+    rebuildInteractionW_();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     const int nSprings = (int)m_Wg.rows();
     const int nDampers = (int)m_Wgamma.rows();
@@ -423,24 +411,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
     m_S_sparse.setFromTriplets(trips.begin(), trips.end());
     m_S_sparse.makeCompressed();
 
-    // Diagnostic: if there are no springs/dampers, S should be just the M diagonal
-    if (nSprings == 0 && nDampers == 0) {
-        int totalV_local = totalV;
-        int nnz = (int)m_S_sparse.nonZeros();
-        int offdiag = 0;
-        for (int k = 0; k < m_S_sparse.outerSize(); ++k) {
-            for (typename Eigen::SparseMatrix<real_t>::InnerIterator it(m_S_sparse, k); it; ++it) {
-                if (it.row() != it.col()) ++offdiag;
-            }
-        }
-        std::cout << "[DynamicsAssembler] buildAndFactorS: totalV=" << totalV_local
-                  << ", nnz=" << nnz << ", offdiag=" << offdiag << std::endl;
-    }
-
-   
-
     // Factorize using SimplicialLDLT (sparse LDL^T) for symmetric matrices.
-    // The assembled S should be symmetric by construction; we'll check symmetry and then factorize.
     try {
 
         // Create LDLT factorization object on double-valued sparse matrix
@@ -476,8 +447,7 @@ VectorXr DynamicsAssembler::solveS(const VectorXr& rhs_ext) const
 
 void DynamicsAssembler::refreshState() {
     bool structureChanged = false;
-    // if (m_sys.consumeStructureDirty()) {
-    if (true) {
+    if (m_sys.consumeStructureDirty()) {
         structureChanged = true;
         assignDofs();
         // Recompute body offsets from ECS sizes
@@ -507,7 +477,6 @@ void DynamicsAssembler::refreshState() {
         m_numV = offV; m_numQ = offQ;
         rebuildMass_();
         m_sys.collisionManager().rebuild();
-
     }
 
     if (m_sys.consumeStateDirty() || structureChanged) {

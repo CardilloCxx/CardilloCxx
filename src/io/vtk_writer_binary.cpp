@@ -1,6 +1,5 @@
 #include "vtk_writer_binary.hpp"
 #include "../collision/collision_coal.hpp"
-#include "../physics/force_interaction.hpp"
 #include "vtk_sphere_util.hpp"
 #include "../solver/warmstart.hpp"
 #include <cmath>
@@ -55,35 +54,6 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSy
             // skip if collision manager not available
         }
     }
-    // Optional springs output: emit attachment A positions and vectors toward attachment B
-    try {
-        // gather constraints
-        auto& mgr = const_cast<cardillo::PhysicsSystem&>(sys).forceManager();
-        // ensure deformations are up-to-date
-        mgr.updateAll();
-        const auto& constraints = mgr.constraints();
-        if (m_writeSprings || !constraints.empty()) {
-            // write using force manager data
-            if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
-            const std::string path = buildPath(m_baseName + std::string("_springs"), step);
-            std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
-            if (out) {
-                writeHeader(out, "Spring attachments (binary)");
-                std::size_t n = constraints.size();
-                out << "POINTS " << n << " float\n";
-                for (const auto& c : constraints) { writeBE(out, static_cast<float>(c.xA.x())); writeBE(out, static_cast<float>(c.xA.y())); writeBE(out, static_cast<float>(c.xA.z())); }
-                out << "\nVERTICES " << n << ' ' << (2*n) << "\n";
-                for (std::size_t i = 0; i < n; ++i) { writeBE(out, int32_t(1)); writeBE(out, int32_t(i)); }
-                out << "\nPOINT_DATA " << n << "\n";
-                out << "VECTORS toB float\n";
-                for (const auto& c : constraints) {
-                    Vector3r v = c.xB - c.xA;
-                    writeBE(out, static_cast<float>(v.x())); writeBE(out, static_cast<float>(v.y())); writeBE(out, static_cast<float>(v.z()));
-                }
-                out.close();
-            }
-        }
-    } catch (...) { /* ignore springs output failures */ }
 }
 
 static inline float f32(real_t v) { return static_cast<float>(v); }

@@ -3,7 +3,7 @@
 #include "../SceneBase.hpp"
 #include <Eigen/Geometry>
 #include <cmath>
-#include "physics/force_interaction.hpp"
+#include "physics/constraints.hpp"
 
 using namespace cardillo;
 
@@ -51,11 +51,7 @@ public:
         };
         for (const auto& rA_loc : corners) {
             // attach to sphere center (local offset zero)
-            cardillo::physics::SpringConstraint sc(sys.ecs(), eFoot, eSphere, rA_loc, Vector3r::Zero());
-            sc.addTranslationalSpring(Vector3r::UnitZ(), k_corner, d_corner);
-            sc.addTranslationalSpring(Vector3r::UnitX(), k_corner, d_corner);
-            sc.addTranslationalSpring(Vector3r::UnitY(), k_corner, d_corner);
-            sys.addConstraint(sc);
+            sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), eFoot, eSphere, rA_loc, Vector3r::Zero(), k_corner, d_corner);
         }
 
         // Double pendulum: One obstacle sphere in the air, two dynamic spheres besides it with infinite stiffness springs
@@ -78,24 +74,12 @@ public:
         real_t dyn2Mass = (real_t)0.3;
         entt::entity eDyn2 = sys.addRigidBodySphere(dyn2Mass, dyn2Pos, Quaternion4r::Identity(), Vector3r(0.0,0.0,1.0), Vector3r::Zero(), obstacleRadius * 0.8);
 
-        // Create infinite stiffness springs to connect them
-        const real_t k_inf = std::numeric_limits<real_t>::max();
-        {
-            // obs to dyn1
-            cardillo::physics::SpringConstraint sc(sys.ecs(), eObs, eDyn1, Vector3r::Zero(), Vector3r::Zero());
-            sc.addTranslationalSpring(Vector3r::UnitZ(), k_inf, 0);
-            sc.addTranslationalSpring(Vector3r::UnitX(), k_inf, 0);
-            sc.addTranslationalSpring(Vector3r::UnitY(), k_inf, 0);
-            sys.addConstraint(sc);
-        }           
-        {
-            // dyn1 to dyn2
-            cardillo::physics::SpringConstraint sc(sys.ecs(), eDyn1, eDyn2, Vector3r::Zero(), Vector3r::Zero());
-            sc.addTranslationalSpring(Vector3r::UnitZ(), k_inf, 0);
-            sc.addTranslationalSpring(Vector3r::UnitX(), k_inf, 0);
-            sc.addTranslationalSpring(Vector3r::UnitY(), k_inf, 0);
-            sys.addConstraint(sc);
-        }
+    // Create very stiff springs to connect them (use large finite value to avoid zero-compliance drop)
+    const real_t k_inf = (real_t)1e9;
+        // obs to dyn1
+    sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), eObs, eDyn1, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
+        // dyn1 to dyn2
+    sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), eDyn1, eDyn2, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
 
         // rope between second anker point and lower dynamic sphere
         // anker point
@@ -255,8 +239,8 @@ private:
         }
         bodies.push_back(eB);
 
-        // Connect consecutive bodies with very large stiffness translational springs
-        const real_t k_inf = std::numeric_limits<real_t>::max();
+        // Connect consecutive bodies with very large stiffness translational springs (large finite value)
+        const real_t k_inf = (real_t)1e9;
         const real_t d_inf = (real_t)1.0;
         for (size_t i = 0; i + 1 < bodies.size(); ++i) {
             entt::entity a = bodies[i];
@@ -272,12 +256,8 @@ private:
                 // connect last segment to endpoint B (b == eB): use rB_local for B
                 rB = rB_local;
             }
-            SpringConstraint sc(sys.ecs(), a, b, rA, rB);
-            // constrain all translational axes to approximate an inextensible link
-            sc.addTranslationalSpring(Vector3r::UnitX(), k_inf, 0);
-            sc.addTranslationalSpring(Vector3r::UnitY(), k_inf, 0);
-            sc.addTranslationalSpring(Vector3r::UnitZ(), k_inf, 0);
-            sys.addConstraint(sc);
+            // Distance spring between nodes approximates a link
+            sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), a, b, rA, rB, k_inf, 0);
         }
     }
 };

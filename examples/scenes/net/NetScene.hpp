@@ -3,6 +3,7 @@
 #include "../SceneBase.hpp"
 #include <Eigen/Geometry>
 #include <vector>
+#include "physics/constraints.hpp"
 
 using namespace cardillo;
 
@@ -99,12 +100,7 @@ public:
 
         // small helper to add a corner-to-corner spring between two entities using local corner offsets
         auto addCornerSpring = [&](entt::entity A, entt::entity B, const Vector3r& rA_local, const Vector3r& rB_local, real_t stiffMul) {
-            entt::registry& reg = sys.ecs();
-            SpringConstraint sc(sys.ecs(), A, B, rA_local, rB_local);
-            sc.addTranslationalSpring(Vector3r::UnitX(), k * stiffMul, (real_t)0.1);
-            sc.addTranslationalSpring(Vector3r::UnitY(), k * stiffMul, (real_t)0.1);
-            sc.addTranslationalSpring(Vector3r::UnitZ(), k * stiffMul, (real_t)0.1);
-            sys.addConstraint(sc);
+            sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), A, B, rA_local, rB_local, k * stiffMul, (real_t)0.1);
         };
 
         // Connect interior nodes using corner-to-corner pattern. When a neighbor lies on the border,

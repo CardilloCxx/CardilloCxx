@@ -1,5 +1,5 @@
 #include "physics_system.hpp"
-#include "force_interaction.hpp"
+#include "constraints.hpp"
 #include "../collision/collision_coal.hpp"
 #include "../solver/warmstart.hpp"
 #include "../io/softbody_loader.hpp"
@@ -92,7 +92,7 @@ index_t PhysicsSystem::addPointMass(real_t mass, const Vector3r& x0, const Vecto
     m_reg.emplace<C_Radius>(e, C_Radius{radius});
     // Default friction coefficient from config unless already set
     if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
-    m_structure_dirty = true;
+    markStructureDirty();
     return static_cast<index_t>(entt::to_integral(e));
 }
 // Helper: create a purely visual/collidable rigid-like entity (no physics)
@@ -101,6 +101,7 @@ entt::entity PhysicsSystem::createRigidVisualEntity_(const Vector3r& center) {
     m_reg.emplace<C_Collidable>(e);
     m_reg.emplace<C_VisualObject>(e);
     m_reg.emplace<C_Position3>(e, C_Position3{center});
+    markStructureDirty();
     return e;
 }
 
@@ -149,7 +150,7 @@ index_t PhysicsSystem::addObstacleMesh(const Vector3r& position,
     m_reg.emplace<C_Mesh>(e, C_Mesh{meshPath, scale});
     m_reg.emplace<C_RB_Mesh>(e);
     if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
-    m_structure_dirty = true;
+    markStructureDirty();
     return static_cast<index_t>(entt::to_integral(e));
 }
 
@@ -171,7 +172,7 @@ index_t PhysicsSystem::addObstacleHeightField(const Vector3r& position,
     m_reg.emplace<C_HeightField>(e, C_HeightField{exrPath, x_dim, y_dim, z_scale, min_height});
     m_reg.emplace<C_RB_HeightField>(e);
     if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
-    m_structure_dirty = true;
+    markStructureDirty();
     // Touch the asset so failures surface early
     (void)getHeightFieldAsset(e);
     return static_cast<index_t>(entt::to_integral(e));
@@ -190,7 +191,7 @@ entt::entity PhysicsSystem::addRigidBody(real_t mass,
     m_reg.emplace<C_Cube>(e, C_Cube{shape.halfExtents});
     m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{shape.halfExtents});
     m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{boxInertiaDiag(mass, shape.halfExtents)});
-    m_structure_dirty = true;
+    markStructureDirty();
     return e;
 }
 
@@ -214,17 +215,7 @@ entt::entity PhysicsSystem::addRigidBodyMesh(real_t mass,
 
     const MeshAsset& asset = getMeshAsset(e);
 
-    // The stored asset.bvh contains vertices in a normalized frame:
-    //   Vnorm = Rpa.transpose() * (Vscaled - com)
-    // To place that normalized geometry at the caller's requested
-    // (position, orientation) we must solve for q_new and pos_new such that
-    //   Pw = orientation * (Rpa * Vnorm + com) + position
-    // which equals
-    //   Pw = (orientation * Rpa) * Vnorm + (position + orientation * com)
-    // Therefore the orientation to apply to the normalized BVH is
-    //   q_new = orientation * Quaternion(Rpa)
-    // and the position is
-    //   pos_new = position + orientation * com
+    // Revert to original orientation/position 
     const Matrix33r Rpa = asset.Rpa;
     const Vector3r com = asset.com;
     Quaternion4r q_rpa(Rpa);
@@ -240,7 +231,7 @@ entt::entity PhysicsSystem::addRigidBodyMesh(real_t mass,
         Vector3r Idiag = rho * asset.inertia_diag_unit.cwiseMax(Vector3r::Zero());
         m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{Idiag});
     }
-    m_structure_dirty = true;
+    markStructureDirty();
     return e;
 }
 
@@ -258,7 +249,7 @@ entt::entity PhysicsSystem::addRigidBodySphere(real_t mass,
     m_reg.emplace<C_Radius>(e, C_Radius{radius});
     m_reg.emplace<C_RB_Sphere>(e);
     m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{sphereInertiaDiag(mass, radius)});
-    m_structure_dirty = true;
+    markStructureDirty();
     return e;
 }
 
@@ -278,22 +269,15 @@ entt::entity PhysicsSystem::addRigidBodyCapsule(real_t mass,
     return e;
 }
 
-// Lazy-create and return the ForceInteractionManager owned by this system
-cardillo::physics::ForceInteractionManager& PhysicsSystem::forceManager()
+// Add a general constraint pattern (ownership transferred)
+size_t PhysicsSystem::addConstraint(std::unique_ptr<cardillo::physics::ConstraintPattern> pattern)
 {
-    if (!m_force_mgr) {
-        m_force_mgr = std::make_unique<cardillo::physics::ForceInteractionManager>();
+    if (pattern) {
+    m_constraints_new.emplace_back(std::move(pattern));
+    markStructureDirty();
+        return m_constraints_new.size() - 1;
     }
-    return *m_force_mgr;
-}
-
-// Passthrough to add a SpringConstraint into the internal manager. Ensures the constraint
-// has the system's registry pointer so recomputeDeformations() can read entity state.
-size_t PhysicsSystem::addConstraint(const cardillo::physics::SpringConstraint& c)
-{
-    cardillo::physics::SpringConstraint cp = c; // copy
-    cp.registry = &m_reg; // ensure registry points to this system's registry
-    return forceManager().addConstraint(cp);
+    return static_cast<size_t>(-1);
 }
 
 // Create a mass-spring soft body from an OBJ: one point-mass per vertex, springs along triangle edges
@@ -330,18 +314,14 @@ std::vector<entt::entity> PhysicsSystem::addSoftBody(const std::string& objPath,
         nodes.push_back(entt::entity(static_cast<uint32_t>(id)));
     }
 
-    // Edge springs
+    // Edge springs (create distance constraints between edge vertices)
     for (const auto& e : sb.edges) {
         int i = e.first;
         int j = e.second;
         if (i >= 0 && j >= 0 && (size_t)i < nodes.size() && (size_t)j < nodes.size()) {
             entt::entity A = nodes[(size_t)i];
             entt::entity B = nodes[(size_t)j];
-            physics::SpringConstraint sc(m_reg, A, B, Vector3r::Zero(), Vector3r::Zero());
-            sc.addTranslationalSpring(Vector3r::UnitX(), stiffness, damping);
-            sc.addTranslationalSpring(Vector3r::UnitY(), stiffness, damping);
-            sc.addTranslationalSpring(Vector3r::UnitZ(), stiffness, damping);
-            addConstraint(sc);
+            addConstraint<physics::LinearDistanceConstraint>(m_reg, A, B, Vector3r::Zero(), Vector3r::Zero(), stiffness, damping);
         }
     }
 
@@ -356,7 +336,7 @@ std::vector<entt::entity> PhysicsSystem::addSoftBody(const std::string& objPath,
         m_reg.emplace<C_SoftBodySurface>(surf, std::move(surfComp));
     }
 
-    m_structure_dirty = true;
+    markStructureDirty();
     return nodes;
 }
 
@@ -450,6 +430,13 @@ VectorXr PhysicsSystem::getForce(entt::entity e) const {
             const Vector3r Iw = Idiag.cwiseProduct(w);
             tau = -w.cross(Iw);
         }
+        // Add any external one-shot forces/torques (world-frame)
+        if (m_reg.any_of<C_ExternalForce>(e)) {
+            fg += m_reg.get<C_ExternalForce>(e).f;
+        }
+        if (m_reg.any_of<C_ExternalTorque>(e)) {
+            tau += m_reg.get<C_ExternalTorque>(e).tau;
+        }
         VectorXr out(6); out.setZero();
         out[0] = fg[0]; out[1] = fg[1]; out[2] = fg[2];
         out[3] = tau.x(); out[4] = tau.y(); out[5] = tau.z();
@@ -459,6 +446,9 @@ VectorXr PhysicsSystem::getForce(entt::entity e) const {
     if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
         Vector3r fg = m * m_gravity;
+        if (m_reg.any_of<C_ExternalForce>(e)) {
+            fg += m_reg.get<C_ExternalForce>(e).f;
+        }
         VectorXr out(3); out << fg[0], fg[1], fg[2];
         return out;
     }
@@ -481,10 +471,73 @@ Vector3r PhysicsSystem::getInertiaDiag(entt::entity e) const {
 }
 
 int PhysicsSystem::numBodies() const {
-    int count = 0;
-    auto view = m_reg.view<C_BodyIndex, C_PhysicsObject>();
-    for (auto e : view) (void)e, ++count;
-    return count;
+    if (m_num_bodies_dirty) {
+        int count = 0;
+        auto view = m_reg.view<C_BodyIndex, C_PhysicsObject>();
+        for (auto e : view) (void)e, ++count;
+        m_num_bodies_cached = count;
+        m_num_bodies_dirty = false;
+    }
+    return m_num_bodies_cached;
+}
+
+void PhysicsSystem::applyForce(entt::entity e, const Vector3r& force_world, const Vector3r& torque_world) {
+    if (!m_reg.valid(e)) return;
+    if (force_world.allFinite() && !force_world.isZero()) {
+        if (m_reg.any_of<C_ExternalForce>(e)) m_reg.get<C_ExternalForce>(e).f += force_world;
+        else m_reg.emplace<C_ExternalForce>(e, C_ExternalForce{force_world});
+    }
+    if (torque_world.allFinite() && !torque_world.isZero()) {
+        if (m_reg.any_of<C_ExternalTorque>(e)) m_reg.get<C_ExternalTorque>(e).tau += torque_world;
+        else m_reg.emplace<C_ExternalTorque>(e, C_ExternalTorque{torque_world});
+    }
+    m_forces_dirty = true;
+}
+
+void PhysicsSystem::makeStatic(entt::entity e) {
+    if (!m_reg.valid(e)) return;
+    // Remove dynamic physics components; keep visuals/collidable and shape tags
+    if (m_reg.any_of<C_PhysicsObject>(e)) m_reg.remove<C_PhysicsObject>(e);
+    if (m_reg.any_of<C_RigidBodyTag>(e)) m_reg.remove<C_RigidBodyTag>(e);
+    if (m_reg.any_of<C_PointMassTag>(e)) m_reg.remove<C_PointMassTag>(e);
+    if (m_reg.any_of<C_BodyIndex>(e)) m_reg.remove<C_BodyIndex>(e);
+    if (m_reg.any_of<C_Mass>(e)) m_reg.remove<C_Mass>(e);
+    if (m_reg.any_of<C_InertiaDiag>(e)) m_reg.remove<C_InertiaDiag>(e);
+    if (m_reg.any_of<C_LinearVelocity3>(e)) m_reg.remove<C_LinearVelocity3>(e);
+    if (m_reg.any_of<C_AngularVelocity3>(e)) m_reg.remove<C_AngularVelocity3>(e);
+    if (m_reg.any_of<C_ExternalForce>(e)) m_reg.remove<C_ExternalForce>(e);
+    if (m_reg.any_of<C_ExternalTorque>(e)) m_reg.remove<C_ExternalTorque>(e);
+    // Ensure pose remains; visuals/collidable components are left intact
+    if (!m_reg.any_of<C_Position3>(e)) m_reg.emplace<C_Position3>(e, C_Position3{Vector3r::Zero()});
+    if (!m_reg.any_of<C_Orientation>(e)) m_reg.emplace<C_Orientation>(e, C_Orientation{Quaternion4r::Identity()});
+    markStructureDirty();
+}
+
+// ---------- Minimal setters ----------
+
+void PhysicsSystem::setPosition(entt::entity e, const Vector3r& p) {
+    if (!m_reg.valid(e)) return;
+    if (m_reg.any_of<C_Position3>(e)) m_reg.get<C_Position3>(e).value = p; else m_reg.emplace<C_Position3>(e, C_Position3{p});
+    markStateDirty();
+}
+
+void PhysicsSystem::setOrientation(entt::entity e, const Quaternion4r& q_in) {
+    if (!m_reg.valid(e)) return;
+    Quaternion4r q = q_in; q.normalize();
+    if (m_reg.any_of<C_Orientation>(e)) m_reg.get<C_Orientation>(e).q = q; else m_reg.emplace<C_Orientation>(e, C_Orientation{q});
+    markStateDirty();
+}
+
+void PhysicsSystem::setLinearVelocity(entt::entity e, const Vector3r& v) {
+    if (!m_reg.valid(e)) return;
+    if (m_reg.any_of<C_LinearVelocity3>(e)) m_reg.get<C_LinearVelocity3>(e).value = v; else m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{v});
+    markStateDirty();
+}
+
+void PhysicsSystem::setAngularVelocity(entt::entity e, const Vector3r& w) {
+    if (!m_reg.valid(e)) return;
+    if (m_reg.any_of<C_AngularVelocity3>(e)) m_reg.get<C_AngularVelocity3>(e).value = w; else m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{w});
+    markStateDirty();
 }
 
 // ---------- Subsystems ----------

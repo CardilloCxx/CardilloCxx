@@ -146,7 +146,7 @@ public:
     void rebuildMass_();
     void rebuildForces_();
     void rebuildW_();
-    void rebuidInteractionW_();
+    void rebuildInteractionW_();
 };
 
 } // namespace cardillo::physics

@@ -3,6 +3,7 @@
 #include "../SceneBase.hpp"
 #include <Eigen/Geometry>
 #include <vector>
+#include "physics/constraints.hpp"
 
 using namespace cardillo;
 
@@ -87,11 +88,7 @@ public:
 
             // Helper to add a 3D translational spring between apex point mass and obstacle cliff at local attachment point
             auto addLegSpring = [&](entt::entity apexEntity, entt::entity cliffEntity, const Vector3r& cliffLocal){
-                SpringConstraint sc(sys.ecs(), apexEntity, cliffEntity, Vector3r::Zero(), cliffLocal);
-                sc.addTranslationalSpring(Vector3r::UnitX(), legK, legD);
-                sc.addTranslationalSpring(Vector3r::UnitY(), legK, legD);
-                sc.addTranslationalSpring(Vector3r::UnitZ(), legK, legD);
-                sys.addConstraint(sc);
+                sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), apexEntity, cliffEntity, Vector3r::Zero(), cliffLocal, legK, legD);
             };
 
             // Choose the relevant cliff and its local frame (identity rotation)
@@ -175,11 +172,7 @@ public:
             }
             // Spring helper between two entities (point masses or anchor obstacles)
             auto addSpring = [&](entt::entity A, entt::entity B, const Vector3r& rA, const Vector3r& rB, real_t kmul){
-                SpringConstraint sc(sys.ecs(), A, B, rA, rB);
-                sc.addTranslationalSpring(Vector3r::UnitX(), k * kmul, d);
-                sc.addTranslationalSpring(Vector3r::UnitY(), k * kmul, d);
-                sc.addTranslationalSpring(Vector3r::UnitZ(), k * kmul, d);
-                sys.addConstraint(sc);
+                sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), A, B, rA, rB, k * kmul, d);
             };
             // Attach ends
             addSpring(nodes.front(), eA, Vector3r::Zero(), Vector3r::Zero(), (real_t)1.0);
@@ -204,11 +197,7 @@ public:
 
         // Helper to add a 3D translational spring
         auto add3DSpring = [&](entt::entity A, entt::entity B, const Vector3r& rA, const Vector3r& rB, real_t k, real_t d){
-            SpringConstraint sc(sys.ecs(), A, B, rA, rB);
-            sc.addTranslationalSpring(Vector3r::UnitX(), k, d);
-            sc.addTranslationalSpring(Vector3r::UnitY(), k, d);
-            sc.addTranslationalSpring(Vector3r::UnitZ(), k, d);
-            sys.addConstraint(sc);
+            sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), A, B, rA, rB, k, d);
         };
 
     // Add floor boards (planks) hanging from the two ropes
@@ -296,11 +285,7 @@ public:
 
             // helper to add translational springs between two entities
             auto addLink = [&](entt::entity X, entt::entity Y, const Vector3r& rx, const Vector3r& ry){
-                SpringConstraint sc(sys.ecs(), X, Y, rx, ry);
-                sc.addTranslationalSpring(Vector3r::UnitX(), kRope, dRope);
-                sc.addTranslationalSpring(Vector3r::UnitY(), kRope, dRope);
-                sc.addTranslationalSpring(Vector3r::UnitZ(), kRope, dRope);
-                sys.addConstraint(sc);
+                sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), X, Y, rx, ry, kRope, dRope);
             };
 
             // Attach ends

@@ -72,14 +72,9 @@ int main(int argc, char** argv) {
     const int steps = (int)(T / dt);
     if (writer) writer->maybeWrite(0, t, sys);
     for (int k = 0; k < steps; ++k) {
+        scene.updateScene(sys, t, dt);
         solver.stepMidpoint(dt);
         t += dt;
-        scene.maybeSpawnParcel(sys, t);
-        scene.resetPosition(sys);
-        // sys.markForcesDirty();
-        // sys.markStructureDirty();
-        // sys.markStateDirty();
-        // sys.
         if (writer) writer->maybeWrite(k+1, t, sys);
     }
 

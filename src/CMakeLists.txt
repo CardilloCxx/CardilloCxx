@@ -9,7 +9,6 @@ add_library(${PROJECT_NAME} STATIC
     solver/CPG.cpp
     solver/projected_jacobi.cpp
     physics/dynamics_assembler.cpp
-    physics/force_interaction.cpp
     collision/collision_coal.cpp
     partitioning/naive_partitioner.cpp
     comm/communication.cpp
