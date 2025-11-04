@@ -7,9 +7,9 @@
 # add_executable(pm_midpoint pm_midpoint.cpp)
 # target_link_libraries(pm_midpoint PRIVATE cardillo)
 
-# Rigid body test: static ground cube + two dynamic cubes; writes geometry and contacts
-add_executable(rigid_body_test rigid_body_test.cpp)
-target_link_libraries(rigid_body_test PRIVATE cardillo)
+# Main executable (previously rigid_body_test)
+add_executable(main main.cpp)
+target_link_libraries(main PRIVATE cardillo)
 
 # ECS physics engine example (requires EnTT)
 # add_executable(physics_engine physics_engine.cpp)

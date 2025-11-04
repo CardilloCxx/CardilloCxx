@@ -301,24 +301,32 @@ void DynamicsAssembler::rebuildInteractionW_()
         }
     };
 
-    // 1) New constraint patterns
+    // 1) New constraint patterns (support multi-row constraints)
     const auto& patterns = m_sys.constraintPatterns();
     for (const auto& uptr : patterns) {
         if (!uptr) continue;
-        auto cr = uptr->getConstraint();
-        // Spring part
-        if (cr.C(0,0) < 1 / EPS_C) {
-            Crows.push_back(cr.C(0,0));
-            int row = springRowCounter++;
-            emitRowFromRow6(tripsWg, row, cr.a, cr.WgA);
-            emitRowFromRow6(tripsWg, row, cr.b, cr.WgB);
+        auto crN = uptr->getConstraint();
+        const int nrows = (int)crN.Crows.size();
+        // Spring rows
+        for (int i = 0; i < nrows; ++i) {
+            const real_t Ci = crN.Crows[i];
+            if (Ci < 1 / EPS_C) {
+                Crows.push_back(Ci);
+                const int row = springRowCounter++;
+                if (i < crN.WgA.rows()) { Row6r r = crN.WgA.row(i); emitRowFromRow6(tripsWg, row, crN.a, r); }
+                if (i < crN.WgB.rows()) { Row6r r = crN.WgB.row(i); emitRowFromRow6(tripsWg, row, crN.b, r); }
+            }
         }
-        // Damper part
-        if (cr.A(0,0) < 1 / EPS_A) {
-            Arows.push_back(cr.A(0,0));
-            int row = damperRowCounter++;
-            emitRowFromRow6(tripsWgamma, row, cr.a, cr.WgammaA);
-            emitRowFromRow6(tripsWgamma, row, cr.b, cr.WgammaB);
+        // Damper rows
+        const int ndamp = (int)crN.Arows.size();
+        for (int i = 0; i < ndamp; ++i) {
+            const real_t Ai = crN.Arows[i];
+            if (Ai < 1 / EPS_A) {
+                Arows.push_back(Ai);
+                const int row = damperRowCounter++;
+                if (i < crN.WgammaA.rows()) { Row6r r = crN.WgammaA.row(i); emitRowFromRow6(tripsWgamma, row, crN.a, r); }
+                if (i < crN.WgammaB.rows()) { Row6r r = crN.WgammaB.row(i); emitRowFromRow6(tripsWgamma, row, crN.b, r); }
+            }
         }
     }
 
