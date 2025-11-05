@@ -30,7 +30,7 @@ public:
         const real_t Iz = std::pow(width, 3) * height / 12;
         const real_t Ip = Iy + Iz;
 
-        Vector3r Ke(E * A, G * A, G * A);
+        Vector3r Ke(E * A * 1e5, G * A * 1e5, G * A * 1e5);
         Vector3r Kf(G * Ip, E * Iy, E * Iz);
 
         PhysicsSystem::Cube shape;
