@@ -23,6 +23,7 @@
 #include "scenes/parcel/ParcelScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
+#include "scenes/beamTest/BeamTestScene.hpp"
 
 using namespace cardillo;
 
@@ -54,7 +55,7 @@ int main(int argc, char** argv) {
     // RailScene scene;
     // DzhanibekovScene scene;
     // ParcelScene scene;
-    DiscreteRodScene scene;
+    BeamTestScene scene;
 
     scene.populate(sys);
 
