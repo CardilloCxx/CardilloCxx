@@ -163,7 +163,9 @@ public:
         : ConstraintPattern(reg, a, b, rA_local, rB_local), m_Ke(Kg), m_Kf(Kf), m_De(Dg), m_Df(Df) 
         {
             const auto wa = computeAttachments_();
-            m_delta0 = wa.xB - wa.xA;
+            const Quaternion4r qMid(0.5 * (wa.qA.coeffs() + wa.qB.coeffs()));
+            const Matrix33r A_mid = qMid.normalized().toRotationMatrix();
+            m_delta0 = A_mid.transpose() * (wa.xB - wa.xA);
         }
 
     void setKg(const Vector3r& Kg) { m_Ke = Kg; }
@@ -176,47 +178,60 @@ public:
         ConstraintResult out; out.a = m_a; out.b = m_b;
         const auto wa = computeAttachments_();
 
-        // Mid-orientation and strains (should we use Eigens slerp instead?)
-        // Quaternion4r qMid = (real_t)0.5 * (wa.qA + wa.qB);  (Addition not directly defined for quaternions)
-        // Quaternion4r qMid( 
-        //     (real_t)0.5 * (wa.qA.w() + wa.qB.w()),
-        //     (real_t)0.5 * (wa.qA.x() + wa.qB.x()),
-        //     (real_t)0.5 * (wa.qA.y() + wa.qB.y()),
-        //     (real_t)0.5 * (wa.qA.z() + wa.qB.z())
-        // );
-
-        const Quaternion4r qMid = wa.qB.slerp((real_t)0.5, wa.qA);
-        const Matrix33r A_mid = qMid.toRotationMatrix();
-        const Vector3r gamma = A_mid.transpose() * (wa.xB - wa.xA - m_delta0);   // axial + shear strain
+        // Mid-orientation and strains
+        // qMid.normalize();
+        // const Matrix33r A_mid = qMid.toRotationMatrix();
+        const Vector4r qMid = 0.5 * (wa.qA.coeffs() + wa.qB.coeffs());
+        // const Quaternion4r qMid(0.5 * (wa.qA.coeffs() + wa.qB.coeffs()));
+        const Matrix33r A_mid = Quaternion4r(qMid).normalized().toRotationMatrix();
+        const Vector3r gamma = A_mid.transpose() * (wa.xB - wa.xA); // - m_delta0;   // axial + shear strain
         const Matrix33r gamma_skew = skew_from_vector(gamma);
 
         // What about Ke^-1 n_i + gamma_i 0 = e_x ?
 
         // Differential orientation / curvature (should we use proper quaternion diff, like wa.qB.conjugate() * wa.qA?)
-        const Vector3r Qd_q(
-            (wa.qB.x() - wa.qA.x()),
-            (wa.qB.y() - wa.qA.y()),
-            (wa.qB.z() - wa.qA.z())
-        );
-        const real_t   Qd_w = (wa.qB.w() - wa.qA.w());
+        // const Vector3r Qd_q(
+        //     (wa.qB.x() - wa.qA.x()),
+        //     (wa.qB.y() - wa.qA.y()),
+        //     (wa.qB.z() - wa.qA.z())
+        // );
+        // const real_t   Qd_w = (wa.qB.w() - wa.qA.w());
+        // const Matrix44r S = 0;
+        const Vector4r dQ = wa.qB.coeffs() - wa.qA.coeffs();
+        // const real_t   factor = (real_t)2.0 / qMid.coeffs().squaredNorm();
+        // const real_t   Qmid_w = qMid.w();
+        // const Vector3r Qmid_q = qMid.vec();
+        const real_t   factor = (real_t)2.0 / qMid.squaredNorm();
+        // const real_t   factor = (real_t)1.0 / qMid.squaredNorm();
+        const real_t   Qmid_w = qMid(3);
+        const Vector3r Qmid_q = qMid.head<3>();
+        const Vector3r kappa = factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
 
         // Quaternion4r Q_rel = wa.qB * wa.qA.conjugate();
         // Q_rel = Quaternion4r::Identity();                   Doing this does not change anything in the solution?
         // const Vector3r Qd_q( Q_rel.x(), Q_rel.y(), Q_rel.z() );
         // const real_t   Qd_w = Q_rel.w();
 
-        const Vector3r Qmid_q(qMid.x(), qMid.y(), qMid.z());
-        const real_t   Qmid_w = qMid.w();
-        const real_t   factor = (real_t)2.0 / qMid.squaredNorm();
-        const Vector3r kappa = factor * (Qmid_w * Qd_q - Qmid_q.cross(Qd_q) - Qmid_q * Qd_w);  // curvature
+        // const Vector3r Qmid_q(qMid.x(), qMid.y(), qMid.z());
+        // const real_t   Qmid_w = qMid.w();
+        // const real_t   factor = (real_t)2.0 / qMid.squaredNorm();
+        // const Vector3r kappa = factor * (Qmid_w * Qd_q - Qmid_q.cross(Qd_q) - Qmid_q * Qd_w);  // curvature
         const Matrix33r kappa_skew = skew_from_vector(kappa);
 
-        out.WgB = MatrixXXr::Zero(6, 6);
-        out.WgB.block(0, 0, 3, 3) =  A_mid;
-        out.WgB.block(3, 0, 3, 3) =  (real_t) -0.5 * gamma_skew;
-        out.WgB.block(3, 3, 3, 3) =  Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
+        out.WgA = MatrixXXr::Zero(6, 6);
+        out.WgA.block<3, 3>(0, 0) = -A_mid;
+        out.WgA.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
+        out.WgA.block<3, 3>(3, 3) = -Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
-        out.WgA = -out.WgB;
+        out.WgB = MatrixXXr::Zero(6, 6);
+        out.WgB.block<3, 3>(0, 0) = A_mid;
+        out.WgB.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
+        out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
+
+        // out.WgA *= -1;
+        // out.WgB *= -1;
+
+        // out.WgA = -out.WgB;
         out.WgammaA = out.WgA;
         out.WgammaB = out.WgB;
 
