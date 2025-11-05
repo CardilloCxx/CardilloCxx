@@ -163,6 +163,7 @@ public:
         : ConstraintPattern(reg, a, b, rA_local, rB_local), m_Ke(Kg), m_Kf(Kf), m_De(Dg), m_Df(Df) 
         {
             const auto wa = computeAttachments_();
+            m_delta0 = wa.xB - wa.xA;
         }
 
     void setKg(const Vector3r& Kg) { m_Ke = Kg; }
@@ -173,14 +174,9 @@ public:
     // Fill W and compliance vectors for 6 beam rows
     ConstraintResult getConstraint() const override {
         ConstraintResult out; out.a = m_a; out.b = m_b;
-        out.WgA = MatrixXXr::Zero(6, 6);
-        out.WgB = MatrixXXr::Zero(6, 6);
-        out.WgammaA = MatrixXXr::Zero(6, 6);
-        out.WgammaB = MatrixXXr::Zero(6, 6);
-
         const auto wa = computeAttachments_();
 
-        // Mid-orientation and strains (should we use slerp instead?)
+        // Mid-orientation and strains (should we use Eigens slerp instead?)
         // Quaternion4r qMid = (real_t)0.5 * (wa.qA + wa.qB);  (Plus not directly defined for quaternions)
         Quaternion4r qMid( 
             (real_t)0.5 * (wa.qA.w() + wa.qB.w()),
@@ -189,7 +185,7 @@ public:
             (real_t)0.5 * (wa.qA.z() + wa.qB.z())
         );
         const Matrix33r A_mid = qMid.toRotationMatrix();
-        const Vector3r gamma = A_mid.transpose() * (wa.xB - wa.xA);   // axial + shear strain
+        const Vector3r gamma = A_mid.transpose() * (wa.xB - wa.xA - m_delta0);   // axial + shear strain
         const Matrix33r gamma_skew = skew_from_vector(gamma);
 
         // What about Ke^-1 n_i + gamma_i 0 = e_x ?
@@ -207,7 +203,9 @@ public:
         const Vector3r kappa = factor * (Qmid_w * Qd_q - Qmid_q.cross(Qd_q) - Qmid_q * Qd_w);  // curvature
         const Matrix33r kappa_skew = skew_from_vector(kappa);
 
+        out.WgA = MatrixXXr::Zero(6, 6);
         out.WgA.block(0, 0, 3, 3) =  A_mid;
+        out.WgA.block(0, 3, 3, 3) =  Matrix33r::Zero();
         out.WgA.block(3, 0, 3, 3) =  (real_t) 0.5 * gamma_skew;
         out.WgA.block(3, 3, 3, 3) =  Matrix33r::Identity() - kappa_skew;  // l_0 jeweils rausgekürzt
 
@@ -225,19 +223,11 @@ public:
             if (std::isfinite(k)) return (k > eps) ? (real_t)1 / k : std::numeric_limits<real_t>::infinity(); else return (real_t)0;
         };
 
-        out.Crows[0] = asCompliance(m_Ke.x());
-        out.Crows[1] = asCompliance(m_Ke.y());
-        out.Crows[2] = asCompliance(m_Ke.z());
-        out.Crows[3] = asCompliance(m_Kf.x());
-        out.Crows[4] = asCompliance(m_Kf.y());
-        out.Crows[5] = asCompliance(m_Kf.z());
+        out.Crows[0] = asCompliance(m_Ke.x()); out.Crows[1] = asCompliance(m_Ke.y()); out.Crows[2] = asCompliance(m_Ke.z());
+        out.Crows[3] = asCompliance(m_Kf.x()); out.Crows[4] = asCompliance(m_Kf.y()); out.Crows[5] = asCompliance(m_Kf.z());
 
-        out.Arows[0] = asCompliance(m_De.x());
-        out.Arows[1] = asCompliance(m_De.y());
-        out.Arows[2] = asCompliance(m_De.z());
-        out.Arows[3] = asCompliance(m_Df.x());
-        out.Arows[4] = asCompliance(m_Df.y());
-        out.Arows[5] = asCompliance(m_Df.z());
+        out.Arows[0] = asCompliance(m_De.x()); out.Arows[1] = asCompliance(m_De.y()); out.Arows[2] = asCompliance(m_De.z());
+        out.Arows[3] = asCompliance(m_Df.x()); out.Arows[4] = asCompliance(m_Df.y()); out.Arows[5] = asCompliance(m_Df.z());
 
         return out;
     }
@@ -247,6 +237,7 @@ private:
     Vector3r m_Kf{Vector3r::Zero()};
     Vector3r m_De{Vector3r::Zero()};
     Vector3r m_Df{Vector3r::Zero()};
+    Vector3r m_delta0{Vector3r::Zero()};
 };
 
 } // namespace physics

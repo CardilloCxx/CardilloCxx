@@ -369,8 +369,9 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	// Initialize state vector x consisting of velocities and lagrange multipliers (springs)
 	rhs.segment(0, Nv).noalias() += Wref.transpose() * p;
 	VectorXr x = m_dyn.solveS(rhs);
-
-	if (C == 0 || Wref.nonZeros() == 0) return x; // no contacts, return preliminary velocity as-is
+	
+	bool disable_collisions = true;
+	if (disable_collisions || C == 0 || Wref.nonZeros() == 0) return x; // no contacts, return preliminary velocity as-is
 
 	// Configure iteration context
 	ctx.worldRank = worldRank;
