@@ -20,9 +20,9 @@ public:
         const real_t segment_length = length / segments;
         const real_t width = 0.05 * length;
         const real_t height = width / 2;
-        real_t mass = 12.5 / segments;
+        real_t mass = 1.25 / segments;
 
-        const real_t E = 1e6;
+        const real_t E = 1e8;
         const real_t nu = 0.3;
         const real_t G = E / (2 * (1 + nu));
         const real_t A = width * height;

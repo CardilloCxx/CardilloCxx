@@ -222,14 +222,24 @@ public:
         out.WgA.block<3, 3>(0, 0) = -A_mid;
         out.WgA.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
         out.WgA.block<3, 3>(3, 3) = -Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
+        // out.WgA.block<3, 3>(0, 0) = -A_mid.transpose();
+        // out.WgA.block<3, 3>(0, 3) = (real_t) 0.5 * gamma_skew;
+        // out.WgA.block<3, 3>(3, 3) = -Matrix33r::Identity() + (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
         out.WgB = MatrixXXr::Zero(6, 6);
         out.WgB.block<3, 3>(0, 0) = A_mid;
         out.WgB.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
         out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
+        // out.WgB.block<3, 3>(0, 0) = A_mid.transpose();
+        // out.WgB.block<3, 3>(0, 3) = (real_t) 0.5 * gamma_skew;
+        // out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() + (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
-        // out.WgA *= -1;
-        // out.WgB *= -1;
+        // different W matrix definition
+        // // Alias issue?
+        // out.WgA = out.WgA.transpose();
+        // out.WgB = out.WgB.transpose();
+        out.WgA.transposeInPlace();
+        out.WgB.transposeInPlace();
 
         // out.WgA = -out.WgB;
         out.WgammaA = out.WgA;
