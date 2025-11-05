@@ -265,38 +265,20 @@ void DynamicsAssembler::rebuildInteractionW_()
     const real_t EPS_C = (real_t)1e-10;
     const real_t EPS_A = (real_t)1e-10;
 
-    auto emitRowFromRow6 = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const cardillo::Matrixr<1,6>& row){
+    // Emit a single 1xN row into W triplets without temporaries
+    auto emitRowRef = [&](std::vector<Eigen::Triplet<real_t>>& trg,
+                          int rowIndex,
+                          entt::entity ent,
+                          const Eigen::Ref<const Eigen::Matrix<real_t, 1, Eigen::Dynamic>>& row){
         if (!reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(ent)) return;
         int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(ent).b;
         if (b < 0 || b >= (int)m_body_vel_offsets.size()-1) return;
         int col0 = m_body_vel_offsets[(size_t)b];
         int nV = m_body_vel_offsets[(size_t)b+1] - col0;
-        if (reg.any_of<cardillo::PhysicsSystem::C_RigidBodyTag>(ent)) {
-            // 6-DoF block
-            int nCopy = std::min(6, nV);
-            for (int j = 0; j < nCopy; ++j) {
-                real_t v = row(0,j);
-                if (v != (real_t)0) trg.emplace_back(rowIndex, col0 + j, v);
-            }
-        } else {
-            // 3-DoF translational only
-            int nCopy = std::min(3, nV);
-            for (int j = 0; j < nCopy; ++j) {
-                real_t v = row(0,j);
-                if (v != (real_t)0) trg.emplace_back(rowIndex, col0 + j, v);
-            }
-        }
-    };
-    auto emitRowFromMat = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const MatrixXXr& w){
-        if (!reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(ent)) return;
-        int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(ent).b;
-        if (b < 0 || b >= (int)m_body_vel_offsets.size()-1) return;
-        int col0 = m_body_vel_offsets[(size_t)b];
-        int nV = m_body_vel_offsets[(size_t)b+1] - col0;
-        int cols = (int)w.cols();
+        int cols = (int)row.cols();
         int nCopy = std::min(cols, nV);
         for (int j = 0; j < nCopy; ++j) {
-            real_t v = w(0,j);
+            real_t v = row(0,j);
             if (v != (real_t)0) trg.emplace_back(rowIndex, col0 + j, v);
         }
     };
@@ -313,8 +295,8 @@ void DynamicsAssembler::rebuildInteractionW_()
             if (Ci < 1 / EPS_C) {
                 Crows.push_back(Ci);
                 const int row = springRowCounter++;
-                if (i < crN.WgA.rows()) { Row6r r = crN.WgA.row(i); emitRowFromRow6(tripsWg, row, crN.a, r); }
-                if (i < crN.WgB.rows()) { Row6r r = crN.WgB.row(i); emitRowFromRow6(tripsWg, row, crN.b, r); }
+                if (i < crN.WgA.rows()) emitRowRef(tripsWg, row, crN.a, crN.WgA.row(i));
+                if (i < crN.WgB.rows()) emitRowRef(tripsWg, row, crN.b, crN.WgB.row(i));
             }
         }
         // Damper rows
@@ -324,8 +306,8 @@ void DynamicsAssembler::rebuildInteractionW_()
             if (Ai < 1 / EPS_A) {
                 Arows.push_back(Ai);
                 const int row = damperRowCounter++;
-                if (i < crN.WgammaA.rows()) { Row6r r = crN.WgammaA.row(i); emitRowFromRow6(tripsWgamma, row, crN.a, r); }
-                if (i < crN.WgammaB.rows()) { Row6r r = crN.WgammaB.row(i); emitRowFromRow6(tripsWgamma, row, crN.b, r); }
+                if (i < crN.WgammaA.rows()) emitRowRef(tripsWgamma, row, crN.a, crN.WgammaA.row(i));
+                if (i < crN.WgammaB.rows()) emitRowRef(tripsWgamma, row, crN.b, crN.WgammaB.row(i));
             }
         }
     }

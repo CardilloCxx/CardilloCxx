@@ -177,39 +177,46 @@ public:
         const auto wa = computeAttachments_();
 
         // Mid-orientation and strains (should we use Eigens slerp instead?)
-        // Quaternion4r qMid = (real_t)0.5 * (wa.qA + wa.qB);  (Plus not directly defined for quaternions)
-        Quaternion4r qMid( 
-            (real_t)0.5 * (wa.qA.w() + wa.qB.w()),
-            (real_t)0.5 * (wa.qA.x() + wa.qB.x()),
-            (real_t)0.5 * (wa.qA.y() + wa.qB.y()),
-            (real_t)0.5 * (wa.qA.z() + wa.qB.z())
-        );
+        // Quaternion4r qMid = (real_t)0.5 * (wa.qA + wa.qB);  (Addition not directly defined for quaternions)
+        // Quaternion4r qMid( 
+        //     (real_t)0.5 * (wa.qA.w() + wa.qB.w()),
+        //     (real_t)0.5 * (wa.qA.x() + wa.qB.x()),
+        //     (real_t)0.5 * (wa.qA.y() + wa.qB.y()),
+        //     (real_t)0.5 * (wa.qA.z() + wa.qB.z())
+        // );
+
+        const Quaternion4r qMid = wa.qB.slerp((real_t)0.5, wa.qA);
         const Matrix33r A_mid = qMid.toRotationMatrix();
         const Vector3r gamma = A_mid.transpose() * (wa.xB - wa.xA - m_delta0);   // axial + shear strain
         const Matrix33r gamma_skew = skew_from_vector(gamma);
 
         // What about Ke^-1 n_i + gamma_i 0 = e_x ?
 
-        // Differential orientation / curvature (should we use proper quaternion diff, like wa.qB.transpose() * wa.qA?)
+        // Differential orientation / curvature (should we use proper quaternion diff, like wa.qB.conjugate() * wa.qA?)
         const Vector3r Qd_q(
             (wa.qB.x() - wa.qA.x()),
             (wa.qB.y() - wa.qA.y()),
             (wa.qB.z() - wa.qA.z())
         );
         const real_t   Qd_w = (wa.qB.w() - wa.qA.w());
+
+        // Quaternion4r Q_rel = wa.qB * wa.qA.conjugate();
+        // Q_rel = Quaternion4r::Identity();                   Doing this does not change anything in the solution?
+        // const Vector3r Qd_q( Q_rel.x(), Q_rel.y(), Q_rel.z() );
+        // const real_t   Qd_w = Q_rel.w();
+
         const Vector3r Qmid_q(qMid.x(), qMid.y(), qMid.z());
         const real_t   Qmid_w = qMid.w();
-        const real_t   factor = (real_t)1.0 / qMid.squaredNorm();
+        const real_t   factor = (real_t)2.0 / qMid.squaredNorm();
         const Vector3r kappa = factor * (Qmid_w * Qd_q - Qmid_q.cross(Qd_q) - Qmid_q * Qd_w);  // curvature
         const Matrix33r kappa_skew = skew_from_vector(kappa);
 
-        out.WgA = MatrixXXr::Zero(6, 6);
-        out.WgA.block(0, 0, 3, 3) =  A_mid;
-        out.WgA.block(0, 3, 3, 3) =  Matrix33r::Zero();
-        out.WgA.block(3, 0, 3, 3) =  (real_t) 0.5 * gamma_skew;
-        out.WgA.block(3, 3, 3, 3) =  Matrix33r::Identity() - kappa_skew;  // l_0 jeweils rausgekürzt
+        out.WgB = MatrixXXr::Zero(6, 6);
+        out.WgB.block(0, 0, 3, 3) =  A_mid;
+        out.WgB.block(3, 0, 3, 3) =  (real_t) -0.5 * gamma_skew;
+        out.WgB.block(3, 3, 3, 3) =  Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
-        out.WgB = -out.WgA;
+        out.WgA = -out.WgB;
         out.WgammaA = out.WgA;
         out.WgammaB = out.WgB;
 
