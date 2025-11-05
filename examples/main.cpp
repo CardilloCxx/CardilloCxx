@@ -21,6 +21,8 @@
 #include "scenes/hangbride/HangbrideScene.hpp"
 #include "scenes/softbody/SoftbodyTestScene.hpp"
 #include "scenes/parcel/ParcelScene.hpp"
+#include "scenes/rodAssembly/RodAssemblyScene.hpp"
+#include "scenes/discreteRod/DiscreteRodScene.hpp"
 #include "scenes/beamTest/BeamTestScene.hpp"
 
 using namespace cardillo;
@@ -34,13 +36,12 @@ int main(int argc, char** argv) {
     // Load config and wire into solver and writer
     cardillo::config::Config cfg = (argc > 1)
         ? cardillo::config::ConfigReader::fromFile(argv[1])
-        : cardillo::config::Config{};
+        : cardillo::config::Config{}; // defaults from header
     
     if (argc == 0 && worldRank == 0) std::cout << "No config file provided, using defaults." << std::endl;
     
-    // Initialize physics system with config
+    // Initialize physics system with config (includes gravity, friction, etc.)
     PhysicsSystem sys(cfg);
-    // Select a scene:
     // HeightmapScene scene;
     // DominoScene scene;
     // SpringTestScene scene;

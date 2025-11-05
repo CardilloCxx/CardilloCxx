@@ -32,6 +32,9 @@ using Matrix33r = Eigen::Matrix<real_t, 3, 3>;
 // provide a helper to build it from a 3-vector when needed.
 using SkewSymmetricMatrix3r = Eigen::Matrix<real_t, 3, 3>;
 
+using Vector4r = Eigen::Matrix<real_t, 4, 1>;
+using Matrix44r = Eigen::Matrix<real_t, 4, 4>;
+
 inline SkewSymmetricMatrix3r skew_from_vector(const Vector3r &v) {
 	SkewSymmetricMatrix3r m;
 	m << 0, -v(2), v(1),
