@@ -15,19 +15,74 @@ public:
     void populate(cardillo::PhysicsSystem& sys) override {
         using namespace cardillo;
         // Gravity off (also set in config; duplicate here for clarity if other configs are used)
-        sys.setGravity(Vector3r::Zero());
+        // sys.setGravity(Vector3r::Zero());
 
         // Floor (make static to avoid zero-mass dynamic DOFs)
+        PhysicsSystem::Cube shape;
+        shape.halfExtents = Vector3r(15.0, 15.0, 0.1);
+        real_t mass = 0.0; // static
+        Vector3r pos = Vector3r(0, 0, -0.1);
+        Quaternion4r q = Quaternion4r::Identity();
+        Vector3r v = Vector3r::Zero();
+        Vector3r w = Vector3r::Zero();
+        entt::entity floor = sys.addRigidBody(mass, pos, q, v, w, shape);
+        sys.makeStatic(floor);
+
+        // Hinge constraint test
         {
+            // Tilted obstacle cube
+            PhysicsSystem::Cube obstacle_shape;
+            obstacle_shape.halfExtents = Vector3r(3.0, 3.0, 3.0);
+            Quaternion4r q_obstacle = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 6.0, Vector3r::UnitY()));
+            Vector3r pos_obstacle = Vector3r(0, 6, 2);
+            entt::entity obstacle = sys.addRigidBody(0.0, pos_obstacle, q_obstacle, Vector3r::Zero(), Vector3r::Zero(), obstacle_shape);
+            sys.makeStatic(obstacle);
+
+            Matrix33r rot_obstacle = q_obstacle.toRotationMatrix();
+
+
+            // Disk to be hinged
             PhysicsSystem::Cube shape;
-            shape.halfExtents = Vector3r(15.0, 15.0, 0.1);
-            real_t mass = 0.0; // static
-            Vector3r pos = Vector3r(0, 0, -0.1);
-            Quaternion4r q = Quaternion4r::Identity();
+            shape.halfExtents = Vector3r(1.5, 1.5, 0.05); 
+            real_t mass = 1.0;
+            Vector3r pos = pos_obstacle + rot_obstacle * Vector3r(0.0, 0.0, 3.5);
             Vector3r v = Vector3r::Zero();
-            Vector3r w = Vector3r::Zero();
-            entt::entity floor = sys.addRigidBody(mass, pos, q, v, w, shape);
-            sys.makeStatic(floor);
+            Vector3r w = Vector3r(0.0, 0.0, 0.0);
+            entt::entity disk = sys.addRigidBody(mass, pos, q_obstacle, v, w, shape);
+
+            Vector3r a_local = Vector3r::Zero(); // hinge axis in A's local frame
+            Vector3r b_local = Vector3r(0, 0, 0); // hinge axis in B's local frame
+            Vector3r axis_A_frame = Vector3r::UnitX(); 
+            real_t K_hinge = 0;
+            real_t D_hinge = 0;
+            Vector2r K_rotation = Vector2r::Constant(std::numeric_limits<real_t>::infinity());
+            Vector2r D_rotation = Vector2r::Zero();
+            Vector3r K_translation = Vector3r::Constant(std::numeric_limits<real_t>::infinity());
+            Vector3r D_translation = Vector3r::Zero();
+
+            sys.addConstraint<physics::HingeConstraint>(sys.ecs(), obstacle, disk,
+                                                        a_local, b_local,
+                                                        axis_A_frame,
+                                                        K_hinge, D_hinge,
+                                                        K_rotation, D_rotation,
+                                                        K_translation, D_translation);
+
+
+            // Cube over the hinge
+            shape.halfExtents = Vector3r(0.1, 0.1, 0.1);
+            mass = 0.1;
+            Vector3r pos_cube = pos_obstacle + rot_obstacle * Vector3r(0.5, 0.5, 3.75);
+            Vector3r v_cube = Vector3r::Zero();
+            Vector3r w_cube = Vector3r::Zero();
+            entt::entity cube = sys.addRigidBody(mass, pos_cube, q_obstacle, v_cube, w_cube, shape);
+
+            // sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), disk, cube, Vector3r(0.5, 0.5, 0.0), Vector3r(0.0, 0.0, 0.0), 
+            //                                                 Vector3r(1e10, 1e10, 100), Vector3r::Zero());
+            sys.addConstraint<physics::HingeConstraint>(sys.ecs(), disk, cube,
+                                                            Vector3r(0.5, 0.5, 0.0), Vector3r(0.0, 0.0, 0.0),
+                                                            Vector3r::UnitZ(),
+                                                            std::numeric_limits<real_t>::infinity(), 0);
+
         }
 
         // Translational constraint test center

@@ -125,9 +125,6 @@ public:
                              real_t damping = (real_t)0)
         : ConstraintPattern(reg, a, b, rA_local, rB_local), m_k(stiffness), m_d(damping) {}
 
-    void setStiffness(real_t k) { m_k = k; }
-    void setDamping(real_t d) { m_d = d; }
-
     ConstraintResult getConstraint() const override {
         ConstraintResult out; out.a = m_a; out.b = m_b;
 
@@ -165,6 +162,7 @@ private:
     real_t m_d{(real_t)0};
 };
 
+// Translational constraint
 class TranslationalConstraint : public ConstraintPattern {
 public:
     TranslationalConstraint(entt::registry& reg,
@@ -176,41 +174,21 @@ public:
                                    const Vector3r& D_A = Vector3r::Zero())
         : ConstraintPattern(reg, a, b, rA_local, rB_local), m_K(K_A), m_D(D_A) {}
 
-    void setStiffnessA(const Vector3r& K_A) { m_K = K_A; }
-    void setDampingA(const Vector3r& D_A) { m_D = D_A; }
-
     ConstraintResult getConstraint() const override {
-        ConstraintResult out; 
-        out.a = m_a; 
-        out.b = m_b;
-
+        ConstraintResult out; out.a = m_a; out.b = m_b;
         const auto wa = computeAttachments_();
 
-        const Matrix33r RA = wa.qA.toRotationMatrix();
-        const Matrix33r RB = wa.qB.toRotationMatrix();
-
-        const Vector3r pA = wa.xA;
-        const Vector3r pB = wa.xB;
-
-        const Vector3r rA_local = m_rA_local;
-        const Vector3r rB_local = m_rB_local;
-
-        const Matrix33r S_rA_local = skew_from_vector(rA_local);
-        const Matrix33r S_rB_local = skew_from_vector(rB_local);
-      
-        // Initialize
         out.WgA = MatrixXXr::Zero(6, 3);
-        out.WgA.block<3,3>(0,0) = -RA;
-        out.WgA.block<3,3>(3,0) = -S_rA_local;
+        out.WgA.block<3,3>(0,0) = -wa.RA;
+        out.WgA.block<3,3>(3,0) = -skew_from_vector(m_rA_local);
 
         out.WgB = MatrixXXr::Zero(6, 3);
-        out.WgB.block<3,3>(0,0) =  RA;
-        out.WgB.block<3,3>(3,0) =  (S_rB_local * wa.RB.transpose() * RA);
+        out.WgB.block<3,3>(0,0) = wa.RA;
+        out.WgB.block<3,3>(3,0) = (skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA);
 
         out.WgammaA = out.WgA;
         out.WgammaB = out.WgB;
 
-        // Compliance and damping: only 3 translational DOFs
         out.Crows = VectorXr::Zero(3);
         out.Arows = VectorXr::Zero(3);
         fillCompliance3(out.Crows, 0, m_K);
@@ -224,8 +202,79 @@ private:
     Vector3r m_D{Vector3r::Zero()};
 };
 
+class HingeConstraint : public ConstraintPattern {
+public:
+    HingeConstraint(entt::registry& reg,
+                                entt::entity a,
+                                entt::entity b,
+                                const Vector3r& rA_local = Vector3r::Zero(),                                        // Attachment point in A's local frame
+                                const Vector3r& rB_local = Vector3r::Zero(),                                        // Attachment point in B's local frame
+                                const Vector3r& axis_localA = Vector3r(0,0,1),                                      // Hinge axis in A's local frame
+                                const real_t& K_axis = std::numeric_limits<real_t>::infinity(),                     // Stiffness along hinge axis > 0 -> rotational spring
+                                const real_t& D_axis = (real_t)0,                                                   // Damping along hinge axis > 0 -> "friction"
+                                const Vector2r& Kf_A = Vector2r::Constant(std::numeric_limits<real_t>::infinity()), // Stiffnesses for the two locked rotational DOFs
+                                const Vector2r& Df_A = Vector2r::Zero(),                                            // Damping for the two locked rotational DOFs
+                                const Vector3r& Ke_A = Vector3r::Constant(std::numeric_limits<real_t>::infinity()), // Stiffnesses for the three locked translational DOFs
+                                const Vector3r& De_A = Vector3r::Zero())                                            // Damping for the three locked translational DOFs
+        : ConstraintPattern(reg, a, b, rA_local, rB_local), 
+            m_Ke(Ke_A), m_Kf(Vector3r(Kf_A.x(), Kf_A.y(), K_axis)), 
+            m_De(De_A), m_Df(Vector3r(Df_A.x(), Df_A.y(), D_axis)) { 
+
+                // Compute hinge frame in A's local space
+                Vector3r axisA = axis_localA.normalized();
+                Vector3r up = Vector3r(0, 0, 1);
+                if (std::abs(axisA.dot(up)) > (real_t)0.99) { up = Vector3r(0, 1, 0); }
+                Vector3r right = up.cross(axisA).normalized();
+                up = -right.cross(axisA);
+                m_hingeFrame = Matrix33r::Identity();
+                m_hingeFrame.col(0) = right;
+                m_hingeFrame.col(1) = up;
+                m_hingeFrame.col(2) = axisA;
+
+                std::cout << "Hinge frame (local A):\n" << m_hingeFrame << std::endl;
+            }
+
+    ConstraintResult getConstraint() const override {
+        ConstraintResult out; out.a = m_a; out.b = m_b;
+        const auto wa = computeAttachments_();
+
+        out.WgA = MatrixXXr::Zero(6, 6);
+        out.WgB = MatrixXXr::Zero(6, 6);
+
+        // Lock Translations:
+        out.WgA.block<3,3>(0,0) = -wa.RA;
+        out.WgA.block<3,3>(3,0) = -skew_from_vector(m_rA_local);
+        out.WgB.block<3,3>(0,0) = wa.RA;
+        out.WgB.block<3,3>(3,0) = (skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA);
+
+        // Lock rotation relative in A's local frame
+        out.WgA.block<3,3>(3,3) = -m_hingeFrame;
+        out.WgB.block<3,3>(3,3) =  m_hingeFrame * wa.RA.transpose() *  wa.RB;
+
+        out.WgammaA = out.WgA;
+        out.WgammaB = out.WgB;
+
+        out.Crows = VectorXr::Zero(6);
+        out.Arows = VectorXr::Zero(6);
+        fillCompliance3(out.Crows, 0, m_Ke);
+        fillCompliance3(out.Crows, 3, m_Kf);
+        fillCompliance3(out.Arows, 0, m_De);
+        fillCompliance3(out.Arows, 3, m_Df);
+
+        return out;
+    }
+
+private:
+    Matrix33r m_hingeFrame{Matrix33r::Identity()};
+    Vector3r m_Ke{Vector3r::Zero()};
+    Vector3r m_De{Vector3r::Zero()};
+    Vector3r m_Kf{Vector3r::Zero()};
+    Vector3r m_Df{Vector3r::Zero()};
+};
+
 // Beam constraint (6 scalar rows): stretch/shear (x,y,z) and torsion/bend (x,y,z)
 // Ke: [E1, E2, E3] stiffnesses for generalized stretch/shear
+
 // Kf: [F1, F2, F3] stiffnesses for torsion/bending
 class BeamConstraint : public ConstraintPattern {
 public:
