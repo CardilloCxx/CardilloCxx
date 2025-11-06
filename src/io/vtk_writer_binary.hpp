@@ -106,6 +106,7 @@ private:
     void writeGeometryOnly(int step, real_t time, const Collected& data) const;
     void writeStaticGeometry(const Collected& data) const;
     void writeDynamicGeometry(int step, const Collected& data) const;
+    void writeSprings(int step, const cardillo::PhysicsSystem& sys) const;
 
     std::string m_outputDir;
     std::string m_baseName;

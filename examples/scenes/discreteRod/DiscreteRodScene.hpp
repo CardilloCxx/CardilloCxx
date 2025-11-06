@@ -15,7 +15,7 @@ public:
     void populate(cardillo::PhysicsSystem& sys) override {
         using namespace cardillo;
 
-        const size_t segments = 20;
+        const size_t segments = 200;
         const real_t length = M_PI;
         const real_t segment_length = length / segments;
         const real_t width = 0.05 * length;
@@ -46,16 +46,20 @@ public:
 
         for (index_t i=0; i < segments; ++i) {
             position += Vector3r(segment_length, 0, 0);
-            // if (i == segments - 1) {
-            //     mass *= 0.5;
-            //     shape.halfExtents(0) *= 0.5;
-            // }
             entt::entity b = sys.addRigidBody(mass, position, orientation, linearVelocity, angularVelocity, shape);
-            sys.addConstraint<cardillo::physics::BeamConstraint>(sys.ecs(), a, b, Vector3r::Zero(), Vector3r::Zero(), Ke, Kf);
+            sys.addConstraint<cardillo::physics::BeamConstraint>(sys.ecs(), a, b, Ke, Kf);
+            sys.disableCollisionBetween(a, b);
             a = b;
+            m_rodEnd = b;
         }
     }
 
-    // void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
-    // }
+    void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
+        // Apply a twisting moment at the rod end
+        real_t torque_magnitude = 50;
+        sys.applyForce(m_rodEnd, Vector3r::Zero(), Vector3r(0, -torque_magnitude, 0));
+    }
+
+    private:
+        entt::entity m_rodEnd{entt::null};
 };

@@ -560,6 +560,12 @@ const cardillo::collision::CollisionCoal& PhysicsSystem::collisionManager() cons
     return *m_collision_mgr;
 }
 
+// ---------- Collision pair control ----------
+
+void PhysicsSystem::disableCollisionBetween(entt::entity a, entt::entity b) {
+    collisionManager().disablePair(a, b);
+}
+
 // ---------- Mesh asset cache ----------
 
 namespace {

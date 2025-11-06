@@ -2,6 +2,7 @@
 #include "../collision/collision_coal.hpp"
 #include "vtk_sphere_util.hpp"
 #include "../solver/warmstart.hpp"
+#include "../physics/constraints.hpp"
 #include <cmath>
 #include <coal/hfield.h>
 #include <mpi.h>
@@ -53,6 +54,9 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSy
         } catch (...) {
             // skip if collision manager not available
         }
+    }
+    if (m_writeSprings) {
+        writeSprings(step, sys);
     }
 }
 
@@ -914,6 +918,40 @@ void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collis
     for (const auto& c : contacts) writeBE(out, f32(c.friction_mu));
     out << "SCALARS matched int 1\nLOOKUP_TABLE default\n";
     for (const auto& c : contacts) writeBE(out, int32_t(c.prev_global_out_index >= 0 ? 1 : 0));
+    out.close();
+}
+
+void VtkWriterBinary::writeSprings(int step, const cardillo::PhysicsSystem& sys) const {
+    // Gather attachment A positions and vectors A->B from all constraint patterns
+    const auto& patterns = sys.constraintPatterns();
+    std::vector<Vector3r> starts; starts.reserve(patterns.size());
+    std::vector<Vector3r> vecs; vecs.reserve(patterns.size());
+    for (const auto& uptr : patterns) {
+        if (!uptr) continue;
+        Vector3r xA, xB;
+        if (uptr->getAttachPointsWorld(xA, xB)) {
+            starts.push_back(xA);
+            vecs.push_back(xB - xA);
+        }
+    }
+    const std::size_t n = starts.size();
+    if (n == 0) return;
+    if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
+    const std::string path = buildPath(m_springsBase, step);
+    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (!out) return;
+    // Header
+    writeHeader(out, "Constraint springs (binary)");
+    // Points block
+    out << "POINTS " << n << " float\n";
+    for (const auto& p : starts) { writeBE(out, f32(p.x())); writeBE(out, f32(p.y())); writeBE(out, f32(p.z())); }
+    // Vertices for visibility
+    out << "\nVERTICES " << n << ' ' << (2*n) << "\n";
+    for (std::size_t i = 0; i < n; ++i) { writeBE(out, int32_t(1)); writeBE(out, int32_t(i)); }
+    // Point data: A->B vector
+    out << "\nPOINT_DATA " << n << "\n";
+    out << "VECTORS AtoB float\n";
+    for (const auto& v : vecs) { writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z())); }
     out.close();
 }
 

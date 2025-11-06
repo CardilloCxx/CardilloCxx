@@ -178,6 +178,9 @@ public:
     // Access to warmstart provider owned by the system (may be nullptr)
     cardillo::solver::WarmstartProvider* warmstartProvider() const { return m_warmstart_provider.get(); }
 
+    // Disable collision between two entities (order-independent). This persists until enabled again.
+    void disableCollisionBetween(entt::entity a, entt::entity b);
+
     // New constraint-pattern API -------------------------------------------
     // Access all constraint patterns (mutable and const)
     std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() { return m_constraints_new; }

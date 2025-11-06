@@ -44,11 +44,18 @@ public:
     // Compute the constraint data ready for assembly
     virtual ConstraintResult getConstraint() const = 0;
 
+    bool getAttachPointsWorld(Vector3r& xA, Vector3r& xB) const {
+        auto wa = computeAttachments_();
+        xA = wa.xA; xB = wa.xB; return true;
+    }
+
 protected:
     // Helper to fetch world transforms and attachment points
     struct WorldAttachments {
         Vector3r xA{Vector3r::Zero()};
         Vector3r xB{Vector3r::Zero()};
+        Vector3r rA_world{Vector3r::Zero()};
+        Vector3r rB_world{Vector3r::Zero()};
         Matrix33r RA{Matrix33r::Identity()};
         Matrix33r RB{Matrix33r::Identity()};
         Quaternion4r qA{Quaternion4r::Identity()};
@@ -74,10 +81,29 @@ protected:
             wa.qB = qB;
             wa.RA = qA.toRotationMatrix();
             wa.RB = qB.toRotationMatrix();
-            wa.xA = pA + wa.RA * m_rA_local;
-            wa.xB = pB + wa.RB * m_rB_local;
+            wa.rA_world = wa.RA * m_rA_local;
+            wa.rB_world = wa.RB * m_rB_local;
+            wa.xA = pA + wa.rA_world;
+            wa.xB = pB + wa.rB_world;
         }
         return wa;
+    }
+
+    // Shared compliance helpers to avoid duplication in patterns
+    static inline real_t stiffnessToCompliance(real_t k) {
+        const real_t eps = (real_t)1e-12;
+        if (std::isfinite(k)) return (k > eps) ? (real_t)1 / k : std::numeric_limits<real_t>::infinity();
+        return (real_t)0; // +inf stiffness -> zero compliance
+    }
+    static inline void fillCompliance3(VectorXr& dst, int offset, const Vector3r& K) {
+        if (dst.size() < offset + 3) dst.conservativeResize(offset + 3);
+        dst[offset + 0] = stiffnessToCompliance(K.x());
+        dst[offset + 1] = stiffnessToCompliance(K.y());
+        dst[offset + 2] = stiffnessToCompliance(K.z());
+    }
+    static inline void setCompliance1(VectorXr& dst, int idx, real_t k) {
+        if (dst.size() < idx + 1) dst.conservativeResize(idx + 1);
+        dst[idx] = stiffnessToCompliance(k);
     }
 
     entt::registry* m_reg{nullptr};
@@ -95,7 +121,7 @@ public:
                              entt::entity b,
                              const Vector3r& rA_local = Vector3r::Zero(),
                              const Vector3r& rB_local = Vector3r::Zero(),
-                             real_t stiffness = (real_t)0,
+                             real_t stiffness = std::numeric_limits<real_t>::infinity(),
                              real_t damping = (real_t)0)
         : ConstraintPattern(reg, a, b, rA_local, rB_local), m_k(stiffness), m_d(damping) {}
 
@@ -130,13 +156,8 @@ public:
         // Compliance (size 1)
         out.Crows = VectorXr::Zero(1);
         out.Arows = VectorXr::Zero(1);
-        const real_t eps = (real_t)1e-12;
-        // Allow infinite stiffness/damping (C=0/A=0) when user passes +inf
-        if (std::isfinite(m_k)) out.Crows[0] = (m_k > eps) ? (real_t)1 / m_k : (real_t)1 / eps;
-        else out.Crows[0] = (real_t)0;
-
-        if (std::isfinite(m_d)) out.Arows[0] = (m_d > eps) ? (real_t)1 / m_d : (real_t)1 / eps;
-        else out.Arows[0] = (real_t)0;
+        setCompliance1(out.Crows, 0, m_k);
+        setCompliance1(out.Arows, 0, m_d);
 
         return out;
     }
@@ -144,6 +165,71 @@ public:
 private:
     real_t m_k{(real_t)0};
     real_t m_d{(real_t)0};
+};
+
+class TranslationalConstraint : public ConstraintPattern {
+public:
+    TranslationalConstraint(entt::registry& reg,
+                                   entt::entity a,
+                                   entt::entity b,
+                                   const Vector3r& rA_local = Vector3r::Zero(),
+                                   const Vector3r& rB_local = Vector3r::Zero(),
+                                   const Vector3r& K_A = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                   const Vector3r& D_A = Vector3r::Zero())
+        : ConstraintPattern(reg, a, b, rA_local, rB_local), m_K(K_A), m_D(D_A) {}
+
+    void setStiffnessA(const Vector3r& K_A) { m_K = K_A; }
+    void setDampingA(const Vector3r& D_A) { m_D = D_A; }
+
+    ConstraintResult getConstraint() const override {
+        ConstraintResult out; out.a = m_a; out.b = m_b;
+        const auto wa = computeAttachments_();
+
+        const Matrix33r RA = wa.qA.toRotationMatrix();
+        const Matrix33r RB = wa.qB.toRotationMatrix();
+
+        const Vector3r pA = wa.xA; // world positions of attachments
+        const Vector3r pB = wa.xB;
+
+        // local attachment vectors (already in body frame)
+        const Vector3r rA_local = m_rA_local;
+        const Vector3r rB_local = m_rB_local;
+
+        // world r if you need it elsewhere
+        const Vector3r rA_w = RA * rA_local;
+        const Vector3r rB_w = RB * rB_local;
+
+        // skews we need:
+        const Matrix33r S_RAT_pBpA = skew_from_vector(RA.transpose() * (pB - pA)); // S(RA^T (pB-pA))
+        const Matrix33r S_rA_local  = skew_from_vector(rA_local);                 // S(rA_local)
+        const Matrix33r S_rB_local  = skew_from_vector(rB_local);                 // S(rB_local)
+
+        // rotational coupling from B must include rotation RA^T * RB
+        const Matrix33r RAT_RB = RA.transpose() * RB; // R_A^T * R_B
+
+        out.WgA = MatrixXXr::Zero(3, 6);
+        out.WgA.block<3,3>(0,0) = - RA.transpose();                         // translational part (v_A)
+        out.WgA.block<3,3>(0,3) = S_RAT_pBpA - S_rA_local;                  // rotational part multiplies omega_A^body
+
+        out.WgB = MatrixXXr::Zero(3, 6);
+        out.WgB.block<3,3>(0,0) = RA.transpose();                           // translational part (v_B)
+        out.WgB.block<3,3>(0,3) = RAT_RB * S_rB_local;                      // rotational part multiplies omega_B^body
+
+        out.WgammaA = out.WgA;
+        out.WgammaB = out.WgB;
+
+        // Compliance and damping: only 3 translational DOFs
+        out.Crows = VectorXr::Zero(3);
+        out.Arows = VectorXr::Zero(3);
+        fillCompliance3(out.Crows, 0, m_K);
+        fillCompliance3(out.Arows, 0, m_D);
+
+        return out;
+    }
+
+private:
+    Vector3r m_K{Vector3r::Zero()};
+    Vector3r m_D{Vector3r::Zero()};
 };
 
 // Beam constraint (6 scalar rows): stretch/shear (x,y,z) and torsion/bend (x,y,z)
@@ -154,14 +240,14 @@ public:
     BeamConstraint(entt::registry& reg,
                    entt::entity a,
                    entt::entity b,
-                   const Vector3r& rA_local,
-                   const Vector3r& rB_local,
                    const Vector3r& Kg,
                    const Vector3r& Kf,
                    const Vector3r& Dg = Vector3r::Zero(),
                    const Vector3r& Df = Vector3r::Zero())
-        : ConstraintPattern(reg, a, b, rA_local, rB_local), m_Ke(Kg), m_Kf(Kf), m_De(Dg), m_Df(Df) 
+        : ConstraintPattern(reg, a, b, Vector3r::Zero(), Vector3r::Zero()), m_Ke(Kg), m_Kf(Kf), m_De(Dg), m_Df(Df) 
         {
+            // Check 
+
             const auto wa = computeAttachments_();
             const Quaternion4r qMid(0.5 * (wa.qA.coeffs() + wa.qB.coeffs()));
             const Matrix33r A_mid = qMid.normalized().toRotationMatrix();
@@ -179,65 +265,29 @@ public:
         const auto wa = computeAttachments_();
 
         // Mid-orientation and strains
-        // qMid.normalize();
-        // const Matrix33r A_mid = qMid.toRotationMatrix();
         const Vector4r qMid = 0.5 * (wa.qA.coeffs() + wa.qB.coeffs());
-        // const Quaternion4r qMid(0.5 * (wa.qA.coeffs() + wa.qB.coeffs()));
         const Matrix33r A_mid = Quaternion4r(qMid).normalized().toRotationMatrix();
         const Vector3r gamma = A_mid.transpose() * (wa.xB - wa.xA); // - m_delta0;   // axial + shear strain
         const Matrix33r gamma_skew = skew_from_vector(gamma);
 
-        // What about Ke^-1 n_i + gamma_i 0 = e_x ?
-
-        // Differential orientation / curvature (should we use proper quaternion diff, like wa.qB.conjugate() * wa.qA?)
-        // const Vector3r Qd_q(
-        //     (wa.qB.x() - wa.qA.x()),
-        //     (wa.qB.y() - wa.qA.y()),
-        //     (wa.qB.z() - wa.qA.z())
-        // );
-        // const real_t   Qd_w = (wa.qB.w() - wa.qA.w());
-        // const Matrix44r S = 0;
         const Vector4r dQ = wa.qB.coeffs() - wa.qA.coeffs();
-        // const real_t   factor = (real_t)2.0 / qMid.coeffs().squaredNorm();
-        // const real_t   Qmid_w = qMid.w();
-        // const Vector3r Qmid_q = qMid.vec();
         const real_t   factor = (real_t)2.0 / qMid.squaredNorm();
-        // const real_t   factor = (real_t)1.0 / qMid.squaredNorm();
         const real_t   Qmid_w = qMid(3);
         const Vector3r Qmid_q = qMid.head<3>();
         const Vector3r kappa = factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
 
-        // Quaternion4r Q_rel = wa.qB * wa.qA.conjugate();
-        // Q_rel = Quaternion4r::Identity();                   Doing this does not change anything in the solution?
-        // const Vector3r Qd_q( Q_rel.x(), Q_rel.y(), Q_rel.z() );
-        // const real_t   Qd_w = Q_rel.w();
-
-        // const Vector3r Qmid_q(qMid.x(), qMid.y(), qMid.z());
-        // const real_t   Qmid_w = qMid.w();
-        // const real_t   factor = (real_t)2.0 / qMid.squaredNorm();
-        // const Vector3r kappa = factor * (Qmid_w * Qd_q - Qmid_q.cross(Qd_q) - Qmid_q * Qd_w);  // curvature
         const Matrix33r kappa_skew = skew_from_vector(kappa);
 
         out.WgA = MatrixXXr::Zero(6, 6);
         out.WgA.block<3, 3>(0, 0) = -A_mid;
         out.WgA.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
         out.WgA.block<3, 3>(3, 3) = -Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
-        // out.WgA.block<3, 3>(0, 0) = -A_mid.transpose();
-        // out.WgA.block<3, 3>(0, 3) = (real_t) 0.5 * gamma_skew;
-        // out.WgA.block<3, 3>(3, 3) = -Matrix33r::Identity() + (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
         out.WgB = MatrixXXr::Zero(6, 6);
         out.WgB.block<3, 3>(0, 0) = A_mid;
         out.WgB.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
         out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
-        // out.WgB.block<3, 3>(0, 0) = A_mid.transpose();
-        // out.WgB.block<3, 3>(0, 3) = (real_t) 0.5 * gamma_skew;
-        // out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() + (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
-        // different W matrix definition
-        // // Alias issue?
-        // out.WgA = out.WgA.transpose();
-        // out.WgB = out.WgB.transpose();
         out.WgA.transposeInPlace();
         out.WgB.transposeInPlace();
 
@@ -248,18 +298,10 @@ public:
         // Row-wise compliances (spring and damper)
         out.Crows = VectorXr::Zero(6);
         out.Arows = VectorXr::Zero(6);
-
-        const real_t eps = (real_t)1e-12;
-        auto asCompliance = [&](real_t k)->real_t{
-            // Setting C, A to infinity prevents the corresponding constraints from being inserted into the system
-            if (std::isfinite(k)) return (k > eps) ? (real_t)1 / k : std::numeric_limits<real_t>::infinity(); else return (real_t)0;
-        };
-
-        out.Crows[0] = asCompliance(m_Ke.x()); out.Crows[1] = asCompliance(m_Ke.y()); out.Crows[2] = asCompliance(m_Ke.z());
-        out.Crows[3] = asCompliance(m_Kf.x()); out.Crows[4] = asCompliance(m_Kf.y()); out.Crows[5] = asCompliance(m_Kf.z());
-
-        out.Arows[0] = asCompliance(m_De.x()); out.Arows[1] = asCompliance(m_De.y()); out.Arows[2] = asCompliance(m_De.z());
-        out.Arows[3] = asCompliance(m_Df.x()); out.Arows[4] = asCompliance(m_Df.y()); out.Arows[5] = asCompliance(m_Df.z());
+        fillCompliance3(out.Crows, 0, m_Ke);
+        fillCompliance3(out.Crows, 3, m_Kf);
+        fillCompliance3(out.Arows, 0, m_De);
+        fillCompliance3(out.Arows, 3, m_Df);
 
         return out;
     }

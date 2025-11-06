@@ -370,8 +370,7 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	rhs.segment(0, Nv).noalias() += Wref.transpose() * p;
 	VectorXr x = m_dyn.solveS(rhs);
 	
-	bool disable_collisions = true;
-	if (disable_collisions || C == 0 || Wref.nonZeros() == 0) return x; // no contacts, return preliminary velocity as-is
+	if (C == 0 || Wref.nonZeros() == 0) return x; // no contacts, return preliminary velocity as-is
 
 	// Configure iteration context
 	ctx.worldRank = worldRank;
