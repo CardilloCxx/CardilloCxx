@@ -269,17 +269,17 @@ void DynamicsAssembler::rebuildInteractionW_()
     auto emitRowRef = [&](std::vector<Eigen::Triplet<real_t>>& trg,
                           int rowIndex,
                           entt::entity ent,
-                          const Eigen::Ref<const Eigen::Matrix<real_t, 1, Eigen::Dynamic>>& row){
+                          const Eigen::Ref<const Eigen::Matrix<real_t, Eigen::Dynamic, 1>>& col){
         if (!reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(ent)) return;
         int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(ent).b;
         if (b < 0 || b >= (int)m_body_vel_offsets.size()-1) return;
-        int col0 = m_body_vel_offsets[(size_t)b];
-        int nV = m_body_vel_offsets[(size_t)b+1] - col0;
-        int cols = (int)row.cols();
-        int nCopy = std::min(cols, nV);
+        int row0 = m_body_vel_offsets[(size_t)b];
+        int nV = m_body_vel_offsets[(size_t)b+1] - row0;
+        int rows = (int)col.rows();
+        int nCopy = std::min(rows, nV);
         for (int j = 0; j < nCopy; ++j) {
-            real_t v = row(0,j);
-            if (v != (real_t)0) trg.emplace_back(rowIndex, col0 + j, v);
+            real_t v = col(j);
+            if (v != (real_t)0) trg.emplace_back(rowIndex, row0 + j, v);
         }
     };
 
@@ -295,8 +295,8 @@ void DynamicsAssembler::rebuildInteractionW_()
             if (Ci < 1 / EPS_C) {
                 Crows.push_back(Ci);
                 const int row = springRowCounter++;
-                if (i < crN.WgA.rows()) emitRowRef(tripsWg, row, crN.a, crN.WgA.row(i));
-                if (i < crN.WgB.rows()) emitRowRef(tripsWg, row, crN.b, crN.WgB.row(i));
+                if (i < crN.WgA.cols()) emitRowRef(tripsWg, row, crN.a, crN.WgA.col(i));
+                if (i < crN.WgB.cols()) emitRowRef(tripsWg, row, crN.b, crN.WgB.col(i));
             }
         }
         // Damper rows
@@ -306,8 +306,8 @@ void DynamicsAssembler::rebuildInteractionW_()
             if (Ai < 1 / EPS_A) {
                 Arows.push_back(Ai);
                 const int row = damperRowCounter++;
-                if (i < crN.WgammaA.rows()) emitRowRef(tripsWgamma, row, crN.a, crN.WgammaA.row(i));
-                if (i < crN.WgammaB.rows()) emitRowRef(tripsWgamma, row, crN.b, crN.WgammaB.row(i));
+                if (i < crN.WgammaA.cols()) emitRowRef(tripsWgamma, row, crN.a, crN.WgammaA.col(i));
+                if (i < crN.WgammaB.cols()) emitRowRef(tripsWgamma, row, crN.b, crN.WgammaB.col(i));
             }
         }
     }

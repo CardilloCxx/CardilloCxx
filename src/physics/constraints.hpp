@@ -138,17 +138,15 @@ public:
 
         const Vector3r rAw = wa.RA * m_rA_local;
         const Vector3r rBw = wa.RB * m_rB_local;
-        // Prepare single-row matrices (1 x 6)
-        out.WgA = MatrixXXr::Zero(1, 6);
-        out.WgB = MatrixXXr::Zero(1, 6);
-        out.WgammaA = MatrixXXr::Zero(1, 6);
-        out.WgammaB = MatrixXXr::Zero(1, 6);
+        // Prepare single-row matrices (6 x 1)
+        out.WgA = MatrixXXr::Zero(6, 1);
+        out.WgB = MatrixXXr::Zero(6, 1);
         // d g / d vA = -n^T, d g / d wA = (rAw x n)^T
-        out.WgA.block(0, 0, 1, 3) = -n.transpose();
-        out.WgA.block(0, 3, 1, 3) = (rAw.cross(n)).transpose();
+        out.WgA.block(0, 0, 3, 1) = -n;
+        out.WgA.block(3, 0, 3, 1) = -(m_rA_local.cross(wa.RA.transpose() * n));
         // d g / d vB = +n^T, d g / d wB = -(rBw x n)^T
-        out.WgB.block(0, 0, 1, 3) =  n.transpose();
-        out.WgB.block(0, 3, 1, 3) = (-rBw.cross(n)).transpose();
+        out.WgB.block(0, 0, 3, 1) =  n;
+        out.WgB.block(3, 0, 3, 1) = (m_rB_local.cross(wa.RB.transpose() * n));
 
         out.WgammaA = out.WgA;
         out.WgammaB = out.WgB;
@@ -182,38 +180,32 @@ public:
     void setDampingA(const Vector3r& D_A) { m_D = D_A; }
 
     ConstraintResult getConstraint() const override {
-        ConstraintResult out; out.a = m_a; out.b = m_b;
+        ConstraintResult out; 
+        out.a = m_a; 
+        out.b = m_b;
+
         const auto wa = computeAttachments_();
 
         const Matrix33r RA = wa.qA.toRotationMatrix();
         const Matrix33r RB = wa.qB.toRotationMatrix();
 
-        const Vector3r pA = wa.xA; // world positions of attachments
+        const Vector3r pA = wa.xA;
         const Vector3r pB = wa.xB;
 
-        // local attachment vectors (already in body frame)
         const Vector3r rA_local = m_rA_local;
         const Vector3r rB_local = m_rB_local;
 
-        // world r if you need it elsewhere
-        const Vector3r rA_w = RA * rA_local;
-        const Vector3r rB_w = RB * rB_local;
+        const Matrix33r S_rA_local = skew_from_vector(rA_local);
+        const Matrix33r S_rB_local = skew_from_vector(rB_local);
+      
+        // Initialize
+        out.WgA = MatrixXXr::Zero(6, 3);
+        out.WgA.block<3,3>(0,0) = -RA;
+        out.WgA.block<3,3>(3,0) = -S_rA_local;
 
-        // skews we need:
-        const Matrix33r S_RAT_pBpA = skew_from_vector(RA.transpose() * (pB - pA)); // S(RA^T (pB-pA))
-        const Matrix33r S_rA_local  = skew_from_vector(rA_local);                 // S(rA_local)
-        const Matrix33r S_rB_local  = skew_from_vector(rB_local);                 // S(rB_local)
-
-        // rotational coupling from B must include rotation RA^T * RB
-        const Matrix33r RAT_RB = RA.transpose() * RB; // R_A^T * R_B
-
-        out.WgA = MatrixXXr::Zero(3, 6);
-        out.WgA.block<3,3>(0,0) = - RA.transpose();                         // translational part (v_A)
-        out.WgA.block<3,3>(0,3) = S_RAT_pBpA - S_rA_local;                  // rotational part multiplies omega_A^body
-
-        out.WgB = MatrixXXr::Zero(3, 6);
-        out.WgB.block<3,3>(0,0) = RA.transpose();                           // translational part (v_B)
-        out.WgB.block<3,3>(0,3) = RAT_RB * S_rB_local;                      // rotational part multiplies omega_B^body
+        out.WgB = MatrixXXr::Zero(6, 3);
+        out.WgB.block<3,3>(0,0) =  RA;
+        out.WgB.block<3,3>(3,0) =  (S_rB_local * wa.RB.transpose() * RA);
 
         out.WgammaA = out.WgA;
         out.WgammaB = out.WgB;
@@ -287,9 +279,6 @@ public:
         out.WgB.block<3, 3>(0, 0) = A_mid;
         out.WgB.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
         out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
-
-        out.WgA.transposeInPlace();
-        out.WgB.transposeInPlace();
 
         // out.WgA = -out.WgB;
         out.WgammaA = out.WgA;
