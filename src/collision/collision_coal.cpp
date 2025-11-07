@@ -445,6 +445,8 @@ std::vector<Contact> CollisionCoal::detectAll() const {
         const std::size_t iA = idx1p - 1, iB = idx2p - 1;
         entt::entity ea = m_entities[iA];
         entt::entity eb = m_entities[iB];
+        
+        if (isPairDisabled(ea, eb)) continue;
 
         // Compute contact patches for this pair based on the pair CollisionResult,
         // then append either expanded patch vertices or raw contacts via a single helper.
@@ -512,6 +514,18 @@ void CollisionCoal::clear() {
     m_geoms.clear();
     m_entities.clear();
     m_index_from_entity.clear();
+}
+
+void CollisionCoal::disablePair(entt::entity a, entt::entity b) {
+    m_disabledPairs.insert(ContactPairKey::make(a, b));
+}
+
+void CollisionCoal::enablePair(entt::entity a, entt::entity b) {
+    m_disabledPairs.erase(ContactPairKey::make(a, b));
+}
+
+bool CollisionCoal::isPairDisabled(entt::entity a, entt::entity b) const {
+    return m_disabledPairs.find(ContactPairKey::make(a, b)) != m_disabledPairs.end();
 }
 
 } // namespace cardillo::collision

@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <stdexcept>
 // Only need public Contact type here
@@ -42,6 +43,11 @@ public:
     // Clear all internal caches/objects
     void clear();
 
+    // Disable/enable collisions between a specific pair of entities (order-independent)
+    void disablePair(entt::entity a, entt::entity b);
+    void enablePair(entt::entity a, entt::entity b);
+    bool isPairDisabled(entt::entity a, entt::entity b) const;
+
 private:
     enum class ColliderKind { Box, Sphere, Halfspace, Mesh, HeightField, Capsule };
 
@@ -65,6 +71,9 @@ private:
     // Last generation grouped contacts (for potential warmstarting)
     mutable ContactMap m_prevContactMap; // updated at end of detectAll
     mutable std::vector<Contact> m_last_flattened; // flattened contacts from last detectAll()
+
+    // Pairs to skip in collision (canonicalized ContactPairKey)
+    std::unordered_set<ContactPairKey, ContactPairKeyHash> m_disabledPairs;
 };
 
 } // namespace cardillo::collision

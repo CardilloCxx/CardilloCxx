@@ -15,13 +15,11 @@ public:
         using namespace cardillo;
 
         // Ground plane (thin cube) for visual + collision
-        PhysicsSystem::Cube ground;
-        const real_t groundHalfThickness = (real_t)0.01;
-        const real_t groundHalfSize = (real_t)50.0;
-        ground.center = Vector3r(0.0, 0.0, -groundHalfThickness);
-        ground.halfExtents = Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness);
-        ground.q = Quaternion4r::Identity();
-        sys.addObstacleBody(ground);
+    const real_t groundHalfThickness = (real_t)0.01;
+    const real_t groundHalfSize = (real_t)50.0;
+    PhysicsSystem::CubeShape groundShape{Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness)};
+    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -groundHalfThickness); groundState.orientation = Quaternion4r::Identity();
+    sys.addStaticBody(groundShape, groundState);
 
         // Mesh path (relative to repository root). Adjust if your runtime cwd differs.
         const std::string meshPath = "res/meshes/chain_link.obj";
@@ -36,7 +34,12 @@ public:
         // Top static link at z = 1.0 m
         const Vector3r topPos(0.0, 0.0, startHeight);
         const Quaternion4r topOri = Eigen::AngleAxis<real_t>(M_PI_2, Vector3r::UnitX()) * Quaternion4r::Identity();
-        sys.addObstacleMesh(topPos, topOri, meshPath, scale);
+        {
+            PhysicsSystem::MeshShape shape{meshPath, scale};
+            PhysicsSystem::RigidState state; state.position = topPos; state.orientation = topOri;
+            PhysicsSystem::RigidProps props; // static
+            sys.addRigidBody(shape, state, props);
+        }
 
         // Hanging dynamic links: place N links below the top link
         const real_t mass = (real_t)0.5;
@@ -54,7 +57,10 @@ public:
                 vlin = Vector3r(-10.0, 0.0, -10.0);
             }
 
-            sys.addRigidBodyMesh(mass, pos, ori, vlin, omega, meshPath, scale);
+            PhysicsSystem::MeshShape shape{meshPath, scale};
+            PhysicsSystem::RigidState state; state.position = pos; state.orientation = ori; state.linearVelocity = vlin; state.angularVelocity = omega;
+            PhysicsSystem::RigidProps props; props.mass = mass;
+            sys.addRigidBody(shape, state, props);
         }
     }
 };

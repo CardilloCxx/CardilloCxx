@@ -13,13 +13,10 @@ public:
     void populate(cardillo::PhysicsSystem& sys) override {
         using namespace cardillo;
 
-        // Ground plane
-        PhysicsSystem::Plane ground;
-        ground.center = Vector3r(0,0,0);
-        ground.normal = Vector3r(0,0,1);
-        ground.up = Vector3r(0,1,0);
-        ground.sizeX = 6.0; ground.sizeY = 6.0;
-        sys.addObstacleBody(ground);
+    // Ground plane (static)
+    PhysicsSystem::PlaneShape groundShape{Vector3r(0,0,1), Vector3r(0,1,0), (real_t)6.0, (real_t)6.0};
+    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0,0,0); groundState.orientation = Quaternion4r::Identity();
+    sys.addStaticBody(groundShape, groundState);
 
         const real_t r = 0.075;
         const real_t dia = 2.0 * r;
@@ -43,25 +40,22 @@ public:
         // Add three walls around the base of the pyramid
         const real_t wall_thickness = 0.1;
         {
-            PhysicsSystem::Cube wall1;
-            wall1.center = Vector3r((rows * dia) / 2.0 - r, -wall_thickness / 2.0 - r, (dia * std::sqrt(6.0)) / 6.0);
-            wall1.halfExtents = Vector3r((rows * dia) / 2.0 + r, wall_thickness / 2.0, (dia * std::sqrt(6.0)) / 3.0);
-            wall1.q = Eigen::AngleAxis<real_t>(0.0, Vector3r::UnitZ());
-            sys.addObstacleBody(wall1);
+            PhysicsSystem::CubeShape wall1Shape{Vector3r((rows * dia) / 2.0 + r, wall_thickness / 2.0, (dia * std::sqrt(6.0)) / 3.0)};
+            PhysicsSystem::RigidState wall1State; wall1State.position = Vector3r((rows * dia) / 2.0 - r, -wall_thickness / 2.0 - r, (dia * std::sqrt(6.0)) / 6.0);
+            wall1State.orientation = Quaternion4r(Eigen::AngleAxis<real_t>(0.0, Vector3r::UnitZ()));
+            PhysicsSystem::RigidProps wall1Props; sys.addRigidBody(wall1Shape, wall1State, wall1Props);
 
-            PhysicsSystem::Cube wall2;
-            wall2.center = Vector3r((rows * dia) / 4.0 - r, (rows * dia * std::sqrt(3.0)) / 4.0 + wall_thickness / 2.0 + r, (dia * std::sqrt(6.0)) / 6.0);
-            wall2.halfExtents = Vector3r((rows * dia) / 2.0 + r, wall_thickness / 2.0, (dia * std::sqrt(6.0)) / 3.0);
-            wall2.center -= Vector3r(std::cos(M_PI / 3.0) * 1.25 * r, std::sin(M_PI / 3.0) * 1.25 * r, 0.0);
-            wall2.q = Eigen::AngleAxis<real_t>(M_PI / 3.0, Vector3r::UnitZ());
-            sys.addObstacleBody(wall2);
+            PhysicsSystem::CubeShape wall2Shape{Vector3r((rows * dia) / 2.0 + r, wall_thickness / 2.0, (dia * std::sqrt(6.0)) / 3.0)};
+            Vector3r wall2Center = Vector3r((rows * dia) / 4.0 - r, (rows * dia * std::sqrt(3.0)) / 4.0 + wall_thickness / 2.0 + r, (dia * std::sqrt(6.0)) / 6.0);
+            wall2Center -= Vector3r(std::cos(M_PI / 3.0) * 1.25 * r, std::sin(M_PI / 3.0) * 1.25 * r, 0.0);
+            PhysicsSystem::RigidState wall2State; wall2State.position = wall2Center; wall2State.orientation = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 3.0, Vector3r::UnitZ()));
+            PhysicsSystem::RigidProps wall2Props; sys.addRigidBody(wall2Shape, wall2State, wall2Props);
 
-            PhysicsSystem::Cube wall3;
-            wall3.halfExtents = Vector3r((rows * dia) / 2.0 + r, wall_thickness / 2.0, (dia * std::sqrt(6.0)) / 3.0);
-            wall3.center = Vector3r((rows * dia) * 3.0 / 4.0 - r / 2.0, (rows * dia * std::sqrt(3.0)) / 4.0 - wall_thickness / 2.0 - r, (dia * std::sqrt(6.0)) / 6.0);
-            wall3.center += Vector3r(std::cos(M_PI / 3.0) * r * 1.25, std::sin(M_PI / 3.0) * r * 1.25, 0.0);
-            wall3.q = Eigen::AngleAxis<real_t>(-M_PI / 3.0, Vector3r::UnitZ());
-            sys.addObstacleBody(wall3);
+            PhysicsSystem::CubeShape wall3Shape{Vector3r((rows * dia) / 2.0 + r, wall_thickness / 2.0, (dia * std::sqrt(6.0)) / 3.0)};
+            Vector3r wall3Center = Vector3r((rows * dia) * 3.0 / 4.0 - r / 2.0, (rows * dia * std::sqrt(3.0)) / 4.0 - wall_thickness / 2.0 - r, (dia * std::sqrt(6.0)) / 6.0);
+            wall3Center += Vector3r(std::cos(M_PI / 3.0) * r * 1.25, std::sin(M_PI / 3.0) * r * 1.25, 0.0);
+            PhysicsSystem::RigidState wall3State; wall3State.position = wall3Center; wall3State.orientation = Quaternion4r(Eigen::AngleAxis<real_t>(-M_PI / 3.0, Vector3r::UnitZ()));
+            PhysicsSystem::RigidProps wall3Props; sys.addRigidBody(wall3Shape, wall3State, wall3Props);
         }
 
         // Add a heavy point mass above to drop into pyramid

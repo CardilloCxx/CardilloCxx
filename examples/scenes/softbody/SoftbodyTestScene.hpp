@@ -13,13 +13,9 @@ public:
     void populate(cardillo::PhysicsSystem& sys) override {
         using namespace cardillo;
 
-        PhysicsSystem::Plane ground;
-        ground.center = Vector3r(0.0, 0.0, 0.0);
-        ground.normal = Vector3r(0.0, 0.0, 1.0);
-        ground.up = Vector3r(0.0, 1.0, 0.0);
-        ground.sizeX = 15.0;
-        ground.sizeY = 15.0;
-        (void)sys.addObstacleBody(ground);
+    PhysicsSystem::PlaneShape groundShape{Vector3r(0,0,1), Vector3r(0,1,0), (real_t)15.0, (real_t)15.0};
+    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0,0.0,0.0); groundState.orientation = Quaternion4r::Identity();
+    (void)sys.addStaticBody(groundShape, groundState);
 
         // Load soft body from OBJ and place it 0.7 m above the floor (floor top at z = 0)
         const std::string path = "res/meshes/teapot.obj";
@@ -33,15 +29,8 @@ public:
         (void)sys.addSoftBody(path, k, d, position, orientation, v, w, totalMass);
 
         // Add a cube to crush the soft body
-        PhysicsSystem::Cube cube;
-        cube.halfExtents = Vector3r(0.2, 0.2, 0.2);
-        (void) sys.addRigidBody(
-            (real_t)100.0,                // mass
-            Vector3r(0.0, 0.0, 2.5),     // position
-            Quaternion4r::Identity(),    // orientation
-            Vector3r::Zero(),            // linear velocity
-            Vector3r::Zero(),            // angular velocity
-            cube                         // shape
-        );
+        {
+            PhysicsSystem::CubeShape shape{Vector3r(0.2,0.2,0.2)}; PhysicsSystem::RigidState st; st.position = Vector3r(0.0,0.0,2.5); st.orientation = Quaternion4r::Identity(); PhysicsSystem::RigidProps pr; pr.mass = (real_t)100.0; sys.addRigidBody(shape, st, pr);
+        }
     }
 };

@@ -13,12 +13,10 @@ public:
     void populate(cardillo::PhysicsSystem& sys) override {
         using namespace cardillo;
 
-        // Ground
-        PhysicsSystem::Cube ground;
-        ground.center = Vector3r(0.0, 0.0, -0.5);
-        ground.halfExtents = Vector3r(15.0, 15.0, 0.5);
-        ground.q = Quaternion4r::Identity();
-        sys.addObstacleBody(ground);
+    // Ground (static cube via unified API)
+    PhysicsSystem::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
+    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5); groundState.orientation = Quaternion4r::Identity();
+    sys.addStaticBody(groundShape, groundState);
 
         // Build a Jenga tower
         const Vector3r blockHalf((real_t)0.075, (real_t)0.0225, (real_t)0.0125); // example block half extents
@@ -48,11 +46,10 @@ public:
                 const real_t offset = firstOffset + (real_t)i * step;
                 if (alongX) c = Vector3r(baseCenter.x(), baseCenter.y() + offset, z);
                 else c = Vector3r(baseCenter.x() + offset, baseCenter.y(), z);
-                PhysicsSystem::Cube blk;
-                blk.halfExtents = blockHalf;
-                blk.q = q;
-                const real_t m = std::max((real_t)0.05, density * (real_t)8.0 * blockHalf.x() * blockHalf.y() * blockHalf.z());
-                sys.addRigidBody(m, c, blk.q, Vector3r::Zero(), Vector3r::Zero(), blk);
+                PhysicsSystem::CubeShape blkShape{blockHalf};
+                PhysicsSystem::RigidState blkState; blkState.position = c; blkState.orientation = q;
+                PhysicsSystem::RigidProps blkProps; blkProps.mass = std::max((real_t)0.05, density * (real_t)8.0 * blockHalf.x() * blockHalf.y() * blockHalf.z());
+                sys.addRigidBody(blkShape, blkState, blkProps);
             }
         }
     }
