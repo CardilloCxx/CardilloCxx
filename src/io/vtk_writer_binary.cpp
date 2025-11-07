@@ -215,7 +215,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                                cardillo::PhysicsSystem::C_Orientation>();
         for (auto [e, pos, cb, ori] : vcubes.each()) {
             CubeOut co;
-            co.cube.center = pos.value; co.cube.halfExtents = cb.halfExtents; co.cube.q = ori.q;
+            co.cube.center = pos.value; co.cube.halfExtents = cb.halfExtents; co.cube.q = ori.value;
             co.entityId = static_cast<int>(entt::to_integral(e));
             co.partition = partitionFromBodyIndex_(sys, reg, e);
             co.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
@@ -244,7 +244,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
-            const Matrix33r R = ori.q.toRotationMatrix();
+            const Matrix33r R = ori.value.toRotationMatrix();
             mo.vertices.reserve(verts.size());
             for (const auto& v : verts) {
                 mo.vertices.push_back(R * v + pos.value);
@@ -278,7 +278,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                 if (bvh && bvh->vertices && bvh->tri_indices) {
                     const auto& V = *bvh->vertices;
                     const auto& F = *bvh->tri_indices;
-                    const Matrix33r R = ori.q.toRotationMatrix();
+                    const Matrix33r R = ori.value.toRotationMatrix();
                     mo.vertices.reserve(V.size());
                     for (const auto& v : V) {
                         Vector3r p((real_t)v[0], (real_t)v[1], (real_t)v[2]);
@@ -372,7 +372,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                 mo.center = pos.value;
                 mo.isDynamic = false;
 
-                const Matrix33r R = ori.q.toRotationMatrix();
+                const Matrix33r R = ori.value.toRotationMatrix();
                 mo.vertices.reserve((size_t)nys * (size_t)nxs);
                 mo.uvs.reserve((size_t)nys * (size_t)nxs);
 
@@ -427,7 +427,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
-            const Matrix33r R = ori.q.toRotationMatrix();
+            const Matrix33r R = ori.value.toRotationMatrix();
             const real_t r = rad.r;
             mo.vertices.reserve(unitVerts.size());
             for (const auto& v : unitVerts) {

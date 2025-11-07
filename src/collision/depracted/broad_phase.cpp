@@ -41,7 +41,7 @@ BroadPhaseData BroadPhase::collect(const PhysicsSystem& sys) const {
                              PhysicsSystem::C_Orientation>();
         out.obbs.reserve(view.size_hint());
         for (auto [e, pos, cb, ori] : view.each()) {
-            Matrix33r R = ori.q.toRotationMatrix();
+            Matrix33r R = ori.value.toRotationMatrix();
             out.obbs.push_back(ObbCollider{e, pos.value, cb.halfExtents, R});
         }
     }

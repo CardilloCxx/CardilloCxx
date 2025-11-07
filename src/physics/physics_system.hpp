@@ -201,7 +201,7 @@ public:
     struct C_Position3 { Vector3r value; };
     struct C_LinearVelocity3 { Vector3r value; };
     struct C_AngularVelocity3 { Vector3r value; };
-    struct C_Orientation { Quaternion4r q; };
+    struct C_Orientation { Quaternion4r value; };
     struct C_PhysicsObject {};
     struct C_PointMassTag {};
     struct C_RigidBodyTag {};
@@ -272,6 +272,9 @@ public:
     void setOrientation(entt::entity e, const Quaternion4r& q);
     void setLinearVelocity(entt::entity e, const Vector3r& v);
     void setAngularVelocity(entt::entity e, const Vector3r& w);
+
+    void explicitPositionUpdate(real_t dt);
+    void linearImplicitPositionUpdate(real_t dt);
 
 private:
     // Helper to add common rigid-body components

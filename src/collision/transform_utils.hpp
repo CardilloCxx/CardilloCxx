@@ -17,7 +17,7 @@ struct BodyXform {
         if (reg.any_of<cardillo::PhysicsSystem::C_Position3>(e))
             X.center = reg.get<cardillo::PhysicsSystem::C_Position3>(e).value;
         if (reg.any_of<cardillo::PhysicsSystem::C_Orientation>(e))
-            X.R = reg.get<cardillo::PhysicsSystem::C_Orientation>(e).q.toRotationMatrix();
+            X.R = reg.get<cardillo::PhysicsSystem::C_Orientation>(e).value.toRotationMatrix();
         return X;
     }
 

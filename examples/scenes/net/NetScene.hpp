@@ -122,7 +122,7 @@ public:
                     // attach to right frame edge at positions aligned with a's top-right and bottom-right corners
                     entt::registry& reg = sys.ecs();
                     Vector3r edgeCenter = reg.get<PhysicsSystem::C_Position3>(eRight).value;
-                    Quaternion4r qEdge = reg.get<PhysicsSystem::C_Orientation>(eRight).q;
+                    Quaternion4r qEdge = reg.get<PhysicsSystem::C_Orientation>(eRight).value;
                     Vector3r aCenter = reg.get<PhysicsSystem::C_Position3>(a).value;
                     Vector3r p_tr = Vector3r( halfSide, aCenter.y() + node_hy, frame_surface_z);
                     Vector3r p_br = Vector3r( halfSide, aCenter.y() - node_hy, frame_surface_z);
@@ -141,7 +141,7 @@ public:
                     // attach to top frame edge at positions aligned with a's top-left and top-right corners
                     entt::registry& reg = sys.ecs();
                     Vector3r edgeCenter = reg.get<PhysicsSystem::C_Position3>(eTop).value;
-                    Quaternion4r qEdge = reg.get<PhysicsSystem::C_Orientation>(eTop).q;
+                    Quaternion4r qEdge = reg.get<PhysicsSystem::C_Orientation>(eTop).value;
                     Vector3r aCenter = reg.get<PhysicsSystem::C_Position3>(a).value;
                     Vector3r p_tl = Vector3r( aCenter.x() - node_hx,  halfSide, frame_surface_z);
                     Vector3r p_tr = Vector3r( aCenter.x() + node_hx,  halfSide, frame_surface_z);
@@ -173,7 +173,7 @@ public:
                 if (j - 1 == 0) {
                     entt::registry& reg = sys.ecs();
                     Vector3r edgeCenter = reg.get<PhysicsSystem::C_Position3>(eLeft).value;
-                    Quaternion4r qEdge = reg.get<PhysicsSystem::C_Orientation>(eLeft).q;
+                    Quaternion4r qEdge = reg.get<PhysicsSystem::C_Orientation>(eLeft).value;
                     Vector3r aCenter = reg.get<PhysicsSystem::C_Position3>(a).value;
                     Vector3r p_tl = Vector3r( -halfSide, aCenter.y() + node_hy, frame_surface_z);
                     Vector3r p_bl = Vector3r( -halfSide, aCenter.y() - node_hy, frame_surface_z);
@@ -187,7 +187,7 @@ public:
                 if (i - 1 == 0) {
                     entt::registry& reg = sys.ecs();
                     Vector3r edgeCenter = reg.get<PhysicsSystem::C_Position3>(eBottom).value;
-                    Quaternion4r qEdge = reg.get<PhysicsSystem::C_Orientation>(eBottom).q;
+                    Quaternion4r qEdge = reg.get<PhysicsSystem::C_Orientation>(eBottom).value;
                     Vector3r aCenter = reg.get<PhysicsSystem::C_Position3>(a).value;
                     Vector3r p_bl = Vector3r( aCenter.x() - node_hx, -halfSide, frame_surface_z);
                     Vector3r p_br = Vector3r( aCenter.x() + node_hx, -halfSide, frame_surface_z);
