@@ -122,7 +122,7 @@ void DynamicsAssembler::loadStateFromSystem() {
     }
 }
 
-void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v) {
+void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
     const auto& reg = m_sys.ecs();
     auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
@@ -136,9 +136,19 @@ void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v)
             }
             if (qb.size() >= 7 && reg.any_of<PhysicsSystem::C_Orientation>(e)) {
                 Quaternion4r qn(qb.tail<4>()); qn.normalize();
-                const_cast<PhysicsSystem::C_Orientation&>(reg.get<PhysicsSystem::C_Orientation>(e)).q = qn;
+                const_cast<PhysicsSystem::C_Orientation&>(reg.get<PhysicsSystem::C_Orientation>(e)).value = qn;
             }
         }
+    }
+    m_sys.markStateDirty();
+    m_sys.markForcesDirty();
+}
+
+void DynamicsAssembler::writeVelocityToSystem(const VectorXr& v) {
+    const auto& reg = m_sys.ecs();
+    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    for (auto [e, bi] : view.each()) {
+        const int b = bi.b;
         if (b >= 0 && b < (int)m_body_vel_offsets.size()-1) {
             const int offV = m_body_vel_offsets[(size_t)b];
             const int nV = m_body_vel_offsets[(size_t)b+1] - offV;
@@ -153,6 +163,41 @@ void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v)
     }
     m_sys.markStateDirty();
     m_sys.markForcesDirty();
+}
+
+void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v) {
+    DynamicsAssembler::writePositionToSystem(q);
+    DynamicsAssembler::writeVelocityToSystem(v);
+    // const auto& reg = m_sys.ecs();
+    // auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    // for (auto [e, bi] : view.each()) {
+    //     const int b = bi.b;
+    //     if (b >= 0 && b < (int)m_body_pos_offsets.size()-1) {
+    //         const int offQ = m_body_pos_offsets[(size_t)b];
+    //         const int nQ = m_body_pos_offsets[(size_t)b+1] - offQ;
+    //         VectorXr qb = (nQ>0) ? q.segment(offQ, nQ) : VectorXr(0);
+    //         if (qb.size() >= 3 && reg.any_of<PhysicsSystem::C_Position3>(e)) {
+    //             const_cast<PhysicsSystem::C_Position3&>(reg.get<PhysicsSystem::C_Position3>(e)).value = qb.head<3>();
+    //         }
+    //         if (qb.size() >= 7 && reg.any_of<PhysicsSystem::C_Orientation>(e)) {
+    //             Quaternion4r qn(qb.tail<4>()); qn.normalize();
+    //             const_cast<PhysicsSystem::C_Orientation&>(reg.get<PhysicsSystem::C_Orientation>(e)).value = qn;
+    //         }
+    //     }
+    //     if (b >= 0 && b < (int)m_body_vel_offsets.size()-1) {
+    //         const int offV = m_body_vel_offsets[(size_t)b];
+    //         const int nV = m_body_vel_offsets[(size_t)b+1] - offV;
+    //         VectorXr vb = (nV>0) ? v.segment(offV, nV) : VectorXr(0);
+    //         if (vb.size() >= 3 && reg.any_of<PhysicsSystem::C_LinearVelocity3>(e)) {
+    //             const_cast<PhysicsSystem::C_LinearVelocity3&>(reg.get<PhysicsSystem::C_LinearVelocity3>(e)).value = vb.head<3>();
+    //         }
+    //         if (vb.size() >= 6 && reg.any_of<PhysicsSystem::C_AngularVelocity3>(e)) {
+    //             const_cast<PhysicsSystem::C_AngularVelocity3&>(reg.get<PhysicsSystem::C_AngularVelocity3>(e)).value = vb.tail<3>();
+    //         }
+    //     }
+    // }
+    // m_sys.markStateDirty();
+    // m_sys.markForcesDirty();
 }
 
 void DynamicsAssembler::assignDofs() {

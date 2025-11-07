@@ -201,7 +201,7 @@ public:
     struct C_Position3 { Vector3r value; };
     struct C_LinearVelocity3 { Vector3r value; };
     struct C_AngularVelocity3 { Vector3r value; };
-    struct C_Orientation { Quaternion4r q; };
+    struct C_Orientation { Quaternion4r value; };
     struct C_PhysicsObject {};
     struct C_PointMassTag {};
     struct C_RigidBodyTag {};
@@ -273,6 +273,8 @@ public:
     void setLinearVelocity(entt::entity e, const Vector3r& v);
     void setAngularVelocity(entt::entity e, const Vector3r& w);
 
+    void explicitPositionUpdate(real_t dt);
+    void linearImplicitPositionUpdate(real_t dt);
     // Create a beam along a spline: instantiates `segments` rigid bodies sampled uniformly in alpha
     // and connects consecutive bodies with BeamConstraint. Returns pair(rootEntity, endEntity).
     // density: mass density (mass = density * volume assuming rectangular prism width x height x segment_length)

@@ -44,7 +44,7 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
     if (reg.any_of<cardillo::PhysicsSystem::C_Position3>(e))
         x = reg.get<cardillo::PhysicsSystem::C_Position3>(e).value;
     if (reg.any_of<cardillo::PhysicsSystem::C_Orientation>(e))
-        q = reg.get<cardillo::PhysicsSystem::C_Orientation>(e).q;
+        q = reg.get<cardillo::PhysicsSystem::C_Orientation>(e).value;
     q.normalize();
     X.setTranslation(toCoalVec3(x));
     X.setQuatRotation(toCoalQuat(q));

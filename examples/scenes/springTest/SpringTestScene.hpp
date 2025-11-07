@@ -116,8 +116,8 @@ private:
         Quaternion4r qB = Quaternion4r::Identity();
         if (reg.all_of<cardillo::PhysicsSystem::C_Position3>(eA)) centerA = reg.get<cardillo::PhysicsSystem::C_Position3>(eA).value;
         if (reg.all_of<cardillo::PhysicsSystem::C_Position3>(eB)) centerB = reg.get<cardillo::PhysicsSystem::C_Position3>(eB).value;
-        if (reg.all_of<cardillo::PhysicsSystem::C_Orientation>(eA)) qA = reg.get<cardillo::PhysicsSystem::C_Orientation>(eA).q;
-        if (reg.all_of<cardillo::PhysicsSystem::C_Orientation>(eB)) qB = reg.get<cardillo::PhysicsSystem::C_Orientation>(eB).q;
+        if (reg.all_of<cardillo::PhysicsSystem::C_Orientation>(eA)) qA = reg.get<cardillo::PhysicsSystem::C_Orientation>(eA).value;
+        if (reg.all_of<cardillo::PhysicsSystem::C_Orientation>(eB)) qB = reg.get<cardillo::PhysicsSystem::C_Orientation>(eB).value;
 
         // Determine local attachment offsets. For spheres, ensure attachment lies on surface.
         Vector3r rA_local = attachA_local;

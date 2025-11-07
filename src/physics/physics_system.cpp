@@ -366,7 +366,7 @@ VectorXr PhysicsSystem::getPosition(entt::entity e) const {
     // Prefer rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Position3, C_Orientation>(e)) {
         const auto& x = m_reg.get<C_Position3>(e).value;
-        Quaternion4r qn = m_reg.get<C_Orientation>(e).q;
+        Quaternion4r qn = m_reg.get<C_Orientation>(e).value;
         qn.normalize();
         VectorXr q(7);
         q.head<3>() = x;
@@ -506,7 +506,7 @@ void PhysicsSystem::setPosition(entt::entity e, const Vector3r& p) {
 void PhysicsSystem::setOrientation(entt::entity e, const Quaternion4r& q_in) {
     if (!m_reg.valid(e)) return;
     Quaternion4r q = q_in; q.normalize();
-    if (m_reg.any_of<C_Orientation>(e)) m_reg.get<C_Orientation>(e).q = q; else m_reg.emplace<C_Orientation>(e, C_Orientation{q});
+    if (m_reg.any_of<C_Orientation>(e)) m_reg.get<C_Orientation>(e).value = q; else m_reg.emplace<C_Orientation>(e, C_Orientation{q});
     markStateDirty();
 }
 
@@ -646,6 +646,29 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
     }
 
     return {root, end};
+}
+
+void PhysicsSystem::explicitPositionUpdate(real_t h) {
+    // position update
+    auto position_view = m_reg.view<C_Position3, C_LinearVelocity3>();
+    for (auto [e, pos, vel] : position_view.each()) {
+        pos.value += h * vel.value;
+    }
+
+    // orientations
+    auto orientation_view = m_reg.view<C_Orientation, C_AngularVelocity3>();
+    for (auto [e, orientation, angularVel] : orientation_view.each()) {
+        const Vector3r& omega = angularVel.value;
+        Vector4r& P = orientation.value.coeffs();
+        real_t w = P(3);
+        P(3) -= h * 0.5 * P.head<3>().dot(omega);
+        P.head<3>() += h * 0.5 * (w * omega + P.head<3>().cross(omega));
+    }
+}
+
+void PhysicsSystem::linearImplicitPositionUpdate(real_t h) {
+    // TODO: This has to be implemented (do explicit update instead)
+    explicitPositionUpdate(h);
 }
 
 } // namespace cardillo::

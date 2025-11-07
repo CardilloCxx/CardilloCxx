@@ -64,19 +64,17 @@ void MoreauSolver::stepMidpoint(real_t dt)
 {
     // 1) Get current state vectors
     m_dyn.refreshState();
-    const auto& qn = m_dyn.qVec();
+    // const auto& qn = m_dyn.qVec();
     const auto& vn = m_dyn.vVec();
     const auto& fn = m_dyn.fVec();
-    const auto& offQ = m_dyn.bodyPosOffsets();
-    const auto& offV = m_dyn.bodyVelOffsets();
-    const int Nb = (int)offV.size() - 1;
+    // const auto& offQ = m_dyn.bodyPosOffsets();
+    // const auto& offV = m_dyn.bodyVelOffsets();
+    // const int Nb = (int)offV.size() - 1;
 
-    // 2) Midpoint position and preliminary velocity (external forces only)
-    VectorXr q_mid = qn;
-    integrate_quaternions(q_mid, qn, vn, offQ, offV, Nb, dt, 0.5);
+    // 2) Inplace midpoint position update
+    m_sys.explicitPositionUpdate(0.5 * dt);
 
-    // 3) Evaluate contacts at midpoint positions: write q_mid into ECS (v stays vn)
-    m_dyn.writeStateToSystem(q_mid, vn);
+    // 3) Evaluate contacts at midpoint positions
     m_dyn.refreshCollisionsAndSprings(dt);
 
     // 4) Build the full extended RHS and solve the extended system S * x = b
@@ -102,12 +100,11 @@ void MoreauSolver::stepMidpoint(real_t dt)
     VectorXr vnp1 = xnp1.segment(0, totalV);
     if (nSprings > 0) m_dyn.setLambda_g(xnp1.segment(totalV, nSprings)); else m_dyn.setLambda_g(VectorXr(0));
 
-    // 6) Final position: q_{n+1} = q_mid + (h/2) * B(q_mid) * u_{n+1}
-    VectorXr qnp1 = q_mid;
-    integrate_quaternions(qnp1, q_mid, vnp1, offQ, offV, Nb, dt, 0.5);
+    // 6) Write final velocity to ECS
+    m_dyn.writeVelocityToSystem(vnp1);
 
-    // 7) Write back final state to ECS
-    m_dyn.writeStateToSystem(qnp1, vnp1);
+    // 7) Inplace final position update
+    m_sys.explicitPositionUpdate(0.5 * dt);
 }
 
 }
