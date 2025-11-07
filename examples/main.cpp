@@ -23,7 +23,7 @@
 #include "scenes/parcel/ParcelScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
-#include "scenes/beamTest/BeamTestScene.hpp"
+#include "scenes/constraintTest/ConstraintTestScene.hpp"
 
 using namespace cardillo;
 
@@ -55,7 +55,8 @@ int main(int argc, char** argv) {
     // RailScene scene;
     // DzhanibekovScene scene;
     // ParcelScene scene;
-    BeamTestScene scene;
+    DiscreteRodScene scene;
+    // ConstraintTestScene scene;
 
     scene.populate(sys);
 
@@ -68,6 +69,7 @@ int main(int argc, char** argv) {
         writer = std::make_unique<cardillo::io::VtkWriterBinary>(cfg.output_folder, cfg.output_filename_prefix, cfg.output_interval_steps);
         writer->setHeightFieldStride(cfg.output_heightfield_stride);
         if (cfg.output_write_contacts) writer->enableContactsOutput(true, cfg.output_filename_prefix + "_contacts");
+        writer->enableSpringsOutput(true, cfg.output_filename_prefix + std::string("_springs"));
     }
 
     real_t t = 0.0;

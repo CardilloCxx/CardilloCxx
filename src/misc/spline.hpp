@@ -1,0 +1,75 @@
+#pragma once
+
+#include "types.hpp"
+#include <Eigen/Geometry>
+#include <cmath>
+#include <memory>
+#include <vector>
+
+namespace cardillo {
+namespace misc {
+
+// Spline sample result: geometric + differential frame at a parameter alpha
+struct SplineSample {
+    Vector3r position;  // world-space position
+    Vector3r tangent;   // unit tangent (direction of increasing alpha)
+    Vector3r normal;    // principal normal (orthogonal to tangent)
+    Vector3r binormal;  // binormal = tangent x normal (right-handed)
+};
+
+// Base spline pattern: alpha in [0,1]
+class SplinePattern {
+public:
+    virtual ~SplinePattern() = default;
+    virtual real_t totalLength() const = 0;
+    virtual bool isLoop() const = 0;
+    // Sample full geometric/differential data at alpha (clamps to [0,1])
+    virtual SplineSample sample(real_t alpha) const = 0;
+};
+
+// Concrete splines (definitions in spline.cpp)
+class LinearSpline : public SplinePattern {
+public:
+    LinearSpline(const Vector3r &p0, const Vector3r &p1);
+    real_t totalLength() const override;
+    bool isLoop() const override;
+    SplineSample sample(real_t alpha) const override;
+private:
+    Vector3r m_p0{Vector3r::Zero()}, m_p1{Vector3r::Zero()};
+    real_t m_len{(real_t)0};
+    Vector3r m_T{Vector3r::UnitX()};
+};
+
+class CircleSpline : public SplinePattern {
+public:
+    CircleSpline(const Vector3r &center, real_t radius, const Vector3r &normal = Vector3r::UnitZ(), const Vector3r &dir0 = Vector3r::UnitX());
+    real_t totalLength() const override;
+    bool isLoop() const override;
+    SplineSample sample(real_t alpha) const override;
+private:
+    Vector3r m_c{Vector3r::Zero()};
+    real_t m_r{(real_t)1};
+    Vector3r m_n{Vector3r::UnitZ()};
+    Vector3r m_u{Vector3r::UnitX()};
+    Vector3r m_v{Vector3r::UnitY()};
+};
+
+class HelixSpline : public SplinePattern {
+public:
+    HelixSpline(const Vector3r &center, const Vector3r &axisDir, real_t radius, real_t pitch, real_t turns,
+                const Vector3r &dir0 = Vector3r::UnitX());
+    real_t totalLength() const override;
+    bool isLoop() const override;
+    SplineSample sample(real_t alpha) const override;
+private:
+    Vector3r m_c{Vector3r::Zero()};
+    Vector3r m_d{Vector3r::UnitZ()};
+    real_t m_r{(real_t)1};
+    real_t m_pitch{(real_t)0.1};
+    real_t m_turns{(real_t)1};
+    Vector3r m_u{Vector3r::UnitX()};
+    Vector3r m_v{Vector3r::UnitY()};
+};
+
+} // namespace misc
+} // namespace cardillo

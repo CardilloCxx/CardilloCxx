@@ -27,7 +27,10 @@ public:
             for (int i = -n; i <= n; ++i) {
                 for (int j = -n; j <= n; ++j) {
                     Vector3r start((real_t)i * radius * 2.0, (real_t)j * radius * 2.0, (real_t)9.0);
-                    sys.addRigidBodySphere(mass, start, Quaternion4r::Identity(), Vector3r::Zero(), Vector3r::Zero(), radius);
+                    PhysicsSystem::SphereShape shape{radius};
+                    PhysicsSystem::RigidState state; state.position = start; state.orientation = Quaternion4r::Identity();
+                    PhysicsSystem::RigidProps props; props.mass = mass;
+                    sys.addRigidBody(shape, state, props);
                 }
             }
         }

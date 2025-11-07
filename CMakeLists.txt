@@ -51,13 +51,13 @@ include(GNUInstallDirs)
 include(FetchContent)
 
 # Prefer system Eigen; fall back to FetchContent when network is available
-find_package(Eigen3 3.3 QUIET NO_MODULE)
+find_package(Eigen3 3.4...5.0.0 QUIET NO_MODULE)
 if(NOT Eigen3_FOUND)
     include(FetchContent)
     FetchContent_Declare(
         Eigen
         GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-        GIT_TAG master
+        GIT_TAG 5.0.0
         GIT_SHALLOW TRUE
     )
     FetchContent_MakeAvailable(Eigen)

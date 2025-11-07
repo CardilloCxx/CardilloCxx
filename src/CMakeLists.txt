@@ -1,6 +1,8 @@
 add_library(${PROJECT_NAME} STATIC
     cardillo.cpp
     physics/physics_system.cpp
+    physics/assets.cpp
+    physics/constraints.cpp
     io/vtk_writer_binary.cpp
     io/vtk_sphere_util.cpp
     io/heightmap_loader.cpp
@@ -8,6 +10,7 @@ add_library(${PROJECT_NAME} STATIC
     solver/moreau.cpp
     solver/CPG.cpp
     solver/projected_jacobi.cpp
+    misc/spline.cpp
     physics/dynamics_assembler.cpp
     collision/collision_coal.cpp
     partitioning/naive_partitioner.cpp

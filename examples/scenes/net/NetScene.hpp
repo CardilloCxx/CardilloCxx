@@ -38,26 +38,18 @@ public:
         // All frame cubes placed at z = 0 (slightly below the net plane)
         const real_t frame_z = (real_t)0.0;
 
-        PhysicsSystem::Cube edgeX; edgeX.halfExtents = Vector3r(halfSide, frame_thickness * (real_t)0.5, frame_height * (real_t)0.5);
-        PhysicsSystem::Cube edgeY; edgeY.halfExtents = Vector3r(frame_thickness * (real_t)0.5, halfSide, frame_height * (real_t)0.5);
+    PhysicsSystem::CubeShape edgeX{Vector3r(halfSide, frame_thickness * (real_t)0.5, frame_height * (real_t)0.5)};
+    PhysicsSystem::CubeShape edgeY{Vector3r(frame_thickness * (real_t)0.5, halfSide, frame_height * (real_t)0.5)};
 
         // Create four edges as obstacle bodies (top, bottom, left, right)
-        PhysicsSystem::Cube c;
-        c.halfExtents = edgeX.halfExtents; c.center = Vector3r(0.0,  halfSide, frame_z); c.q = Quaternion4r::Identity();
-        index_t top_id = sys.addObstacleBody(c);
-        entt::entity eTop = entt::entity(static_cast<uint32_t>(top_id));
+    PhysicsSystem::RigidProps staticProps; PhysicsSystem::RigidState st; st.orientation = Quaternion4r::Identity();
+    st.position = Vector3r(0.0, halfSide, frame_z); entt::entity eTop = sys.addRigidBody(edgeX, st, staticProps);
 
-        c.halfExtents = edgeX.halfExtents; c.center = Vector3r(0.0, -halfSide, frame_z); c.q = Quaternion4r::Identity();
-        index_t bottom_id = sys.addObstacleBody(c);
-        entt::entity eBottom = entt::entity(static_cast<uint32_t>(bottom_id));
+    st.position = Vector3r(0.0, -halfSide, frame_z); entt::entity eBottom = sys.addRigidBody(edgeX, st, staticProps);
 
-        c.halfExtents = edgeY.halfExtents; c.center = Vector3r( halfSide, 0.0, frame_z); c.q = Quaternion4r::Identity();
-        index_t right_id = sys.addObstacleBody(c);
-        entt::entity eRight = entt::entity(static_cast<uint32_t>(right_id));
+    st.position = Vector3r(halfSide, 0.0, frame_z); entt::entity eRight = sys.addRigidBody(edgeY, st, staticProps);
 
-        c.halfExtents = edgeY.halfExtents; c.center = Vector3r(-halfSide, 0.0, frame_z); c.q = Quaternion4r::Identity();
-        index_t left_id = sys.addObstacleBody(c);
-        entt::entity eLeft = entt::entity(static_cast<uint32_t>(left_id));
+    st.position = Vector3r(-halfSide, 0.0, frame_z); entt::entity eLeft = sys.addRigidBody(edgeY, st, staticProps);
 
         std::vector<entt::entity> frameEdges = { eTop, eBottom, eLeft, eRight };
 
@@ -86,11 +78,10 @@ public:
                     continue;
                 }
                 Vector3r p = origin + Vector3r((real_t)j * spacing, (real_t)i * spacing, 0.0);
-                PhysicsSystem::Cube nodeCube;
-                nodeCube.halfExtents = Vector3r(node_hx, node_hy, node_hz);
-                nodeCube.center = p;
-                nodeCube.q = Quaternion4r::Identity();
-                entt::entity eNode = sys.addRigidBody(nodeMass, p, Quaternion4r::Identity(), Vector3r::Zero(), Vector3r::Zero(), nodeCube);
+                PhysicsSystem::CubeShape nodeShape{Vector3r(node_hx, node_hy, node_hz)};
+                PhysicsSystem::RigidState nodeState; nodeState.position = p; nodeState.orientation = Quaternion4r::Identity();
+                PhysicsSystem::RigidProps nodeProps; nodeProps.mass = nodeMass;
+                entt::entity eNode = sys.addRigidBody(nodeShape, nodeState, nodeProps);
                 nodes[i][j] = eNode;
             }
         }
@@ -218,12 +209,8 @@ public:
         const real_t sphereMass = (real_t)0.5;
         const real_t sphereHeight = (real_t)0.5;
         Vector3r spherePos = Vector3r(0.0, 0.0, sphereHeight);
-        entt::entity eSphere = sys.addRigidBodySphere(
-            sphereMass, 
-            spherePos, 
-            Quaternion4r::Identity(),
-            Vector3r::Zero(),
-            Vector3r::Zero(), 
-            sphereRadius);
+        {
+            PhysicsSystem::SphereShape s{sphereRadius}; PhysicsSystem::RigidState st2; st2.position = spherePos; st2.orientation = Quaternion4r::Identity(); PhysicsSystem::RigidProps pr2; pr2.mass = sphereMass; (void)sys.addRigidBody(s, st2, pr2);
+        }
     }
 };

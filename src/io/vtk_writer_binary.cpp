@@ -2,6 +2,7 @@
 #include "../collision/collision_coal.hpp"
 #include "vtk_sphere_util.hpp"
 #include "../solver/warmstart.hpp"
+#include "../physics/constraints.hpp"
 #include <cmath>
 #include <coal/hfield.h>
 #include <mpi.h>
@@ -40,6 +41,8 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSy
         writeStaticGeometry(data);
         m_staticGeoWritten = true;
     }
+    // Additionally write a timestep-qualified static geometry snapshot every time
+    writeStaticGeometryStep(step, data);
     // Always write dynamic geometry per step
     writeDynamicGeometry(step, data);
     if (m_writeContacts) {
@@ -53,6 +56,9 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSy
         } catch (...) {
             // skip if collision manager not available
         }
+    }
+    if (m_writeSprings) {
+        writeSprings(step, sys);
     }
 }
 
@@ -201,8 +207,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                                 cardillo::PhysicsSystem::C_Position3,
                                 cardillo::PhysicsSystem::C_Plane>();
         for (auto [e, pos, pl] : vplanes.each()) {
-            (void)e;
-            PlaneOut po; po.p.center = pos.value; po.p.normal = pl.normal; po.p.up = pl.up; po.p.sizeX = pl.sizeX; po.p.sizeY = pl.sizeY;
+            PlaneOut po; po.center = pos.value; po.normal = pl.normal; po.up = pl.up; po.sizeX = pl.sizeX; po.sizeY = pl.sizeY;
             out.planes.push_back(po);
         }
     }
@@ -216,6 +221,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
         for (auto [e, pos, cb, ori] : vcubes.each()) {
             CubeOut co;
             co.cube.center = pos.value; co.cube.halfExtents = cb.halfExtents; co.cube.q = ori.value;
+            co.center = pos.value; co.halfExtents = cb.halfExtents; co.q = ori.value;
             co.entityId = static_cast<int>(entt::to_integral(e));
             co.partition = partitionFromBodyIndex_(sys, reg, e);
             co.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
@@ -498,8 +504,7 @@ void VtkWriterBinary::writePointsBlock(std::ofstream& out, const Collected& data
     // Points
     for (const auto& pt : data.points) { writeBE(out, f32(pt.pos.x())); writeBE(out, f32(pt.pos.y())); writeBE(out, f32(pt.pos.z())); }
     // Plane corners
-    for (const auto& po : data.planes) {
-        const auto& p = po.p;
+    for (const auto& p : data.planes) {
         Vector3r n = p.normal; n.normalize();
         Vector3r a = p.up - p.up.dot(n)*n; if (a.norm() < 1e-12) a = Vector3r(1,0,0) - Vector3r(1,0,0).dot(n)*n; a.normalize();
         Vector3r b = n.cross(a);
@@ -511,8 +516,7 @@ void VtkWriterBinary::writePointsBlock(std::ofstream& out, const Collected& data
         for (int i = 0; i < 4; ++i) { writeBE(out, f32(corners[i].x())); writeBE(out, f32(corners[i].y())); writeBE(out, f32(corners[i].z())); }
     }
     // Cube corners
-    for (const auto& co : data.cubes) {
-        const auto& c = co.cube;
+    for (const auto& c : data.cubes) {
         Matrix33r R = c.q.toRotationMatrix();
         Vector3r ex = R * Vector3r::UnitX();
         Vector3r ey = R * Vector3r::UnitY();
@@ -623,8 +627,7 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
     // velocity: planes zero, cubes computed, meshes: use per-vertex velocities if present, else rigid approx/zero
     out << "VECTORS velocity float\n";
     for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
-    for (const auto& co : data.cubes) {
-        const auto& cu = co.cube;
+    for (const auto& cu : data.cubes) {
         Matrix33r R = cu.q.toRotationMatrix();
         Vector3r ex = R * Vector3r::UnitX();
         Vector3r ey = R * Vector3r::UnitY();
@@ -644,7 +647,7 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
         };
         for (int i = 0; i < 8; ++i) {
             Vector3r v = Vector3r::Zero();
-            if (co.hasKinematics) { Vector3r r = p[i] - cu.center; v = co.vlin + co.omega.cross(r); }
+            if (cu.hasKinematics) { Vector3r r = p[i] - cu.center; v = cu.vlin + cu.omega.cross(r); }
             writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
         }
     }
@@ -665,8 +668,8 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
     // angular velocity: planes zero, cubes repeated per-corner, meshes repeated per-vertex
     out << "VECTORS angular_velocity float\n";
     for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
-    for (const auto& co : data.cubes) {
-        Vector3r omega = co.hasKinematics ? co.omega : Vector3r::Zero();
+    for (const auto& cu : data.cubes) {
+        Vector3r omega = cu.hasKinematics ? cu.omega : Vector3r::Zero();
         for (int i = 0; i < 8; ++i) { writeBE(out, f32(omega.x())); writeBE(out, f32(omega.y())); writeBE(out, f32(omega.z())); }
     }
     for (const auto& m : data.meshes) {
@@ -679,8 +682,8 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
     // entity velocity: planes zero; cubes repeated per-corner; meshes: for softbodies reuse per-vertex velocity
     out << "VECTORS entity_velocity float\n";
     for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
-    for (const auto& co : data.cubes) {
-        Vector3r vlin = co.hasKinematics ? co.vlin : Vector3r::Zero();
+    for (const auto& cu : data.cubes) {
+        Vector3r vlin = cu.hasKinematics ? cu.vlin : Vector3r::Zero();
         for (int i = 0; i < 8; ++i) { writeBE(out, f32(vlin.x())); writeBE(out, f32(vlin.y())); writeBE(out, f32(vlin.z())); }
     }
     for (const auto& m : data.meshes) {
@@ -698,13 +701,13 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
     // partition: planes -1, cubes replicated, meshes replicated
     out << "SCALARS partition float 1\nLOOKUP_TABLE default\n";
     for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, -1.f);
-    for (const auto& co : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, co.partition); }
+    for (const auto& cu : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, cu.partition); }
     for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, m.partition); }
 
     // entity_id
     out << "SCALARS entity_id int 1\nLOOKUP_TABLE default\n";
     for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, int32_t(-1));
-    for (const auto& co : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, int32_t(co.entityId)); }
+    for (const auto& cu : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, int32_t(cu.entityId)); }
     for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, int32_t(m.entityId)); }
 }
 
@@ -720,8 +723,8 @@ void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const Coll
     // Planes: emit UVs in meters, matching the corner order in writePointsBlock
     // Corner order is c0=(-hx,-hy), c1=(+hx,-hy), c2=(+hx,+hy), c3=(-hx,+hy) in the plane's local (a,b) frame.
     for (const auto& po : data.planes) {
-        const float hx = static_cast<float>(po.p.sizeX);
-        const float hy = static_cast<float>(po.p.sizeY);
+        const float hx = static_cast<float>(po.sizeX);
+        const float hy = static_cast<float>(po.sizeY);
         // Map local coordinates to [0, 2*hx] x [0, 2*hy]
         writeBE(out, 0.f);        writeBE(out, 0.f);        // c0: (-hx,-hy) -> (0,0)
         writeBE(out, 2.f*hx);     writeBE(out, 0.f);        // c1: (+hx,-hy) -> (2hx,0)
@@ -732,8 +735,8 @@ void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const Coll
     // Cubes: emit simple corner UVs (u,v in {0,1}) matching the cube corner order used in writePointsBlock
     for (const auto& c : data.cubes) {
         // half extents in meters
-        const float hx = static_cast<float>(c.cube.halfExtents.x());
-        const float hy = static_cast<float>(c.cube.halfExtents.y());
+        const float hx = static_cast<float>(c.halfExtents.x());
+        const float hy = static_cast<float>(c.halfExtents.y());
         for (int i = 0; i < 8; ++i) {
             float lx = (i==1||i==2||i==5||i==6) ? hx : -hx;
             float ly = (i==2||i==3||i==6||i==7) ? hy : -hy;
@@ -818,6 +821,23 @@ void VtkWriterBinary::writeDynamicGeometry(int step, const Collected& data) cons
     // No planes (static), include dynamic cubes/meshes only
     for (const auto& c : data.cubes) if (c.isDynamic) only.cubes.push_back(c);
     for (const auto& m : data.meshes) if (m.isDynamic) only.meshes.push_back(m);
+    writePointsBlock(out, only);
+    writePolygonsBlock(out, only);
+    writePointDataGeo(out, only);
+    writeMeshTextureCoordinates(out, only);
+    out.close();
+}
+
+void VtkWriterBinary::writeStaticGeometryStep(int step, const Collected& data) const {
+    // Mirror writeStaticGeometry but include step index so moving static objects are captured
+    std::string path = buildPath(m_baseName + std::string("_static_geo"), step);
+    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (!out) return;
+    writeHeader(out, "Static Geometry (per-step) (binary)");
+    Collected only;
+    only.planes = data.planes; // planes treated as static
+    for (const auto& c : data.cubes) if (!c.isDynamic) only.cubes.push_back(c);
+    for (const auto& m : data.meshes) if (!m.isDynamic) only.meshes.push_back(m);
     writePointsBlock(out, only);
     writePolygonsBlock(out, only);
     writePointDataGeo(out, only);
@@ -914,6 +934,40 @@ void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collis
     for (const auto& c : contacts) writeBE(out, f32(c.friction_mu));
     out << "SCALARS matched int 1\nLOOKUP_TABLE default\n";
     for (const auto& c : contacts) writeBE(out, int32_t(c.prev_global_out_index >= 0 ? 1 : 0));
+    out.close();
+}
+
+void VtkWriterBinary::writeSprings(int step, const cardillo::PhysicsSystem& sys) const {
+    // Gather attachment A positions and vectors A->B from all constraint patterns
+    const auto& patterns = sys.constraintPatterns();
+    std::vector<Vector3r> starts; starts.reserve(patterns.size());
+    std::vector<Vector3r> vecs; vecs.reserve(patterns.size());
+    for (const auto& uptr : patterns) {
+        if (!uptr) continue;
+        Vector3r xA, xB;
+        if (uptr->getAttachPointsWorld(xA, xB)) {
+            starts.push_back(xA);
+            vecs.push_back(xB - xA);
+        }
+    }
+    const std::size_t n = starts.size();
+    if (n == 0) return;
+    if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
+    const std::string path = buildPath(m_springsBase, step);
+    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (!out) return;
+    // Header
+    writeHeader(out, "Constraint springs (binary)");
+    // Points block
+    out << "POINTS " << n << " float\n";
+    for (const auto& p : starts) { writeBE(out, f32(p.x())); writeBE(out, f32(p.y())); writeBE(out, f32(p.z())); }
+    // Vertices for visibility
+    out << "\nVERTICES " << n << ' ' << (2*n) << "\n";
+    for (std::size_t i = 0; i < n; ++i) { writeBE(out, int32_t(1)); writeBE(out, int32_t(i)); }
+    // Point data: A->B vector
+    out << "\nPOINT_DATA " << n << "\n";
+    out << "VECTORS AtoB float\n";
+    for (const auto& v : vecs) { writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z())); }
     out.close();
 }
 
