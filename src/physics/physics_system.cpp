@@ -177,7 +177,7 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
                 Quaternion4r q_new = state.orientation * q_rpa;
                 Vector3r pos_new = state.position + (state.orientation * asset.com);
                 m_reg.get<C_Position3>(e).value = pos_new;
-                m_reg.get<C_Orientation>(e).q = q_new;
+                m_reg.get<C_Orientation>(e).value = q_new;
                 m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
                 if (asset.volume > (real_t)0) {
                     const real_t rho = mass / asset.volume;

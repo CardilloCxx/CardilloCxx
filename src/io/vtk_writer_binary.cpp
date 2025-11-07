@@ -220,7 +220,6 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                                cardillo::PhysicsSystem::C_Orientation>();
         for (auto [e, pos, cb, ori] : vcubes.each()) {
             CubeOut co;
-            co.cube.center = pos.value; co.cube.halfExtents = cb.halfExtents; co.cube.q = ori.value;
             co.center = pos.value; co.halfExtents = cb.halfExtents; co.q = ori.value;
             co.entityId = static_cast<int>(entt::to_integral(e));
             co.partition = partitionFromBodyIndex_(sys, reg, e);
