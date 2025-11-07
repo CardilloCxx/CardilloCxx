@@ -1,5 +1,7 @@
 #include "physics_system.hpp"
+#include "assets.hpp"
 #include "constraints.hpp"
+#include "../misc/spline.hpp"
 #include "../collision/collision_coal.hpp"
 #include "../solver/warmstart.hpp"
 #include "../io/softbody_loader.hpp"
@@ -78,6 +80,124 @@ PhysicsSystem::PhysicsSystem(const config::Config& cfg) : PhysicsSystem() {
 
 void PhysicsSystem::setGravity(const Vector3r& g) { m_gravity = g; m_forces_dirty = true; }
 
+// Assets access ----------------------------------
+PhysicsAssets& PhysicsSystem::assets() {
+    if (!m_assets) m_assets = std::make_shared<PhysicsAssets>();
+    return *m_assets;
+}
+const PhysicsAssets& PhysicsSystem::assets() const {
+    if (!m_assets) const_cast<PhysicsSystem*>(this)->m_assets = std::make_shared<PhysicsAssets>();
+    return *m_assets;
+}
+
+// Unified rigid body creation ------------------------------------------------
+entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
+                                         const RigidState& state,
+                                         const RigidProps& props) {
+    auto e = m_reg.create();
+
+    // Always pose components
+    m_reg.emplace<C_Position3>(e, C_Position3{state.position});
+    m_reg.emplace<C_Orientation>(e, C_Orientation{Quaternion4r(state.orientation).normalized()});
+    m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{state.linearVelocity});
+    m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{state.angularVelocity});
+
+    if (props.visual)    m_reg.emplace<C_VisualObject>(e);
+    if (props.collidable)m_reg.emplace<C_Collidable>(e);
+
+    // Determine mass from props.mass or density + shape volume
+    std::optional<real_t> massOpt = props.mass;
+    real_t computedMass = (real_t)0;
+    auto computeVolumeCube = [](const Vector3r& he){ return (real_t)8 * he.x()*he.y()*he.z(); };
+    auto computeVolumeCapsule = [](real_t r, real_t h){ return (real_t)M_PI * r*r * (2*h + (real_t)4.0/3.0 * r); };
+    auto computeVolumeSphere = [](real_t r){ return (real_t)4.0/3.0 * (real_t)M_PI * r*r*r; };
+    real_t densityUsed = props.density.value_or((real_t)0);
+
+    // Pre-extract shape volume if density is provided and mass absent
+    if (!massOpt.has_value() && props.density.has_value()) {
+        std::visit([&](auto&& s){ 
+            using T = std::decay_t<decltype(s)>; 
+            if constexpr (std::is_same_v<T, CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents); 
+            else if constexpr (std::is_same_v<T, CapsuleShape>) computedMass = densityUsed * computeVolumeCapsule(s.radius, s.halfLength); 
+            else if constexpr (std::is_same_v<T, SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius); 
+            else if constexpr (std::is_same_v<T, PlaneShape>) computedMass = 0; 
+          else if constexpr (std::is_same_v<T, MeshShape>) { const ::cardillo::MeshAsset& ma = assets().getMesh(s.path, s.scale, true); 
+                 if (ma.volume > (real_t)0) computedMass = densityUsed * ma.volume; } }, shape);
+        if (computedMass > (real_t)0) massOpt = computedMass;
+    }
+
+    const real_t mass = std::max((real_t)0, massOpt.value_or((real_t)0));
+    
+
+    // Friction
+    real_t mu = (props.friction >= (real_t)0) ? props.friction : m_cfg.friction_default_mu;
+    m_reg.emplace<C_Friction>(e, C_Friction{mu});
+
+    // Populate according to shape variant
+    std::visit([&](auto&& s){
+        using T = std::decay_t<decltype(s)>;
+        if constexpr (std::is_same_v<T, CubeShape>) {
+            if (props.visual)    m_reg.emplace<C_CubeVisualTag>(e);
+            if (props.collidable)m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{s.halfExtents});
+            m_reg.emplace<C_Cube>(e, C_Cube{s.halfExtents});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{boxInertiaDiag(mass, s.halfExtents)});
+            }
+        } else if constexpr (std::is_same_v<T, SphereShape>) {
+            if (props.visual)    m_reg.emplace<C_PointVisualTag>(e);
+            if (props.collidable)m_reg.emplace<C_RB_Sphere>(e);
+            m_reg.emplace<C_Radius>(e, C_Radius{s.radius});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{sphereInertiaDiag(mass, s.radius)});
+            }
+        } else if constexpr (std::is_same_v<T, CapsuleShape>) {
+            if (props.visual)    m_reg.emplace<C_CapsuleVisualTag>(e);
+            if (props.collidable)m_reg.emplace<C_RB_Capsule>(e, C_RB_Capsule{s.radius, s.halfLength});
+            m_reg.emplace<C_Capsule>(e, C_Capsule{s.radius, s.halfLength});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{capsuleInertiaDiag(mass, s.radius, s.halfLength)});
+            }
+        } else if constexpr (std::is_same_v<T, PlaneShape>) {
+            if (props.visual)    m_reg.emplace<C_PlaneVisualTag>(e);
+            if (props.collidable)m_reg.emplace<C_RB_Plane>(e, C_RB_Plane{s.normal, s.up, s.sizeX, s.sizeY});
+            m_reg.emplace<C_Plane>(e, C_Plane{s.normal, s.up, s.sizeX, s.sizeY});
+
+        } else if constexpr (std::is_same_v<T, MeshShape>) {
+            if (props.visual)    m_reg.emplace<C_MeshVisualTag>(e);
+            if (props.collidable)m_reg.emplace<C_RB_Mesh>(e);
+            m_reg.emplace<C_Mesh>(e, C_Mesh{s.path, s.scale});
+            const bool dynamic = mass > 0;
+            const ::cardillo::MeshAsset& asset = assets().getMesh(s.path, s.scale, dynamic);
+            if (dynamic) {
+                // Adjust pose by principal axes & COM
+                Quaternion4r q_rpa(asset.Rpa);
+                Quaternion4r q_new = state.orientation * q_rpa;
+                Vector3r pos_new = state.position + (state.orientation * asset.com);
+                m_reg.get<C_Position3>(e).value = pos_new;
+                m_reg.get<C_Orientation>(e).q = q_new;
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                if (asset.volume > (real_t)0) {
+                    const real_t rho = mass / asset.volume;
+                    Vector3r Idiag = rho * asset.inertia_diag_unit.cwiseMax(Vector3r::Zero());
+                    m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{Idiag});
+                }
+            }
+        }
+    }, shape);
+
+    markStructureDirty();
+    return e;
+}
+
+entt::entity PhysicsSystem::addStaticBody(const RigidShape& shape,
+                                          const RigidState& state) {
+    RigidProps staticProps; // neither mass nor density set => static
+    return addRigidBody(shape, state, staticProps);
+}
+
 // Entity creation
 index_t PhysicsSystem::addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius) {
     auto e = m_reg.create();
@@ -105,54 +225,6 @@ entt::entity PhysicsSystem::createRigidVisualEntity_(const Vector3r& center) {
     return e;
 }
 
-// Obstacles (static visuals)
-index_t PhysicsSystem::addObstacleBody(const Plane& p) {
-    auto e = createRigidVisualEntity_(p.center);
-    m_reg.emplace<C_PlaneVisualTag>(e);
-    m_reg.emplace<C_Plane>(e, C_Plane{p.normal, p.up, p.sizeX, p.sizeY});
-    // Rigid-body default kinematics
-    m_reg.emplace<C_Orientation>(e, C_Orientation{Quaternion4r::Identity()});
-    m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{Vector3r::Zero()});
-    m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{Vector3r::Zero()});
-    // Attach unified rigid-body plane tag
-    m_reg.emplace<C_RB_Plane>(e, C_RB_Plane{p.normal, p.up, p.sizeX, p.sizeY});
-    if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
-    return static_cast<index_t>(entt::to_integral(e));
-}
-
-index_t PhysicsSystem::addObstacleBody(const Cube& c) {
-    auto e = createRigidVisualEntity_(c.center);
-    m_reg.emplace<C_CubeVisualTag>(e);
-    m_reg.emplace<C_Cube>(e, C_Cube{c.halfExtents});
-    m_reg.emplace<C_Orientation>(e, C_Orientation{c.q});
-    // Rigid-body default vels
-    m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{Vector3r::Zero()});
-    m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{Vector3r::Zero()});
-    // Attach unified rigid-body cube tag
-    m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{c.halfExtents});
-    // Default friction for obstacles as well
-    if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
-    return static_cast<index_t>(entt::to_integral(e));
-}
-
-// Static mesh obstacle: visual + collider only (no physics object)
-index_t PhysicsSystem::addObstacleMesh(const Vector3r& position,
-                                       const Quaternion4r& orientation,
-                                       const std::string& meshPath,
-                                       const Vector3r& scale) {
-    auto e = m_reg.create();
-    m_reg.emplace<C_Collidable>(e);
-    m_reg.emplace<C_VisualObject>(e);
-    m_reg.emplace<C_Position3>(e, C_Position3{position});
-    m_reg.emplace<C_Orientation>(e, C_Orientation{orientation});
-    // Visual + collider markers
-    m_reg.emplace<C_MeshVisualTag>(e);
-    m_reg.emplace<C_Mesh>(e, C_Mesh{meshPath, scale});
-    m_reg.emplace<C_RB_Mesh>(e);
-    if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
-    markStructureDirty();
-    return static_cast<index_t>(entt::to_integral(e));
-}
 
 // Static HeightField obstacle (terrain) from EXR
 index_t PhysicsSystem::addObstacleHeightField(const Vector3r& position,
@@ -178,96 +250,6 @@ index_t PhysicsSystem::addObstacleHeightField(const Vector3r& position,
     return static_cast<index_t>(entt::to_integral(e));
 }
 
-// Dynamic rigid body
-entt::entity PhysicsSystem::addRigidBody(real_t mass,
-                                    const Vector3r& position,
-                                    const Quaternion4r& orientation,
-                                    const Vector3r& linearVelocity,
-                                    const Vector3r& angularVelocity,
-                                    const Cube& shape) {
-    auto e = m_reg.create();
-    emplaceRigidBodyCommon(m_reg, e, mass, position, orientation, linearVelocity, angularVelocity, m_cfg.friction_default_mu);
-    m_reg.emplace<C_CubeVisualTag>(e);
-    m_reg.emplace<C_Cube>(e, C_Cube{shape.halfExtents});
-    m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{shape.halfExtents});
-    m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{boxInertiaDiag(mass, shape.halfExtents)});
-    markStructureDirty();
-    return e;
-}
-
-
-// Mesh-based rigid body
-entt::entity PhysicsSystem::addRigidBodyMesh(real_t mass,
-                                        const Vector3r& position,
-                                        const Quaternion4r& orientation,
-                                        const Vector3r& linearVelocity,
-                                        const Vector3r& angularVelocity,
-                                        const std::string& meshPath,
-                                        const Vector3r& scale) {
-    auto e = m_reg.create();
-    // Visual + collider markers
-    m_reg.emplace<C_MeshVisualTag>(e);
-    m_reg.emplace<C_Mesh>(e, C_Mesh{meshPath, scale});
-    m_reg.emplace<C_RB_Mesh>(e);
-    // Compute and store diagonal inertia using normalized asset metadata if available
-    
-    emplaceRigidBodyCommon(m_reg, e, mass, position, orientation, linearVelocity, angularVelocity, m_cfg.friction_default_mu);
-
-    const MeshAsset& asset = getMeshAsset(e);
-
-    // Revert to original orientation/position 
-    const Matrix33r Rpa = asset.Rpa;
-    const Vector3r com = asset.com;
-    Quaternion4r q_rpa(Rpa);
-    Quaternion4r q_new = orientation * q_rpa;
-    Vector3r pos_new = position + (orientation * com);
-
-    // replace position and orientation with adjusted versions
-    m_reg.get<C_Position3>(e).value = pos_new;
-    m_reg.get<C_Orientation>(e).q = q_new;
-
-    if (asset.bvh && asset.volume != (real_t)0.0) {
-        const real_t rho = mass / asset.volume; // density implied by mass
-        Vector3r Idiag = rho * asset.inertia_diag_unit.cwiseMax(Vector3r::Zero());
-        m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{Idiag});
-    }
-    markStructureDirty();
-    return e;
-}
-
-// Sphere rigid body
-entt::entity PhysicsSystem::addRigidBodySphere(real_t mass,
-                                         const Vector3r& position,
-                                         const Quaternion4r& orientation,
-                                         const Vector3r& linearVelocity,
-                                         const Vector3r& angularVelocity,
-                                         real_t radius) {
-    auto e = m_reg.create();
-    emplaceRigidBodyCommon(m_reg, e, mass, position, orientation, linearVelocity, angularVelocity, m_cfg.friction_default_mu);
-    // Visualize spheres using point visual with radius; collider via sphere tag + radius
-    m_reg.emplace<C_PointVisualTag>(e);
-    m_reg.emplace<C_Radius>(e, C_Radius{radius});
-    m_reg.emplace<C_RB_Sphere>(e);
-    m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{sphereInertiaDiag(mass, radius)});
-    markStructureDirty();
-    return e;
-}
-
-entt::entity PhysicsSystem::addRigidBodyCapsule(real_t mass,
-                                           const Vector3r& position,
-                                           const Quaternion4r& orientation,
-                                           const Vector3r& linearVelocity,
-                                           const Vector3r& angularVelocity,
-                                           const Capsule& shape) {
-    auto e = m_reg.create();
-    emplaceRigidBodyCommon(m_reg, e, mass, position, orientation, linearVelocity, angularVelocity, m_cfg.friction_default_mu);
-    m_reg.emplace<C_CapsuleVisualTag>(e);
-    m_reg.emplace<C_Capsule>(e, C_Capsule{shape.radius, shape.halfLength});
-    m_reg.emplace<C_RB_Capsule>(e, C_RB_Capsule{shape.radius, shape.halfLength});
-    m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{capsuleInertiaDiag(mass, shape.radius, shape.halfLength)});
-    m_structure_dirty = true;
-    return e;
-}
 
 // Add a general constraint pattern (ownership transferred)
 size_t PhysicsSystem::addConstraint(std::unique_ptr<cardillo::physics::ConstraintPattern> pattern)
@@ -566,287 +548,104 @@ void PhysicsSystem::disableCollisionBetween(entt::entity a, entt::entity b) {
     collisionManager().disablePair(a, b);
 }
 
-// ---------- Mesh asset cache ----------
+// ---------- Mesh / HeightField asset access ----------
 
-namespace {
-struct MeshNormalizationResult {
-    coal::BVHModelPtr_t bvh;          // normalized BVH (scaled, COM-centered, principal-axes aligned)
-    cardillo::Vector3r inertia_diag_unit{cardillo::Vector3r::Zero()};
-    real_t volume{(real_t)0.0};
-    cardillo::Matrix33r Rpa{cardillo::Matrix33r::Identity()};
-    coal::Vec3s com{0,0,0};
-};
-
-// Build a normalized BVH and compute unit-density inertia diag + volume
-MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardillo::Vector3r& scale) {
-    MeshNormalizationResult out;
-    coal::MeshLoader loader(coal::BV_AABB);
-    coal::BVHModelPtr_t bvh = loader.load(meshPath);
-
-    if (!bvh) return out;
-    // 1) Scale vertices and collect triangles
-    std::vector<coal::Vec3s> Vscaled;
-    std::vector<coal::Triangle> F;
-    if (bvh->vertices) Vscaled = *bvh->vertices;
-    if (bvh->tri_indices) F = *bvh->tri_indices;
-    for (auto& v : Vscaled) {
-        v[0] *= (coal::CoalScalar)scale.x();
-        v[1] *= (coal::CoalScalar)scale.y();
-        v[2] *= (coal::CoalScalar)scale.z();
-    }
-    // 2) Compute COM and volume on scaled geometry
-    coal::Vec3s com(0,0,0);
-    if (!Vscaled.empty()) {
-        auto temp0 = std::make_shared<coal::BVHModel<coal::AABB>>();
-        temp0->beginModel();
-        if (!F.empty()) temp0->addSubModel(Vscaled, F); else temp0->addSubModel(Vscaled);
-        temp0->endModel();
-        com = temp0->computeCOM();
-    out.volume = (real_t)temp0->computeVolume();
-    }
-    out.com = com;
-    // 3) Center vertices at COM
-    std::vector<coal::Vec3s> Vcentered = Vscaled;
-    for (auto& v : Vcentered) { v[0] -= com[0]; v[1] -= com[1]; v[2] -= com[2]; }
-    // 4) Compute inertia about COM on centered geometry
-    cardillo::Matrix33r Icom = cardillo::Matrix33r::Zero();
-    if (!Vcentered.empty()) {
-        auto temp1 = std::make_shared<coal::BVHModel<coal::AABB>>();
-        temp1->beginModel();
-        if (!F.empty()) temp1->addSubModel(Vcentered, F); else temp1->addSubModel(Vcentered);
-        temp1->endModel();
-    const auto Icoal = temp1->computeMomentofInertia();
-    Icom << (real_t)Icoal(0,0), (real_t)Icoal(0,1), (real_t)Icoal(0,2),
-         (real_t)Icoal(1,0), (real_t)Icoal(1,1), (real_t)Icoal(1,2),
-         (real_t)Icoal(2,0), (real_t)Icoal(2,1), (real_t)Icoal(2,2);
-    }
-    // 5) Principal axes from Icom
-    cardillo::Matrix33r Rpa = cardillo::Matrix33r::Identity();
-    cardillo::Vector3r Idiag = cardillo::Vector3r::Zero();
-    if (Icom.allFinite()) {
-        Eigen::SelfAdjointEigenSolver<cardillo::Matrix33r> es(Icom);
-        if (es.info() == Eigen::Success) {
-            Rpa = es.eigenvectors();
-            if (Rpa.determinant() < 0) Rpa.col(0) = -Rpa.col(0);
-            Idiag = es.eigenvalues();
-        }
-    }
-    out.Rpa = Rpa;
-    out.inertia_diag_unit = Idiag;
-    // 6) Rotate centered vertices to principal axes and build normalized BVH
-    std::vector<coal::Vec3s> Vnorm; Vnorm.reserve(Vcentered.size());
-    for (const auto& v : Vcentered) {
-    cardillo::Vector3r vc((real_t)v[0], (real_t)v[1], (real_t)v[2]);
-        cardillo::Vector3r vp = Rpa.transpose() * vc;
-        Vnorm.emplace_back((coal::CoalScalar)vp.x(), (coal::CoalScalar)vp.y(), (coal::CoalScalar)vp.z());
-    }
-    auto temp = std::make_shared<coal::BVHModel<coal::AABB>>();
-    temp->beginModel();
-    if (!F.empty()) temp->addSubModel(Vnorm, F); else temp->addSubModel(Vnorm);
-    temp->endModel(); temp->computeLocalAABB();
-    out.bvh = temp;
-    return out;
-}
-
-// Build a BVH scaled by 'scale' without COM-centering or principal-axes normalization
-coal::BVHModelPtr_t buildScaledBVH(const std::string& meshPath, const cardillo::Vector3r& scale) {
-    coal::MeshLoader loader(coal::BV_AABB);
-    coal::BVHModelPtr_t bvh = loader.load(meshPath);
-    if (!bvh) return nullptr;
-    std::vector<coal::Vec3s> V;
-    std::vector<coal::Triangle> F;
-    if (bvh->vertices) V = *bvh->vertices;
-    if (bvh->tri_indices) F = *bvh->tri_indices;
-
-    // Compute Center point
-    real_t min_x = std::numeric_limits<real_t>::max();;
-    real_t min_y = std::numeric_limits<real_t>::max();;
-    real_t min_z = std::numeric_limits<real_t>::max();;
-    real_t max_x = std::numeric_limits<real_t>::lowest();;
-    real_t max_y = std::numeric_limits<real_t>::lowest();;
-    real_t max_z = std::numeric_limits<real_t>::lowest();;
-
-    for (const auto& v : V) {
-        if ((real_t)v[0] < min_x) min_x = (real_t)v[0];
-        if ((real_t)v[1] < min_y) min_y = (real_t)v[1];
-        if ((real_t)v[2] < min_z) min_z = (real_t)v[2];
-        if ((real_t)v[0] > max_x) max_x = (real_t)v[0];
-        if ((real_t)v[1] > max_y) max_y = (real_t)v[1];
-        if ((real_t)v[2] > max_z) max_z = (real_t)v[2];
-    }
-    real_t cx = (min_x + max_x) / 2.0;
-    real_t cy = (min_y + max_y) / 2.0;
-    real_t cz = (min_z + max_z) / 2.0;
-
-    // Scale about COM: p' = com + S*(p - com)
-    std::vector<coal::Vec3s> Vscaled; Vscaled.reserve(V.size());
-    for (const auto& v : V) {
-        coal::CoalScalar dx = (coal::CoalScalar)scale.x() * (v[0] - cx);
-        coal::CoalScalar dy = (coal::CoalScalar)scale.y() * (v[1] - cy);
-        coal::CoalScalar dz = (coal::CoalScalar)scale.z() * (v[2] - cz);
-        Vscaled.emplace_back(cx + dx, cy + dy, cz + dz);
-    }
-    auto temp = std::make_shared<coal::BVHModel<coal::AABB>>();
-    temp->beginModel();
-    if (!F.empty()) temp->addSubModel(Vscaled, F); else temp->addSubModel(Vscaled);
-    temp->endModel(); temp->computeLocalAABB();
-    return temp;
-}
-
-// Parse simple OBJ UVs once; returns (uvs, hasUV). Maps the first vt per vertex index.
-std::pair<std::vector<Eigen::Vector2f>, bool> parseOBJUVs(const std::string& meshPath, std::size_t vertexCount) {
-    std::vector<Eigen::Vector2f> uvs(vertexCount, Eigen::Vector2f(0.f,0.f));
-    bool hasUV = false;
-    std::ifstream in(meshPath);
-    if (!in) return {uvs, hasUV};
-    std::vector<Eigen::Vector2f> vt; vt.reserve(1024);
-    std::vector<int> vtIndexPerV; vtIndexPerV.assign((int)vertexCount, -1);
-    std::string line;
-    while (std::getline(in, line)) {
-        if (line.size() >= 2 && line[0] == 'v' && line[1] == 't') {
-            std::istringstream ss(line.substr(2)); float u=0.f, v=0.f; ss >> u >> v; vt.emplace_back(u,v);
-        } else if (!line.empty() && line[0] == 'f') {
-            std::istringstream ss(line.substr(1)); std::string tok;
-            while (ss >> tok) {
-                int vi = -1, vti = -1; size_t p1 = tok.find('/');
-                if (p1 == std::string::npos) { vi = std::stoi(tok); }
-                else {
-                    vi = std::stoi(tok.substr(0, p1));
-                    size_t p2 = tok.find('/', p1+1);
-                    std::string vts = (p2 == std::string::npos) ? tok.substr(p1+1) : tok.substr(p1+1, p2-(p1+1));
-                    if (!vts.empty()) vti = std::stoi(vts);
-                }
-                if (vi <= 0) continue; int idx0 = vi - 1;
-                if (vti > 0 && idx0 >= 0 && idx0 < (int)vtIndexPerV.size()) {
-                    if (vtIndexPerV[idx0] == -1) vtIndexPerV[idx0] = vti - 1;
-                }
-            }
-        }
-    }
-    for (size_t i = 0; i < vtIndexPerV.size(); ++i) {
-        int uvi = vtIndexPerV[i];
-        if (uvi >= 0 && uvi < (int)vt.size()) { uvs[(int)i] = vt[(size_t)uvi]; hasUV = true; }
-    }
-    return {uvs, hasUV};
-}
-} // anonymous namespace
-
-static inline std::string makeMeshKey_(const std::string& path, const Vector3r& s, bool normalized) {
-    std::ostringstream ss; ss.setf(std::ios::fixed); ss<<std::setprecision(6);
-    ss << path << "|" << (double)s.x() << "," << (double)s.y() << "," << (double)s.z() << "|norm=" << (normalized ? 1 : 0);
-    return ss.str();
-}
-
-const PhysicsSystem::MeshAsset& PhysicsSystem::getMeshAsset(entt::entity e) const {
-    // Extract mesh path/scale from entity
+const ::cardillo::MeshAsset& PhysicsSystem::getMeshAsset(entt::entity e) const {
     if (!m_reg.any_of<C_Mesh>(e)) throw std::runtime_error("getMeshAsset(entity): entity has no C_Mesh");
     const auto& cm = m_reg.get<C_Mesh>(e);
     const bool isDynamic = m_reg.any_of<C_PhysicsObject>(e);
-    const std::string key = makeMeshKey_(cm.path, cm.scale, /*normalized*/ isDynamic);
-    auto it = m_meshCache.find(key);
-    if (it != m_meshCache.end()) return it->second;
-    // Build new asset via helpers
-    MeshAsset asset;
-    try {
-        if (!isDynamic) {
-            // Static mesh: just build scaled BVH
-            asset.bvh = buildScaledBVH(cm.path, cm.scale);
-            asset.inertia_diag_unit = Vector3r::Zero();
-            asset.volume = (real_t)0.0;
-        }else {
-            // Dynamic mesh: normalize (COM-center + principal axes)
-            auto nm = normalizeMesh(cm.path, cm.scale);
-            asset.bvh = nm.bvh;
-            asset.inertia_diag_unit = nm.inertia_diag_unit;
-            asset.volume = nm.volume;
-            asset.Rpa = nm.Rpa;
-            asset.com = Vector3r((real_t)nm.com[0], (real_t)nm.com[1], (real_t)nm.com[2]);
-            asset.normalized = true;
-        }
-
-        // Optional debug printout
-        if (m_cfg.debug_mesh) {
-            std::printf("[Mesh] path=%s dyn=%d volume=%.6g com=(%.6g,%.6g,%.6g) Iunit=(%.6g,%.6g,%.6g)\n",
-                        cm.path.c_str(), (int)isDynamic, (double)asset.volume,
-                        (double)asset.com.x(), (double)asset.com.y(), (double)asset.com.z(),
-                        (double)asset.inertia_diag_unit.x(), (double)asset.inertia_diag_unit.y(), (double)asset.inertia_diag_unit.z());
-            if (asset.normalized) {
-                std::printf("       Rpa=(%.6g,%.6g,%.6g; %.6g,%.6g,%.6g; %.6g,%.6g,%.6g)\n",
-                            (double)asset.Rpa(0,0), (double)asset.Rpa(0,1), (double)asset.Rpa(0,2),
-                            (double)asset.Rpa(1,0), (double)asset.Rpa(1,1), (double)asset.Rpa(1,2),
-                            (double)asset.Rpa(2,0), (double)asset.Rpa(2,1), (double)asset.Rpa(2,2));
-            }
-            if (asset.bvh) {
-                coal::Vec3s vcom = asset.bvh->computeCOM();
-                real_t vol_check = (real_t)asset.bvh->computeVolume();
-                auto Icheck_coal = asset.bvh->computeMomentofInertia();
-                Matrix33r Icheck;
-                Icheck << (real_t)Icheck_coal(0,0), (real_t)Icheck_coal(0,1), (real_t)Icheck_coal(0,2),
-                           (real_t)Icheck_coal(1,0), (real_t)Icheck_coal(1,1), (real_t)Icheck_coal(1,2),
-                           (real_t)Icheck_coal(2,0), (real_t)Icheck_coal(2,1), (real_t)Icheck_coal(2,2);
-                std::printf("       [Check] volume=%.6g com=(%.6g,%.6g,%.6g) I=(%.6g,%.6g,%.6g; %.6g,%.6g,%.6g; %.6g,%.6g,%.6g)\n",
-                            (double)vol_check, (double)vcom[0], (double)vcom[1], (double)vcom[2],
-                            (double)Icheck(0,0), (double)Icheck(0,1), (double)Icheck(0,2),
-                            (double)Icheck(1,0), (double)Icheck(1,1), (double)Icheck(1,2),
-                            (double)Icheck(2,0), (double)Icheck(2,1), (double)Icheck(2,2));
-            }
-        }
-
-        // Parse OBJ UVs once
-        if (cm.path.size() >= 4 && (cm.path.rfind(".obj") == cm.path.size() - 4 || cm.path.rfind(".OBJ") == cm.path.size() - 4)) {
-            std::size_t vcount = 0;
-            if (asset.bvh && asset.bvh->vertices) vcount = asset.bvh->vertices->size();
-            auto uvres = parseOBJUVs(cm.path, vcount);
-            asset.uvs = std::move(uvres.first);
-            asset.hasUV = uvres.second;
-        }
-    } catch (...) {
-        std::printf("Warning: Failed to load mesh asset from path: %s\n", cm.path.c_str());
-    }
-    auto [it2, ok] = m_meshCache.emplace(key, std::move(asset));
-    (void)ok;
-    return it2->second;
+    return assets().getMesh(cm.path, cm.scale, /*normalized*/ isDynamic);
 }
-
-static inline std::string makeHFKey_(const std::string& path, real_t xdim, real_t ydim, real_t zscale, real_t minh) {
-    std::ostringstream ss; ss.setf(std::ios::fixed); ss<<std::setprecision(6);
-    ss << path << "|xd=" << (double)xdim << ",yd=" << (double)ydim << ",zs=" << (double)zscale << ",min=" << (double)minh;
-    return ss.str();
-}
-
-const PhysicsSystem::HeightFieldAsset& PhysicsSystem::getHeightFieldAsset(entt::entity e) const {
+const ::cardillo::HeightFieldAsset& PhysicsSystem::getHeightFieldAsset(entt::entity e) const {
     if (!m_reg.any_of<C_HeightField>(e)) throw std::runtime_error("getHeightFieldAsset(entity): entity has no C_HeightField");
     const auto& ch = m_reg.get<C_HeightField>(e);
-    const std::string key = makeHFKey_(ch.path, ch.x_dim, ch.y_dim, ch.z_scale, ch.min_height);
-    auto it = m_hfCache.find(key);
-    if (it != m_hfCache.end()) return it->second;
-    // Build new asset
-    HeightFieldAsset asset; asset.path = ch.path; asset.x_dim = ch.x_dim; asset.y_dim = ch.y_dim; asset.z_scale = ch.z_scale; asset.min_height = ch.min_height;
-    try {
-        Eigen::Matrix<coal::CoalScalar, Eigen::Dynamic, Eigen::Dynamic> H;
-        int rows = 0, cols = 0;
-        if (cardillo::io::load_exr_heightmap(ch.path, H, rows, cols)) {
-            if (ch.z_scale != (real_t)1.0) {
-                H *= (coal::CoalScalar)ch.z_scale;
-            }
-        } else {
-            // Fallback: build a flat 2x2 patch at zero height (will be clamped to min_height)
-            rows = cols = 2;
-            H = Eigen::Matrix<coal::CoalScalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(rows, cols);
-            std::printf("[HeightField] Using flat fallback heightfield (2x2) for path: %s\n", ch.path.c_str());
-        }
-        // Ensure at least 2x2
-        if (rows >= 2 && cols >= 2) {
-            auto hf = std::make_shared<coal::HeightField<coal::AABB>>((coal::CoalScalar)ch.x_dim, (coal::CoalScalar)ch.y_dim, H, (coal::CoalScalar)ch.min_height);
-            hf->computeLocalAABB();
-            asset.hf = hf;
-            asset.rows = rows; asset.cols = cols;
-        }
-    } catch (...) {
-        std::printf("Warning: Exception while building heightfield from: %s\n", ch.path.c_str());
+    return assets().getHeightField(ch.path, ch.x_dim, ch.y_dim, ch.z_scale, ch.min_height);
+}
+
+std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::SplinePattern& spline,
+                                                                size_t segments,
+                                                                real_t width,
+                                                                real_t height,
+                                                                real_t density,
+                                                                real_t E,
+                                                                real_t nu) {
+    return createBeam(spline, segments, width, height, density, E, nu, 1,1,1,1,1, Vector3r::Zero(), Vector3r::Zero());
+}
+
+// Extended overload with stiffness scaling and damping
+std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::SplinePattern& spline,
+                                                                size_t segments,
+                                                                real_t width,
+                                                                real_t height,
+                                                                real_t density,
+                                                                real_t E,
+                                                                real_t nu,
+                                                                real_t axialScale,
+                                                                real_t shearScale,
+                                                                real_t torsionScale,
+                                                                real_t bendYScale,
+                                                                real_t bendZScale,
+                                                                const Vector3r& Dg,
+                                                                const Vector3r& Df) {
+    using namespace physics;
+    const real_t totalLen = spline.totalLength();
+    const real_t segLen = totalLen / (real_t)segments;
+
+    // Material and section properties
+    const real_t G = E / (2 * (1 + nu));
+    const real_t A = width * height;
+    const real_t Iy = width * std::pow(height, 3) / 12;
+    const real_t Iz = std::pow(width, 3) * height / 12;
+    const real_t Ip = Iy + Iz;
+
+    Vector3r Ke(E * A / segLen , G * A/ segLen, G * A / segLen);
+    Vector3r Kf(G * Ip / segLen, E * Iy / segLen, E * Iz / segLen);
+
+    // Apply user scaling to decouple rope-like properties
+    Ke.x() *= axialScale;        // stretch
+    Ke.y() *= shearScale;        // shear Y
+    Ke.z() *= shearScale;        // shear Z
+    Kf.x() *= torsionScale;      // torsion (GJ)
+    Kf.y() *= bendYScale;        // bending about local Y (EI_y)
+    Kf.z() *= bendZScale;        // bending about local Z (EI_z)
+
+    // Rigid body shape
+    PhysicsSystem::CubeShape shape(Vector3r(segLen / 2, width / 2, height / 2));
+
+    // Mass per segment from density and volume
+    const real_t mass = density * (A * segLen);
+
+    Vector3r vlin = Vector3r::Zero();
+    Vector3r vang = Vector3r::Zero();
+
+    // Root
+    misc::SplineSample s0 = spline.sample((real_t)0);
+    Matrix33r R0; R0.col(0)=s0.tangent; R0.col(1)=s0.normal; R0.col(2)=s0.binormal;
+    Quaternion4r q0(R0); q0.normalize();
+    entt::entity a = addRigidBody(shape, RigidState(s0.position, vlin, q0, vang), RigidProps(mass));
+
+    entt::entity root = a;
+    entt::entity end = a;
+
+    index_t segments_to_place = spline.isLoop() ? segments - 1 : segments;
+    for (size_t i = 1; i <= segments_to_place; ++i) {
+        real_t alpha = (real_t)i / (real_t)segments;
+        misc::SplineSample si = spline.sample(alpha);
+        Matrix33r Ri; Ri.col(0)=si.tangent; Ri.col(1)=si.normal; Ri.col(2)=si.binormal;
+        Quaternion4r qi(Ri); qi.normalize();
+        entt::entity b = addRigidBody(shape, RigidState(si.position, vlin, qi, vang), RigidProps(mass));
+        addConstraint<BeamConstraint>(ecs(), a, b, Ke, Kf, Dg, Df);
+        disableCollisionBetween(a, b);
+        a = b;
+        end = b;
     }
-    auto [it2, ok] = m_hfCache.emplace(key, std::move(asset)); (void)ok;
-    return it2->second;
+
+    if (spline.isLoop()) {
+        addConstraint<BeamConstraint>(ecs(), a, root, Ke, Kf, Dg, Df);
+        disableCollisionBetween(a, root);
+    }
+
+    return {root, end};
 }
 
 } // namespace cardillo::

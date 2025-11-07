@@ -32,17 +32,12 @@ public:
         const real_t rightX =  (gap * (real_t)0.5 + cliffThickness * (real_t)0.5);
 
         // Create cliff blocks as static obstacle cubes
-        auto makeCube = [&](const Vector3r& center, const Vector3r& halfExt, const Quaternion4r& q){
-            PhysicsSystem::Cube c; c.center = center; c.halfExtents = halfExt; c.q = q; return c; };
-
-        PhysicsSystem::Cube leftCliff = makeCube(Vector3r(leftX, 0.0, cliffCenterZ),
-                                                 Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5),
-                                                 Quaternion4r::Identity());
-        PhysicsSystem::Cube rightCliff = makeCube(Vector3r(rightX, 0.0, cliffCenterZ),
-                                                  Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5),
-                                                  Quaternion4r::Identity());
-        entt::entity eLeft  = entt::entity(static_cast<uint32_t>(sys.addObstacleBody(leftCliff)));
-        entt::entity eRight = entt::entity(static_cast<uint32_t>(sys.addObstacleBody(rightCliff)));
+        PhysicsSystem::CubeShape leftCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
+        PhysicsSystem::RigidState leftCliffState; leftCliffState.position = Vector3r(leftX, 0.0, cliffCenterZ); leftCliffState.orientation = Quaternion4r::Identity();
+        PhysicsSystem::RigidProps leftCliffProps; entt::entity eLeft = sys.addRigidBody(leftCliffShape, leftCliffState, leftCliffProps);
+        PhysicsSystem::CubeShape rightCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
+        PhysicsSystem::RigidState rightCliffState; rightCliffState.position = Vector3r(rightX, 0.0, cliffCenterZ); rightCliffState.orientation = Quaternion4r::Identity();
+        PhysicsSystem::RigidProps rightCliffProps; entt::entity eRight = sys.addRigidBody(rightCliffShape, rightCliffState, rightCliffProps);
         (void)eLeft; (void)eRight; // not needed further
 
         // Tripod parameters
@@ -250,8 +245,9 @@ public:
             center.z() = (cliffTopZ - plankHalf.z()) + liftZ;
 
             // Create plank as a rigid body cube (identity orientation)
-            PhysicsSystem::Cube shape; shape.center = center; shape.halfExtents = plankHalf; shape.q = Quaternion4r::Identity();
-            entt::entity plank = sys.addRigidBody(plankMass, center, Quaternion4r::Identity(), Vector3r::Zero(), Vector3r::Zero(), shape);
+            PhysicsSystem::CubeShape plankShape{plankHalf};
+            PhysicsSystem::RigidState plankState; plankState.position = center; plankState.orientation = Quaternion4r::Identity();
+            PhysicsSystem::RigidProps plankProps; plankProps.mass = plankMass; entt::entity plank = sys.addRigidBody(plankShape, plankState, plankProps);
             planks.push_back(plank);
 
             // Attach plank to rope nodes at its top-left and top-right surfaces

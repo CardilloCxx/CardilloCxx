@@ -14,52 +14,73 @@ public:
 
     void populate(cardillo::PhysicsSystem& sys) override {
         using namespace cardillo;
+        using namespace cardillo::misc;
 
-        const size_t segments = 200;
+        // Floor (static)
+        sys.addStaticBody(PhysicsSystem::CubeShape(Vector3r(15.0, 15.0, 0.1)), PhysicsSystem::RigidState(Vector3r(0,0,-0.1)));
+
+        const size_t segments = 50;
         const real_t length = M_PI;
-        const real_t segment_length = length / segments;
         const real_t width = 0.05 * length;
         const real_t height = width / 2;
-        real_t mass = 1.25 / segments;
+        const real_t density = 600;
+        real_t E = 5e7;
+        real_t nu = 0.3;
 
-        const real_t E = 1e8;
-        const real_t nu = 0.3;
-        const real_t G = E / (2 * (1 + nu));
-        const real_t A = width * height;
-        const real_t Iy = width * std::pow(height, 3) / 12;
-        const real_t Iz = std::pow(width, 3) * height / 12;
-        const real_t Ip = Iy + Iz;
+        // Circle spline with circumference=length
+        const real_t radius = length / ((real_t)2 * M_PI);
+        misc::CircleSpline spline(Vector3r(0,0,4), radius, Vector3r::UnitX(), Vector3r::UnitZ());
+        (void) sys.createBeam(spline, segments, height, width, density, E, nu);
 
-        Vector3r Ke(E * A * 1e5, G * A * 1e5, G * A * 1e5);
-        Vector3r Kf(G * Ip, E * Iy, E * Iz);
+        // Linear Beam
+        misc::LinearSpline line(Vector3r(3,-1,4), Vector3r(3,1,4));
+        auto endpoints = sys.createBeam(line, segments, width, height, density, E, nu);
+        sys.makeStatic(endpoints.first);
+        m_rodEnd = endpoints.second;
 
-        PhysicsSystem::Cube shape;
-        shape.halfExtents = Vector3r(segment_length / 2, width / 2, height / 2);
+        // Helix Beam
+        misc::HelixSpline helix(Vector3r(-3,0,4), Vector3r::UnitZ(), /* radius */ 0.5, /* pitch */ 1.0, /*turns*/ 2.0);
+        auto helix_endpoints = sys.createBeam(helix, segments, width, height, density, E * 10.0, nu);
+        sys.makeStatic(helix_endpoints.second);
 
-        Vector3r position = Vector3r::Zero();
-        Quaternion4r orientation = Quaternion4r::Identity();
-        Vector3r linearVelocity = Vector3r::Zero();
-        Vector3r angularVelocity = Vector3r::Zero();
+        // Beam rope between two static cubes
+        auto startCube = sys.addStaticBody(PhysicsSystem::CubeShape(Vector3r(0.1,0.1,0.1)), PhysicsSystem::RigidState(Vector3r(6,-0.1,4)));
+        auto endCube = sys.addRigidBody(PhysicsSystem::CubeShape(Vector3r(0.1,0.1,0.1)), PhysicsSystem::RigidState(Vector3r(6,2.1,4)), PhysicsSystem::RigidProps(1e10));
+        m_endCube = endCube;
 
-        entt::entity a = sys.addRigidBody(mass, position, orientation, linearVelocity, angularVelocity, shape);
-        sys.makeStatic(a);
+        misc::LinearSpline rope1(Vector3r(6.05, 0, 4), Vector3r(6.05, 2, 4));
+        endpoints = sys.createBeam(rope1, 150, 0.03, 0.03, density, 100, 0.3, 1e7, 1e7, 0, 0, 0, Vector3r::Constant(1), Vector3r::Constant(1));
+        sys.addConstraint<physics::RigidConstraint>(sys.ecs(), endpoints.first, startCube);
+        sys.disableCollisionBetween(endpoints.first, startCube);
+        sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), endCube, endpoints.second);
+        sys.disableCollisionBetween(endpoints.second, endCube);
 
-        for (index_t i=0; i < segments; ++i) {
-            position += Vector3r(segment_length, 0, 0);
-            entt::entity b = sys.addRigidBody(mass, position, orientation, linearVelocity, angularVelocity, shape);
-            sys.addConstraint<cardillo::physics::BeamConstraint>(sys.ecs(), a, b, Ke, Kf);
-            sys.disableCollisionBetween(a, b);
-            a = b;
-            m_rodEnd = b;
-        }
+        misc::LinearSpline rope2(Vector3r(5.95, 0, 4), Vector3r(5.95, 2, 4));
+        endpoints = sys.createBeam(rope2, 150, 0.03, 0.03, density, 100, 0.3, 1e7, 1e7, 0, 0, 0, Vector3r::Constant(1), Vector3r::Constant(1));
+        sys.addConstraint<physics::RigidConstraint>(sys.ecs(), endpoints.first, startCube);
+        sys.disableCollisionBetween(endpoints.first, startCube);
+        sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), endCube, endpoints.second);
+        sys.disableCollisionBetween(endpoints.second, endCube);
     }
 
     void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
         // Apply a twisting moment at the rod end
-        real_t torque_magnitude = 50;
+        real_t torque_magnitude = 0.05;
         sys.applyForce(m_rodEnd, Vector3r::Zero(), Vector3r(0, -torque_magnitude, 0));
+        // sys.applyForce(m_ropeEnd, Vector3r::Zero(), Vector3r(0.1, 0, 0));
+
+        if (t < 1.0) {
+            sys.setLinearVelocity(m_endCube, Vector3r(0, -1, 0));
+            sys.setAngularVelocity(m_endCube, Vector3r::Zero());
+        }else {
+            sys.setLinearVelocity(m_endCube, Vector3r::Zero());
+            sys.setAngularVelocity(m_endCube, Vector3r(0, 2, 0));
+        }
+        sys.applyForce(m_endCube, -sys.gravity() * sys.getMass(m_endCube).diagonal(), Vector3r::Zero());
     }
 
     private:
         entt::entity m_rodEnd{entt::null};
+        entt::entity m_ropeEnd{entt::null};
+        entt::entity m_endCube{entt::null};
 };

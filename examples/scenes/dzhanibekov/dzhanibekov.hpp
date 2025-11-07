@@ -21,14 +21,12 @@ public:
         const real_t Omega = (real_t)10.0;
         const Vector3r position = Vector3r::Zero();
         const Quaternion4r orientation = Quaternion4r::Identity();
-        PhysicsSystem::Cube shape;
-        shape.halfExtents = Vector3r(a / 2, b / 2, c / 2);
-        shape.q = orientation;
+    PhysicsSystem::CubeShape shape{Vector3r(a / 2, b / 2, c / 2)};
         const Vector3r linearVelocity = Vector3r::Zero();
         // const Vector3r angularVelocity(Omega, eps, eps);
         const Vector3r angularVelocity(eps, Omega, eps);
         // const Vector3r angularVelocity(eps, eps, Omega);
-        sys.addRigidBody(mass, position, orientation, linearVelocity, angularVelocity, shape);
+    PhysicsSystem::RigidState state; state.position = position; state.orientation = orientation; state.linearVelocity = linearVelocity; state.angularVelocity = angularVelocity; PhysicsSystem::RigidProps props; props.mass = mass; sys.addRigidBody(shape, state, props);
 
         const auto& reg = sys.ecs();
         entt::entity rodEntity = entt::null;

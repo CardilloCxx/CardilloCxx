@@ -20,31 +20,25 @@ public:
         Quaternion4r orientation = Quaternion4r::Identity();
         Vector3r linearVelocity = m_linearVelocity;
         Vector3r angularVeloctiy = Vector3r::Zero();
-        PhysicsSystem::Cube shape;
-        shape.center = m_position;
-        const real_t belt_halfLength = 5.0;
-        shape.halfExtents = Vector3r(belt_halfLength, 0.5, 0.1);
-        m_treatmill_entity = sys.addRigidBody(mass, m_position, orientation, linearVelocity, angularVeloctiy, shape);
+    const real_t belt_halfLength = 5.0;
+    PhysicsSystem::CubeShape beltShape{Vector3r(belt_halfLength, 0.5, 0.1)};
+    PhysicsSystem::RigidState beltState; beltState.position = m_position; beltState.orientation = orientation; beltState.linearVelocity = linearVelocity; beltState.angularVelocity = angularVeloctiy;
+    PhysicsSystem::RigidProps beltProps; beltProps.mass = mass;
+    m_treatmill_entity = sys.addRigidBody(beltShape, beltState, beltProps);
 
         // Static walls along the conveyor (left/right)
-        const real_t beltHalfX = shape.halfExtents.x();
-        const real_t beltHalfY = shape.halfExtents.y();
+    const real_t beltHalfX = beltShape.halfExtents.x();
+    const real_t beltHalfY = beltShape.halfExtents.y();
         const real_t wallThick = (real_t)0.05;
         const real_t wallHalfZ = (real_t)0.25; // ~0.5m tall walls
         const real_t wallYoff = beltHalfY + wallThick; // place just outside belt width
         {
-            PhysicsSystem::Cube wallL;
-            wallL.center = Vector3r(m_position.x(), -wallYoff, wallHalfZ);
-            wallL.halfExtents = Vector3r(beltHalfX, wallThick, wallHalfZ);
-            wallL.q = Quaternion4r::Identity();
-            sys.addObstacleBody(wallL);
+            PhysicsSystem::CubeShape wallShape{Vector3r(beltHalfX, wallThick, wallHalfZ)};
+            sys.addStaticBody(wallShape, PhysicsSystem::RigidState(Vector3r(m_position.x(), -wallYoff, wallHalfZ)));
         }
         {
-            PhysicsSystem::Cube wallR;
-            wallR.center = Vector3r(m_position.x(), +wallYoff, wallHalfZ);
-            wallR.halfExtents = Vector3r(beltHalfX, wallThick, wallHalfZ);
-            wallR.q = Quaternion4r::Identity();
-            sys.addObstacleBody(wallR);
+            PhysicsSystem::CubeShape wallShape{Vector3r(beltHalfX, wallThick, wallHalfZ)};
+            sys.addStaticBody(wallShape, PhysicsSystem::RigidState(Vector3r(m_position.x(), +wallYoff, wallHalfZ)));
         }
 
         // Drop box at the end of the conveyor
@@ -58,42 +52,27 @@ public:
         const Vector3r boxCenter(m_position.x() + boxOffsetX, 0.0, boxFloorZ);
         // Floor
         {
-            PhysicsSystem::Cube floor;
-            floor.center = Vector3r(boxCenter.x(), boxCenter.y(), boxFloorZ);
-            floor.halfExtents = Vector3r(boxHalfX, boxHalfY, boxFloorHalfZ);
-            floor.q = Quaternion4r::Identity();
-            sys.addObstacleBody(floor);
+            PhysicsSystem::CubeShape floorShape{Vector3r(boxHalfX, boxHalfY, boxFloorHalfZ)};
+            sys.addStaticBody(floorShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y(), boxFloorZ)));
         }
         // Back wall
         {
-            PhysicsSystem::Cube back;
-            back.center = Vector3r(boxCenter.x() + boxHalfX + boxWallT, boxCenter.y(), boxCenter.z() + 2 * boxWallHalfZ);
-            back.halfExtents = Vector3r(boxWallT, boxHalfY, 2 * boxWallHalfZ);
-            back.q = Quaternion4r::Identity();
-            sys.addObstacleBody(back);
+            PhysicsSystem::CubeShape backShape{Vector3r(boxWallT, boxHalfY, 2 * boxWallHalfZ)};
+            sys.addStaticBody(backShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x() + boxHalfX + boxWallT, boxCenter.y(), boxCenter.z() + 2 * boxWallHalfZ)));
         }
         // Front wall
         {
-            PhysicsSystem::Cube front;
-            front.center = Vector3r(boxCenter.x() - (boxHalfX + boxWallT), boxCenter.y(), boxCenter.z() + boxWallHalfZ);
-            front.halfExtents = Vector3r(boxWallT, boxHalfY, boxWallHalfZ);
-            front.q = Quaternion4r::Identity();
-            sys.addObstacleBody(front);
+            PhysicsSystem::CubeShape frontShape{Vector3r(boxWallT, boxHalfY, boxWallHalfZ)};
+            sys.addStaticBody(frontShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x() - (boxHalfX + boxWallT), boxCenter.y(), boxCenter.z() + boxWallHalfZ)));
         }
         // Side walls
         {
-            PhysicsSystem::Cube sideL;
-            sideL.center = Vector3r(boxCenter.x(), boxCenter.y() - (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ);
-            sideL.halfExtents = Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ);
-            sideL.q = Quaternion4r::Identity();
-            sys.addObstacleBody(sideL);
+            PhysicsSystem::CubeShape sideLShape{Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ)};
+            sys.addStaticBody(sideLShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y() - (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
         }
         {
-            PhysicsSystem::Cube sideR;
-            sideR.center = Vector3r(boxCenter.x(), boxCenter.y() + (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ);
-            sideR.halfExtents = Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ);
-            sideR.q = Quaternion4r::Identity();
-            sys.addObstacleBody(sideR);
+            PhysicsSystem::CubeShape sideRShape{Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ)};
+            sys.addStaticBody(sideRShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y() + (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
         }
     }
 
@@ -108,11 +87,8 @@ public:
             Quaternion4r orientation = Quaternion4r::UnitRandom();
             Vector3r linearVelocity = Vector3r::Zero();
             Vector3r angularVelocity = Vector3r::Zero();
-            PhysicsSystem::Cube shape;
-            shape.center = position;
-            shape.halfExtents = 0.1 * (Vector3r::Random() + Vector3r::Constant(1.2)) / 2.2;
-            shape.q = orientation;
-            sys.addRigidBody(mass, position, orientation, linearVelocity, angularVelocity, shape);
+            PhysicsSystem::CubeShape parcelShape{0.1 * (Vector3r::Random() + Vector3r::Constant(1.2)) / 2.2};
+            PhysicsSystem::RigidState st; st.position = position; st.orientation = orientation; st.linearVelocity = linearVelocity; st.angularVelocity = angularVelocity; PhysicsSystem::RigidProps pr; pr.mass = mass; sys.addRigidBody(parcelShape, st, pr);
         }
     }
 

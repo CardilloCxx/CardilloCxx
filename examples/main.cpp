@@ -55,8 +55,8 @@ int main(int argc, char** argv) {
     // RailScene scene;
     // DzhanibekovScene scene;
     // ParcelScene scene;
-    // DiscreteRodScene scene;
-    ConstraintTestScene scene;
+    DiscreteRodScene scene;
+    // ConstraintTestScene scene;
 
     scene.populate(sys);
 

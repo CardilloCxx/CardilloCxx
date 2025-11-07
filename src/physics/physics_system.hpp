@@ -5,12 +5,15 @@
 #include <vector>
 #include <string>
 #include <optional>
+#include <variant>
 #include <functional>
 #include <unordered_map>
 #include <type_traits>
 #include <entt/entt.hpp>
 #include <petscsys.h>
 #include "../misc/types.hpp"
+#include "../misc/spline.hpp"
+#include "assets.hpp"
 #include "../misc/dofs.hpp"
 #include "../config/config.hpp"
 // COAL types for mesh assets
@@ -36,6 +39,70 @@ namespace cardillo {
 // with translational DOFs only (no rotations).
 class PhysicsSystem {
 public:
+    // Unified rigid-body creation API --------------------------------------------------
+    struct RigidState {
+        Vector3r     position       = Vector3r::Zero();
+        Quaternion4r orientation    = Quaternion4r::Identity();
+        Vector3r     linearVelocity = Vector3r::Zero();
+        Vector3r     angularVelocity= Vector3r::Zero();
+        RigidState() = default;
+        explicit RigidState(const Vector3r& p) : position(p) {}
+        RigidState(const Vector3r& p, const Vector3r& v) : position(p), linearVelocity(v) {}
+        RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q)
+            : position(p), orientation(q), linearVelocity(v) {}
+        RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q, const Vector3r& w)
+            : position(p), orientation(q), linearVelocity(v), angularVelocity(w) {}
+        // Convenience when no rotation is desired but angular velocity is provided
+        RigidState(const Vector3r& p, const Vector3r& v, const Vector3r& w)
+            : position(p), linearVelocity(v), angularVelocity(w) {}
+    };
+    struct CubeShape    { 
+        Vector3r halfExtents{Vector3r::Zero()};
+        CubeShape() = default;
+        explicit CubeShape(const Vector3r& he) : halfExtents(he) {}
+    };
+    struct PlaneShape   { 
+        Vector3r normal{Vector3r(0,0,1)}; Vector3r up{Vector3r(0,1,0)}; real_t sizeX{5}; real_t sizeY{5};
+        PlaneShape() = default;
+        PlaneShape(const Vector3r& n, const Vector3r& u, real_t sx, real_t sy) : normal(n), up(u), sizeX(sx), sizeY(sy) {}
+    };
+    struct CapsuleShape { 
+        real_t radius{0}; real_t halfLength{0};
+        CapsuleShape() = default;
+        CapsuleShape(real_t r, real_t h) : radius(r), halfLength(h) {}
+    };
+    struct SphereShape  { 
+        real_t radius{0};
+        SphereShape() = default;
+        explicit SphereShape(real_t r) : radius(r) {}
+    };
+    struct MeshShape    { 
+        std::string path; Vector3r scale{1,1,1};
+        MeshShape() = default;
+        explicit MeshShape(const std::string& p) : path(p) {}
+        MeshShape(const std::string& p, const Vector3r& s) : path(p), scale(s) {}
+    };
+    using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, SphereShape, MeshShape>;
+    struct RigidProps {
+        // If neither mass nor density set => static (no physics object)
+        std::optional<real_t> mass;     
+        std::optional<real_t> density; 
+        real_t friction = -1; // <0 => use default from config
+        bool   collidable = true;
+        bool   visual     = true;
+        RigidProps() = default;
+        explicit RigidProps(real_t m) : mass(m) {}
+        RigidProps(real_t m, real_t fric, bool vis=true, bool coll=true) : mass(m), friction(fric), collidable(coll), visual(vis) {}
+        static RigidProps withDensity(real_t rho) { RigidProps p; p.density = rho; return p; }
+    };
+
+    entt::entity addRigidBody(const RigidShape& shape,
+                              const RigidState& state,
+                              const RigidProps& props);
+
+    entt::entity addStaticBody(const RigidShape& shape,
+                               const RigidState& state);
+
     PhysicsSystem();
     explicit PhysicsSystem(const config::Config& cfg);
     ~PhysicsSystem();
@@ -58,46 +125,6 @@ public:
         Vector3r up{0,1,0};
         real_t sizeX{5}, sizeY{5}; // half extents for visualization
     };
-    // Axis-aligned cube visual with quaternion orientation
-    struct Cube {
-        Vector3r center{0,0,0};
-        Vector3r halfExtents{0.5,0.5,0.5};
-    Quaternion4r q = Quaternion4r::Identity(); // orientation
-    };
-    struct Capsule {
-        real_t radius{0.5};
-        real_t halfLength{0.5};
-    };
-    // Obstacle (static) visuals
-    index_t addObstacleBody(const Plane& p);
-    index_t addObstacleBody(const Cube& c);
-    // Static mesh obstacle (visual + collider), no dynamics/inertia normalization
-    index_t addObstacleMesh(const Vector3r& position,
-                            const Quaternion4r& orientation,
-                            const std::string& meshPath,
-                            const Vector3r& scale = Vector3r(1,1,1));
-    // Dynamic rigid body creation: pose and spatial velocity. Returns the
-    // created entt::entity so callers can keep the handle to create constraints.
-    entt::entity addRigidBody(real_t mass,
-                         const Vector3r& position,
-                         const Quaternion4r& orientation,
-                         const Vector3r& linearVelocity,
-                         const Vector3r& angularVelocity,
-                         const Cube& shape);
-    entt::entity addRigidBodyCapsule(real_t mass,
-                                const Vector3r& position,
-                                const Quaternion4r& orientation,
-                                const Vector3r& linearVelocity,
-                                const Vector3r& angularVelocity,
-                                const Capsule& shape);
-    // Mesh-based rigid body (collision via COAL BVH, visual via VTK mesh output)
-    entt::entity addRigidBodyMesh(real_t mass,
-                             const Vector3r& position,
-                             const Quaternion4r& orientation,
-                             const Vector3r& linearVelocity,
-                             const Vector3r& angularVelocity,
-                             const std::string& meshPath,
-                             const Vector3r& scale = Vector3r(1,1,1));
     // Static HeightField obstacle sourced from an EXR heightmap
     index_t addObstacleHeightField(const Vector3r& position,
                                    const Quaternion4r& orientation,
@@ -106,20 +133,11 @@ public:
                                    real_t y_dim,
                                    real_t z_scale = (real_t)1.0,
                                    real_t min_height = (real_t)0.0);
-    // Sphere-based rigid body (with rotation and inertia)
-    entt::entity addRigidBodySphere(real_t mass,
-                               const Vector3r& position,
-                               const Quaternion4r& orientation,
-                               const Vector3r& linearVelocity,
-                               const Vector3r& angularVelocity,
-                               real_t radius);
   
     index_t addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);
 
     // Create a mass-spring soft body from an OBJ file by instantiating one point mass per vertex
     // and connecting unique triangle edges with 3D translational springs (x,y,z).
-    // Returns the list of created point-mass entities to allow callers to further constrain or query them.
-    // Single general overload with defaults for pose, velocities, and total mass.
     std::vector<entt::entity> addSoftBody(const std::string& objPath,
                                           real_t stiffness,
                                           real_t damping,
@@ -142,30 +160,9 @@ public:
     VectorXr getVelocity( entt::entity e ) const;     // Linear and angular combined
     VectorXr getForce( entt::entity e ) const;        // Linear and angular combined
 
-    // Shared mesh asset access (deduplicates loading across VTK/collision/inertia)
-    struct MeshAsset {
-        coal::BVHModelPtr_t bvh;                    // scaled geometry BVH
-        std::vector<Eigen::Vector2f> uvs;           // optional per-vertex UVs
-        bool hasUV = false;
-        // Normalization metadata (unit density)
-        Vector3r inertia_diag_unit = Vector3r::Zero(); // principal inertias for rho=1, about COM
-        real_t volume = (real_t)0.0;                    // signed volume (>0 for outward-facing)
-        // Additional normalization info
-        Matrix33r Rpa = Matrix33r::Identity();          // principal-axes rotation used when normalized
-        Vector3r com = Vector3r::Zero();                // center of mass in scaled mesh frame
-        bool normalized = false;                        // whether mesh vertices in bvh are normalized (COM-centered, PA-aligned)
-    };
-    // Entity-based accessor: determines static/dynamic and may adjust pose for dynamic meshes
-    const MeshAsset& getMeshAsset(entt::entity e) const;
-    // Shared heightfield asset (deduplicates loading from EXR)
-    struct HeightFieldAsset {
-        std::shared_ptr<coal::HeightField<coal::AABB>> hf; // collider geometry
-        int rows{0}, cols{0};
-        real_t x_dim{1}, y_dim{1};
-        real_t z_scale{1}, min_height{0};
-        std::string path;
-    };
-    const HeightFieldAsset& getHeightFieldAsset(entt::entity e) const;
+    // Shared asset access (wrappers over PhysicsAssets using entity components)
+    const ::cardillo::MeshAsset& getMeshAsset(entt::entity e) const;
+    const ::cardillo::HeightFieldAsset& getHeightFieldAsset(entt::entity e) const;
 
     // Optional inertia component for rigid bodies with arbitrary shapes
     struct C_InertiaDiag { Vector3r I; }; // body-frame diagonal inertia (Ixx,Iyy,Izz)
@@ -276,6 +273,33 @@ public:
     void setLinearVelocity(entt::entity e, const Vector3r& v);
     void setAngularVelocity(entt::entity e, const Vector3r& w);
 
+    // Create a beam along a spline: instantiates `segments` rigid bodies sampled uniformly in alpha
+    // and connects consecutive bodies with BeamConstraint. Returns pair(rootEntity, endEntity).
+    // density: mass density (mass = density * volume assuming rectangular prism width x height x segment_length)
+    // E: Young's modulus, nu: Poisson's ratio (used to derive shear modulus G).
+    std::pair<entt::entity, entt::entity> createBeam(const misc::SplinePattern& spline,
+                                                     size_t segments,
+                                                     real_t width,
+                                                     real_t height,
+                                                     real_t density,
+                                                     real_t E,
+                                                    real_t nu);
+
+    std::pair<entt::entity, entt::entity> createBeam(const misc::SplinePattern& spline,
+                                                    size_t segments,
+                                                    real_t width,
+                                                    real_t height,
+                                                    real_t density,
+                                                    real_t E,
+                                                    real_t nu,
+                                                    real_t axialScale,
+                                                    real_t shearScale,
+                                                    real_t torsionScale,
+                                                    real_t bendYScale,
+                                                    real_t bendZScale,
+                                                    const Vector3r& Dg,
+                                                    const Vector3r& Df);
+
 private:
     // Helper to add common rigid-body components
     void emplaceRigidBodyCommon_(entt::entity e,
@@ -312,10 +336,13 @@ private:
     // New constraint-pattern storage (owned by the system)
     std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>> m_constraints_new;
 
-    // Shared mesh cache (keyed by path + scale)
-    mutable std::unordered_map<std::string, MeshAsset> m_meshCache;
-    // Shared heightfield cache (keyed by path + dims + scales)
-    mutable std::unordered_map<std::string, HeightFieldAsset> m_hfCache;
+    // Asset manager (new abstraction)
+    std::shared_ptr<class PhysicsAssets> m_assets;
+
+public:
+    void setAssets(std::shared_ptr<class PhysicsAssets> assets) { m_assets = std::move(assets); }
+    class PhysicsAssets& assets();
+    const class PhysicsAssets& assets() const;
 };
 
 } // namespace cardillo

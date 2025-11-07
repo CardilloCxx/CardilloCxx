@@ -13,26 +13,24 @@ public:
     void populate(cardillo::PhysicsSystem& sys) override {
         using namespace cardillo;
 
-        PhysicsSystem::Cube ground;
-        const real_t groundHalfThickness = (real_t)0.01;
-        const real_t groundHalfSize = (real_t)50.0;
-        ground.center = Vector3r(0.0, 0.0, -groundHalfThickness);
-        ground.halfExtents = Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness);
-        ground.q = Quaternion4r::Identity();
-        sys.addObstacleBody(ground);
+    const real_t groundHalfThickness = (real_t)0.01;
+    const real_t groundHalfSize = (real_t)50.0;
+    PhysicsSystem::CubeShape groundShape{Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness)};
+    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-groundHalfThickness); groundState.orientation = Quaternion4r::Identity();
+    sys.addStaticBody(groundShape, groundState);
 
         const real_t phi = (real_t)(31.0 * M_PI / 180.0);
         const real_t mass = (real_t)1.0;
         const real_t l = (real_t)1.0;
         const real_t thickness = (real_t)0.2;
         const Vector3r position((real_t)0.0, (real_t)0.0, l * std::sin(phi) + 1.0 * thickness * std::cos(phi));
-        PhysicsSystem::Capsule rodShape;
-        rodShape.radius = thickness * (real_t)0.5;
-        rodShape.halfLength = l;
+    PhysicsSystem::CapsuleShape rodShape{thickness * (real_t)0.5, l};
         const Quaternion4r capsuleOrientation(Eigen::AngleAxis<real_t>(M_PI_2 -phi, Vector3r::UnitY()));
         const real_t v0 = (real_t)30.0;
         const Vector3r linearVelocity(-v0, 0.0, 0.0);
-        sys.addRigidBodyCapsule(mass, position, capsuleOrientation, linearVelocity, Vector3r::Zero(), rodShape);
+    PhysicsSystem::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
+    PhysicsSystem::RigidProps props; props.mass = mass;
+    sys.addRigidBody(rodShape, state, props);
 
         const auto& reg = sys.ecs();
         entt::entity rodEntity = entt::null;

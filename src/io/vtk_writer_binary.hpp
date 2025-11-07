@@ -43,9 +43,9 @@ private:
         float partition{-1.0f};
         int entityId{-1};
     };
-    struct PlaneOut { cardillo::PhysicsSystem::Plane p; };
+    struct PlaneOut { Vector3r center{Vector3r::Zero()}; Vector3r normal{0,0,1}; Vector3r up{0,1,0}; real_t sizeX{5}, sizeY{5}; };
     struct CubeOut {
-        cardillo::PhysicsSystem::Cube cube; // center, halfExtents, orientation
+        Vector3r center{Vector3r::Zero()}; Vector3r halfExtents{0.5,0.5,0.5}; Quaternion4r q{Quaternion4r::Identity()};
         Vector3r vlin{Vector3r::Zero()};
         Vector3r omega{Vector3r::Zero()};
         float partition{-1.0f};
@@ -107,6 +107,7 @@ private:
     void writeStaticGeometry(const Collected& data) const;
     void writeDynamicGeometry(int step, const Collected& data) const;
     void writeSprings(int step, const cardillo::PhysicsSystem& sys) const;
+    void writeStaticGeometryStep(int step, const Collected& data) const; // write static geometry each timestep (entity transforms may change)
 
     std::string m_outputDir;
     std::string m_baseName;

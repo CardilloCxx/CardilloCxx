@@ -18,36 +18,25 @@ public:
         // sys.setGravity(Vector3r::Zero());
 
         // Floor (make static to avoid zero-mass dynamic DOFs)
-        PhysicsSystem::Cube shape;
-        shape.halfExtents = Vector3r(15.0, 15.0, 0.1);
-        real_t mass = 0.0; // static
-        Vector3r pos = Vector3r(0, 0, -0.1);
-        Quaternion4r q = Quaternion4r::Identity();
-        Vector3r v = Vector3r::Zero();
-        Vector3r w = Vector3r::Zero();
-        entt::entity floor = sys.addRigidBody(mass, pos, q, v, w, shape);
-        sys.makeStatic(floor);
+    PhysicsSystem::CubeShape floorShape{Vector3r(15.0, 15.0, 0.1)};
+    PhysicsSystem::RigidState floorState; floorState.position = Vector3r(0,0,-0.1); floorState.orientation = Quaternion4r::Identity();
+    PhysicsSystem::RigidProps floorProps; (void)sys.addRigidBody(floorShape, floorState, floorProps);
 
 //         // Hinge constraint test
         {
             // Tilted obstacle cube
-            PhysicsSystem::Cube obstacle_shape;
-            obstacle_shape.halfExtents = Vector3r(3.0, 3.0, 3.0);
+            PhysicsSystem::CubeShape obstacle_shape{Vector3r(3.0, 3.0, 3.0)};
             Quaternion4r q_obstacle = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 6.0, Vector3r::UnitY()));
             Vector3r pos_obstacle = Vector3r(0, 6, 2);
-            entt::entity obstacle = sys.addRigidBody(0.0, pos_obstacle, q_obstacle, Vector3r::Zero(), Vector3r::Zero(), obstacle_shape);
-            sys.makeStatic(obstacle);
+            PhysicsSystem::RigidState st_ob; st_ob.position = pos_obstacle; st_ob.orientation = q_obstacle; PhysicsSystem::RigidProps pr_ob; entt::entity obstacle = sys.addRigidBody(obstacle_shape, st_ob, pr_ob);
 
             Matrix33r rot_obstacle = q_obstacle.toRotationMatrix();
 
             // Disk to be hinged
-            PhysicsSystem::Cube shape;
-            shape.halfExtents = Vector3r(1.5, 1.5, 0.05); 
+            PhysicsSystem::CubeShape diskShape{Vector3r(1.5, 1.5, 0.05)};
             real_t mass = 10.0;
             Vector3r pos = pos_obstacle + rot_obstacle * Vector3r(0.0, 0.0, 3.5);
-            Vector3r v = Vector3r::Zero();
-            Vector3r w = Vector3r(0.0, 0.0, 0.0);
-            entt::entity disk = sys.addRigidBody(mass, pos, q_obstacle, v, w, shape);
+            PhysicsSystem::RigidState st; st.position = pos; st.orientation = q_obstacle; PhysicsSystem::RigidProps pr; pr.mass = mass; entt::entity disk = sys.addRigidBody(diskShape, st, pr);
 
             Vector3r a_local = Vector3r::Zero(); // hinge axis in A's local frame
             Vector3r b_local = Vector3r(0, 0, 0); // hinge axis in B's local frame
@@ -68,24 +57,21 @@ public:
 
 
             // Cube over the hinge
-            shape.halfExtents = Vector3r(0.1, 0.1, 0.1);
+            PhysicsSystem::CubeShape cubeShape{Vector3r(0.1, 0.1, 0.1)};
             mass = 1.0;
-            Vector3r pos_cube = pos_obstacle + rot_obstacle * Vector3r(1.0, 1.0, 3.61);
-            Vector3r v_cube = Vector3r(0,0,0);
-            Vector3r w_cube = Vector3r::Zero();
-            entt::entity cube = sys.addRigidBody(mass, pos_cube, q_obstacle, v_cube, w_cube, shape);
+            Vector3r pos_cube = pos_obstacle + rot_obstacle * Vector3r(1.0, 1.0, 3.75);
+            PhysicsSystem::RigidState stc; stc.position = pos_cube; stc.orientation = q_obstacle; PhysicsSystem::RigidProps prc; prc.mass = mass; entt::entity cube = sys.addRigidBody(cubeShape, stc, prc);
 
-            // sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), disk, cube, Vector3r(0.5, 0.5, 0.0), Vector3r(0.0, 0.0, 0.0), 
-            //                                                 Vector3r(1e10, 1e10, 100), Vector3r::Zero());
-            sys.addConstraint<physics::RigidConstraint>(sys.ecs(), disk, cube);
+            sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), disk, cube, Vector3r(1, 1, 0.0), Vector3r(0.0, 0.0, 0.0), 
+                                                            Vector3r(10, 10, 1e20), Vector3r::Zero());
+            // sys.addConstraint<physics::RigidConstraint>(sys.ecs(), disk, cube);
 
         }
 
         // Translational constraint test center
         {
             // Cube shape parameters
-            PhysicsSystem::Cube shape;
-            shape.halfExtents = Vector3r(0.25, 0.25, 0.25); // 0.5m cube
+            PhysicsSystem::CubeShape shape{Vector3r(0.25, 0.25, 0.25)}; // 0.5m cube
 
             real_t mass = 1.0;
 
@@ -94,7 +80,9 @@ public:
             Quaternion4r qA = Quaternion4r::Identity();
             Vector3r vA = Vector3r(1.0, 0.0, 0.0);
             Vector3r wA = Vector3r(0.0, 5.0, 0.0); // initial spin around z
-            entt::entity A = sys.addRigidBody(mass, posA, qA, vA, wA, shape);
+            entt::entity A; {
+                PhysicsSystem::RigidState stA; stA.position = posA; stA.orientation = qA; stA.linearVelocity = vA; stA.angularVelocity = wA; PhysicsSystem::RigidProps prA; prA.mass = mass; A = sys.addRigidBody(shape, stA, prA);
+            }
 
             // Body B
             const Vector3r he = shape.halfExtents;
@@ -102,7 +90,9 @@ public:
             Quaternion4r qB = Quaternion4r::Identity();
             Vector3r vB = Vector3r(0.0, 0.0, 0.0); // initial velocity towards A
             Vector3r wB = Vector3r::Zero();
-            entt::entity B = sys.addRigidBody(mass, posB, qB, vB, wB, shape);
+            entt::entity B; {
+                PhysicsSystem::RigidState stB; stB.position = posB; stB.orientation = qB; stB.linearVelocity = vB; stB.angularVelocity = wB; PhysicsSystem::RigidProps prB; prB.mass = mass; B = sys.addRigidBody(shape, stB, prB);
+            }
 
             sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), A, B);
         }
@@ -110,8 +100,7 @@ public:
         // Translational constraint test
         {
             // Cube shape parameters
-            PhysicsSystem::Cube shape;
-            shape.halfExtents = Vector3r(0.25, 0.25, 0.25); // 0.5m cube
+            PhysicsSystem::CubeShape shape{Vector3r(0.25, 0.25, 0.25)}; // 0.5m cube
 
             real_t mass = 1.0;
 
@@ -120,7 +109,9 @@ public:
             Quaternion4r qA = Quaternion4r::Identity();
             Vector3r vA = Vector3r::Zero();
             Vector3r wA = Vector3r(0.0, 5.0, 0.0); // initial spin around z
-            entt::entity A = sys.addRigidBody(mass, posA, qA, vA, wA, shape);
+            entt::entity A; {
+                PhysicsSystem::RigidState stA; stA.position = posA; stA.orientation = qA; stA.linearVelocity = vA; stA.angularVelocity = wA; PhysicsSystem::RigidProps prA; prA.mass = mass; A = sys.addRigidBody(shape, stA, prA);
+            }
 
             // Body B
             const Vector3r he = shape.halfExtents;
@@ -128,7 +119,9 @@ public:
             Quaternion4r qB = Quaternion4r::Identity();
             Vector3r vB = Vector3r(0.0, 0.0, 0.0); // initial velocity towards A
             Vector3r wB = Vector3r::Zero();
-            entt::entity B = sys.addRigidBody(mass, posB, qB, vB, wB, shape);
+            entt::entity B; {
+                PhysicsSystem::RigidState stB; stB.position = posB; stB.orientation = qB; stB.linearVelocity = vB; stB.angularVelocity = wB; PhysicsSystem::RigidProps prB; prB.mass = mass; B = sys.addRigidBody(shape, stB, prB);
+            }
 
             // Attachment points:
             Vector3r rA_local = Vector3r( he.x(), he.y(), he.z());
@@ -138,8 +131,7 @@ public:
 
         // Double pendulum
         {
-            PhysicsSystem::Cube shape;
-            shape.halfExtents = Vector3r(0.1, 0.1, 0.1); // thin vertical rectangle
+            PhysicsSystem::CubeShape shape{Vector3r(0.1, 0.1, 0.1)}; // thin vertical rectangle
             real_t mass = 1.0;
 
             // Body A
@@ -147,22 +139,27 @@ public:
             Quaternion4r qA = Quaternion4r::Identity();
             Vector3r vA = Vector3r::Zero();
             Vector3r wA = Vector3r::Zero();
-            entt::entity A = sys.addRigidBody(mass, posA, qA, vA, wA, shape);
-            sys.makeStatic(A); // fix first body
+            entt::entity A; {
+                PhysicsSystem::RigidState stA; stA.position = posA; stA.orientation = qA; stA.linearVelocity = vA; stA.angularVelocity = wA; PhysicsSystem::RigidProps prA; prA.mass = mass; A = sys.addRigidBody(shape, stA, prA); sys.makeStatic(A);
+            }
 
             // Body B
             Vector3r posB = Vector3r(-3.0, 0.0, 2.0);
             Quaternion4r qB = Quaternion4r::Identity();
             Vector3r vB = Vector3r(3.0, 2.0, 1.0);
             Vector3r wB = Vector3r::Zero();
-            entt::entity B = sys.addRigidBody(mass, posB, qB, vB, wB, shape);
+            entt::entity B; {
+                PhysicsSystem::RigidState stB; stB.position = posB; stB.orientation = qB; stB.linearVelocity = vB; stB.angularVelocity = wB; PhysicsSystem::RigidProps prB; prB.mass = mass; B = sys.addRigidBody(shape, stB, prB);
+            }
 
             // Body C
             Vector3r posC = Vector3r(-3.0, 0.0, 0.5);
             Quaternion4r qC = Quaternion4r::Identity();
             Vector3r vC = Vector3r(12.0, 2.0, 1.0);
             Vector3r wC = Vector3r::Zero();
-            entt::entity C = sys.addRigidBody(mass, posC, qC, vC, wC, shape);
+            entt::entity C; {
+                PhysicsSystem::RigidState stC; stC.position = posC; stC.orientation = qC; stC.linearVelocity = vC; stC.angularVelocity = wC; PhysicsSystem::RigidProps prC; prC.mass = mass; C = sys.addRigidBody(shape, stC, prC);
+            }
 
             // Constraints
             sys.addConstraint<physics::LinearDistanceConstraint>(sys.ecs(), A, B, Vector3r(0.0, 0.0, -0.1), Vector3r(0.0, 0.0, 0.1));

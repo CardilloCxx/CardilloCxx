@@ -15,12 +15,10 @@ public:
     void populate(cardillo::PhysicsSystem& sys) override {
         using namespace cardillo;
 
-        // Create a ground plate so dominos have something to rest on
-        PhysicsSystem::Cube ground;
-        ground.center = Vector3r(0.0, 0.0, -0.5);
-        ground.halfExtents = Vector3r(15.0, 15.0, 0.5);
-        ground.q = Quaternion4r::Identity();
-        sys.addObstacleBody(ground);
+    // Create a ground plate (static cube via unified API)
+    PhysicsSystem::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
+    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5);
+    sys.addStaticBody(groundShape, groundState);
 
         // Domino dims: x=length/2, y=thickness/2, z=height/2
         const Vector3r dominoHalf((real_t)0.024, (real_t)0.00375, (real_t)0.012); // length 9.6cm, thickness 1.5cm, height 4.8cm
@@ -35,14 +33,10 @@ public:
 
         // bullet
         {
-            sys.addRigidBodySphere(
-                (real_t)2.0,
-                Vector3r(0.25, 0.0, 2.0),
-                Quaternion4r::Identity(),
-                Vector3r(-20.0, 0.0, 0.0),
-                Vector3r::Zero(),
-                (real_t)0.01
-            );
+            PhysicsSystem::SphereShape s{(real_t)0.01};
+            PhysicsSystem::RigidState st; st.position = Vector3r(0.25, 0.0, 2.0); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(-20.0, 0.0, 0.0);
+            PhysicsSystem::RigidProps pr; pr.mass = (real_t)2.0;
+            sys.addRigidBody(s, st, pr);
         }
     }
 
@@ -83,23 +77,18 @@ private:
             c.y() += offsetY;
             const real_t z = baseCenter.z() + half.z() + (real_t)k * ( (real_t)2.0 * half.z() + extraLayerGap );
             c.z() = z;  
-            PhysicsSystem::Cube domino;
-            domino.halfExtents = half;
+            PhysicsSystem::CubeShape shape{half};
+            Quaternion4r q = Quaternion4r::Identity();
             if (alongY) {
                 // rotate 90 deg about Z to align long axis along Y
-                domino.q = Quaternion4r(Eigen::AngleAxis<real_t>((real_t)M_PI_2, Vector3r::UnitZ()));
+                q = Quaternion4r(Eigen::AngleAxis<real_t>((real_t)M_PI_2, Vector3r::UnitZ()));
                 c.x() -= (L/2.0 - W/2.0);
                 c.y() += (L/2.0 - W/2.0);
-            } else {
-                domino.q = Quaternion4r::Identity();
             }
             const real_t m = massFromDensity(half, density);
-            Vector3r vel = Vector3r::Zero();
-            // Give the domino in the 4th layer from the top, in the middle of y, in the most positive x a nudge
-            // if (i == Ncells -1 && (j == Ncells /2 || j == Ncells /2 - 1) && k == layers -4) {
-            //     vel = Vector3r(4.0, 0.0, 1.0) * 2;
-            // }
-            sys.addRigidBody(m, c, domino.q, vel, Vector3r::Zero(), domino);
+            PhysicsSystem::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = Vector3r::Zero(); state.angularVelocity = Vector3r::Zero();
+            PhysicsSystem::RigidProps props; props.mass = m;
+            sys.addRigidBody(shape, state, props);
 
         };
 
