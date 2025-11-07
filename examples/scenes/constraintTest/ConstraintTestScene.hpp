@@ -28,7 +28,7 @@ public:
         entt::entity floor = sys.addRigidBody(mass, pos, q, v, w, shape);
         sys.makeStatic(floor);
 
-        // Hinge constraint test
+//         // Hinge constraint test
         {
             // Tilted obstacle cube
             PhysicsSystem::Cube obstacle_shape;
@@ -40,11 +40,10 @@ public:
 
             Matrix33r rot_obstacle = q_obstacle.toRotationMatrix();
 
-
             // Disk to be hinged
             PhysicsSystem::Cube shape;
             shape.halfExtents = Vector3r(1.5, 1.5, 0.05); 
-            real_t mass = 1.0;
+            real_t mass = 10.0;
             Vector3r pos = pos_obstacle + rot_obstacle * Vector3r(0.0, 0.0, 3.5);
             Vector3r v = Vector3r::Zero();
             Vector3r w = Vector3r(0.0, 0.0, 0.0);
@@ -52,7 +51,7 @@ public:
 
             Vector3r a_local = Vector3r::Zero(); // hinge axis in A's local frame
             Vector3r b_local = Vector3r(0, 0, 0); // hinge axis in B's local frame
-            Vector3r axis_A_frame = Vector3r::UnitX(); 
+            Vector3r axis_A_frame = Vector3r::UnitZ(); 
             real_t K_hinge = 0;
             real_t D_hinge = 0;
             Vector2r K_rotation = Vector2r::Constant(std::numeric_limits<real_t>::infinity());
@@ -70,18 +69,15 @@ public:
 
             // Cube over the hinge
             shape.halfExtents = Vector3r(0.1, 0.1, 0.1);
-            mass = 0.1;
-            Vector3r pos_cube = pos_obstacle + rot_obstacle * Vector3r(0.5, 0.5, 3.75);
-            Vector3r v_cube = Vector3r::Zero();
+            mass = 1.0;
+            Vector3r pos_cube = pos_obstacle + rot_obstacle * Vector3r(1.0, 1.0, 3.61);
+            Vector3r v_cube = Vector3r(0,0,0);
             Vector3r w_cube = Vector3r::Zero();
             entt::entity cube = sys.addRigidBody(mass, pos_cube, q_obstacle, v_cube, w_cube, shape);
 
             // sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), disk, cube, Vector3r(0.5, 0.5, 0.0), Vector3r(0.0, 0.0, 0.0), 
             //                                                 Vector3r(1e10, 1e10, 100), Vector3r::Zero());
-            sys.addConstraint<physics::HingeConstraint>(sys.ecs(), disk, cube,
-                                                            Vector3r(0.5, 0.5, 0.0), Vector3r(0.0, 0.0, 0.0),
-                                                            Vector3r::UnitZ(),
-                                                            std::numeric_limits<real_t>::infinity(), 0);
+            sys.addConstraint<physics::RigidConstraint>(sys.ecs(), disk, cube);
 
         }
 

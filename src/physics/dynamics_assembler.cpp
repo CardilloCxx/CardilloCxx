@@ -413,6 +413,11 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
         m_S_sparse_ldlt->factorize(S_double);
         if (m_S_sparse_ldlt->info() != Eigen::Success) {
             m_S_sparse_ldlt.reset();
+
+            std::cout << "DynamicsAssembler::buildAndFactorS: Sparse LDLT factorization failed for S= \n"
+                      << m_S_sparse << "\n";
+
+
             return false;
         }
     } catch (...) {

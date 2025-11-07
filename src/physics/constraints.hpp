@@ -56,6 +56,8 @@ protected:
         Vector3r xB{Vector3r::Zero()};
         Vector3r rA_world{Vector3r::Zero()};
         Vector3r rB_world{Vector3r::Zero()};
+        Vector3r pA{Vector3r::Zero()};
+        Vector3r pB{Vector3r::Zero()};
         Matrix33r RA{Matrix33r::Identity()};
         Matrix33r RB{Matrix33r::Identity()};
         Quaternion4r qA{Quaternion4r::Identity()};
@@ -83,6 +85,8 @@ protected:
             wa.RB = qB.toRotationMatrix();
             wa.rA_world = wa.RA * m_rA_local;
             wa.rB_world = wa.RB * m_rB_local;
+            wa.pA = pA;
+            wa.pB = pB;
             wa.xA = pA + wa.rA_world;
             wa.xB = pB + wa.rB_world;
         }
@@ -178,13 +182,25 @@ public:
         ConstraintResult out; out.a = m_a; out.b = m_b;
         const auto wa = computeAttachments_();
 
+//         out.WgA = MatrixXXr::Zero(6, 3);
+//         out.WgA.block<3,3>(0,0) = -wa.RA;
+//         out.WgA.block<3,3>(3,0) = -skew_from_vector(m_rA_local);
+// 
+//         out.WgB = MatrixXXr::Zero(6, 3);
+//         out.WgB.block<3,3>(0,0) = wa.RA;
+//         out.WgB.block<3,3>(3,0) = (skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA);
+
         out.WgA = MatrixXXr::Zero(6, 3);
         out.WgA.block<3,3>(0,0) = -wa.RA;
-        out.WgA.block<3,3>(3,0) = -skew_from_vector(m_rA_local);
+        out.WgA.block<3,3>(3,0) = -skew_from_vector(wa.RA.transpose() * (wa.xB - wa.xA) + m_rA_local);
 
         out.WgB = MatrixXXr::Zero(6, 3);
         out.WgB.block<3,3>(0,0) = wa.RA;
-        out.WgB.block<3,3>(3,0) = (skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA);
+        out.WgB.block<3,3>(3,0) = skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA;
+
+        // (-wa.RA.transpose() * wa.RB * skew_from_vector(m_rB_local)).transpose();
+        // out.WgA.block<3,3>(3,0) = (skew_from_vector(wa.RA.transpose() * (wa.xB - wa.xA)) + wa.RA.transpose() * skew_from_vector(ra_world) * wa.RA).transpose();
+        // out.WgB.block<3,3>(3,0) = (wa.RA.transpose() * skew_from_vector(rb_world) * wa.RB).transpose();
 
         out.WgammaA = out.WgA;
         out.WgammaB = out.WgB;
@@ -202,6 +218,42 @@ private:
     Vector3r m_D{Vector3r::Zero()};
 };
 
+class RigidConstraint : public ConstraintPattern {
+public:
+    RigidConstraint(entt::registry& reg,
+                                entt::entity a,
+                                entt::entity b,
+                                const Vector3r& rA_local = Vector3r::Zero(),
+                                const Vector3r& rB_local = Vector3r::Zero())
+        : ConstraintPattern(reg, a, b, rA_local, rB_local) {}
+    ConstraintResult getConstraint() const override {
+        ConstraintResult out; out.a = m_a; out.b = m_b;
+        const auto wa = computeAttachments_();
+
+        // Prepare 6 scalar rows (3 translational + 3 rotational) with 6 columns per velocity block
+        out.WgA = MatrixXXr::Zero(6, 6);
+        out.WgB = MatrixXXr::Zero(6, 6);
+
+        // Lock translations in A's frame (columns 0..2)
+        out.WgA.block<3,3>(0,0) = -wa.RA;
+        out.WgA.block<3,3>(3,0) = -skew_from_vector(wa.RA.transpose() * (wa.xB - wa.xA) + m_rA_local);
+        out.WgB.block<3,3>(0,0) = wa.RA;
+        out.WgB.block<3,3>(3,0) = skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA;
+
+        // Lock rotations in A's frame (columns 3..5)
+        out.WgA.block<3,3>(3,3) = -Matrix33r::Identity();
+        out.WgB.block<3,3>(3,3) = Matrix33r::Identity();
+
+        out.WgammaA = out.WgA;
+        out.WgammaB = out.WgB;
+
+        out.Crows = VectorXr::Constant(6, std::numeric_limits<real_t>::infinity());
+        out.Arows = VectorXr::Zero(6);
+
+        return out;
+    }
+};
+
 class HingeConstraint : public ConstraintPattern {
 public:
     HingeConstraint(entt::registry& reg,
@@ -210,7 +262,7 @@ public:
                                 const Vector3r& rA_local = Vector3r::Zero(),                                        // Attachment point in A's local frame
                                 const Vector3r& rB_local = Vector3r::Zero(),                                        // Attachment point in B's local frame
                                 const Vector3r& axis_localA = Vector3r(0,0,1),                                      // Hinge axis in A's local frame
-                                const real_t& K_axis = std::numeric_limits<real_t>::infinity(),                     // Stiffness along hinge axis > 0 -> rotational spring
+                                const real_t& K_axis = 0,                                                           // Stiffness along hinge axis > 0 -> rotational spring
                                 const real_t& D_axis = (real_t)0,                                                   // Damping along hinge axis > 0 -> "friction"
                                 const Vector2r& Kf_A = Vector2r::Constant(std::numeric_limits<real_t>::infinity()), // Stiffnesses for the two locked rotational DOFs
                                 const Vector2r& Df_A = Vector2r::Zero(),                                            // Damping for the two locked rotational DOFs
@@ -230,22 +282,22 @@ public:
                 m_hingeFrame.col(0) = right;
                 m_hingeFrame.col(1) = up;
                 m_hingeFrame.col(2) = axisA;
-
-                std::cout << "Hinge frame (local A):\n" << m_hingeFrame << std::endl;
             }
 
     ConstraintResult getConstraint() const override {
         ConstraintResult out; out.a = m_a; out.b = m_b;
         const auto wa = computeAttachments_();
 
+        // Prepare 6 scalar rows (3 translational + 3 rotational) with 6 columns per velocity block
         out.WgA = MatrixXXr::Zero(6, 6);
         out.WgB = MatrixXXr::Zero(6, 6);
 
-        // Lock Translations:
+        // Lock translations in A's frame (columns 0..2)
         out.WgA.block<3,3>(0,0) = -wa.RA;
-        out.WgA.block<3,3>(3,0) = -skew_from_vector(m_rA_local);
+        out.WgA.block<3,3>(3,0) = -skew_from_vector(wa.RA.transpose() * (wa.xB - wa.xA) + m_rA_local);
+
         out.WgB.block<3,3>(0,0) = wa.RA;
-        out.WgB.block<3,3>(3,0) = (skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA);
+        out.WgB.block<3,3>(3,0) = skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA;
 
         // Lock rotation relative in A's local frame
         out.WgA.block<3,3>(3,3) = -m_hingeFrame;
