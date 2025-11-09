@@ -33,6 +33,10 @@ SplineSample LinearSpline::sample(real_t alpha) const {
     return { pos, F.col(0), F.col(1), F.col(2) };
 }
 
+Vector3r LinearSpline::centerOfMass() const {
+    return (m_p0 + m_p1) * (real_t)0.5;
+}
+
 // CircleSpline ---------------------------------------------------------------
 CircleSpline::CircleSpline(const Vector3r &center, real_t radius, const Vector3r &normal, const Vector3r &dir0)
 : m_c(center), m_r(radius), m_n(normal.normalized()) {
@@ -55,6 +59,10 @@ SplineSample CircleSpline::sample(real_t alpha) const {
     Vector3r binormal = tangent.cross(normal).normalized(); // aligns with m_n up to sign
     Vector3r pos = m_c + m_r * radial;
     return { pos, tangent, normal, binormal };
+}
+
+Vector3r CircleSpline::centerOfMass() const {
+    return m_c;
 }
 
 // HelixSpline ----------------------------------------------------------------
@@ -83,6 +91,16 @@ SplineSample HelixSpline::sample(real_t alpha) const {
     Vector3r binormal = tangent.cross(normal).normalized();
     Vector3r pos = m_c + m_r * radial + (m_pitch * theta / ((real_t)2*M_PI)) * m_d;
     return { pos, tangent, normal, binormal };
+}
+
+Vector3r HelixSpline::centerOfMass() const {
+    const real_t Theta = (real_t)2 * M_PI * m_turns;
+    if (Theta == (real_t)0) return m_c;
+    const real_t sT = std::sin(Theta);
+    const real_t cT = std::cos(Theta);
+    Vector3r avg_radial = m_r * ((sT / Theta) * m_u + ((1 - cT) / Theta) * m_v);
+    Vector3r avg_axial  = ((m_pitch * m_turns) * (real_t)0.5) * m_d; // (pitch*turns)/2
+    return m_c + avg_radial + avg_axial;
 }
 
 }} // namespace cardillo::misc

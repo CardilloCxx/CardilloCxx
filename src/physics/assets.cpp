@@ -29,6 +29,7 @@ struct MeshNormalizationResult {
     coal::Vec3s com{0,0,0};
 };
 
+// Normalize mesh: scale, center at COM, rotate to principal axes
 MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardillo::Vector3r& scale) {
     MeshNormalizationResult out;
     coal::MeshLoader loader(coal::BV_AABB);

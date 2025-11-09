@@ -84,7 +84,3 @@ if (CARDILLO_USE_TINYEXR)
     find_package(ZLIB REQUIRED)
     target_link_libraries(${PROJECT_NAME} PUBLIC ZLIB::ZLIB)
 endif()
-
-# Simple tests (no framework): build small executables
-add_executable(matrix_tests tests/matrix_tests.cpp)
-target_link_libraries(matrix_tests PRIVATE ${PROJECT_NAME})

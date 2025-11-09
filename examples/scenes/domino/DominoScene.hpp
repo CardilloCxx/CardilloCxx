@@ -23,8 +23,8 @@ public:
         // Domino dims: x=length/2, y=thickness/2, z=height/2
         const Vector3r dominoHalf((real_t)0.024, (real_t)0.00375, (real_t)0.012); // length 9.6cm, thickness 1.5cm, height 4.8cm
         const real_t density = (real_t)800.0;
-        const int layers = 103;
-        const int gridN = 6;
+        const int layers = 16;
+        const int gridN = 16;
         const Vector3r baseCenter(0.0, 0.0, 0.0);
         const real_t gapLong = (real_t)0.004; // small longitudinal spacing
         const real_t extraLayerGap = (real_t)-0.0001;
@@ -34,7 +34,7 @@ public:
         // bullet
         {
             PhysicsSystem::SphereShape s{(real_t)0.01};
-            PhysicsSystem::RigidState st; st.position = Vector3r(0.25, 0.0, 2.0); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(-20.0, 0.0, 0.0);
+            PhysicsSystem::RigidState st; st.position = Vector3r(0.75, 0.0, 0.25); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(-10.0, 1.0, 0.0);
             PhysicsSystem::RigidProps pr; pr.mass = (real_t)2.0;
             sys.addRigidBody(s, st, pr);
         }

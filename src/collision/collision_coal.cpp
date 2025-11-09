@@ -95,45 +95,20 @@ inline Contact makeContact(const entt::registry& reg,
                            entt::entity eb,
                            Vector3r p1W,
                            Vector3r p2W,
-                           Vector3r nW,
+                           Vector3r nN,
                            real_t depth,
                            const std::string& frictionCombine)
 {
-    // Canonicalize entity order so contact orientation is stable across frames
-    entt::entity a_can = ea;
-    entt::entity b_can = eb;
-
-    Vector3r nW_can = nW;
-    if (entt::to_integral(a_can) > entt::to_integral(b_can)) {
-        std::swap(a_can, b_can);
-        // Keep normal pointing from A->B, and swap witness points to remain consistent
-        nW_can = -nW_can;
-        // std::swap(p1W, p2W);
-    }
-
-    // // Fallback: if mesh normals weren't available or didn't trigger a flip,
-    // // fall back to the previous heuristic using body center directions.
-    // if (!flipped) {
-    //     if (nW_can.dot(b_pos - a_pos) < 0) {
-    //         nW_can = -nW_can;
-    //     }
-    // }
-
-    Vector3r a_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(a_can).value;
-    Vector3r b_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(b_can).value;
+    Vector3r a_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(ea).value;
+    Vector3r b_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(eb).value;
 
 
-    // // Flip normals so they are pointing from A to B, this doesnt work for concave shapes
-    // if(nW_can.dot(b_pos - a_pos) < 0) {
-    //     nW_can = -nW_can;
-    // }
-
-    Contact c{}; c.a = a_can; c.b = b_can;
+    Contact c{}; c.a = ea; c.b = eb;
     // Precompute transforms for both bodies once
     const cardillo::collision::BodyXform XA = cardillo::collision::BodyXform::fromEcs(reg, c.a);
     const cardillo::collision::BodyXform XB = cardillo::collision::BodyXform::fromEcs(reg, c.b);
+    
     // Normalize normal and construct stable tangent frame
-    Vector3r nN = nW_can;
     real_t nlen = nN.norm();
     if (nlen > (real_t)0) nN /= nlen;
 
@@ -303,6 +278,7 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
 
 void CollisionCoal::rebuild() {
     if (!m_sys) return;
+    auto sc = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
     clear();
     ensureBroadphaseFromConfig_();
     const auto& reg = m_sys->ecs();
@@ -350,6 +326,7 @@ void CollisionCoal::rebuild() {
 
 void CollisionCoal::applyTransforms() {
     if (!m_sys) return;
+    auto sc = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
     // Lazily build scene on first use or after clear
     if (!m_broadphase || m_objects.empty()) {
         rebuild();
@@ -384,28 +361,23 @@ std::vector<Contact> CollisionCoal::detectAll() const {
         auto* self = const_cast<CollisionCoal*>(this);
         self->rebuild();
     }
-    if (!m_broadphase) return {};
-
-    // Measure pre-broadphase setup time (scene ensure, trivial inits) [removed detailed timing]
-
-    // First collect potentially colliding pairs from broadphase.
-    // We then run narrowphase per pair to get a pair-specific CollisionResult and expand to contact patches.
-    // NOTE: Avoid O(N^2) preallocation for callback storage (can dominate runtime when no pairs are returned).
-    // Reserve a modest multiple of N instead; let it grow if needed.
-    const std::size_t nObj = m_objects.size();
-    const std::size_t cbReserve = std::max<std::size_t>(nObj * 8, 256);
-    coal::CollisionCallBackCollect collect_cb(/*max_size*/ cbReserve);
-    collect_cb.init();
-    m_broadphase->collide(&collect_cb);
 
     const auto& reg = m_sys->ecs();
-    const std::string frictionCombine = m_sys->config().friction_combine;
-    const auto& pairs = collect_cb.getCollisionPairs();
+
+    std::vector<coal::CollisionCallBackCollect::CollisionPair> pairs;
+    {   
+        auto sc = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
+        const std::size_t nObj = m_objects.size();
+        const std::size_t cbReserve = std::max<std::size_t>(nObj * 16, 256);
+        coal::CollisionCallBackCollect collect_cb(/*max_size*/ cbReserve);
+        collect_cb.init();
+        m_broadphase->collide(&collect_cb);
+        pairs = collect_cb.getCollisionPairs();
+    }
+
     // Reserve buckets heuristically
     mapCurr.reserve(pairs.size());
-    // size for potential info
 
-    // Fast path: no potential pairs found; skip all downstream work
     if (pairs.empty()) {
         m_prevContactMap.clear();
         if( m_sys && m_sys->config().debug_rb) {
@@ -428,33 +400,52 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     coal::ContactPatchResult patch_res(patch_req);
     const bool usePatchVertices = m_sys ? m_sys->config().collision_use_patch_vertices : true;
 
+    const std::string frictionCombine = m_sys->config().friction_combine;
+
     for (const auto& pr : pairs) {
+        auto sc_n = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionNarrowphase);
         auto* o1 = pr.first;
         auto* o2 = pr.second;
         if (!o1 || !o2) continue;
 
         // Run narrowphase for this pair
-        cres.clear();
-        coal::collide(o1, o2, creq, cres);
-        if (cres.numContacts() == 0) continue;
+        entt::entity ea, eb;
+        {
+            auto sc_c = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionNarrowphaseCollide);
+            
+            // Identify indices/entities back from user data
+            auto idx1p = reinterpret_cast<std::uintptr_t>(o1->getUserData());
+            auto idx2p = reinterpret_cast<std::uintptr_t>(o2->getUserData());
+            if (!(idx1p > 0 && (idx1p - 1) < m_entities.size() && idx2p > 0 && (idx2p - 1) < m_entities.size())) continue;
+            std::size_t iA = idx1p - 1, iB = idx2p - 1;
 
-        // Identify indices/entities back from user data
-        auto idx1p = reinterpret_cast<std::uintptr_t>(o1->getUserData());
-        auto idx2p = reinterpret_cast<std::uintptr_t>(o2->getUserData());
-        if (!(idx1p > 0 && (idx1p - 1) < m_entities.size() && idx2p > 0 && (idx2p - 1) < m_entities.size())) continue;
-        const std::size_t iA = idx1p - 1, iB = idx2p - 1;
-        entt::entity ea = m_entities[iA];
-        entt::entity eb = m_entities[iB];
-        
+            if (iB < iA) {
+                std::swap(o1, o2);
+                std::swap(iA, iB);
+            }
+
+            ea = m_entities[iA];
+            eb = m_entities[iB];
+
+            cres.clear();
+            coal::collide(o1, o2, creq, cres);
+            if (cres.numContacts() == 0) continue;
+        }
+
         if (isPairDisabled(ea, eb)) continue;
 
-        // Compute contact patches for this pair based on the pair CollisionResult,
-        // then append either expanded patch vertices or raw contacts via a single helper.
-        patch_res.clear();
-        coal::computeContactPatch(o1, o2, cres, patch_req, patch_res);
-        
-        std::size_t appended = appendContactsFromPair(reg, ea, eb, cres, patch_res, mapCurr, frictionCombine, usePatchVertices);
-        (void)appended;
+        // Compute contact patches for this pair
+        {
+            auto sc_prep = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionMakeContactPatch);
+            patch_res.clear();
+            coal::computeContactPatch(o1, o2, cres, patch_req, patch_res);
+        }
+
+        // Append contacts from this pair
+        {
+            auto sc_p = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionMakeContact);
+            appendContactsFromPair(reg, ea, eb, cres, patch_res, mapCurr, frictionCombine, usePatchVertices);
+        }
     }
     // Per-pair contact deduplication by proximity (optional)
     const real_t minPairDist = m_sys ? m_sys->config().collision_min_pair_contact_distance : (real_t)0.0;
@@ -471,6 +462,7 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     std::size_t totalContacts = 0;
     std::size_t totalMatched = 0;
     for (auto& kv : mapCurr) {
+        auto sc_match = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionMatching);
         auto itPrev = m_prevContactMap.find(kv.first);
         if (itPrev != m_prevContactMap.end()) {
             matchContactsForPair(itPrev->second, kv.second, maxMatchDist);
@@ -525,6 +517,7 @@ void CollisionCoal::enablePair(entt::entity a, entt::entity b) {
 }
 
 bool CollisionCoal::isPairDisabled(entt::entity a, entt::entity b) const {
+    auto sc = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::DisableCollisionPairs);
     return m_disabledPairs.find(ContactPairKey::make(a, b)) != m_disabledPairs.end();
 }
 

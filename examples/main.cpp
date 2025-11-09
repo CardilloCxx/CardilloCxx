@@ -5,6 +5,11 @@
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Geometry>
+#include <chrono>
+#include "misc/progress/ProgressBar.hpp"
+#include <csignal>
+#include <cstdlib>
+#include <iostream>
 
 // Scenes
 #include "scenes/heightmap/HeightmapScene.hpp"
@@ -23,15 +28,24 @@
 #include "scenes/parcel/ParcelScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
-#include "scenes/constraintTest/ConstraintTestScene.hpp"
 
 using namespace cardillo;
+
+static PhysicsSystem sys(cardillo::config::Config{}); 
+
+void printTimingsAtExit(int sig) {
+    sys.timings().printBreakdown(std::cout);
+    std::exit(EXIT_FAILURE);
+}
 
 int main(int argc, char** argv) {
     PetscInitialize(&argc, &argv, nullptr, nullptr);
     int worldRank = 0, worldSize = 1;
     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
     MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+
+    std::signal(SIGINT, printTimingsAtExit);
+    Eigen::setNbThreads(1);
 
     // Load config and wire into solver and writer
     cardillo::config::Config cfg = (argc > 1)
@@ -40,13 +54,13 @@ int main(int argc, char** argv) {
     
     if (argc == 0 && worldRank == 0) std::cout << "No config file provided, using defaults." << std::endl;
     
-    // Initialize physics system with config (includes gravity, friction, etc.)
-    PhysicsSystem sys(cfg);
+    sys.setConfig(cfg);
+
     // HeightmapScene scene;
     // DominoScene scene;
     // SpringTestScene scene;
     // RodAssemblyScene scene;
-    // NetScene scene;
+    NetScene scene;
     // HangbrideScene scene;
     // SoftbodyTestScene scene;
     // ChainScene scene;
@@ -55,7 +69,7 @@ int main(int argc, char** argv) {
     // RailScene scene;
     // DzhanibekovScene scene;
     // ParcelScene scene;
-    DiscreteRodScene scene;
+    // DiscreteRodScene scene;
     // ConstraintTestScene scene;
 
     scene.populate(sys);
@@ -77,16 +91,29 @@ int main(int argc, char** argv) {
     const real_t dt = cfg.sim_dt;
     const int steps = (int)(T / dt);
     if (writer) writer->maybeWrite(0, t, sys);
-    for (int k = 0; k < steps; ++k) {
-        scene.updateScene(sys, t, dt);
-        solver.stepMidpoint(dt);
-        t += dt;
-        if (writer) writer->maybeWrite(k+1, t, sys);
-    }
+
+    auto t0 = std::chrono::steady_clock::now();
+    std::unique_ptr<cardillo::misc::ProgressBar> pbar;
 
     if (worldRank == 0) {
-        std::cout << "Simulation finished — exiting cleanly." << std::endl;
+        pbar = std::make_unique<cardillo::misc::ProgressBar>(static_cast<std::size_t>(steps), std::cout);
+        pbar->set_description("Simulating");
     }
+    {
+        auto totalScope = sys.timings().scope(cardillo::misc::TimingManager::TimerId::Total);
+        for (int k = 0; k < steps; ++k) {
+            scene.updateScene(sys, t, dt);
+            solver.stepMidpoint(dt);
+            t += dt;
+            if (writer) writer->maybeWrite(k+1, t, sys);
+            if (pbar) pbar->update(1);
+        }
+    }
+    if (pbar) pbar->close();
+    if (worldRank == 0) {
+        sys.timings().printBreakdown(std::cout);
+    }
+
     PetscFinalize();
     return 0;
 }

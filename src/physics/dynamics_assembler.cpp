@@ -293,6 +293,7 @@ void DynamicsAssembler::rebuildW_() {
 // Rebuild auxiliary block matrices derived from W and current contacts/state.
 void DynamicsAssembler::rebuildInteractionW_()
 {
+    auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::RebuildConstraintJacobians);
     // Build m_Wg/m_Wgamma and diagonals from new constraint patterns first, then legacy springs
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     const auto &reg = m_sys.ecs();
@@ -382,6 +383,7 @@ void DynamicsAssembler::rebuildInteractionW_()
 
 bool DynamicsAssembler::buildAndFactorS(real_t dt)
 {
+    auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS);
     // Ensure current blocks are built
     rebuildInteractionW_();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
@@ -422,23 +424,25 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
     }
 
     // Middle and lower diagonal blocks (C and A terms)
-    // C block over nSprings rows
+    // C block over nSprings rows (assemble compliance; clamp zeros to avoid singular KKT when using SPD factorization)
     for (int i = 0; i < nSprings; ++i) {
-        const real_t tiny = (real_t)1e-18;
-        real_t ci = m_Cdiag[i];
-        if (std::isfinite(ci) && std::abs(ci) > tiny) {
-            real_t cval = - (real_t)1.0 / (dt * dt) * ci;
-            if (std::isfinite(cval) && cval != (real_t)0) trips.emplace_back(totalV + i, totalV + i, cval);
-        }
+        const real_t tinyC = (real_t)1e-18;
+        const real_t Cmin  = (real_t)1e-12; // interpret C=0 as near-hard lock
+        real_t Ci = m_Cdiag[i];
+        if (!std::isfinite(Ci)) continue; // skip non-finite
+        real_t Ci_eff = (std::abs(Ci) <= tinyC) ? Cmin : Ci;
+        real_t cval = - (real_t)1.0 / (dt * dt) * Ci_eff;
+        if (cval != (real_t)0) trips.emplace_back(totalV + i, totalV + i, cval);
     }
-    // A block over nDampers rows
+    // A block over nDampers rows (assemble damping compliance; clamp zeros similarly)
     for (int i = 0; i < nDampers; ++i) {
-        const real_t tiny = (real_t)1e-18;
-        real_t ai = m_Adiag[i];
-        if (std::isfinite(ai) && std::abs(ai) > tiny) {
-            real_t aval = - (real_t)1.0 / dt * ai;
-            if (std::isfinite(aval) && aval != (real_t)0) trips.emplace_back(totalV + nSprings + i, totalV + nSprings + i, aval);
-        }
+        const real_t tinyA = (real_t)1e-18;
+        const real_t Amin  = (real_t)1e-12;
+        real_t Ai = m_Adiag[i];
+        if (!std::isfinite(Ai)) continue;
+        real_t Ai_eff = (std::abs(Ai) <= tinyA) ? Amin : Ai;
+        real_t aval = - (real_t)1.0 / dt * Ai_eff;
+        if (aval != (real_t)0) trips.emplace_back(totalV + nSprings + i, totalV + nSprings + i, aval);
     }
 
     // Build sparse matrix
@@ -448,7 +452,6 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
 
     // Factorize using SimplicialLDLT (sparse LDL^T) for symmetric matrices.
     try {
-
         // Create LDLT factorization object on double-valued sparse matrix
         m_S_sparse_ldlt.emplace();
         // Cast S to double for the factorization
@@ -486,6 +489,7 @@ VectorXr DynamicsAssembler::solveS(const VectorXr& rhs_ext) const
 }
 
 void DynamicsAssembler::refreshState() {
+    auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::DynamicsAssembler_RefreshState);
     bool structureChanged = false;
     if (m_sys.consumeStructureDirty()) {
         structureChanged = true;
@@ -531,7 +535,6 @@ void DynamicsAssembler::refreshState() {
 void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt) {
     updateContactsFromSystem();
     rebuildW_();
-
     if (!buildAndFactorS(dt)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
 }
 

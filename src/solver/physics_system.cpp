@@ -65,8 +65,8 @@ inline void emplaceRigidBodyCommon(entt::registry& reg,
 }
 
 // Construction and configuration
-PhysicsSystem::PhysicsSystem() 
-{
+PhysicsSystem::PhysicsSystem() {
+    PetscPrintf(PETSC_COMM_WORLD, "Hello from PETSc + Eigen!\n");
     m_gravity = Vector3r(0, 0, -9.81);
     // Default warmstart provider: simple global-index cache
     m_warmstart_provider = std::make_unique<cardillo::solver::WarmstartCache>();
@@ -127,6 +127,7 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
     }
 
     const real_t mass = std::max((real_t)0, massOpt.value_or((real_t)0));
+    
 
     // Friction
     real_t mu = (props.friction >= (real_t)0) ? props.friction : m_cfg.friction_default_mu;
@@ -451,27 +452,6 @@ Vector3r PhysicsSystem::getInertiaDiag(entt::entity e) const {
     return Vector3r::Zero();
 }
 
-real_t PhysicsSystem::getKineticEnergy(entt::entity e) const {
-    real_t KE = (real_t)0;
-    // Rigid body
-    if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass, C_InertiaDiag, C_LinearVelocity3, C_AngularVelocity3>(e)) {
-        const real_t m = m_reg.get<C_Mass>(e).m;
-        const Vector3r Idiag = m_reg.get<C_InertiaDiag>(e).I;
-        const Vector3r v = m_reg.get<C_LinearVelocity3>(e).value;
-        const Vector3r w = m_reg.get<C_AngularVelocity3>(e).value; // body-frame
-        KE += (real_t)0.5 * m * v.squaredNorm();
-        Vector3r Iw = Idiag.cwiseProduct(w);
-        KE += (real_t)0.5 * w.dot(Iw);
-    }
-    // Point mass
-    else if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass, C_LinearVelocity3>(e)) {
-        const real_t m = m_reg.get<C_Mass>(e).m;
-        const Vector3r v = m_reg.get<C_LinearVelocity3>(e).value;
-        KE += (real_t)0.5 * m * v.squaredNorm();
-    }
-    return KE;
-}
-
 int PhysicsSystem::numBodies() const {
     if (m_num_bodies_dirty) {
         int count = 0;
@@ -609,19 +589,17 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
 
     // Shape
     RigidShape shape;
-    Matrix33r Rshape = Matrix33r::Identity();
     if (section.type == BeamBodyType::Cube) {
         shape = CubeShape(Vector3r(segLen * (real_t)0.5, section.width*(real_t)0.5, section.height*(real_t)0.5));
     } else {
         real_t r = std::min(section.width, section.height) * (real_t)0.5;
         shape = CapsuleShape(r, segLen * (real_t)0.5);
-        Rshape = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), Vector3r::UnitX()).toRotationMatrix();
     }
 
     RigidProps segProps = propsDefaults;
-    segProps.mass = (massPerSegment > 0 ? std::optional<real_t>(massPerSegment) : std::nullopt);
+    segProps.mass = (massPerSegment > 0 ? std::optional<real_t>(massPerSegment) : std::optional<real_t>());
 
-    // Per-segment stiffness (material or direct overrides)
+    // Per-segment stiffness via section
     const Vector3r Ke = springs.Ke(segLen, section);
     const Vector3r Kf = springs.Kf(segLen, section);
     const Vector3r De = springs.De;
@@ -630,37 +608,18 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
     entt::entity root = entt::null;
     entt::entity prev = entt::null;
     entt::entity end  = entt::null;
-
     const bool loop = spline.isLoop();
-    // Compute spline COM in world coordinates and compose with state
-    Vector3r splineCOMWorld = spline.centerOfMass();
-    Matrix33r Rbody = stateDefaults.orientation.toRotationMatrix();
-    // Rotating about COM keeps COM itself unchanged; state translation shifts COM
-    Vector3r worldCOM = splineCOMWorld + stateDefaults.position;
-    // Precompute state (body-frame) velocities expressed in world frame
-    Vector3r v_body_world = Rbody * stateDefaults.linearVelocity;
-    Vector3r w_body_world = Rbody * stateDefaults.angularVelocity; // body-frame to world
-
     for (size_t i = 0; i < segments; ++i) {
-        real_t alpha = (real_t)i / (real_t)segments; // alpha in [0, 1)
+        real_t alpha = (real_t)i / (real_t)segments;
         misc::SplineSample si = spline.sample(alpha);
-        Matrix33r Rlocal; Rlocal.col(0)=si.tangent; Rlocal.col(1)=si.normal; Rlocal.col(2)=si.binormal;
-        Matrix33r Rworld =  Rbody * Rlocal * Rshape;
-        Quaternion4r qworld(Rworld); qworld.normalize();
-
-        // Rotate about spline COM, then add COM shift + state translation
-        Vector3r worldPos = splineCOMWorld + stateDefaults.position + Rbody * (si.position - splineCOMWorld);
-
-        // v = v_body_world + w_body_world x (worldPos - worldCOM)
-        Vector3r v_world = v_body_world + w_body_world.cross(worldPos - worldCOM);
-        RigidState segState;
-        segState.position = worldPos;
-        segState.orientation = qworld;
-        segState.linearVelocity = v_world;
-        // Convert provided body-frame angular velocity (state frame) to final body frame (state*spline)
-        segState.angularVelocity = Rlocal.transpose() * stateDefaults.angularVelocity;
+        Matrix33r Ri; Ri.col(0)=si.tangent; Ri.col(1)=si.normal; Ri.col(2)=si.binormal;
+        Quaternion4r qi(Ri); qi.normalize();
+        RigidState segState = stateDefaults;
+        segState.position = si.position;
+        segState.orientation = qi;
+        segState.linearVelocity  = Ri * stateDefaults.linearVelocity;
+        segState.angularVelocity = Ri * stateDefaults.angularVelocity;
         entt::entity cur = addRigidBody(shape, segState, segProps);
-
         if (prev != entt::null) {
             addConstraint<BeamConstraint>(ecs(), prev, cur, Ke, Kf, De, Df);
             disableCollisionBetween(prev, cur);
@@ -675,8 +634,8 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
     }
     return {root, end};
 }
+
 void PhysicsSystem::explicitPositionUpdate(real_t h) {
-    auto _sc = timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
     // position update
     auto position_view = m_reg.view<C_Position3, C_LinearVelocity3>();
     for (auto [e, pos, vel] : position_view.each()) {

@@ -34,6 +34,7 @@ void VtkWriterBinary::maybeWrite(int step, real_t time, const cardillo::PhysicsS
 }
 
 void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSystem& sys) {
+    auto sc = sys.timings().scope(cardillo::misc::TimingManager::TimerId::OutputWrite);
     Collected data = collect(sys);
     writePointsOnly(step, 0, data);
     // Write static geometry once or when structure changed
@@ -49,7 +50,6 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSy
         try {
             auto& mgr = const_cast<cardillo::PhysicsSystem&>(sys).collisionManager();
             if (sys.consumeStructureDirty()) mgr.rebuild();
-            // Reuse last computed contacts (avoid re-running collision detection in the writer)
             const auto& contacts = mgr.lastFlattenedContacts();
             const bool writeBody = sys.config().output_contacts_body_vectors;
             writeContacts(step, contacts, writeBody, sys.warmstartProvider());
@@ -242,14 +242,15 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
         for (auto [e, cap, pos, ori] : vcaps.each()) {
             std::vector<Vector3r> verts;
             std::vector<Eigen::Vector3i> tris;
-            generateCapsuleMesh(4, 4, 1, cap.radius, cap.halfLength, verts, tris);
+            generateCapsuleMesh(8, 3, 1, cap.radius, cap.halfLength, verts, tris);
             if (verts.empty() || tris.empty()) continue;
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
-            const Matrix33r R = ori.value.toRotationMatrix();
+            Quaternion4r qn = ori.value; qn.normalize();
+            const Matrix33r R = qn.toRotationMatrix();
             mo.vertices.reserve(verts.size());
             for (const auto& v : verts) {
                 mo.vertices.push_back(R * v + pos.value);
@@ -283,7 +284,8 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                 if (bvh && bvh->vertices && bvh->tri_indices) {
                     const auto& V = *bvh->vertices;
                     const auto& F = *bvh->tri_indices;
-                    const Matrix33r R = ori.value.toRotationMatrix();
+                    Quaternion4r qn = ori.value; qn.normalize();
+                    const Matrix33r R = qn.toRotationMatrix();
                     mo.vertices.reserve(V.size());
                     for (const auto& v : V) {
                         Vector3r p((real_t)v[0], (real_t)v[1], (real_t)v[2]);
@@ -377,7 +379,8 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                 mo.center = pos.value;
                 mo.isDynamic = false;
 
-                const Matrix33r R = ori.value.toRotationMatrix();
+                Quaternion4r qn = ori.value; qn.normalize();
+                const Matrix33r R = qn.toRotationMatrix();
                 mo.vertices.reserve((size_t)nys * (size_t)nxs);
                 mo.uvs.reserve((size_t)nys * (size_t)nxs);
 
@@ -432,7 +435,8 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
-            const Matrix33r R = ori.value.toRotationMatrix();
+            Quaternion4r qn = ori.value; qn.normalize();
+            const Matrix33r R = qn.toRotationMatrix();
             const real_t r = rad.r;
             mo.vertices.reserve(unitVerts.size());
             for (const auto& v : unitVerts) {

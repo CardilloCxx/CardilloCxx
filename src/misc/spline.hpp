@@ -25,6 +25,7 @@ public:
     virtual bool isLoop() const = 0;
     // Sample full geometric/differential data at alpha (clamps to [0,1])
     virtual SplineSample sample(real_t alpha) const = 0;
+    virtual Vector3r centerOfMass() const = 0;
 };
 
 // Concrete splines (definitions in spline.cpp)
@@ -34,6 +35,7 @@ public:
     real_t totalLength() const override;
     bool isLoop() const override;
     SplineSample sample(real_t alpha) const override;
+    Vector3r centerOfMass() const override; 
 private:
     Vector3r m_p0{Vector3r::Zero()}, m_p1{Vector3r::Zero()};
     real_t m_len{(real_t)0};
@@ -46,6 +48,7 @@ public:
     real_t totalLength() const override;
     bool isLoop() const override;
     SplineSample sample(real_t alpha) const override;
+    Vector3r centerOfMass() const override;
 private:
     Vector3r m_c{Vector3r::Zero()};
     real_t m_r{(real_t)1};
@@ -61,6 +64,7 @@ public:
     real_t totalLength() const override;
     bool isLoop() const override;
     SplineSample sample(real_t alpha) const override;
+    Vector3r centerOfMass() const override;
 private:
     Vector3r m_c{Vector3r::Zero()};
     Vector3r m_d{Vector3r::UnitZ()};

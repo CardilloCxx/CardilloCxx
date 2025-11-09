@@ -16,6 +16,7 @@
 #include "assets.hpp"
 #include "../misc/dofs.hpp"
 #include "../config/config.hpp"
+#include "../misc/timings/TimingManager.hpp"
 // COAL types for mesh assets
 // match installed COAL include layout (lowercase paths)
 #include <coal/BVH/BVH_model.h>
@@ -48,6 +49,7 @@ public:
         RigidState() = default;
         explicit RigidState(const Vector3r& p) : position(p) {}
         RigidState(const Vector3r& p, const Vector3r& v) : position(p), linearVelocity(v) {}
+        RigidState(const Vector3r& p, const Quaternion4r& q) : position(p), orientation(q) {}
         RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q)
             : position(p), orientation(q), linearVelocity(v) {}
         RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q, const Vector3r& w)
@@ -96,6 +98,95 @@ public:
         static RigidProps withDensity(real_t rho) { RigidProps p; p.density = rho; return p; }
     };
 
+    // Beam cross-section and spring params --------------------------------------------------
+    enum class BeamBodyType { Cube, Capsule };
+    struct BeamCrossSection {
+        real_t width{0};
+        real_t height{0};
+        BeamBodyType type{BeamBodyType::Cube};
+        BeamCrossSection() = default;
+        BeamCrossSection(real_t w, real_t h, BeamBodyType t=BeamBodyType::Cube) : width(w), height(h), type(t) {}
+        // Area
+        real_t area() const {
+            if (type == BeamBodyType::Capsule) {
+                real_t r = (std::min(width, height)) * (real_t)0.5;
+                return (real_t)M_PI * r * r;
+            }
+            return width * height;
+        }
+        // Second moments of area about local Y and Z
+        real_t Iy() const {
+            if (type == BeamBodyType::Capsule) {
+                real_t r = (std::min(width, height)) * (real_t)0.5;
+                return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0; // circle
+            }
+            return width * std::pow(height, (real_t)3) / (real_t)12.0;
+        }
+        real_t Iz() const {
+            if (type == BeamBodyType::Capsule) {
+                real_t r = (std::min(width, height)) * (real_t)0.5;
+                return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0; // circle
+            }
+            return std::pow(width, (real_t)3) * height / (real_t)12.0;
+        }
+        real_t Jp() const { return Iy() + Iz(); } // polar approx
+    };
+
+    struct BeamSpringParams {
+        // Material properties for derived stiffness
+        real_t E{0};
+        real_t nu{0};
+        // Independent scales for each component
+        Vector3r scaleKe{Vector3r::Ones()}; // [axial, shearY, shearZ]
+        Vector3r scaleKf{Vector3r::Ones()}; // [torsion, bendY, bendZ]
+        // Optional direct per-segment stiffness overrides (units already [*/L])
+        std::optional<Vector3r> Ke_direct;
+        std::optional<Vector3r> Kf_direct;
+        // Damping compliances
+        Vector3r De{Vector3r::Zero()};
+        Vector3r Df{Vector3r::Zero()};
+
+        BeamSpringParams() = default;
+        // Direct constructor for per-segment stiffness vectors
+        BeamSpringParams(const Vector3r& Ke_in, const Vector3r& Kf_in,
+                         const Vector3r& De_in = Vector3r::Zero(),
+                         const Vector3r& Df_in = Vector3r::Zero())
+            : Ke_direct(Ke_in), Kf_direct(Kf_in), De(De_in), Df(Df_in) {}
+
+        // Accessors to per-segment stiffness vectors given section and segment length
+        Vector3r Ke(real_t segLen, const BeamCrossSection& sec) const {
+            if (Ke_direct.has_value()) return *Ke_direct;
+            const real_t G = E / ((real_t)2.0 * ((real_t)1.0 + nu));
+            const real_t A = sec.area();
+            Vector3r base(E * A / segLen, G * A / segLen, G * A / segLen);
+            return base.cwiseProduct(scaleKe);
+        }
+        Vector3r Kf(real_t segLen, const BeamCrossSection& sec) const {
+            if (Kf_direct.has_value()) return *Kf_direct;
+            const real_t G = E / ((real_t)2.0 * ((real_t)1.0 + nu));
+            Vector3r base(G * sec.Jp() / segLen, E * sec.Iy() / segLen, E * sec.Iz() / segLen);
+            return base.cwiseProduct(scaleKf);
+        }
+
+        // Factory for material-based parameters without needing section at construction
+        static BeamSpringParams fromMaterial(real_t E_in, real_t nu_in,
+                                             real_t axialScale=(real_t)1,
+                                             real_t shearScale=(real_t)1,
+                                             real_t torsionScale=(real_t)1,
+                                             real_t bendYScale=(real_t)1,
+                                             real_t bendZScale=(real_t)1,
+                                             const Vector3r& De_in=Vector3r::Zero(),
+                                             const Vector3r& Df_in=Vector3r::Zero())
+        {
+            BeamSpringParams p;
+            p.E = E_in; p.nu = nu_in;
+            p.scaleKe = Vector3r(axialScale, shearScale, shearScale);
+            p.scaleKf = Vector3r(torsionScale, bendYScale, bendZScale);
+            p.De = De_in; p.Df = Df_in;
+            return p;
+        }
+    };
+
     entt::entity addRigidBody(const RigidShape& shape,
                               const RigidState& state,
                               const RigidProps& props);
@@ -113,6 +204,9 @@ public:
     // Persistent collision manager (COAL) storage and access
     collision::CollisionCoal& collisionManager();
     const collision::CollisionCoal& collisionManager() const;
+    // Timings access
+    cardillo::misc::TimingManager& timings();
+    const cardillo::misc::TimingManager& timings() const;
 
 
     void setGravity(const Vector3r& g);
@@ -139,13 +233,20 @@ public:
     // Create a mass-spring soft body from an OBJ file by instantiating one point mass per vertex
     // and connecting unique triangle edges with 3D translational springs (x,y,z).
     std::vector<entt::entity> addSoftBody(const std::string& objPath,
-                                          real_t stiffness,
-                                          real_t damping,
-                                          const Vector3r& position = Vector3r::Zero(),
-                                          const Quaternion4r& orientation = Quaternion4r::Identity(),
-                                          const Vector3r& linearVelocity = Vector3r::Zero(),
-                                          const Vector3r& angularVelocity = Vector3r::Zero(),
-                                          real_t totalMass = (real_t)0.0);
+                                        real_t stiffness,
+                                        real_t damping,
+                                        const Vector3r& position = Vector3r::Zero(),
+                                        const Quaternion4r& orientation = Quaternion4r::Identity(),
+                                        const Vector3r& linearVelocity = Vector3r::Zero(),
+                                        const Vector3r& angularVelocity = Vector3r::Zero(),
+                                        real_t totalMass = (real_t)0.0);
+
+    std::pair<entt::entity, entt::entity> createBeam(const misc::SplinePattern& spline,
+                                        const BeamCrossSection& section,
+                                        const BeamSpringParams& springs,
+                                        const RigidState& stateDefaults,
+                                        const RigidProps& propsDefaults,
+                                        size_t segments);
 
     // Dynamics getters (Cache them inside the entity to avoid recomputation)
     MatrixXXr getMass( entt::entity e ) const;        // Linear Inertia and Angular Inertia
@@ -159,6 +260,7 @@ public:
     VectorXr getPosition( entt::entity e ) const;     // Linear and angular combined
     VectorXr getVelocity( entt::entity e ) const;     // Linear and angular combined
     VectorXr getForce( entt::entity e ) const;        // Linear and angular combined
+    real_t getKineticEnergy( entt::entity e ) const;
 
     // Shared asset access (wrappers over PhysicsAssets using entity components)
     const ::cardillo::MeshAsset& getMeshAsset(entt::entity e) const;
@@ -275,32 +377,6 @@ public:
 
     void explicitPositionUpdate(real_t dt);
     void linearImplicitPositionUpdate(real_t dt);
-    // Create a beam along a spline: instantiates `segments` rigid bodies sampled uniformly in alpha
-    // and connects consecutive bodies with BeamConstraint. Returns pair(rootEntity, endEntity).
-    // density: mass density (mass = density * volume assuming rectangular prism width x height x segment_length)
-    // E: Young's modulus, nu: Poisson's ratio (used to derive shear modulus G).
-    std::pair<entt::entity, entt::entity> createBeam(const misc::SplinePattern& spline,
-                                                     size_t segments,
-                                                     real_t width,
-                                                     real_t height,
-                                                     real_t density,
-                                                     real_t E,
-                                                    real_t nu);
-
-    std::pair<entt::entity, entt::entity> createBeam(const misc::SplinePattern& spline,
-                                                    size_t segments,
-                                                    real_t width,
-                                                    real_t height,
-                                                    real_t density,
-                                                    real_t E,
-                                                    real_t nu,
-                                                    real_t axialScale,
-                                                    real_t shearScale,
-                                                    real_t torsionScale,
-                                                    real_t bendYScale,
-                                                    real_t bendZScale,
-                                                    const Vector3r& Dg,
-                                                    const Vector3r& Df);
 
 private:
     // Helper to add common rigid-body components
@@ -332,6 +408,7 @@ private:
     // Persistent subsystems
     config::Config m_cfg{}; // global config
     std::unique_ptr<collision::CollisionCoal> m_collision_mgr; // created on first use
+    std::unique_ptr<cardillo::misc::TimingManager> m_timings;  // created on first use
 
     // Warmstart provider (strategy owned by system). Default implementation is WarmstartCache.
     std::unique_ptr<cardillo::solver::WarmstartProvider> m_warmstart_provider;

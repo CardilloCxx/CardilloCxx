@@ -130,6 +130,48 @@ ConstraintResult TranslationalConstraint::getConstraint() const {
     return out;
 }
 
+static Vector3r so3_log_from_R(const Matrix33r &R) {
+    // Use trace to compute angle
+    real_t cos_th = (R.trace() - 1.0) * 0.5;
+    cos_th = std::min((real_t)1.0, std::max((real_t)-1.0, cos_th));
+    real_t th = std::acos(cos_th);
+
+    if (th < 1e-8) {
+        // small: phi ≈ 0.5 * vee(R - R^T)
+        Vector3r v;
+        v.x() = (R(2,1) - R(1,2)) * 0.5;
+        v.y() = (R(0,2) - R(2,0)) * 0.5;
+        v.z() = (R(1,0) - R(0,1)) * 0.5;
+        return v;
+    } else {
+        real_t sin_th = std::sin(th);
+        Vector3r axis;
+        axis.x() = (R(2,1) - R(1,2)) / (2.0 * sin_th);
+        axis.y() = (R(0,2) - R(2,0)) / (2.0 * sin_th);
+        axis.z() = (R(1,0) - R(0,1)) / (2.0 * sin_th);
+        return axis * th;
+    }
+}
+
+// left-Jacobian inverse J^{-1}(phi) with series for small phi
+static Matrix33r leftJacobianInverse(const Vector3r &phi) {
+    const real_t th = phi.norm();
+    const Matrix33r I = Matrix33r::Identity();
+    const Matrix33r Phi = skew_from_vector(phi);
+
+    if (th < 1e-8) {
+        // Series: J^{-1} ≈ I + 0.5 Phi + (1/12) Phi^2
+        return I + (real_t)0.5 * Phi + (real_t)(1.0/12.0) * (Phi * Phi);
+    } else {
+        const real_t half_th = 0.5 * th;
+        const real_t cot_half = 1.0 / std::tan(half_th);
+        // exact formula: J^{-1} = I + 0.5 Phi + (1/th^2) * (1 - (th * cot(th/2))/2) * Phi^2
+        const real_t th2 = th * th;
+        const real_t factor = (1.0 / th2) * (1.0 - (th * cot_half) * 0.5);
+        return I + (real_t)0.5 * Phi + factor * (Phi * Phi);
+    }
+}
+
 // ===================== RigidConstraint =====================
 ConstraintResult RigidConstraint::getConstraint() const {
     ConstraintResult out; out.a = m_a; out.b = m_b;
@@ -145,15 +187,21 @@ ConstraintResult RigidConstraint::getConstraint() const {
     out.WgB.block<3,3>(0,0) = wa.RA;
     out.WgB.block<3,3>(3,0) = skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA;
 
+
+    // rotation error: phi = log(R_rel) in A-local
+    const Matrix33r Rrel = wa.RA.transpose() * wa.RB;
+    const Vector3r phi = so3_log_from_R(Rrel);
+    const Matrix33r Jinv = leftJacobianInverse(phi);
+    
     // Lock rotations in A's frame (columns 3..5)
-    out.WgA.block<3,3>(3,3) = -Matrix33r::Identity();
-    out.WgB.block<3,3>(3,3) = Matrix33r::Identity();
+    out.WgA.block<3,3>(3,3) = -Jinv.transpose();
+    out.WgB.block<3,3>(3,3) = (Jinv * Rrel).transpose();
 
     out.WgammaA = out.WgA;
     out.WgammaB = out.WgB;
 
-    out.Crows = VectorXr::Constant(6, std::numeric_limits<real_t>::infinity());
-    out.Arows = VectorXr::Zero(6);
+    out.Crows = VectorXr::Constant(6, 1e-10);
+    out.Arows = VectorXr::Constant(6, std::numeric_limits<real_t>::infinity());
 
     return out;
 }
@@ -202,9 +250,21 @@ ConstraintResult HingeConstraint::getConstraint() const {
     out.WgB.block<3,3>(0,0) = wa.RA;
     out.WgB.block<3,3>(3,0) = skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA;
 
-    // Lock rotation relative in A's local frame
+    // // Lock rotation relative in A's local frame
     out.WgA.block<3,3>(3,3) = -m_hingeFrame;
     out.WgB.block<3,3>(3,3) =  m_hingeFrame * wa.RA.transpose() *  wa.RB;
+
+//     Matrix33r hingeFrame = wa.RA * m_hingeFrame; // hinge frame in world
+//     Vector3r hingeAxis = hingeFrame.col(2);      // z-axis of hinge frame
+//     Matrix33r P = Matrix33r::Identity() - hingeAxis * hingeAxis.transpose();
+// 
+//     const Matrix33r Rrel = wa.RA.transpose() * wa.RB;
+//     const Vector3r phi = so3_log_from_R(Rrel);
+//     const Matrix33r Jinv = leftJacobianInverse(phi);
+//     
+//     // Lock rotations in A's frame (columns 3..5)
+//     out.WgA.block<3,3>(3,3) = -P * Jinv.transpose();
+//     out.WgB.block<3,3>(3,3) =  P * (Jinv * Rrel).transpose();
 
     out.WgammaA = out.WgA;
     out.WgammaB = out.WgB;
