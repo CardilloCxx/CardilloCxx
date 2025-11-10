@@ -23,11 +23,13 @@
 #include "scenes/springTest/SpringTestScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/net/NetScene.hpp"
+#include "scenes/wilberforce/WilberforcePendulum.hpp"
 #include "scenes/hangbride/HangbrideScene.hpp"
 #include "scenes/softbody/SoftbodyTestScene.hpp"
 #include "scenes/parcel/ParcelScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
+#include "scenes/gears/GearsScene.hpp"
 
 using namespace cardillo;
 
@@ -60,7 +62,8 @@ int main(int argc, char** argv) {
     // DominoScene scene;
     // SpringTestScene scene;
     // RodAssemblyScene scene;
-    NetScene scene;
+    // NetScene scene;
+    // WilberforcePendulumScene scene;
     // HangbrideScene scene;
     // SoftbodyTestScene scene;
     // ChainScene scene;
@@ -71,6 +74,7 @@ int main(int argc, char** argv) {
     // ParcelScene scene;
     // DiscreteRodScene scene;
     // ConstraintTestScene scene;
+    GearsScene scene;
 
     scene.populate(sys);
 

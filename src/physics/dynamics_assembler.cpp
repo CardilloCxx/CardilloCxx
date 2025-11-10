@@ -452,23 +452,21 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
 
     // Factorize using SimplicialLDLT (sparse LDL^T) for symmetric matrices.
     try {
-        // Create LDLT factorization object on double-valued sparse matrix
         m_S_sparse_ldlt.emplace();
-        // Cast S to double for the factorization
         Eigen::SparseMatrix<double> S_double = m_S_sparse.cast<double>();
-        // Todo equilibrate
         m_S_sparse_ldlt->analyzePattern(S_double);
         m_S_sparse_ldlt->factorize(S_double);
         if (m_S_sparse_ldlt->info() != Eigen::Success) {
             m_S_sparse_ldlt.reset();
-
-            std::cout << "DynamicsAssembler::buildAndFactorS: Sparse LDLT factorization failed for S= \n"
-                      << m_S_sparse << "\n";
-
-
+            std::cout << "DynamicsAssembler::buildAndFactorS: Sparse LDLT factorization failed\n";
             return false;
+        } else if (m_sys.config().debug_rb) {
+            std::cout << "[DynamicsAssembler] LDLT factorization success.\n";
         }
-    } catch (...) {
+    } catch (const std::exception& ex) {
+        if (m_sys.config().debug_rb) {
+            std::cout << "[DynamicsAssembler] Exception during LDLT: " << ex.what() << '\n';
+        }
         m_S_sparse_ldlt.reset();
         return false;
     }

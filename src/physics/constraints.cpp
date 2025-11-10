@@ -200,8 +200,10 @@ ConstraintResult RigidConstraint::getConstraint() const {
     out.WgammaA = out.WgA;
     out.WgammaB = out.WgB;
 
+    // Provide small finite spring and damper compliances to avoid purely saddle-point rows with missing diagonal.
+    // Using infinity for damping compliance produced rows with no diagonal regularization, leading to singular S.
     out.Crows = VectorXr::Constant(6, 1e-10);
-    out.Arows = VectorXr::Constant(6, std::numeric_limits<real_t>::infinity());
+    out.Arows = VectorXr::Constant(6, 1e-10);
 
     return out;
 }

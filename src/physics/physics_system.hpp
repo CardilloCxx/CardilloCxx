@@ -247,6 +247,13 @@ public:
                                         const RigidState& stateDefaults,
                                         const RigidProps& propsDefaults,
                                         size_t segments);
+    // Create multiple beams from a sequence of splines; returns vector of (root,end) pairs in order.
+    std::pair<entt::entity, entt::entity> createBeams(const std::vector<const misc::SplinePattern*>& splines,
+                                                                  const BeamCrossSection& section,
+                                                                  const BeamSpringParams& springs,
+                                                                  const RigidState& stateDefaults,
+                                                                  const RigidProps& propsDefaults,
+                                                                  size_t segmentsPerSpline);
 
     // Dynamics getters (Cache them inside the entity to avoid recomputation)
     MatrixXXr getMass( entt::entity e ) const;        // Linear Inertia and Angular Inertia

@@ -426,13 +426,12 @@ std::vector<Contact> CollisionCoal::detectAll() const {
 
             ea = m_entities[iA];
             eb = m_entities[iB];
+            if (isPairDisabled(ea, eb)) continue;
 
             cres.clear();
             coal::collide(o1, o2, creq, cres);
             if (cres.numContacts() == 0) continue;
         }
-
-        if (isPairDisabled(ea, eb)) continue;
 
         // Compute contact patches for this pair
         {

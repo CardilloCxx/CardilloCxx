@@ -59,7 +59,7 @@ public:
 
         // Boulder
         auto boulder = sys.addRigidBody(PhysicsSystem::MeshShape("res/meshes/rock.obj", Vector3r(0.75,0.75,0.75)),
-                         PhysicsSystem::RigidState(Vector3r(-3,0,0) + netCenter, Vector3r(30.0, 0.0, 0.0), Vector3r(1,2,3)),
+                         PhysicsSystem::RigidState(Vector3r(-3,0,0) + netCenter, Vector3r(30.0, 0.0, 0.0), Vector3r(10,20,50)),
                          PhysicsSystem::RigidProps::withDensity(2500));
 
         std::cout << "Boulder KE: " << sys.getKineticEnergy(boulder) << " J" << std::endl;

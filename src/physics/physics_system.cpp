@@ -675,6 +675,33 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
     }
     return {root, end};
 }
+std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vector<const misc::SplinePattern*>& splines,
+                                                                  const BeamCrossSection& section,
+                                                                  const BeamSpringParams& springs,
+                                                                  const RigidState& stateDefaults,
+                                                                  const RigidProps& propsDefaults,
+                                                                  size_t segments) {
+    real_t totalLen = 0;
+    for (const auto* sp : splines) {
+        if (sp) totalLen += sp->totalLength();
+    }
+
+    entt::entity first = entt::null;;
+    entt::entity second = entt::null;
+    entt::entity prevEnd = entt::null;
+    for (size_t i = 0; i < splines.size(); ++i) {
+
+        auto pair = createBeam(*splines[i], section, springs, stateDefaults, propsDefaults, (size_t) (segments * (splines[i]->totalLength() / totalLen)));
+        if (first == entt::null) first = pair.first;
+        if (prevEnd != entt::null && pair.first != entt::null) {
+            addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first, Vector3r::Zero(), Vector3r::Zero());
+            disableCollisionBetween(prevEnd, pair.first);
+        }
+        prevEnd = pair.second;   
+    }
+    second = prevEnd;
+    return {first, second};
+}
 void PhysicsSystem::explicitPositionUpdate(real_t h) {
     auto _sc = timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
     // position update
