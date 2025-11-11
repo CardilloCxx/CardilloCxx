@@ -96,10 +96,9 @@ private:
     VectorXr m_Adiag; // size = numDampers
 
     // Extended block matrix S (sparse) and its sparse factorization
-    Eigen::SparseMatrix<real_t> m_S_sparse; // size extV x extV
-    // Use SimplicialLDLT (sparse LDL^T) on the symmetric S matrix. We store the factorization on double
-    // because Eigen's sparse Cholesky routines operate on double precision in practice.
-    std::optional<Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>>> m_S_sparse_ldlt; // lazily constructed
+    CscMatrix m_S_sparse; // size extV x extV
+    // Use SparseLU on the symmetric S matrix.
+    std::optional<Eigen::SparseLU<CscMatrix>> m_S_sparse_lu; // lazily constructed
 
     // Store Lagrange multipliers (they are being integrated)
     VectorXr m_Lambda_g;
@@ -126,7 +125,7 @@ public:
     void setLambda_gamma(const VectorXr& lam) { m_Lambda_gamma = lam; }
 
     // Extended block matrix S (sparse) accessor and solver
-    const Eigen::SparseMatrix<real_t>& SSparse() const { return m_S_sparse; }
+    const CscMatrix& SSparse() const { return m_S_sparse; }
 
     // Build and factorize the effective mass matrix S = M + dt^2 * Wg * K * Wg^T + h * W_gamma * D * W_gamma^T
     // Returns true on successful factorization.

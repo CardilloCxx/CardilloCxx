@@ -705,13 +705,13 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vect
 void PhysicsSystem::explicitPositionUpdate(real_t h) {
     auto _sc = timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
     // position update
-    auto position_view = m_reg.view<C_Position3, C_LinearVelocity3>();
+    auto position_view = m_reg.view<C_Position3, const C_LinearVelocity3>();
     for (auto [e, pos, vel] : position_view.each()) {
         pos.value += h * vel.value;
     }
 
     // orientations
-    auto orientation_view = m_reg.view<C_Orientation, C_AngularVelocity3>();
+    auto orientation_view = m_reg.view<C_Orientation, const C_AngularVelocity3>();
     for (auto [e, orientation, angularVel] : orientation_view.each()) {
         const Vector3r& omega = angularVel.value;
         Vector4r& P = orientation.value.coeffs();
