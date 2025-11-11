@@ -5,6 +5,7 @@ add_compile_options(-w)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_BUILD_TYPE Debug)
 
 # Optional: gprof profiling support
 option(ENABLE_GPROF "Enable gprof instrumentation (-pg)" OFF)
@@ -47,7 +48,7 @@ endif()
 
 # guard against in-source builds
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
-    message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build 
+    message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build
         directory) and run CMake from there. You may need to remove CMakeCache.txt.")
 endif()
 

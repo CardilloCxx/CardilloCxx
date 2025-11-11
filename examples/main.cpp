@@ -31,7 +31,7 @@
 
 using namespace cardillo;
 
-static PhysicsSystem sys(cardillo::config::Config{}); 
+static PhysicsSystem sys(cardillo::config::Config{});
 
 void printTimingsAtExit(int sig) {
     sys.timings().printBreakdown(std::cout);
@@ -51,16 +51,16 @@ int main(int argc, char** argv) {
     cardillo::config::Config cfg = (argc > 1)
         ? cardillo::config::ConfigReader::fromFile(argv[1])
         : cardillo::config::Config{}; // defaults from header
-    
+
     if (argc == 0 && worldRank == 0) std::cout << "No config file provided, using defaults." << std::endl;
-    
+
     sys.setConfig(cfg);
 
-    // HeightmapScene scene;
-    // DominoScene scene;
+    //  HeightmapScene scene;
+    DominoScene scene;
     // SpringTestScene scene;
     // RodAssemblyScene scene;
-    NetScene scene;
+    // NetScene scene;
     // HangbrideScene scene;
     // SoftbodyTestScene scene;
     // ChainScene scene;
