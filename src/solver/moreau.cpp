@@ -21,7 +21,7 @@ void MoreauSolver::stepMidpoint(real_t dt)
     // const int Nb = (int)offV.size() - 1;
 
     // 2) Inplace midpoint position update
-    m_sys.explicitPositionUpdate(0.5 * dt);
+    m_sys.linearImplicitPositionUpdate(0.5 * dt);
 
     // 3) Evaluate contacts at midpoint positions
     m_dyn.refreshCollisionsAndSprings(dt);

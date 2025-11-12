@@ -70,11 +70,11 @@ int main(int argc, char** argv) {
     // PainleveScene scene;
     // RotatingBallScene scene;
     // RailScene scene;
-    // DzhanibekovScene scene;
+    DzhanibekovScene scene;
     // ParcelScene scene;
     // DiscreteRodScene scene;
     // ConstraintTestScene scene;
-    GearsScene scene;
+    // GearsScene scene;
 
     scene.populate(sys);
 
