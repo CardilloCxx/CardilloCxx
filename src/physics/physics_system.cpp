@@ -741,14 +741,13 @@ void PhysicsSystem::linearImplicitPositionUpdate(real_t h) {
         const Vector3r& omega = angularVel.value;
 
         // skew matrix q_dot = 0.5 * D * P
-        Matrix44r D;
-        D.block<3, 3>(0, 0) = skew_from_vector(omega);
+        Matrix44r D = Matrix44r::Zero();
+        D.block<3, 3>(0, 0) = skew_from_vector(-omega);
         D.block<3, 1>(0, 3) = omega;
         D.block<1, 3>(3, 0) = -omega.transpose();
 
-        // iteration matrix (I - h / 2) P_{n+1} = P_{n+1/2}
-        Matrix44r A = Matrix44r::Identity();
-        A -= 0.5 * h * D;
+        // iteration matrix (I - h / 2 * D) P_{n+1} = P_{n+1/2}
+        const Matrix44r A = Matrix44r::Identity() - 0.5 * h * D;
 
         // quaternion coefficients
         Vector4r& P = orientation.value.coeffs();

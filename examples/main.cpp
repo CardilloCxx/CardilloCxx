@@ -1,6 +1,7 @@
 #include "cardillo.hpp"
 #include "io/vtk_writer_binary.hpp"
 #include "solver/moreau.hpp"
+#include "solver/dual_stoermer_verlet.hpp"
 #include <mpi.h>
 #include <iostream>
 #include <iomanip>
@@ -79,7 +80,8 @@ int main(int argc, char** argv) {
     scene.populate(sys);
 
     // Setup Moreau solver
-    cardillo::solver::MoreauSolver solver(sys);
+    // cardillo::solver::MoreauSolver solver(sys);
+    cardillo::solver::DualStoermerVerletSolver solver(sys);
 
     // Writer (rank 0)
     std::unique_ptr<cardillo::io::VtkWriterBinary> writer;

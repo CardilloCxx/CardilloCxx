@@ -8,6 +8,7 @@ add_library(${PROJECT_NAME} STATIC
     io/heightmap_loader.cpp
     io/softbody_loader.cpp
     solver/moreau.cpp
+    solver/dual_stoermer_verlet.cpp
     solver/CPG.cpp
     solver/projected_jacobi.cpp
     misc/spline.cpp
