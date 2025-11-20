@@ -113,12 +113,61 @@ private:
 class RigidConstraint : public ConstraintPattern {
 public:
     RigidConstraint(entt::registry& reg,
-                                entt::entity a,
-                                entt::entity b,
-                                const Vector3r& rA_local = Vector3r::Zero(),
-                                const Vector3r& rB_local = Vector3r::Zero())
-        : ConstraintPattern(reg, a, b, rA_local, rB_local) {}
+                    entt::entity a,
+                    entt::entity b,
+                    std::optional<Vector3r> r_OJ = std::nullopt,
+                    std::optional<Matrix33r> A_IJ = std::nullopt,
+                    const Vector3r& k_axis = Vector3r::Constant(std::numeric_limits<real_t>::max()), // rotation stiffness along axes
+                    const Vector3r& d_axis = Vector3r::Zero()) // rotation damping along axes
+        : ConstraintPattern(reg, a, b)
+        , m_k_axis(k_axis)
+        , m_d_axis(d_axis) {
+            const Vector3r& r_OS1 = reg.get<cardillo::PhysicsSystem::C_Position3>(a).value;
+            const Vector3r& r_OS2 = reg.get<cardillo::PhysicsSystem::C_Position3>(b).value;
+            const Quaternion4r& Q1 = reg.get<cardillo::PhysicsSystem::C_Orientation>(a).value;
+            const Quaternion4r& Q2 = reg.get<cardillo::PhysicsSystem::C_Orientation>(b).value;
+            const Matrix33r A_IK1 = Q1.toRotationMatrix();
+            const Matrix33r A_IK2 = Q2.toRotationMatrix();
+
+            if (r_OJ) {
+                m_K1_r_S1J = A_IK1.transpose() * (r_OJ.value() - r_OS1);
+                m_K2_r_S2J = A_IK2.transpose() * (r_OJ.value() - r_OS2);
+            } else {
+                m_K1_r_S1J = Vector3r::Zero();
+                m_K2_r_S2J = A_IK2.transpose() * (r_OS1 - r_OS2);
+            }
+            // // alternatively we can use (might be prone to rounding errors)
+            // m_K1_r_S1J = A_IK1.transpose() * (r_OJ.value_or(r_OS1) - r_OS1);
+            // m_K2_r_S2J = A_IK2.transpose() * (r_OJ.value_or(r_OS1) - r_OS2);
+
+            m_K1_r_S1J_skew = skew_from_vector(m_K1_r_S1J);
+            m_K2_r_S2J_skew = skew_from_vector(m_K2_r_S2J);
+
+            if (A_IJ) {
+                m_A_K1J = A_IK1.transpose() * A_IJ.value();
+                m_A_K2J = A_IK2.transpose() * A_IJ.value();
+            } else {
+                m_A_K1J = Matrix33r::Identity();
+                m_A_K2J = A_IK2.transpose() * A_IK1;
+            }
+            // // alternatively we can use (might be prone to rounding errors)
+            // m_A_IK1J = A_IK1.transpose() * A_IJ.value_or(A_IK1);
+            // m_A_IK2J = A_IK2.transpose() * A_IJ.value_or(A_IK1);
+
+            m_rA_local = m_K1_r_S1J;
+            m_rB_local = m_K2_r_S2J;
+        }
+
     ConstraintResult getConstraint() const override;
+private:
+    Vector3r m_k_axis;
+    Vector3r m_d_axis;
+    Vector3r m_K1_r_S1J;
+    Vector3r m_K2_r_S2J;
+    Matrix33r m_K1_r_S1J_skew;
+    Matrix33r m_K2_r_S2J_skew;
+    Matrix33r m_A_K1J;
+    Matrix33r m_A_K2J;
 };
 
 class HingeConstraint : public ConstraintPattern {
@@ -137,7 +186,6 @@ public:
                                  const Vector3r& De_A = Vector3r::Zero());                                           // Damping for the three locked translational DOFs
 
     ConstraintResult getConstraint() const override;
-
 private:
     Matrix33r m_hingeFrame{Matrix33r::Identity()};
     Vector3r m_Ke{Vector3r::Zero()};

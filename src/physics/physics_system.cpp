@@ -694,7 +694,8 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vect
         auto pair = createBeam(*splines[i], section, springs, stateDefaults, propsDefaults, (size_t) (segments * (splines[i]->totalLength() / totalLen)));
         if (first == entt::null) first = pair.first;
         if (prevEnd != entt::null && pair.first != entt::null) {
-            addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first, Vector3r::Zero(), Vector3r::Zero());
+            // addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first, Vector3r::Zero(), Vector3r::Zero());
+            addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first);
             disableCollisionBetween(prevEnd, pair.first);
         }
         prevEnd = pair.second;   

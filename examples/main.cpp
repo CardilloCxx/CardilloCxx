@@ -31,6 +31,7 @@
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
 #include "scenes/gears/GearsScene.hpp"
+#include "scenes/pendulum/PendulumScene.hpp"
 
 using namespace cardillo;
 
@@ -71,17 +72,18 @@ int main(int argc, char** argv) {
     // PainleveScene scene;
     // RotatingBallScene scene;
     // RailScene scene;
-    DzhanibekovScene scene;
+    // DzhanibekovScene scene;
     // ParcelScene scene;
     // DiscreteRodScene scene;
     // ConstraintTestScene scene;
     // GearsScene scene;
+    PendulumScene scene;
 
     scene.populate(sys);
 
     // Setup Moreau solver
-    // cardillo::solver::MoreauSolver solver(sys);
-    cardillo::solver::DualStoermerVerletSolver solver(sys);
+    cardillo::solver::MoreauSolver solver(sys);
+    // cardillo::solver::DualStoermerVerletSolver solver(sys);
 
     // Writer (rank 0)
     std::unique_ptr<cardillo::io::VtkWriterBinary> writer;
