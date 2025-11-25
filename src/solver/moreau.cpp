@@ -9,57 +9,6 @@
 
 namespace cardillo::solver {
 
-inline VectorXr B_times_u(const VectorXr& q, const VectorXr& u)
-{
-    const int nq = static_cast<int>(q.size());
-    const int nu = static_cast<int>(u.size());
-    VectorXr qdot = VectorXr::Zero(nq);
-
-    // Position derivative (common to both)
-    qdot.head(3) = u.head(3);
-
-    // If not a rigid body, return here
-    if (nq != 7 || nu != 6) return qdot;
-
-    const real_t w = q(6);
-    const Vector3r p = q.segment<3>(3);
-    const Vector3r omega = u.tail<3>();
-
-    // dq/dt = 0.5 * [ w*I + [p]_x ; -p^T ] * ω
-    qdot.segment<3>(3) = 0.5 * (w * omega + p.cross(omega));
-    qdot(6) = -0.5 * p.dot(omega);
-
-    return qdot;
-}
-
-inline void integrate_quaternions(
-    VectorXr& q_out,
-    const VectorXr& q_in,
-    const VectorXr& v_in,
-    const std::vector<int>& offQ,
-    const std::vector<int>& offV,
-    int Nb,
-    real_t dt,
-    real_t scale)
-{
-    for (int b = 0; b < Nb; ++b) {
-        const int q0 = offQ[b], qnxt = offQ[b + 1];
-        const int v0 = offV[b], vnxt = offV[b + 1];
-        const int nq = qnxt - q0, nv = vnxt - v0;
-        if (nq == 0 || nv == 0) continue;
-
-        auto q_seg = q_in.segment(q0, nq);
-        auto v_seg = v_in.segment(v0, nv);
-        auto q_out_seg = q_out.segment(q0, nq);
-
-        const auto qdot = B_times_u(q_seg, v_seg);
-        if (qdot.size() != nq) continue;
-
-        q_out_seg = q_seg + scale * dt * qdot;
-        if (nq == 7) q_out_seg.tail<4>().normalize();
-    }
-}
-
 void MoreauSolver::stepMidpoint(real_t dt)
 {
     // 1) Get current state vectors

@@ -100,9 +100,9 @@ using StlVectorVectorXr = std::vector<VectorXr>;
 // // CsrMatrixXXr?
 // using CooMatrix = miscellaneous::CooMatrix<real_t>;
 // using Triplet = Eigen::Triplet<real_t>;
-// template <int StorageLayout>
-// using SparseMatrix = Eigen::SparseMatrix<real_t, StorageLayout>;
-// using CscMatrix = SparseMatrix<Eigen::ColMajor>;
-// using CsrMatrix = SparseMatrix<Eigen::RowMajor>;
+template <int StorageLayout>
+using SparseMatrix = Eigen::SparseMatrix<real_t, StorageLayout>;
+using CscMatrix = SparseMatrix<Eigen::ColMajor>;
+using CsrMatrix = SparseMatrix<Eigen::RowMajor>;
 
 }  // namespace cardillo

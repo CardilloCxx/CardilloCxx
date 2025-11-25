@@ -168,36 +168,6 @@ void DynamicsAssembler::writeVelocityToSystem(const VectorXr& v) {
 void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v) {
     DynamicsAssembler::writePositionToSystem(q);
     DynamicsAssembler::writeVelocityToSystem(v);
-    // const auto& reg = m_sys.ecs();
-    // auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
-    // for (auto [e, bi] : view.each()) {
-    //     const int b = bi.b;
-    //     if (b >= 0 && b < (int)m_body_pos_offsets.size()-1) {
-    //         const int offQ = m_body_pos_offsets[(size_t)b];
-    //         const int nQ = m_body_pos_offsets[(size_t)b+1] - offQ;
-    //         VectorXr qb = (nQ>0) ? q.segment(offQ, nQ) : VectorXr(0);
-    //         if (qb.size() >= 3 && reg.any_of<PhysicsSystem::C_Position3>(e)) {
-    //             const_cast<PhysicsSystem::C_Position3&>(reg.get<PhysicsSystem::C_Position3>(e)).value = qb.head<3>();
-    //         }
-    //         if (qb.size() >= 7 && reg.any_of<PhysicsSystem::C_Orientation>(e)) {
-    //             Quaternion4r qn(qb.tail<4>()); qn.normalize();
-    //             const_cast<PhysicsSystem::C_Orientation&>(reg.get<PhysicsSystem::C_Orientation>(e)).value = qn;
-    //         }
-    //     }
-    //     if (b >= 0 && b < (int)m_body_vel_offsets.size()-1) {
-    //         const int offV = m_body_vel_offsets[(size_t)b];
-    //         const int nV = m_body_vel_offsets[(size_t)b+1] - offV;
-    //         VectorXr vb = (nV>0) ? v.segment(offV, nV) : VectorXr(0);
-    //         if (vb.size() >= 3 && reg.any_of<PhysicsSystem::C_LinearVelocity3>(e)) {
-    //             const_cast<PhysicsSystem::C_LinearVelocity3&>(reg.get<PhysicsSystem::C_LinearVelocity3>(e)).value = vb.head<3>();
-    //         }
-    //         if (vb.size() >= 6 && reg.any_of<PhysicsSystem::C_AngularVelocity3>(e)) {
-    //             const_cast<PhysicsSystem::C_AngularVelocity3&>(reg.get<PhysicsSystem::C_AngularVelocity3>(e)).value = vb.tail<3>();
-    //         }
-    //     }
-    // }
-    // m_sys.markStateDirty();
-    // m_sys.markForcesDirty();
 }
 
 void DynamicsAssembler::assignDofs() {
@@ -378,7 +348,7 @@ void DynamicsAssembler::rebuildInteractionW_()
     for (int i = 0; i < nDampers; ++i) { m_Adiag[i] = Arows[(size_t)i]; }
 
     // Invalidate previous sparse S factorization
-    m_S_sparse_ldlt.reset();
+    m_S_sparse_lu.reset();
 }
 
 bool DynamicsAssembler::buildAndFactorS(real_t dt)
@@ -426,23 +396,17 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
     // Middle and lower diagonal blocks (C and A terms)
     // C block over nSprings rows (assemble compliance; clamp zeros to avoid singular KKT when using SPD factorization)
     for (int i = 0; i < nSprings; ++i) {
-        const real_t tinyC = (real_t)1e-18;
-        const real_t Cmin  = (real_t)1e-12; // interpret C=0 as near-hard lock
         real_t Ci = m_Cdiag[i];
         if (!std::isfinite(Ci)) continue; // skip non-finite
-        real_t Ci_eff = (std::abs(Ci) <= tinyC) ? Cmin : Ci;
-        real_t cval = - (real_t)1.0 / (dt * dt) * Ci_eff;
-        if (cval != (real_t)0) trips.emplace_back(totalV + i, totalV + i, cval);
+        real_t cval = - (real_t)1.0 / (dt * dt) * Ci;
+        trips.emplace_back(totalV + i, totalV + i, cval);
     }
     // A block over nDampers rows (assemble damping compliance; clamp zeros similarly)
     for (int i = 0; i < nDampers; ++i) {
-        const real_t tinyA = (real_t)1e-18;
-        const real_t Amin  = (real_t)1e-12;
         real_t Ai = m_Adiag[i];
         if (!std::isfinite(Ai)) continue;
-        real_t Ai_eff = (std::abs(Ai) <= tinyA) ? Amin : Ai;
-        real_t aval = - (real_t)1.0 / dt * Ai_eff;
-        if (aval != (real_t)0) trips.emplace_back(totalV + nSprings + i, totalV + nSprings + i, aval);
+        real_t aval = - (real_t)1.0 / dt * Ai;
+        trips.emplace_back(totalV + nSprings + i, totalV + nSprings + i, aval);
     }
 
     // Build sparse matrix
@@ -450,24 +414,24 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
     m_S_sparse.setFromTriplets(trips.begin(), trips.end());
     m_S_sparse.makeCompressed();
 
-    // Factorize using SimplicialLDLT (sparse LDL^T) for symmetric matrices.
+    // Factorize using SparseLU for symmetric matrices.
     try {
-        m_S_sparse_ldlt.emplace();
-        Eigen::SparseMatrix<double> S_double = m_S_sparse.cast<double>();
-        m_S_sparse_ldlt->analyzePattern(S_double);
-        m_S_sparse_ldlt->factorize(S_double);
-        if (m_S_sparse_ldlt->info() != Eigen::Success) {
-            m_S_sparse_ldlt.reset();
-            std::cout << "DynamicsAssembler::buildAndFactorS: Sparse LDLT factorization failed\n";
+        m_S_sparse_lu.emplace();
+        m_S_sparse_lu->isSymmetric(true);
+        m_S_sparse_lu->analyzePattern(m_S_sparse);
+        m_S_sparse_lu->factorize(m_S_sparse);
+        if (m_S_sparse_lu->info() != Eigen::Success) {
+            m_S_sparse_lu.reset();
+            std::cout << "DynamicsAssembler::buildAndFactorS: SparseLU factorization failed\n";
             return false;
         } else if (m_sys.config().debug_rb) {
-            std::cout << "[DynamicsAssembler] LDLT factorization success.\n";
+            std::cout << "[DynamicsAssembler] SparseLU factorization success.\n";
         }
     } catch (const std::exception& ex) {
         if (m_sys.config().debug_rb) {
-            std::cout << "[DynamicsAssembler] Exception during LDLT: " << ex.what() << '\n';
+            std::cout << "[DynamicsAssembler] Exception during SparseLU: " << ex.what() << '\n';
         }
-        m_S_sparse_ldlt.reset();
+        m_S_sparse_lu.reset();
         return false;
     }
     return true;
@@ -477,13 +441,13 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
 // Solve full extended system and return complete solution
 VectorXr DynamicsAssembler::solveS(const VectorXr& rhs_ext) const
 {  
-    if (!m_S_sparse_ldlt.has_value()) throw std::runtime_error("DynamicsAssembler::solveS called but S matrix is not factorized");
+    if (!m_S_sparse_lu.has_value()) throw std::runtime_error("DynamicsAssembler::solveS called but S matrix is not factorized");
 
-    Eigen::VectorXd sol = m_S_sparse_ldlt->solve(rhs_ext.cast<double>());
-    if (m_S_sparse_ldlt->info() != Eigen::Success) {
-        throw std::runtime_error("DynamicsAssembler::solveS: Sparse LDLT solve failed");
+    Eigen::VectorXd sol = m_S_sparse_lu->solve(rhs_ext);
+    if (m_S_sparse_lu->info() != Eigen::Success) {
+        throw std::runtime_error("DynamicsAssembler::solveS: SparseLU solve failed");
     }
-    return sol.cast<real_t>();
+    return sol;
 }
 
 void DynamicsAssembler::refreshState() {
