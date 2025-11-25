@@ -66,16 +66,16 @@ public:
         // hinge origin <> capsule1
         // sys.addConstraint<physics::RigidConstraint>(sys.ecs(), floor, capsule1, Vector3r::Zero());
         Vector3r k_axis1 = Vector3r::Constant(std::numeric_limits<real_t>::max());
-        k_axis1(2) = 1e1; // moderate stiffness on y-axis
+        k_axis1(2) = 1e-1; // small stiffness on y-axis
         Vector3r d_axis1 = Vector3r::Zero(); // no damping
         sys.addConstraint<physics::RigidConstraint>(sys.ecs(), floor, capsule1, Vector3r::Zero(), std::nullopt, k_axis1, d_axis1);
 
         // hinge capsule1 <> capsule2
         // sys.addConstraint<physics::RigidConstraint>(sys.ecs(), capsule1, capsule2, Vector3r(2 * l1,0,0));
         Vector3r k_axis2 = Vector3r::Constant(std::numeric_limits<real_t>::max());
-        k_axis2(2) = 1e-6; // very small stiffness on y-axis
+        k_axis2(2) = 1e2; // moderate stiffness on y-axis
         Vector3r d_axis2 = Vector3r::Zero();
-        k_axis2(2) = 1e-3; // small stiffness on y-axis
+        // d_axis2(2) = 1e-3; // small stiffness on y-axis
         sys.addConstraint<physics::RigidConstraint>(sys.ecs(), capsule1, capsule2, Vector3r(2 * l1,0,0), std::nullopt, k_axis2, d_axis2);
     }
 

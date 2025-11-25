@@ -221,6 +221,7 @@ ConstraintResult RigidConstraint::getConstraint() const {
 
     out.Arows.resize(nD);
     out.Arows = VectorXr::Constant(nD, std::numeric_limits<real_t>::max());
+    // TODO: This logic is still missing
     // out.WgammaA.resize(6, nD);
     // out.WgammaB.resize(6, nD);
     // index_t offset = 0;
