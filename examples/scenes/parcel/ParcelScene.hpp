@@ -9,6 +9,7 @@ using namespace cardillo;
 // Parcel scene.
 class ParcelScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "parcel"; }
     ParcelScene() = default;
     ~ParcelScene() = default;
 

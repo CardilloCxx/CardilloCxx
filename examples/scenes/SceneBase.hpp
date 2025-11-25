@@ -10,6 +10,9 @@ public:
     SceneBase() = default;
     virtual ~SceneBase() = default;
 
+    // Short identifier used for config selection and output naming
+    virtual const char* sceneName() const = 0;
+
     // Populate the provided physics system (add obstacles, bodies, etc.).
     virtual void populate(cardillo::PhysicsSystem& sys) = 0;
 

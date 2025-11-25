@@ -43,7 +43,7 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSy
         m_staticGeoWritten = true;
     }
     // Additionally write a timestep-qualified static geometry snapshot every time
-    writeStaticGeometryStep(step, data);
+    // writeStaticGeometryStep(step, data);
     // Always write dynamic geometry per step
     writeDynamicGeometry(step, data);
     if (m_writeContacts) {
@@ -299,7 +299,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                     if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
                         const auto& vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
                         const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
-                        mo.vlin = vlin; mo.omega = omega_body; mo.hasKinematics = true;
+                        mo.vlin = vlin; mo.omega = omega_body; mo.hasKinematics = true; mo.R = R;
                     }
                     out.meshes.push_back(std::move(mo));
                 }
@@ -662,7 +662,11 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
         } else {
             for (const auto& pw : m.vertices) {
                 Vector3r v = Vector3r::Zero();
-                if (m.hasKinematics) { Vector3r r = pw - m.center; v = m.vlin + m.omega.cross(r); }
+                if (m.hasKinematics) {
+                    const Vector3r r_world = pw - m.center;
+                    const Vector3r omega_world = m.R * m.omega;  // body → world
+                    v = m.vlin + omega_world.cross(r_world);
+                }
                 writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
             }
         }

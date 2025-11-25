@@ -8,6 +8,7 @@
 // velocity along the rail and an angular velocity to simulate rolling.
 class RailScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "rail"; }
     RailScene() = default;
     ~RailScene() override = default;
 

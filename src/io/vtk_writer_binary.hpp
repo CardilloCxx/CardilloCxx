@@ -65,6 +65,7 @@ private:
         Vector3r center{Vector3r::Zero()};
         Vector3r vlin{Vector3r::Zero()};
         Vector3r omega{Vector3r::Zero()};
+        Matrix33r R{Matrix33r::Identity()};
         bool hasKinematics{false};
         float partition{-1.0f};
         int entityId{-1};

@@ -5,6 +5,7 @@
 #include "../collision/collision_coal.hpp"
 #include "../solver/warmstart.hpp"
 #include "../io/softbody_loader.hpp"
+#include "../io/csv_writer.hpp"
 #include <coal/mesh_loader/loader.h>
 #include <coal/BVH/BVH_model.h>
 #include <sstream>
@@ -197,6 +198,16 @@ entt::entity PhysicsSystem::addStaticBody(const RigidShape& shape,
     return addRigidBody(shape, state, staticProps);
 }
 
+void PhysicsSystem::track(entt::entity e, const std::string& name)
+{
+    if (!m_reg.valid(e)) return;
+    if (!m_reg.any_of<C_TrackTag>(e)) {
+        m_reg.emplace<C_TrackTag>(e, C_TrackTag{name});
+    } else {
+        m_reg.get<C_TrackTag>(e).name = name;
+    }
+}
+
 // Entity creation
 index_t PhysicsSystem::addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius) {
     auto e = m_reg.create();
@@ -247,6 +258,40 @@ index_t PhysicsSystem::addObstacleHeightField(const Vector3r& position,
     // Touch the asset so failures surface early
     (void)getHeightFieldAsset(e);
     return static_cast<index_t>(entt::to_integral(e));
+}
+
+void PhysicsSystem::writeTrackedStateToCsv(real_t t)
+{
+    static cardillo::io::CsvWriter writer;
+    static bool initialized = false;
+    if (!initialized) {
+        std::string path = m_cfg.output_folder + "/" + m_cfg.output_filename_prefix + "_tracked.csv";
+        std::vector<std::string> header = {
+            "t",
+            "name",
+            "px","py","pz",
+            "vx","vy","vz",
+            "wx","wy","wz"
+        };
+        writer.open(path, header);
+        initialized = true;
+    }
+    if (!writer.isOpen()) return;
+
+    auto view = m_reg.view<C_TrackTag, C_Position3, C_LinearVelocity3, C_AngularVelocity3>();
+    for (auto e : view) {
+        const auto& tag   = view.get<C_TrackTag>(e);
+        const auto& pos   = view.get<C_Position3>(e).value;
+        const auto& v     = view.get<C_LinearVelocity3>(e).value;
+        const auto& w     = view.get<C_AngularVelocity3>(e).value;
+        writer.writeRow(
+            t,
+            tag.name,
+            pos.x(), pos.y(), pos.z(),
+            v.x(), v.y(), v.z(),
+            w.x(), w.y(), w.z()
+        );
+    }
 }
 
 
@@ -411,7 +456,7 @@ VectorXr PhysicsSystem::getForce(entt::entity e) const {
             const Vector3r Iw = Idiag.cwiseProduct(w);
             tau = -w.cross(Iw);
         }
-        // Add any external one-shot forces/torques (world-frame)
+        // Add any external one-shot forces/torques
         if (m_reg.any_of<C_ExternalForce>(e)) {
             fg += m_reg.get<C_ExternalForce>(e).f;
         }

@@ -9,6 +9,7 @@ using namespace cardillo;
 // Parcel scene.
 class DiscreteRodScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "discrete_rod"; }
     DiscreteRodScene() = default;
     ~DiscreteRodScene() = default;
 

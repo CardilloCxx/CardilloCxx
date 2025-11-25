@@ -156,6 +156,9 @@ Config ConfigReader::fromFile(const std::string& path) {
         else if (key == "friction.default_mu") {
             try { cfg.friction_default_mu = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }
+        else if (key == "scene.name") {
+            cfg.scene_name = val;
+        }
     }
     return cfg;
 }

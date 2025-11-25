@@ -8,6 +8,7 @@ using namespace cardillo;
 
 class NetScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "net"; }
     NetScene() = default;
     ~NetScene() = default;
 
@@ -62,6 +63,7 @@ public:
                          PhysicsSystem::RigidState(Vector3r(-3,0,0) + netCenter, Vector3r(30.0, 0.0, 0.0), Vector3r(10,20,50)),
                          PhysicsSystem::RigidProps::withDensity(2500));
 
+        std::cout << "Boulder mass: " << sys.getMass(boulder).col(0).row(0) << " kg" << std::endl;
         std::cout << "Boulder KE: " << sys.getKineticEnergy(boulder) << " J" << std::endl;
     }
 

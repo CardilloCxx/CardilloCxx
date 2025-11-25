@@ -9,6 +9,7 @@ using namespace cardillo;
 // Gears scene.
 class GearsScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "gears"; }
     GearsScene() = default;
     ~GearsScene() = default;
 

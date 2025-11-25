@@ -9,6 +9,7 @@ using namespace cardillo;
 // Domino scene: builds a layered domino tower near the origin.
 class DominoScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "domino"; }
     DominoScene() = default;
     ~DominoScene() override = default;
 
@@ -23,21 +24,13 @@ public:
         // Domino dims: x=length/2, y=thickness/2, z=height/2
         const Vector3r dominoHalf((real_t)0.024, (real_t)0.00375, (real_t)0.012); // length 9.6cm, thickness 1.5cm, height 4.8cm
         const real_t density = (real_t)800.0;
-        const int layers = 16;
-        const int gridN = 16;
+        const int layers = 53; //11; // 26; //53;
+        const int gridN = 32; //16; // 16; //32;
         const Vector3r baseCenter(0.0, 0.0, 0.0);
         const real_t gapLong = (real_t)0.004; // small longitudinal spacing
         const real_t extraLayerGap = (real_t)-0.0001;
 
         spawnDominoTowerStructure(sys, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap);
-
-        // bullet
-        {
-            PhysicsSystem::SphereShape s{(real_t)0.01};
-            PhysicsSystem::RigidState st; st.position = Vector3r(0.75, 0.0, 0.25); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(-10.0, 1.0, 0.0);
-            PhysicsSystem::RigidProps pr; pr.mass = (real_t)2.0;
-            sys.addRigidBody(s, st, pr);
-        }
     }
 
 private:
@@ -86,7 +79,13 @@ private:
                 c.y() += (L/2.0 - W/2.0);
             }
             const real_t m = massFromDensity(half, density);
-            PhysicsSystem::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = Vector3r::Zero(); state.angularVelocity = Vector3r::Zero();
+
+            Vector3r vel = Vector3r::Zero();
+            if (i == Ncells -1 && (j == Ncells /2 || j == Ncells /2 - 1) && k == layers -4) {
+                vel = Vector3r(4.0, 0.0, -1.0) * 2;
+            }
+
+            PhysicsSystem::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = vel; state.angularVelocity = Vector3r::Zero();
             PhysicsSystem::RigidProps props; props.mass = m;
             sys.addRigidBody(shape, state, props);
 
@@ -94,7 +93,7 @@ private:
 
         // Place layers 
         for (int layer = 0; layer < layers; ++layer) {
-            const int off = 2;
+            const int off = 0;
             const int k = layer;
             // Each layer is a grid of dominos
             if((layer + off) % 4 == 0) 
