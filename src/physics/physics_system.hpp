@@ -349,6 +349,8 @@ public:
     struct C_ExternalForce { Vector3r f; };
     struct C_ExternalTorque { Vector3r tau; };
 
+    struct C_TrackTag {std::string name;};
+
     // Body index assigned by the assembler (stable across rebuilds unless structure changes)
     struct C_BodyIndex { int b; };
 
@@ -384,6 +386,9 @@ public:
 
     void explicitPositionUpdate(real_t dt);
     void linearImplicitPositionUpdate(real_t dt);
+
+    void track(entt::entity e, const std::string& name);
+    void writeTrackedStateToCsv(real_t t);
 
 private:
     // Helper to add common rigid-body components

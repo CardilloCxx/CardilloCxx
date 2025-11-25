@@ -226,6 +226,11 @@ static inline real_t global_segment_norm(const PJIterContext& ctx, const VectorX
 		}
 	}
 	double gsum = 0.0; MPI_Allreduce(&loc_sum, &gsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+	if (std::isnan(gsum)) {
+		std::cerr << "[ProjectedJacobi] Warning: NaN detected in global_segment_norm" << std::endl;
+	}
+
 	return (real_t)std::sqrt(gsum);
 }
 

@@ -9,6 +9,7 @@ using namespace cardillo;
 
 class SpringTestScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "spring_test"; }
     SpringTestScene() = default;
     ~SpringTestScene() override = default;
 

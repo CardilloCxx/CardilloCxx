@@ -11,6 +11,7 @@ using namespace cardillo;
 // and two rope spans connecting tripod apex anchors across the gap.
 class HangbrideScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "hangbridge"; }
     HangbrideScene() = default;
     ~HangbrideScene() override = default;
 

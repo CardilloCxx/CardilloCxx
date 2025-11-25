@@ -12,13 +12,13 @@
 #include <iostream>
 
 // Scenes
+#include "scenes/SceneBase.hpp"
 #include "scenes/heightmap/HeightmapScene.hpp"
 #include "scenes/domino/DominoScene.hpp"
 #include "scenes/painleve/painleveScene.hpp"
 #include "scenes/rotating_ball/RotatingBallScene.hpp"
 #include "scenes/chain/ChainScene.hpp"
 #include "scenes/rail/RailScene.hpp"
-#include "scenes/dzhanibekov/dzhanibekov.hpp"
 #include "scenes/dzhanibekov/dzhanibekov.hpp"
 #include "scenes/springTest/SpringTestScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
@@ -30,6 +30,8 @@
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
 #include "scenes/gears/GearsScene.hpp"
+#include "scenes/leaningTower/LeaningTowerScene.hpp"
+#include "scenes/marbleRun/MarbleRunScene.hpp"
 
 using namespace cardillo;
 
@@ -58,24 +60,51 @@ int main(int argc, char** argv) {
     
     sys.setConfig(cfg);
 
-    // HeightmapScene scene;
-    // DominoScene scene;
-    // SpringTestScene scene;
-    // RodAssemblyScene scene;
-    // NetScene scene;
-    // WilberforcePendulumScene scene;
-    // HangbrideScene scene;
-    // SoftbodyTestScene scene;
-    // ChainScene scene;
-    // PainleveScene scene;
-    // RotatingBallScene scene;
-    // RailScene scene;
-    // DzhanibekovScene scene;
-    // ParcelScene scene;
-    // DiscreteRodScene scene;
-    // ConstraintTestScene scene;
-    GearsScene scene;
+    // Construct all available scenes and select the one matching cfg.scene_name
+    std::vector<std::unique_ptr<SceneBase>> scenes;
+    scenes.emplace_back(std::make_unique<HeightmapScene>());
+    scenes.emplace_back(std::make_unique<DominoScene>());
+    scenes.emplace_back(std::make_unique<SpringTestScene>());
+    scenes.emplace_back(std::make_unique<RodAssemblyScene>());
+    scenes.emplace_back(std::make_unique<NetScene>());
+    scenes.emplace_back(std::make_unique<WilberforcePendulumScene>());
+    scenes.emplace_back(std::make_unique<HangbrideScene>());
+    scenes.emplace_back(std::make_unique<SoftbodyTestScene>());
+    scenes.emplace_back(std::make_unique<ChainScene>());
+    scenes.emplace_back(std::make_unique<PainleveScene>());
+    scenes.emplace_back(std::make_unique<RotatingBallScene>());
+    scenes.emplace_back(std::make_unique<RailScene>());
+    scenes.emplace_back(std::make_unique<DzhanibekovScene>());
+    scenes.emplace_back(std::make_unique<ParcelScene>());
+    scenes.emplace_back(std::make_unique<DiscreteRodScene>());
+    scenes.emplace_back(std::make_unique<GearsScene>());
+    scenes.emplace_back(std::make_unique<LeaningTowerScene>());
+    scenes.emplace_back(std::make_unique<MarbleRunScene>());
 
+    SceneBase* selected = nullptr;
+    for (auto& s : scenes) {
+        if (cfg.scene_name == s->sceneName()) {
+            selected = s.get();
+            break;
+        }
+    }
+    if (!selected) {
+        if (worldRank == 0) 
+        {
+            if (cfg.scene_name == "none-specified") {
+                std::cerr << "No scene_name specified in config. Available scenes are:" << std::endl;
+                for (auto& s : scenes) {
+                    std::cerr << "  - " << s->sceneName() << std::endl;
+                }
+            }
+            std::cerr << "Unknown scene_name '" << cfg.scene_name << "'" << std::endl;
+        }
+        PetscFinalize();
+        return EXIT_FAILURE;
+    }
+    std::cout << "Selected scene: " << selected->sceneName() << std::endl;
+    SceneBase& scene = *selected;
+    cfg.output_filename_prefix = scene.sceneName();
     scene.populate(sys);
 
     // Setup Moreau solver
@@ -108,6 +137,9 @@ int main(int argc, char** argv) {
         for (int k = 0; k < steps; ++k) {
             scene.updateScene(sys, t, dt);
             solver.stepMidpoint(dt);
+            if (worldRank == 0) {
+                sys.writeTrackedStateToCsv(t + dt);
+            }
             t += dt;
             if (writer) writer->maybeWrite(k+1, t, sys);
             if (pbar) pbar->update(1);

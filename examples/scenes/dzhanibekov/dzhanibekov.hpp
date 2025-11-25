@@ -7,6 +7,7 @@
 // Dzhanibekov rod scene (moved into its own folder)
 class DzhanibekovScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "dzhanibekov"; }
     DzhanibekovScene() = default;
     ~DzhanibekovScene() override = default;
 
@@ -33,14 +34,9 @@ public:
         for (auto entity : reg.view<cardillo::PhysicsSystem::C_RigidBodyTag>()) {
             rodEntity = entity; break;
         }
-        
-        // Print Inertia and other stats from physics system:
-        const real_t* inertiaDiag = reg.get<cardillo::PhysicsSystem::C_InertiaDiag>(rodEntity).I.data();
-        PetscPrintf(PETSC_COMM_WORLD, "Dzhanibekov inertia diag: A=%.6f, B=%.6f, C=%.6f\n",
-                    inertiaDiag[0], inertiaDiag[1], inertiaDiag[2]);
-        PetscPrintf(PETSC_COMM_WORLD, " A = %.6f\n", (real_t)(1.0/12.0) * (b * b + c * c));
-        PetscPrintf(PETSC_COMM_WORLD, " B = %.6f\n", (real_t)(1.0/12.0) * (a * a + c * c));
-        PetscPrintf(PETSC_COMM_WORLD, " C = %.6f\n", (real_t)(1.0/12.0) * (a * a + b * b));
+        if (rodEntity != entt::null) {
+            sys.track(rodEntity, "dzhanibekov_rod");
+        }
 
     }
 };

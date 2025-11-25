@@ -5,6 +5,7 @@
 
 class HeightmapScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "heightmap"; }
     HeightmapScene() = default;
     ~HeightmapScene() override = default;
 

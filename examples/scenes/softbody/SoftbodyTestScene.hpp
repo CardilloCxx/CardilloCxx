@@ -7,6 +7,7 @@ using namespace cardillo;
 
 class SoftbodyTestScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "softbody"; }
     SoftbodyTestScene() = default;
     ~SoftbodyTestScene() override = default;
 

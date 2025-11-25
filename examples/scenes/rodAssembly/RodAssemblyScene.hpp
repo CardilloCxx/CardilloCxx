@@ -16,6 +16,7 @@ using namespace cardillo;
 // bounding-box pass.
 class RodAssemblyScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "rod_assembly"; }
     RodAssemblyScene() = default;
     ~RodAssemblyScene() override = default;
 
@@ -32,17 +33,26 @@ public:
         const Quaternion4r frameOri = Quaternion4r::Identity();
         const Vector3r frameScale = Vector3r::Ones();
         {
-            PhysicsSystem::MeshShape shape{framePath, frameScale}; PhysicsSystem::RigidState st; st.position = framePos; st.orientation = frameOri; PhysicsSystem::RigidProps pr; sys.addRigidBody(shape, st, pr);
+            PhysicsSystem::MeshShape shape{framePath, frameScale}; PhysicsSystem::RigidState st; st.position = framePos; st.orientation = frameOri; PhysicsSystem::RigidProps pr; m_frame = sys.addRigidBody(shape, st, pr);
         }
 
         // Add lower and upper rods as dynamic rigid bodies
         const real_t rodMass = (real_t)1.0;
         {
-            PhysicsSystem::MeshShape shape{lowerPath, Vector3r::Ones()}; PhysicsSystem::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(0.0,1.0,0.0); PhysicsSystem::RigidProps pr; pr.mass = rodMass; sys.addRigidBody(shape, st, pr);
+            PhysicsSystem::MeshShape shape{lowerPath, Vector3r::Ones()}; PhysicsSystem::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(0.0,1.0,0.0); PhysicsSystem::RigidProps pr; pr.mass = rodMass; m_lowerRod = sys.addRigidBody(shape, st, pr);
         }
         {
-            PhysicsSystem::MeshShape shape{upperPath, Vector3r::Ones()}; PhysicsSystem::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(1.0,0.0,0.0); PhysicsSystem::RigidProps pr; pr.mass = rodMass; sys.addRigidBody(shape, st, pr);
+            PhysicsSystem::MeshShape shape{upperPath, Vector3r::Ones()}; PhysicsSystem::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(1.0,0.0,0.0); PhysicsSystem::RigidProps pr; pr.mass = rodMass; m_upperRod = sys.addRigidBody(shape, st, pr);
         }
     
     }
+
+    void updateScene(cardillo::PhysicsSystem& sys, real_t /*t*/, real_t /*dt*/) override {
+        sys.applyForce(m_upperRod, Vector3r(50.0, 0.0, 0), Vector3r::Zero());
+    }
+
+private: 
+    entt::entity m_frame{entt::null};
+    entt::entity m_lowerRod{entt::null};
+    entt::entity m_upperRod{entt::null};
 };

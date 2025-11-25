@@ -65,6 +65,8 @@ struct Config {
     bool debug_rb{false};   // debug.rb  - enable rigid-body contact/W diagnostics in Moreau
     bool debug_pj{false};   // debug.pj  - enable ProjectedJacobi iteration logging
     bool debug_mesh{false}; // debug.mesh - print mesh normalization info (volume, COM, inertia)
+
+    std::string scene_name{"none-specified"};
 };
 
 class ConfigReader {

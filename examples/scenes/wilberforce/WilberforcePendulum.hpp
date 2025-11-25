@@ -13,6 +13,7 @@ using namespace cardillo;
 // with a rigid mass at the bottom. Initial conditions excite vertical mode and small twist.
 class WilberforcePendulumScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "wilberforce"; }
     WilberforcePendulumScene() = default;
     ~WilberforcePendulumScene() = default;
 
