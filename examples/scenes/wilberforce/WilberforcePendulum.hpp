@@ -68,7 +68,8 @@ public:
         PhysicsSystem::RigidProps(tunedMass));
 
         // Pin bottom endpoint to bob using a rigid constraint
-        sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_bottom, m_bob, Vector3r::Zero(), Vector3r(0,0,tunedSize));
+        // sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_bottom, m_bob, Vector3r::Zero(), Vector3r(0,0,tunedSize));
+        sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_bottom, m_bob);
         
         const real_t vz0 = -1.0; // m/s downward
         const real_t wz0 = 0.0;  // rad/s small spin around Z to couple torsion & vertical modes

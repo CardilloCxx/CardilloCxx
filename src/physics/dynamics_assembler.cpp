@@ -74,6 +74,8 @@ void DynamicsAssembler::rebuildMass_() {
     }
 }
 
+// TODO: Distinguish between external forces and gyroscopic forces, since we 
+//       want to evaluate them differently.
 void DynamicsAssembler::rebuildForces_() {
     const int Nb = m_sys.numBodies();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());

@@ -1,6 +1,7 @@
 #include "cardillo.hpp"
 #include "io/vtk_writer_binary.hpp"
 #include "solver/moreau.hpp"
+#include "solver/dual_stoermer_verlet.hpp"
 #include <mpi.h>
 #include <iostream>
 #include <iomanip>
@@ -30,8 +31,8 @@
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
 #include "scenes/gears/GearsScene.hpp"
+#include "scenes/pendulum/PendulumScene.hpp"
 #include "scenes/leaningTower/LeaningTowerScene.hpp"
-#include "scenes/marbleRun/MarbleRunScene.hpp"
 
 using namespace cardillo;
 
@@ -60,6 +61,23 @@ int main(int argc, char** argv) {
     
     sys.setConfig(cfg);
 
+    // HeightmapScene scene;
+    // DominoScene scene;
+    // SpringTestScene scene;
+    // RodAssemblyScene scene;
+    // NetScene scene;
+    // WilberforcePendulumScene scene;
+    // HangbrideScene scene;
+    // SoftbodyTestScene scene;
+    // ChainScene scene;
+    // PainleveScene scene;
+    // RotatingBallScene scene;
+    // RailScene scene;
+    // DzhanibekovScene scene;
+    // ParcelScene scene;
+    // DiscreteRodScene scene;
+    // ConstraintTestScene scene;
+    // GearsScene scene;
     // Construct all available scenes and select the one matching cfg.scene_name
     std::vector<std::unique_ptr<SceneBase>> scenes;
     scenes.emplace_back(std::make_unique<HeightmapScene>());
@@ -79,7 +97,7 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<DiscreteRodScene>());
     scenes.emplace_back(std::make_unique<GearsScene>());
     scenes.emplace_back(std::make_unique<LeaningTowerScene>());
-    scenes.emplace_back(std::make_unique<MarbleRunScene>());
+    scenes.emplace_back(std::make_unique<PendulumScene>());
 
     SceneBase* selected = nullptr;
     for (auto& s : scenes) {
@@ -109,6 +127,7 @@ int main(int argc, char** argv) {
 
     // Setup Moreau solver
     cardillo::solver::MoreauSolver solver(sys);
+    // cardillo::solver::DualStoermerVerletSolver solver(sys);
 
     // Writer (rank 0)
     std::unique_ptr<cardillo::io::VtkWriterBinary> writer;

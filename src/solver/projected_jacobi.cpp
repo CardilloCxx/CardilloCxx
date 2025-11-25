@@ -342,6 +342,7 @@ static inline void nesterov_loop(PJIterContext& ctx,
 
 VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	auto sc_solve = m_dyn.system().timings().scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobi);
+
 	// Use sparse W and the effective-mass S (assembled & factorized in DynamicsAssembler)
 	const auto& Wref = m_dyn.W();
 	const int C = (int)Wref.rows();

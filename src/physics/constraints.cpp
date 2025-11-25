@@ -175,68 +175,69 @@ static Matrix33r leftJacobianInverse(const Vector3r &phi) {
 // ===================== RigidConstraint =====================
 ConstraintResult RigidConstraint::getConstraint() const {
     ConstraintResult out; out.a = m_a; out.b = m_b;
-    const auto wa = computeAttachments_();
 
-    // Prepare 6 scalar rows (3 translational + 3 rotational) with 6 columns per velocity block
+    // TODO: Move this in computeAttachments_ or a similar function
+    const Vector3r& r_OS1 = m_reg->get<cardillo::PhysicsSystem::C_Position3>(m_a).value;
+    const Vector3r& r_OS2 = m_reg->get<cardillo::PhysicsSystem::C_Position3>(m_b).value;
+    const Quaternion4r& Q1 = m_reg->get<cardillo::PhysicsSystem::C_Orientation>(m_a).value;
+    const Quaternion4r& Q2 = m_reg->get<cardillo::PhysicsSystem::C_Orientation>(m_b).value;
+    const Matrix33r A_IK1 = Q1.toRotationMatrix();
+    const Matrix33r A_IK2 = Q2.toRotationMatrix();
+
     out.WgA = MatrixXXr::Zero(6, 6);
     out.WgB = MatrixXXr::Zero(6, 6);
-
-    // Lock translations in A's frame (columns 0..2)
-    out.WgA.block<3,3>(0,0) = -wa.RA;
-    out.WgA.block<3,3>(3,0) = -skew_from_vector(wa.RA.transpose() * (wa.xB - wa.xA) + m_rA_local);
-    out.WgB.block<3,3>(0,0) = wa.RA;
-    out.WgB.block<3,3>(3,0) = skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA;
-
-
-    // rotation error: phi = log(R_rel) in A-local
-    const Matrix33r Rrel = wa.RA.transpose() * wa.RB;
-    const Vector3r phi = so3_log_from_R(Rrel);
-    const Matrix33r Jinv = leftJacobianInverse(phi);
     
-    // Lock rotations in A's frame (columns 3..5)
-    out.WgA.block<3,3>(3,3) = -Jinv.transpose();
-    out.WgB.block<3,3>(3,3) = (Jinv * Rrel).transpose();
+    // translations
+    out.WgA.block<3,3>(0,0) = -Matrix33r::Identity();
+    out.WgA.block<3,3>(3,0) = -m_K1_r_S1J_skew * A_IK1.transpose();
 
-    out.WgammaA = out.WgA;
-    out.WgammaB = out.WgB;
+    out.WgB.block<3,3>(0,0) = Matrix33r::Identity();
+    out.WgB.block<3,3>(3,0) = m_K2_r_S2J_skew * A_IK2.transpose();
 
-    // Provide small finite spring and damper compliances to avoid purely saddle-point rows with missing diagonal.
-    // Using infinity for damping compliance produced rows with no diagonal regularization, leading to singular S.
-    out.Crows = VectorXr::Constant(6, 1e-10);
-    out.Arows = VectorXr::Constant(6, 1e-10);
+    // orientations
+    // 1. x x y = z
+    out.WgA.block<3,1>(3,3) = m_A_K1J.col(2);
+    out.WgB.block<3,1>(3,3) = -m_A_K2J.col(2);
+
+    // 2. y @ z = x
+    out.WgA.block<3,1>(3,4) = m_A_K1J.col(0);
+    out.WgB.block<3,1>(3,4) = -m_A_K2J.col(0);
+
+    // 3. z x x = y
+    out.WgA.block<3,1>(3,5) = m_A_K1J.col(1);
+    out.WgB.block<3,1>(3,5) = -m_A_K2J.col(1);
+
+    // possibly set compilance
+    // TODO: Can be done once since Crows and Arows are constant!
+    // TODO: Remove parts of W and C for zero stiffnesses!
+    out.Crows = VectorXr::Zero(6);
+    if (abs(m_k_axis(0)) > 0) out.Crows(3) = 1.0 / m_k_axis(0);
+    if (abs(m_k_axis(1)) > 0) out.Crows(4) = 1.0 / m_k_axis(1);
+    if (abs(m_k_axis(2)) > 0) out.Crows(5) = 1.0 / m_k_axis(2);
+
+    // possibly set attenuation
+    const Array3b nonzero_d = m_d_axis.array().abs() > 0;
+    const index_t nD = nonzero_d.count();
+
+    out.Arows.resize(nD);
+    out.Arows = VectorXr::Constant(nD, std::numeric_limits<real_t>::max());
+    // TODO: This logic is still missing
+    // out.WgammaA.resize(6, nD);
+    // out.WgammaB.resize(6, nD);
+    // index_t offset = 0;
+    // for (index_t i=0; i < 3; ++i) {
+    //     if (nonzero_d(i)) {
+    //         out.Arows(offset) = 1.0 / m_d_axis(i);
+    //         out.WgammaA.col(offset) = out.WgA.col(3 + i);
+    //         out.WgammaB.col(offset) = out.WgA.col(3 + i);
+    //         offset++;
+    //     }
+    // }
 
     return out;
 }
 
 // ===================== HingeConstraint =====================
-HingeConstraint::HingeConstraint(entt::registry& reg,
-                                 entt::entity a,
-                                 entt::entity b,
-                                 const Vector3r& rA_local,
-                                 const Vector3r& rB_local,
-                                 const Vector3r& axis_localA,
-                                 const real_t& K_axis,
-                                 const real_t& D_axis,
-                                 const Vector2r& Kf_A,
-                                 const Vector2r& Df_A,
-                                 const Vector3r& Ke_A,
-                                 const Vector3r& De_A)
-    : ConstraintPattern(reg, a, b, rA_local, rB_local),
-      m_hingeFrame(Matrix33r::Identity()),
-      m_Ke(Ke_A), m_De(De_A),
-      m_Kf(Vector3r(Kf_A.x(), Kf_A.y(), K_axis)),
-      m_Df(Vector3r(Df_A.x(), Df_A.y(), D_axis))
-{
-    // Compute hinge frame in A's local space
-    Vector3r axisA = axis_localA.normalized();
-    Vector3r up = Vector3r(0, 0, 1);
-    if (std::abs(axisA.dot(up)) > (real_t)0.99) { up = Vector3r(0, 1, 0); }
-    Vector3r right = up.cross(axisA).normalized();
-    up = -right.cross(axisA);
-    m_hingeFrame.col(0) = right;
-    m_hingeFrame.col(1) = up;
-    m_hingeFrame.col(2) = axisA;
-}
 ConstraintResult HingeConstraint::getConstraint() const {
     ConstraintResult out; out.a = m_a; out.b = m_b;
     const auto wa = computeAttachments_();

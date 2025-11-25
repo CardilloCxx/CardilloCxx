@@ -1,4 +1,4 @@
-#include "moreau.hpp"
+#include "dual_stoermer_verlet.hpp"
 #include "projected_jacobi.hpp"
 #include "CPG.h"
 #include <vector>
@@ -9,7 +9,7 @@
 
 namespace cardillo::solver {
 
-void MoreauSolver::stepMidpoint(real_t dt)
+void DualStoermerVerletSolver::stepMidpoint(real_t dt)
 {
     // 1) Get current state vectors
     m_dyn.refreshState();
@@ -21,7 +21,7 @@ void MoreauSolver::stepMidpoint(real_t dt)
     // const int Nb = (int)offV.size() - 1;
 
     // 2) Inplace midpoint position update
-    m_sys.explicitPositionUpdate(0.5 * dt);
+    m_sys.linearImplicitPositionUpdate(0.5 * dt);
 
     // 3) Evaluate contacts at midpoint positions
     m_dyn.refreshCollisionsAndSprings(dt);
@@ -40,7 +40,7 @@ void MoreauSolver::stepMidpoint(real_t dt)
     if ((int)Lambda_g.size() != nSprings) Lambda_g = VectorXr::Zero(nSprings);
 
     VectorXr rhs = VectorXr::Zero((index_t)extV);
-    rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * fn;
+    rhs.segment(0, totalV) =  M_diag.cwiseProduct(vn) + dt * fn;
     if (nSprings > 0) rhs.segment(totalV, nSprings) = - (1.0 / (dt * dt)) * Cdiag.cwiseProduct(Lambda_g);
 
     // 5) Solve extended system

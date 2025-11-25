@@ -739,7 +739,8 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vect
         auto pair = createBeam(*splines[i], section, springs, stateDefaults, propsDefaults, (size_t) (segments * (splines[i]->totalLength() / totalLen)));
         if (first == entt::null) first = pair.first;
         if (prevEnd != entt::null && pair.first != entt::null) {
-            addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first, Vector3r::Zero(), Vector3r::Zero());
+            // addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first, Vector3r::Zero(), Vector3r::Zero());
+            addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first);
             disableCollisionBetween(prevEnd, pair.first);
         }
         prevEnd = pair.second;   
@@ -749,6 +750,7 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vect
 }
 void PhysicsSystem::explicitPositionUpdate(real_t h) {
     auto _sc = timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
+
     // position update
     auto position_view = m_reg.view<C_Position3, const C_LinearVelocity3>();
     for (auto [e, pos, vel] : position_view.each()) {
@@ -759,18 +761,49 @@ void PhysicsSystem::explicitPositionUpdate(real_t h) {
     auto orientation_view = m_reg.view<C_Orientation, const C_AngularVelocity3>();
     for (auto [e, orientation, angularVel] : orientation_view.each()) {
         const Vector3r& omega = angularVel.value;
+
         Vector4r& P = orientation.value.coeffs();
         real_t w = P(3);
         P(3) -= h * 0.5 * P.head<3>().dot(omega);
         P.head<3>() += h * 0.5 * (w * omega + P.head<3>().cross(omega));
-        // Re-normalize to avoid drift and non-orthonormal rotations
+
+        // re-normalize to avoid quaternion drift
         orientation.value.normalize();
     }
 }
 
 void PhysicsSystem::linearImplicitPositionUpdate(real_t h) {
-    // TODO: This has to be implemented (do explicit update instead)
-    explicitPositionUpdate(h);
+    auto _sc = timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
+
+    // position update
+    auto position_view = m_reg.view<C_Position3, const C_LinearVelocity3>();
+    for (auto [e, pos, vel] : position_view.each()) {
+        pos.value += h * vel.value;
+    }
+
+    // orientations
+    auto orientation_view = m_reg.view<C_Orientation, const C_AngularVelocity3>();
+    for (auto [e, orientation, angularVel] : orientation_view.each()) {
+        const Vector3r& omega = angularVel.value;
+
+        // skew matrix q_dot = 0.5 * D * P
+        Matrix44r D = Matrix44r::Zero();
+        D.block<3, 3>(0, 0) = skew_from_vector(-omega);
+        D.block<3, 1>(0, 3) = omega;
+        D.block<1, 3>(3, 0) = -omega.transpose();
+
+        // iteration matrix (I - h / 2 * D) P_{n+1} = P_{n+1/2}
+        const Matrix44r A = Matrix44r::Identity() - 0.5 * h * D;
+
+        // quaternion coefficients
+        Vector4r& P = orientation.value.coeffs();
+
+        // linear implicit update
+        P = A.inverse() * P;
+
+        // re-normalize to avoid quaternion drift
+        orientation.value.normalize();
+    }
 }
 
 } // namespace cardillo::

@@ -9,8 +9,10 @@
 namespace cardillo {
 
 // TODO: Can we control PetscReal and PetscInt via CMake?
-#define real_t PetscReal
-#define index_t PetscInt
+// #define real_t PetscReal
+// #define index_t PetscInt
+#define real_t double
+#define index_t int
 
 // fixed size objects
 using Vector0r = Eigen::Vector<real_t, 0>;
@@ -25,7 +27,9 @@ using Vector2r = Eigen::Matrix<real_t, 2, 1>;
 using Vector2i = Eigen::Matrix<index_t, 2, 1>;
 
 using Vector3r = Eigen::Matrix<real_t, 3, 1>;
+using Vector3b = Eigen::Matrix<bool, 3, 1>;
 using Array3i = Eigen::Array<index_t, 3, 1>;
+using Array3b = Eigen::Array<bool, 3, 1>;
 using Matrix33r = Eigen::Matrix<real_t, 3, 3>;
 // Eigen does not provide SkewSymmetricMatrix3 as a template alias in all versions.
 // Represent a 3x3 skew-symmetric matrix as a fixed-size Eigen matrix and
