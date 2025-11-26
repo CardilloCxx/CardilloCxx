@@ -6,6 +6,7 @@
 #include <limits>
 #include "../misc/types.hpp"
 #include "physics_system.hpp"
+#include <iostream>
 
 namespace cardillo {
 namespace physics {
@@ -24,6 +25,66 @@ struct ConstraintResult {
     MatrixXXr WgammaB; 
     VectorXr Crows;    // size N (compliances per spring row)
     VectorXr Arows;    // size N (compliances per damper row)
+};
+
+// Joint-frame description shared by all constraints it always attached to Body A.
+struct JointProperties {
+    JointProperties() = default;
+
+
+    explicit JointProperties(entt::registry& reg, entt::entity A, entt::entity B) 
+        : JointProperties(reg, A, B, std::nullopt, 
+            reg.get<cardillo::PhysicsSystem::C_Position3>(A).value, 
+            reg.get<cardillo::PhysicsSystem::C_Position3>(B).value, 
+            Matrix33r::Identity()) {}
+
+    explicit JointProperties(entt::registry& reg,
+                            entt::entity A,
+                            entt::entity B,
+                            std::optional<entt::entity> ref,
+                            const Vector3r& r_refJ1,
+                            const Vector3r& r_refJ2,
+                            const Matrix33r& A_refJ) 
+        :entityA(A), entityB(B)
+        {
+            Vector3r  r_ORef;
+            Matrix33r A_Ref;
+
+            if (ref.has_value()) {
+                r_ORef = reg.get<cardillo::PhysicsSystem::C_Position3>(*ref).value;
+                A_Ref  = reg.get<cardillo::PhysicsSystem::C_Orientation>(*ref).value.toRotationMatrix();
+            } else {
+                r_ORef = Vector3r::Zero();
+                A_Ref  = Matrix33r::Identity();
+            }
+           
+            Vector3r r_OJ1_world = r_ORef + A_Ref * r_refJ1;
+            Vector3r r_OJ2_world = r_ORef + A_Ref * r_refJ2;
+
+            const auto& r_OA = reg.get<cardillo::PhysicsSystem::C_Position3>(A).value;
+            const auto& A_A = reg.get<cardillo::PhysicsSystem::C_Orientation>(A).value.toRotationMatrix();
+            K1_r_S1J1 = A_A.transpose() * (r_OJ1_world - r_OA);
+
+            const auto& r_OB = reg.get<cardillo::PhysicsSystem::C_Position3>(B).value;
+            const auto& A_B = reg.get<cardillo::PhysicsSystem::C_Orientation>(B).value.toRotationMatrix();
+            K2_r_S2J2 = A_B.transpose() * (r_OJ2_world - r_OB);
+
+            const auto& A_IJ = A_Ref * A_refJ;
+            A_K1J = A_A.transpose() * A_IJ;  // J -> Ref -> I -> A ==== J -> A
+            A_K2J = A_B.transpose() * A_IJ;  // J -> Ref -> I -> B ==== J -> B
+
+            g = A_IJ.transpose() * (r_OJ2_world - r_OJ1_world);
+        } 
+
+    // Joint position and orientation in the chosen reference frame
+    Vector3r K1_r_S1J1{Vector3r::Zero()}; // Joint pos 1 in body A frame from S1
+    Vector3r K2_r_S2J2{Vector3r::Zero()}; // Joint pos 2 in body B frame from S2
+    Vector3r g{Vector3r::Zero()};          // Initial Joint offset in joint frame
+    Matrix33r A_K1J{Matrix33r::Identity()};  // Joint orientation that maps J -> A
+    Matrix33r A_K2J{Matrix33r::Identity()};
+
+    entt::entity entityA{entt::null};
+    entt::entity entityB{entt::null};
 };
 
 // Base pattern: stores registry, entities and attachment points and shared helpers
@@ -61,7 +122,6 @@ protected:
     };
 
     WorldAttachments computeAttachments_() const;
-
     // Shared compliance helpers to avoid duplication in patterns
     static real_t stiffnessToCompliance(real_t k);
     static void fillCompliance3(VectorXr& dst, int offset, const Vector3r& K);
@@ -92,106 +152,92 @@ private:
     real_t m_d{(real_t)0};
 };
 
-class TranslationalConstraint : public ConstraintPattern {
+// Generic 6-DOF translation+rotation constraint using the joint-frame Jacobian
+// Specialised constraints (hinge, planar, spherical, translational, rigid)
+// configure stiffness and damping in translation/rotation directions via K and D.
+class TranslationRotationConstraint : public ConstraintPattern {
 public:
-    TranslationalConstraint(entt::registry& reg,
-                                   entt::entity a,
-                                   entt::entity b,
-                                   const Vector3r& rA_local = Vector3r::Zero(),
-                                   const Vector3r& rB_local = Vector3r::Zero(),
-                                   const Vector3r& K_A = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                                   const Vector3r& D_A = Vector3r::Zero())
-        : ConstraintPattern(reg, a, b, rA_local, rB_local), m_K(K_A), m_D(D_A) {}
+    TranslationRotationConstraint(entt::registry& reg,
+                                  entt::entity a,
+                                  entt::entity b,
+                                  const JointProperties& jointProps,
+                                  const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                  const Vector3r& D_trans = Vector3r::Zero(),
+                                  const Vector3r& K_rot   = Vector3r::Zero(),
+                                  const Vector3r& D_rot   = Vector3r::Zero());
 
     ConstraintResult getConstraint() const override;
 
-private:
-    Vector3r m_K{Vector3r::Zero()};
-    Vector3r m_D{Vector3r::Zero()};
+    // Access joint-frame description for visualization/debugging
+    const JointProperties& jointProperties() const { return m_joint; }
+
+protected:
+    JointProperties m_joint;
+    Vector3r m_K_trans{Vector3r::Zero()};
+    Vector3r m_D_trans{Vector3r::Zero()};
+    Vector3r m_K_rot{Vector3r::Zero()};
+    Vector3r m_D_rot{Vector3r::Zero()};
+
+    // Build full 6x6 Jacobians for a rigid joint using world attachments.
+    void buildJointJacobian(const WorldAttachments& wa,
+                            MatrixXXr& WgA,
+                            MatrixXXr& WgB) const;
 };
 
-class RigidConstraint : public ConstraintPattern {
+// Fully rigid joint: all 6 DOFs locked (very stiff translational and rotational)
+class RigidConstraint : public TranslationRotationConstraint {
 public:
     RigidConstraint(entt::registry& reg,
                     entt::entity a,
-                    entt::entity b,
-                    std::optional<Vector3r> r_OJ = std::nullopt,
-                    std::optional<Matrix33r> A_IJ = std::nullopt,
-                    const Vector3r& k_axis = Vector3r::Constant(std::numeric_limits<real_t>::max()), // rotation stiffness along axes
-                    const Vector3r& d_axis = Vector3r::Zero()) // rotation damping along axes
-        : ConstraintPattern(reg, a, b)
-        , m_k_axis(k_axis)
-        , m_d_axis(d_axis) {
-            const Vector3r& r_OS1 = reg.get<cardillo::PhysicsSystem::C_Position3>(a).value;
-            const Vector3r& r_OS2 = reg.get<cardillo::PhysicsSystem::C_Position3>(b).value;
-            const Quaternion4r& Q1 = reg.get<cardillo::PhysicsSystem::C_Orientation>(a).value;
-            const Quaternion4r& Q2 = reg.get<cardillo::PhysicsSystem::C_Orientation>(b).value;
-            const Matrix33r A_IK1 = Q1.toRotationMatrix();
-            const Matrix33r A_IK2 = Q2.toRotationMatrix();
-
-            if (r_OJ) {
-                m_K1_r_S1J = A_IK1.transpose() * (r_OJ.value() - r_OS1);
-                m_K2_r_S2J = A_IK2.transpose() * (r_OJ.value() - r_OS2);
-            } else {
-                m_K1_r_S1J = Vector3r::Zero();
-                m_K2_r_S2J = A_IK2.transpose() * (r_OS1 - r_OS2);
-            }
-            // // alternatively we can use (might be prone to rounding errors)
-            // m_K1_r_S1J = A_IK1.transpose() * (r_OJ.value_or(r_OS1) - r_OS1);
-            // m_K2_r_S2J = A_IK2.transpose() * (r_OJ.value_or(r_OS1) - r_OS2);
-
-            m_K1_r_S1J_skew = skew_from_vector(m_K1_r_S1J);
-            m_K2_r_S2J_skew = skew_from_vector(m_K2_r_S2J);
-
-            if (A_IJ) {
-                m_A_K1J = A_IK1.transpose() * A_IJ.value();
-                m_A_K2J = A_IK2.transpose() * A_IJ.value();
-            } else {
-                m_A_K1J = Matrix33r::Identity();
-                m_A_K2J = A_IK2.transpose() * A_IK1;
-            }
-            // // alternatively we can use (might be prone to rounding errors)
-            // m_A_IK1J = A_IK1.transpose() * A_IJ.value_or(A_IK1);
-            // m_A_IK2J = A_IK2.transpose() * A_IJ.value_or(A_IK1);
-
-            m_rA_local = m_K1_r_S1J;
-            m_rB_local = m_K2_r_S2J;
-        }
-
-    ConstraintResult getConstraint() const override;
-private:
-    Vector3r m_k_axis;
-    Vector3r m_d_axis;
-    Vector3r m_K1_r_S1J;
-    Vector3r m_K2_r_S2J;
-    Matrix33r m_K1_r_S1J_skew;
-    Matrix33r m_K2_r_S2J_skew;
-    Matrix33r m_A_K1J;
-    Matrix33r m_A_K2J;
+                    entt::entity b)
+        : TranslationRotationConstraint(reg,
+                                        a,
+                                        b,
+                                        JointProperties(reg, a, b),
+                                        Vector3r::Constant(std::numeric_limits<real_t>::infinity()), // K_trans
+                                        Vector3r::Zero(),                                            // D_trans
+                                        Vector3r::Constant(std::numeric_limits<real_t>::infinity()), // K_rot
+                                        Vector3r::Zero()) {}                                         // D_rot
 };
 
-class HingeConstraint : public ConstraintPattern {
+// Purely translational joint: configure translational stiffness; rotations free by default
+class TranslationalConstraint : public TranslationRotationConstraint {
+public:
+    TranslationalConstraint(entt::registry& reg,
+                            entt::entity a,
+                            entt::entity b,
+                            const JointProperties& jointProps,
+                            const Vector3r& K_trans,
+                            const Vector3r& D_trans = Vector3r::Zero())
+        : TranslationRotationConstraint(reg, a, b, jointProps, K_trans, D_trans,
+                                        /*K_rot*/ Vector3r::Zero(),
+                                        /*D_rot*/ Vector3r::Zero()) {}
+};
+
+// Hinge joint: 3 translations locked, 2 rotations locked, 1 rotation free
+class HingeConstraint : public TranslationRotationConstraint {
 public:
     HingeConstraint(entt::registry& reg,
-                                entt::entity a,
-                                entt::entity b,
-                                const Vector3r& rA_local = Vector3r::Zero(),                                        // Attachment point in A's local frame
-                                const Vector3r& rB_local = Vector3r::Zero(),                                        // Attachment point in B's local frame
-                                const Vector3r& axis_localA = Vector3r(0,0,1),                                      // Hinge axis in A's local frame
-                                const real_t& K_axis = 0,                                                           // Stiffness along hinge axis > 0 -> rotational spring
-                                const real_t& D_axis = (real_t)0,                                                   // Damping along hinge axis > 0 -> "friction"
-                                const Vector2r& Kf_A = Vector2r::Constant(std::numeric_limits<real_t>::infinity()), // Stiffnesses for the two locked rotational DOFs
-                                const Vector2r& Df_A = Vector2r::Zero(),                                            // Damping for the two locked rotational DOFs
-                                const Vector3r& Ke_A = Vector3r::Constant(std::numeric_limits<real_t>::infinity()), // Stiffnesses for the three locked translational DOFs
-                                 const Vector3r& De_A = Vector3r::Zero());                                           // Damping for the three locked translational DOFs
+                    entt::entity a,
+                    entt::entity b,
+                    const JointProperties& jointProps,
+                    const Vector3r& hingeAxisLocalA = Vector3r(0,0,1),
+                    real_t K_axis = 0,
+                    real_t D_axis = (real_t)0,
+                    const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                    const Vector3r& D_trans = Vector3r::Zero())
+        : TranslationRotationConstraint(reg, a, b, jointProps,
+                                        K_trans, D_trans,
+                                        /*K_rot*/ Vector3r(K_axis, std::numeric_limits<real_t>::infinity(), std::numeric_limits<real_t>::infinity()),
+                                        /*D_rot*/ Vector3r(D_axis, 0, 0))
+        , m_hingeAxisA(hingeAxisLocalA)
+        , m_K_axis(K_axis)
+        , m_D_axis(D_axis) {}
 
-    ConstraintResult getConstraint() const override;
 private:
-    Matrix33r m_hingeFrame{Matrix33r::Identity()};
-    Vector3r m_Ke{Vector3r::Zero()};
-    Vector3r m_De{Vector3r::Zero()};
-    Vector3r m_Kf{Vector3r::Zero()};
-    Vector3r m_Df{Vector3r::Zero()};
+    Vector3r m_hingeAxisA{Vector3r(0,0,1)};
+    real_t   m_K_axis{0};
+    real_t   m_D_axis{0};
 };
 
 // Beam constraint (6 scalar rows): stretch/shear (x,y,z) and torsion/bend (x,y,z)

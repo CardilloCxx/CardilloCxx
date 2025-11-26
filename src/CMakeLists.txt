@@ -9,7 +9,6 @@ add_library(${PROJECT_NAME} STATIC
     io/softbody_loader.cpp
     solver/moreau.cpp
     solver/dual_stoermer_verlet.cpp
-    solver/CPG.cpp
     solver/projected_jacobi.cpp
     misc/spline.cpp
     physics/dynamics_assembler.cpp

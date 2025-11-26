@@ -945,36 +945,105 @@ void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collis
 }
 
 void VtkWriterBinary::writeSprings(int step, const cardillo::PhysicsSystem& sys) const {
-    // Gather attachment A positions and vectors A->B from all constraint patterns
+    // Gather generic spring visuals (attachment B position, toAtoB) and
+    // translation-rotation joint visuals (jointPos at B, frame, toAtoB)
     const auto& patterns = sys.constraintPatterns();
-    std::vector<Vector3r> starts; starts.reserve(patterns.size());
-    std::vector<Vector3r> vecs; vecs.reserve(patterns.size());
+    std::vector<Vector3r> positions; positions.reserve(patterns.size());
+    std::vector<Vector3r> toAtoB;   toAtoB.reserve(patterns.size());
+
+    std::vector<Vector3r> tr_jointPos;
+    std::vector<Vector3r> tr_toA;
+    std::vector<Vector3r> tr_toB;
+    std::vector<Vector3r> tr_ex;
+    std::vector<Vector3r> tr_ey;
+    std::vector<Vector3r> tr_ez;
+
     for (const auto& uptr : patterns) {
         if (!uptr) continue;
+
+        // Generic spring: visualize at second attachment (xB),
+        // and store vector from attachment B to attachment A.
         Vector3r xA, xB;
         if (uptr->getAttachPointsWorld(xA, xB)) {
-            starts.push_back(xA);
-            vecs.push_back(xB - xA);
+            positions.push_back(xB);
+            toAtoB.push_back(xA - xB);
+        }
+
+        // Translation-rotation style springs: extract joint frame from TranslationRotationConstraint
+        if (auto* tr = dynamic_cast<const cardillo::physics::TranslationRotationConstraint*>(uptr.get())) {
+            // Use the same attachment points: joint position is at xB,
+            // and toA/toB are expressed from that point.
+            const Vector3r jointPos = xB;
+
+            // Build joint frame as concat of A's rotation and joint's A_K1J
+            // A_IK1: world rotation of body A at current step
+            const auto& reg = sys.ecs();
+            const entt::entity a = tr->entityA();
+            if (a == entt::null || !reg.all_of<cardillo::PhysicsSystem::C_Orientation>(a)) continue;
+            const auto& qA = reg.get<cardillo::PhysicsSystem::C_Orientation>(a).value;
+            const Matrix33r A_IK1 = qA.toRotationMatrix();
+
+            const cardillo::physics::JointProperties& jp = tr->jointProperties();
+            const Matrix33r A_IJ = A_IK1 * jp.A_K1J; // concat frame
+
+            tr_jointPos.push_back(jointPos);
+            tr_toA.push_back(xA - jointPos);
+            tr_toB.push_back(xB - jointPos);
+            tr_ex.push_back(A_IJ.col(0));
+            tr_ey.push_back(A_IJ.col(1));
+            tr_ez.push_back(A_IJ.col(2));
         }
     }
-    const std::size_t n = starts.size();
-    if (n == 0) return;
+
+    const std::size_t n = positions.size();
+    const std::size_t n_tr = tr_jointPos.size();
+    if (n == 0 && n_tr == 0) return;
     if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
     const std::string path = buildPath(m_springsBase, step);
     std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!out) return;
     // Header
     writeHeader(out, "Constraint springs (binary)");
-    // Points block
-    out << "POINTS " << n << " float\n";
-    for (const auto& p : starts) { writeBE(out, f32(p.x())); writeBE(out, f32(p.y())); writeBE(out, f32(p.z())); }
-    // Vertices for visibility
-    out << "\nVERTICES " << n << ' ' << (2*n) << "\n";
-    for (std::size_t i = 0; i < n; ++i) { writeBE(out, int32_t(1)); writeBE(out, int32_t(i)); }
-    // Point data: A->B vector
-    out << "\nPOINT_DATA " << n << "\n";
-    out << "VECTORS AtoB float\n";
-    for (const auto& v : vecs) { writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z())); }
+
+    // Points: first generic springs (attachment B), then TR joint positions (also at B)
+    const std::size_t totalPoints = n + n_tr;
+    out << "POINTS " << totalPoints << " float\n";
+    for (const auto& p : positions) { writeBE(out, f32(p.x())); writeBE(out, f32(p.y())); writeBE(out, f32(p.z())); }
+    for (const auto& p : tr_jointPos) { writeBE(out, f32(p.x())); writeBE(out, f32(p.y())); writeBE(out, f32(p.z())); }
+
+    // Vertices for visibility: one vertex per point
+    out << "\nVERTICES " << totalPoints << ' ' << (2*totalPoints) << "\n";
+    for (std::size_t i = 0; i < totalPoints; ++i) { writeBE(out, int32_t(1)); writeBE(out, int32_t(i)); }
+
+    // Point data
+    out << "\nPOINT_DATA " << totalPoints << "\n";
+
+    // Generic toAtoB vectors (from attachment B to attachment A) for the
+    // first n points; zeros for the translation-rotation-only points.
+    out << "VECTORS toAtoB float\n";
+    for (const auto& v : toAtoB) { writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z())); }
+    for (std::size_t i = 0; i < n_tr; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
+
+    // Translation-rotation joint data for the last n_tr points; zeros for the first n
+    auto writeVecField = [&](const char* name,
+                             const std::vector<Vector3r>& prefixZeros,
+                             const std::vector<Vector3r>& tail) {
+        out << name << "\n";
+        for (std::size_t i = 0; i < n; ++i) {
+            writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f);
+        }
+        for (const auto& v : tail) {
+            writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
+        }
+    };
+
+    if (n_tr > 0) {
+        writeVecField("VECTORS toA float", positions, tr_toA);
+        writeVecField("VECTORS toB float", positions, tr_toB);
+        writeVecField("VECTORS ex float",  positions, tr_ex);
+        writeVecField("VECTORS ey float",  positions, tr_ey);
+        writeVecField("VECTORS ez float",  positions, tr_ez);
+    }
     out.close();
 }
 

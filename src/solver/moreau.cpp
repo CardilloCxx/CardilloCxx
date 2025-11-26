@@ -1,6 +1,5 @@
 #include "moreau.hpp"
 #include "projected_jacobi.hpp"
-#include "CPG.h"
 #include <vector>
 #include <algorithm>
 #include <limits>

@@ -30,9 +30,10 @@
 #include "scenes/parcel/ParcelScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
-#include "scenes/gears/GearsScene.hpp"
-#include "scenes/pendulum/PendulumScene.hpp"
+// #include "scenes/gears/GearsScene.hpp"           // temporarily disabled (hinge refactor)
+// #include "scenes/pendulum/PendulumScene.hpp"     // temporarily disabled (rigid/hinge refactor)
 #include "scenes/leaningTower/LeaningTowerScene.hpp"
+#include "scenes/constraintTest/ConstraintTestScene.hpp"
 
 using namespace cardillo;
 
@@ -61,23 +62,6 @@ int main(int argc, char** argv) {
     
     sys.setConfig(cfg);
 
-    // HeightmapScene scene;
-    // DominoScene scene;
-    // SpringTestScene scene;
-    // RodAssemblyScene scene;
-    // NetScene scene;
-    // WilberforcePendulumScene scene;
-    // HangbrideScene scene;
-    // SoftbodyTestScene scene;
-    // ChainScene scene;
-    // PainleveScene scene;
-    // RotatingBallScene scene;
-    // RailScene scene;
-    // DzhanibekovScene scene;
-    // ParcelScene scene;
-    // DiscreteRodScene scene;
-    // ConstraintTestScene scene;
-    // GearsScene scene;
     // Construct all available scenes and select the one matching cfg.scene_name
     std::vector<std::unique_ptr<SceneBase>> scenes;
     scenes.emplace_back(std::make_unique<HeightmapScene>());
@@ -95,9 +79,10 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<DzhanibekovScene>());
     scenes.emplace_back(std::make_unique<ParcelScene>());
     scenes.emplace_back(std::make_unique<DiscreteRodScene>());
-    scenes.emplace_back(std::make_unique<GearsScene>());
+    // scenes.emplace_back(std::make_unique<GearsScene>());       // uses HingeConstraint (under refactor)
     scenes.emplace_back(std::make_unique<LeaningTowerScene>());
-    scenes.emplace_back(std::make_unique<PendulumScene>());
+    // scenes.emplace_back(std::make_unique<PendulumScene>());    // uses RigidConstraint/Hinge (under refactor)
+    scenes.emplace_back(std::make_unique<ConstraintTestScene>());
 
     SceneBase* selected = nullptr;
     for (auto& s : scenes) {
@@ -134,7 +119,7 @@ int main(int argc, char** argv) {
     if (worldRank == 0) {
         writer = std::make_unique<cardillo::io::VtkWriterBinary>(cfg.output_folder, cfg.output_filename_prefix, cfg.output_interval_steps);
         writer->setHeightFieldStride(cfg.output_heightfield_stride);
-        if (cfg.output_write_contacts) writer->enableContactsOutput(true, cfg.output_filename_prefix + "_contacts");
+        if (cfg.output_write_contacts) writer->enableContactsOutput(true, cfg.output_filename_prefix + std::string("_contacts"));
         writer->enableSpringsOutput(true, cfg.output_filename_prefix + std::string("_springs"));
     }
 

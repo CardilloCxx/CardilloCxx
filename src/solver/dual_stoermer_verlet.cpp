@@ -1,6 +1,5 @@
 #include "dual_stoermer_verlet.hpp"
 #include "projected_jacobi.hpp"
-#include "CPG.h"
 #include <vector>
 #include <algorithm>
 #include <limits>

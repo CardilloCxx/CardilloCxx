@@ -94,190 +94,105 @@ ConstraintResult LinearDistanceConstraint::getConstraint() const {
     return out;
 }
 
-// ===================== TranslationalConstraint =====================
-ConstraintResult TranslationalConstraint::getConstraint() const {
-    ConstraintResult out; out.a = m_a; out.b = m_b;
-    const auto wa = computeAttachments_();
+// ===================== TranslationRotationConstraint =====================
 
-//         out.WgA = MatrixXXr::Zero(6, 3);
-//         out.WgA.block<3,3>(0,0) = -wa.RA;
-//         out.WgA.block<3,3>(3,0) = -skew_from_vector(m_rA_local);
-// 
-//         out.WgB = MatrixXXr::Zero(6, 3);
-//         out.WgB.block<3,3>(0,0) = wa.RA;
-//         out.WgB.block<3,3>(3,0) = (skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA);
+TranslationRotationConstraint::TranslationRotationConstraint(entt::registry& reg,
+                                                             entt::entity a,
+                                                             entt::entity b,
+                                                             const JointProperties& jointProps,
+                                                             const Vector3r& K_trans,
+                                                             const Vector3r& D_trans,
+                                                             const Vector3r& K_rot,
+                                                             const Vector3r& D_rot)
+    : ConstraintPattern(reg, a, b, jointProps.K1_r_S1J1, jointProps.K2_r_S2J2)
+    , m_joint(jointProps)
+    , m_K_trans(K_trans)
+    , m_D_trans(D_trans)
+    , m_K_rot(K_rot)
+    , m_D_rot(D_rot)
+{}
 
-    out.WgA = MatrixXXr::Zero(6, 3);
-    out.WgA.block<3,3>(0,0) = -wa.RA;
-    out.WgA.block<3,3>(3,0) = -skew_from_vector(wa.RA.transpose() * (wa.xB - wa.xA) + m_rA_local);
+// Helper: build full 6x6 Jacobians for a joint between A and B using
+// the precomputed joint-frame geometry. This encodes a
+// fully locked 6-DOF joint; specialised constraints will mask DOFs via C/A.
+void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::WorldAttachments& wa,
+                                                       MatrixXXr& WgA,
+                                                       MatrixXXr& WgB) const {
 
-    out.WgB = MatrixXXr::Zero(6, 3);
-    out.WgB.block<3,3>(0,0) = wa.RA;
-    out.WgB.block<3,3>(3,0) = skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA;
+    WgA = MatrixXXr::Zero(6, 6);
+    WgB = MatrixXXr::Zero(6, 6);
 
-    // (-wa.RA.transpose() * wa.RB * skew_from_vector(m_rB_local)).transpose();
-    // out.WgA.block<3,3>(3,0) = (skew_from_vector(wa.RA.transpose() * (wa.xB - wa.xA)) + wa.RA.transpose() * skew_from_vector(ra_world) * wa.RA).transpose();
-    // out.WgB.block<3,3>(3,0) = (wa.RA.transpose() * skew_from_vector(rb_world) * wa.RB).transpose();
+    // translations in joint frame
+    const auto& A_IK1 = wa.RA;
+    const auto& A_IK2 = wa.RB;
+    const auto& A_K1J = m_joint.A_K1J;
+    const auto& A_K2J = m_joint.A_K2J;
+    const auto& r_OA  = wa.pA;
+    const auto& r_OB  = wa.pB;
+    const auto& r_K1_S1J1 = m_joint.K1_r_S1J1;
+    const auto& r_K2_S2J2 = m_joint.K2_r_S2J2;
 
-    out.WgammaA = out.WgA;
-    out.WgammaB = out.WgB;
+    const Vector3r r_S1_world = A_IK1 * m_joint.K1_r_S1J1; // K1_r_S1J1 is constant local offset
+    const Vector3r r_OJ1_world = r_OA + r_S1_world;
+    const Vector3r r_S2_world = A_IK2 * m_joint.K2_r_S2J2; // K2_r_S2J2 is constant local offset
+    const Vector3r r_OJ2_world = r_OB + r_S2_world;
+    const Matrix33r A_IJ = A_IK1 * m_joint.A_K1J; 
+    const Vector3r g_current = A_IJ.transpose() * (r_OJ2_world - r_OJ1_world);
 
-    out.Crows = VectorXr::Zero(3);
-    out.Arows = VectorXr::Zero(3);
-    fillCompliance3(out.Crows, 0, m_K);
-    fillCompliance3(out.Arows, 0, m_D);
+    const Matrix33r skew_g = skew_from_vector(g_current);
+    const Matrix33r skew_r1 = skew_from_vector(r_K1_S1J1);
+    const Matrix33r skew_r2 = skew_from_vector(r_K2_S2J2);
 
-    return out;
-}
+    // WgA.block<3,3>(0,0) = -A_IJ; 
+    // WgA.block<3,3>(3,0) = -skew_r1 * A_K1J - A_K1J * skew_g;
+    // WgB.block<3,3>(0,0) = A_IJ;
+    // WgB.block<3,3>(3,0) = skew_r2 * A_IK2.transpose() * A_IJ;
 
-static Vector3r so3_log_from_R(const Matrix33r &R) {
-    // Use trace to compute angle
-    real_t cos_th = (R.trace() - 1.0) * 0.5;
-    cos_th = std::min((real_t)1.0, std::max((real_t)-1.0, cos_th));
-    real_t th = std::acos(cos_th);
-
-    if (th < 1e-8) {
-        // small: phi ≈ 0.5 * vee(R - R^T)
-        Vector3r v;
-        v.x() = (R(2,1) - R(1,2)) * 0.5;
-        v.y() = (R(0,2) - R(2,0)) * 0.5;
-        v.z() = (R(1,0) - R(0,1)) * 0.5;
-        return v;
-    } else {
-        real_t sin_th = std::sin(th);
-        Vector3r axis;
-        axis.x() = (R(2,1) - R(1,2)) / (2.0 * sin_th);
-        axis.y() = (R(0,2) - R(2,0)) / (2.0 * sin_th);
-        axis.z() = (R(1,0) - R(0,1)) / (2.0 * sin_th);
-        return axis * th;
-    }
-}
-
-// left-Jacobian inverse J^{-1}(phi) with series for small phi
-static Matrix33r leftJacobianInverse(const Vector3r &phi) {
-    const real_t th = phi.norm();
-    const Matrix33r I = Matrix33r::Identity();
-    const Matrix33r Phi = skew_from_vector(phi);
-
-    if (th < 1e-8) {
-        // Series: J^{-1} ≈ I + 0.5 Phi + (1/12) Phi^2
-        return I + (real_t)0.5 * Phi + (real_t)(1.0/12.0) * (Phi * Phi);
-    } else {
-        const real_t half_th = 0.5 * th;
-        const real_t cot_half = 1.0 / std::tan(half_th);
-        // exact formula: J^{-1} = I + 0.5 Phi + (1/th^2) * (1 - (th * cot(th/2))/2) * Phi^2
-        const real_t th2 = th * th;
-        const real_t factor = (1.0 / th2) * (1.0 - (th * cot_half) * 0.5);
-        return I + (real_t)0.5 * Phi + factor * (Phi * Phi);
-    }
-}
-
-// ===================== RigidConstraint =====================
-ConstraintResult RigidConstraint::getConstraint() const {
-    ConstraintResult out; out.a = m_a; out.b = m_b;
-
-    // TODO: Move this in computeAttachments_ or a similar function
-    const Vector3r& r_OS1 = m_reg->get<cardillo::PhysicsSystem::C_Position3>(m_a).value;
-    const Vector3r& r_OS2 = m_reg->get<cardillo::PhysicsSystem::C_Position3>(m_b).value;
-    const Quaternion4r& Q1 = m_reg->get<cardillo::PhysicsSystem::C_Orientation>(m_a).value;
-    const Quaternion4r& Q2 = m_reg->get<cardillo::PhysicsSystem::C_Orientation>(m_b).value;
-    const Matrix33r A_IK1 = Q1.toRotationMatrix();
-    const Matrix33r A_IK2 = Q2.toRotationMatrix();
-
-    out.WgA = MatrixXXr::Zero(6, 6);
-    out.WgB = MatrixXXr::Zero(6, 6);
-    
     // translations
-    out.WgA.block<3,3>(0,0) = -Matrix33r::Identity();
-    out.WgA.block<3,3>(3,0) = -m_K1_r_S1J_skew * A_IK1.transpose();
-
-    out.WgB.block<3,3>(0,0) = Matrix33r::Identity();
-    out.WgB.block<3,3>(3,0) = m_K2_r_S2J_skew * A_IK2.transpose();
+    //     WgA.block<3,3>(0,0) = -Matrix33r::Identity();
+    //     WgA.block<3,3>(3,0) = -skew_r1 * A_IK1.transpose();
+    // 
+    //     WgB.block<3,3>(0,0) = Matrix33r::Identity();
+    //     WgB.block<3,3>(3,0) = skew_r2 * A_IK2.transpose();
 
     // orientations
     // 1. x x y = z
-    out.WgA.block<3,1>(3,3) = m_A_K1J.col(2);
-    out.WgB.block<3,1>(3,3) = -m_A_K2J.col(2);
+    WgA.block<3,1>(3,3) = A_K1J.col(2);
+    WgB.block<3,1>(3,3) = -A_K2J.col(2);
 
     // 2. y @ z = x
-    out.WgA.block<3,1>(3,4) = m_A_K1J.col(0);
-    out.WgB.block<3,1>(3,4) = -m_A_K2J.col(0);
+    WgA.block<3,1>(3,4) = A_K1J.col(0);
+    WgB.block<3,1>(3,4) = -A_K2J.col(0);
 
     // 3. z x x = y
-    out.WgA.block<3,1>(3,5) = m_A_K1J.col(1);
-    out.WgB.block<3,1>(3,5) = -m_A_K2J.col(1);
-
-    // possibly set compilance
-    // TODO: Can be done once since Crows and Arows are constant!
-    // TODO: Remove parts of W and C for zero stiffnesses!
-    out.Crows = VectorXr::Zero(6);
-    if (abs(m_k_axis(0)) > 0) out.Crows(3) = 1.0 / m_k_axis(0);
-    if (abs(m_k_axis(1)) > 0) out.Crows(4) = 1.0 / m_k_axis(1);
-    if (abs(m_k_axis(2)) > 0) out.Crows(5) = 1.0 / m_k_axis(2);
-
-    // possibly set attenuation
-    const Array3b nonzero_d = m_d_axis.array().abs() > 0;
-    const index_t nD = nonzero_d.count();
-
-    out.Arows.resize(nD);
-    out.Arows = VectorXr::Constant(nD, std::numeric_limits<real_t>::max());
-    // TODO: This logic is still missing
-    // out.WgammaA.resize(6, nD);
-    // out.WgammaB.resize(6, nD);
-    // index_t offset = 0;
-    // for (index_t i=0; i < 3; ++i) {
-    //     if (nonzero_d(i)) {
-    //         out.Arows(offset) = 1.0 / m_d_axis(i);
-    //         out.WgammaA.col(offset) = out.WgA.col(3 + i);
-    //         out.WgammaB.col(offset) = out.WgA.col(3 + i);
-    //         offset++;
-    //     }
-    // }
-
-    return out;
+    WgA.block<3,1>(3,5) = A_K1J.col(1);
+    WgB.block<3,1>(3,5) = -A_K2J.col(1);
 }
 
-// ===================== HingeConstraint =====================
-ConstraintResult HingeConstraint::getConstraint() const {
+ConstraintResult TranslationRotationConstraint::getConstraint() const {
     ConstraintResult out; out.a = m_a; out.b = m_b;
+
+    // Use standard attachment computation; joint is defined by m_rA_local/m_rB_local
     const auto wa = computeAttachments_();
 
-    // Prepare 6 scalar rows (3 translational + 3 rotational) with 6 columns per velocity block
-    out.WgA = MatrixXXr::Zero(6, 6);
-    out.WgB = MatrixXXr::Zero(6, 6);
+    // Build full 6x6 Jacobians for a rigid joint at the current attachments.
+    buildJointJacobian(wa, out.WgA, out.WgB);
 
-    // Lock translations in A's frame (columns 0..2)
-    out.WgA.block<3,3>(0,0) = -wa.RA;
-    out.WgA.block<3,3>(3,0) = -skew_from_vector(wa.RA.transpose() * (wa.xB - wa.xA) + m_rA_local);
-
-    out.WgB.block<3,3>(0,0) = wa.RA;
-    out.WgB.block<3,3>(3,0) = skew_from_vector(m_rB_local) * wa.RB.transpose() * wa.RA;
-
-    // // Lock rotation relative in A's local frame
-    out.WgA.block<3,3>(3,3) = -m_hingeFrame;
-    out.WgB.block<3,3>(3,3) =  m_hingeFrame * wa.RA.transpose() *  wa.RB;
-
-//     Matrix33r hingeFrame = wa.RA * m_hingeFrame; // hinge frame in world
-//     Vector3r hingeAxis = hingeFrame.col(2);      // z-axis of hinge frame
-//     Matrix33r P = Matrix33r::Identity() - hingeAxis * hingeAxis.transpose();
-// 
-//     const Matrix33r Rrel = wa.RA.transpose() * wa.RB;
-//     const Vector3r phi = so3_log_from_R(Rrel);
-//     const Matrix33r Jinv = leftJacobianInverse(phi);
-//     
-//     // Lock rotations in A's frame (columns 3..5)
-//     out.WgA.block<3,3>(3,3) = -P * Jinv.transpose();
-//     out.WgB.block<3,3>(3,3) =  P * (Jinv * Rrel).transpose();
-
+    // For now, gamma rows mirror g rows
     out.WgammaA = out.WgA;
     out.WgammaB = out.WgB;
 
+    // 6 scalar rows: 3 translational (0..2), 3 rotational (3..5)
     out.Crows = VectorXr::Zero(6);
     out.Arows = VectorXr::Zero(6);
-    fillCompliance3(out.Crows, 0, m_Ke);
-    fillCompliance3(out.Crows, 3, m_Kf);
-    fillCompliance3(out.Arows, 0, m_De);
-    fillCompliance3(out.Arows, 3, m_Df);
+
+    // Translational compliances
+    fillCompliance3(out.Crows, 0, m_K_trans);
+    fillCompliance3(out.Arows, 0, m_D_trans);
+
+    // Rotational compliances
+    fillCompliance3(out.Crows, 3, m_K_rot);
+    fillCompliance3(out.Arows, 3, m_D_rot);
 
     return out;
 }
