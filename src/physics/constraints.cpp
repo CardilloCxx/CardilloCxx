@@ -143,10 +143,10 @@ void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::
     const Matrix33r skew_r1 = skew_from_vector(r_K1_S1J1);
     const Matrix33r skew_r2 = skew_from_vector(r_K2_S2J2);
 
-    // WgA.block<3,3>(0,0) = -A_IJ; 
-    // WgA.block<3,3>(3,0) = -skew_r1 * A_K1J - A_K1J * skew_g;
-    // WgB.block<3,3>(0,0) = A_IJ;
-    // WgB.block<3,3>(3,0) = skew_r2 * A_IK2.transpose() * A_IJ;
+    WgA.block<3,3>(0,0) = -A_IJ; 
+    WgA.block<3,3>(3,0) = -skew_r1 * A_K1J - A_K1J * skew_g;
+    WgB.block<3,3>(0,0) = A_IJ;
+    WgB.block<3,3>(3,0) = skew_r2 * A_IK2.transpose() * A_IJ;
 
     // translations
     //     WgA.block<3,3>(0,0) = -Matrix33r::Identity();
