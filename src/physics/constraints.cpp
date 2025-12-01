@@ -99,18 +99,21 @@ ConstraintResult LinearDistanceConstraint::getConstraint() const {
 TranslationRotationConstraint::TranslationRotationConstraint(entt::registry& reg,
                                                              entt::entity a,
                                                              entt::entity b,
-                                                             const JointProperties& jointProps,
+                                                             const JointFrame& frame,
                                                              const Vector3r& K_trans,
                                                              const Vector3r& D_trans,
                                                              const Vector3r& K_rot,
                                                              const Vector3r& D_rot)
-    : ConstraintPattern(reg, a, b, jointProps.K1_r_S1J1, jointProps.K2_r_S2J2)
-    , m_joint(jointProps)
+    : ConstraintPattern(reg, a, b,Vector3r::Zero(), Vector3r::Zero())
+    , m_joint(JointProperties(reg, a, b, frame))
     , m_K_trans(K_trans)
     , m_D_trans(D_trans)
     , m_K_rot(K_rot)
     , m_D_rot(D_rot)
-{}
+{
+    m_rA_local = m_joint.K1_r_S1J;
+    m_rB_local = m_joint.K2_r_S2J;
+}
 
 // Helper: build full 6x6 Jacobians for a joint between A and B using
 // the precomputed joint-frame geometry. This encodes a
@@ -122,51 +125,22 @@ void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::
     WgA = MatrixXXr::Zero(6, 6);
     WgB = MatrixXXr::Zero(6, 6);
 
-    // translations in joint frame
     const auto& A_IK1 = wa.RA;
     const auto& A_IK2 = wa.RB;
     const auto& A_K1J = m_joint.A_K1J;
-    const auto& A_K2J = m_joint.A_K2J;
-    const auto& r_OA  = wa.pA;
-    const auto& r_OB  = wa.pB;
-    const auto& r_K1_S1J1 = m_joint.K1_r_S1J1;
-    const auto& r_K2_S2J2 = m_joint.K2_r_S2J2;
-
-    const Vector3r r_S1_world = A_IK1 * m_joint.K1_r_S1J1; // K1_r_S1J1 is constant local offset
-    const Vector3r r_OJ1_world = r_OA + r_S1_world;
-    const Vector3r r_S2_world = A_IK2 * m_joint.K2_r_S2J2; // K2_r_S2J2 is constant local offset
-    const Vector3r r_OJ2_world = r_OB + r_S2_world;
-    const Matrix33r A_IJ = A_IK1 * m_joint.A_K1J; 
-    const Vector3r g_current = A_IJ.transpose() * (r_OJ2_world - r_OJ1_world);
-
-    const Matrix33r skew_g = skew_from_vector(g_current);
-    const Matrix33r skew_r1 = skew_from_vector(r_K1_S1J1);
-    const Matrix33r skew_r2 = skew_from_vector(r_K2_S2J2);
-
-    WgA.block<3,3>(0,0) = -A_IJ; 
-    WgA.block<3,3>(3,0) = -skew_r1 * A_K1J - A_K1J * skew_g;
-    WgB.block<3,3>(0,0) = A_IJ;
-    WgB.block<3,3>(3,0) = skew_r2 * A_IK2.transpose() * A_IJ;
-
+    const Matrix33r A_IJ = A_IK1 * A_K1J;
+    const Matrix33r A_K2J =  A_IK2.transpose() * A_IJ;
+    const Matrix33r skew_g = skew_from_vector(m_joint.compute_g(wa.pA, wa.pB, wa.RA, wa.RB));
+    
     // translations
-    //     WgA.block<3,3>(0,0) = -Matrix33r::Identity();
-    //     WgA.block<3,3>(3,0) = -skew_r1 * A_IK1.transpose();
-    // 
-    //     WgB.block<3,3>(0,0) = Matrix33r::Identity();
-    //     WgB.block<3,3>(3,0) = skew_r2 * A_IK2.transpose();
+    WgA.block<3,3>(0,0) = -A_IJ; 
+    WgA.block<3,3>(3,0) = -m_joint.K1_r_S1J_skew * A_K1J - A_K1J * skew_g;
+    WgB.block<3,3>(0,0) = A_IJ;
+    WgB.block<3,3>(3,0) = m_joint.K2_r_S2J_skew * A_K2J;
 
     // orientations
-    // 1. x x y = z
-    WgA.block<3,1>(3,3) = A_K1J.col(2);
-    WgB.block<3,1>(3,3) = -A_K2J.col(2);
-
-    // 2. y @ z = x
-    WgA.block<3,1>(3,4) = A_K1J.col(0);
-    WgB.block<3,1>(3,4) = -A_K2J.col(0);
-
-    // 3. z x x = y
-    WgA.block<3,1>(3,5) = A_K1J.col(1);
-    WgB.block<3,1>(3,5) = -A_K2J.col(1);
+    WgA.block<3,3>(3,3) = A_K1J;
+    WgB.block<3,3>(3,3) = -A_K2J;
 }
 
 ConstraintResult TranslationRotationConstraint::getConstraint() const {

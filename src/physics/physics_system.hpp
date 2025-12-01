@@ -57,6 +57,44 @@ public:
         // Convenience when no rotation is desired but angular velocity is provided
         RigidState(const Vector3r& p, const Vector3r& v, const Vector3r& w)
             : position(p), linearVelocity(v), angularVelocity(w) {}
+        // Convenience: full state specified in a moving reference frame.
+        // p_local, v_local, q_local, w_local are expressed in the reference frame.
+        // They are transformed into world coordinates using the reference's pose and velocities.
+        RigidState(const Vector3r& p_local,
+                   const Vector3r& v_local,
+                   const Quaternion4r& q_local,
+                   const Vector3r& w_local,
+                   entt::entity refEntity,
+                   entt::registry& reg) {
+            if (refEntity != entt::null &&
+                reg.all_of<PhysicsSystem::C_Position3,
+                           PhysicsSystem::C_Orientation,
+                           PhysicsSystem::C_LinearVelocity3,
+                           PhysicsSystem::C_AngularVelocity3>(refEntity)) {
+
+                const auto& r_ORef = reg.get<PhysicsSystem::C_Position3>(refEntity).value;      // origin of ref in world
+                const auto& q_Ref  = reg.get<PhysicsSystem::C_Orientation>(refEntity).value;     // ref orientation in world
+                const auto& v_Ref  = reg.get<PhysicsSystem::C_LinearVelocity3>(refEntity).value; // linear vel of ref in world
+                const auto& w_Ref  = reg.get<PhysicsSystem::C_AngularVelocity3>(refEntity).value;// angular vel of ref in world
+
+                const Matrix33r A_Ref = q_Ref.toRotationMatrix();
+                position    = r_ORef + A_Ref * p_local;
+                orientation = q_Ref * q_local;
+
+                const Vector3r r_rel_world = A_Ref * p_local;
+                linearVelocity  = v_Ref + w_Ref.cross(r_rel_world) + A_Ref * v_local;
+                angularVelocity = w_Ref + A_Ref * w_local;
+            } else {
+                position        = p_local;
+                orientation     = q_local;
+                linearVelocity  = v_local;
+                angularVelocity = w_local;
+            }
+        }
+
+         RigidState(const Vector3r& p_local,
+                   entt::entity refEntity,
+                   entt::registry& reg) : RigidState(p_local, Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
     };
     struct CubeShape    { 
         Vector3r halfExtents{Vector3r::Zero()};
