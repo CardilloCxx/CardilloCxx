@@ -72,7 +72,10 @@ static inline float partitionFromBodyIndex_(const cardillo::PhysicsSystem& sys, 
         MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
         MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
         int Nb = sys.numBodies();
-        int bodiesPerRank = (Nb + worldSize - 1) / worldSize;
+        if (Nb <= 0 || worldSize <= 0) {
+            return -1.f; // no valid partition when no bodies or invalid world size
+        }
+        int bodiesPerRank = std::max(1, (Nb + worldSize - 1) / worldSize);
         return (float)cardillo::partitioning::NaivePartitioner::ownerOf(b, worldSize, bodiesPerRank);
     }
     return -1.f;

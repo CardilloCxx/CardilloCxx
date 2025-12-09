@@ -30,6 +30,9 @@
 #include "scenes/parcel/ParcelScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
+#include "scenes/slinky/SlinkyScene.hpp"
+#include "scenes/woodpecker/WoodpeckerScene.hpp"
+#include "scenes/spaghetti/SpaghettiScene.hpp"
 // #include "scenes/gears/GearsScene.hpp"           // temporarily disabled (hinge refactor)
 // #include "scenes/pendulum/PendulumScene.hpp"     // temporarily disabled (rigid/hinge refactor)
 #include "scenes/leaningTower/LeaningTowerScene.hpp"
@@ -79,6 +82,9 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<DzhanibekovScene>());
     scenes.emplace_back(std::make_unique<ParcelScene>());
     scenes.emplace_back(std::make_unique<DiscreteRodScene>());
+    scenes.emplace_back(std::make_unique<SlinkyScene>());
+    scenes.emplace_back(std::make_unique<WoodpeckerScene>());
+    scenes.emplace_back(std::make_unique<SpaghettiScene>());
     // scenes.emplace_back(std::make_unique<GearsScene>());       // uses HingeConstraint (under refactor)
     scenes.emplace_back(std::make_unique<LeaningTowerScene>());
     // scenes.emplace_back(std::make_unique<PendulumScene>());    // uses RigidConstraint/Hinge (under refactor)

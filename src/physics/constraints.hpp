@@ -295,26 +295,25 @@ public:
     BeamConstraint(entt::registry& reg,
                    entt::entity a,
                    entt::entity b,
-                   const Vector3r& Kg,
-                   const Vector3r& Kf,
-                   const Vector3r& Dg = Vector3r::Zero(),
-                   const Vector3r& Df = Vector3r::Zero());
+                   const cardillo::PhysicsSystem::BeamSpringParams& springs,
+                   const cardillo::PhysicsSystem::BeamCrossSection& section);
 
-    void setKg(const Vector3r& Kg) { m_Ke = Kg; }
-    void setKf(const Vector3r& Kf) { m_Kf = Kf; }
-    void setDg(const Vector3r& Dg) { m_De = Dg; }
-    void setDf(const Vector3r& Df) { m_Df = Df; }
+    // Stiffness and damping now derived from springs+section per segment
+    void setCrackStrainMax(real_t v) { m_crackStrainMax = v; }
 
     // Fill W and compliance vectors for 6 beam rows
     ConstraintResult getConstraint() const override;
 
 private:
-    Vector3r m_Ke{Vector3r::Zero()};
-    Vector3r m_Kf{Vector3r::Zero()};
-    Vector3r m_De{Vector3r::Zero()};
-    Vector3r m_Df{Vector3r::Zero()};
+    cardillo::PhysicsSystem::BeamSpringParams m_springs{};
+    cardillo::PhysicsSystem::BeamCrossSection m_section{};
     Vector3r m_delta0{Vector3r::Zero()};
     Vector3r m_kappa0{Vector3r::Zero()};
+    real_t   l_0{ 0 };
+    mutable bool m_broken{false};
+    real_t   m_crackStrainMax{std::numeric_limits<real_t>::infinity()};
+    mutable real_t m_crackStrainPeak{(real_t)0};
+    mutable bool m_crackReported{false};
 };
 
 } // namespace physics

@@ -115,6 +115,10 @@ Config ConfigReader::fromFile(const std::string& path) {
         else if (key == "collision.broadphase") {
             cfg.collision_broadphase = val;
         }
+        else if (key == "collision.disable_all") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            cfg.collision_disable_all = (v == "1" || v == "true" || v == "yes" || v == "on");
+        }
         else if (key == "collision.max_raw_contacts") {
             try { cfg.collision_max_raw_contacts = std::max(1, std::stoi(val)); } catch (...) {}
         }

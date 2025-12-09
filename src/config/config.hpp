@@ -41,6 +41,8 @@ struct Config {
     // Collision settings
     // collision.broadphase: one of [dynamic_aabb, dynamic_aabb_array, naive, sap, ssap]
     std::string collision_broadphase{"dynamic_aabb"};
+    // Disable all collisions globally (no collidable components, no contact computation)
+    bool collision_disable_all{false};
     // Security margin for collision request (>=0). Small positive helps robustness.
     real_t collision_security_margin{(real_t)0.0}; // collision.security_margin
     // Maximum raw contacts requested per pair from narrowphase

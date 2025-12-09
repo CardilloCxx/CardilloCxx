@@ -95,6 +95,9 @@ public:
          RigidState(const Vector3r& p_local,
                    entt::entity refEntity,
                    entt::registry& reg) : RigidState(p_local, Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
+        
+        RigidState(entt::entity refEntity,
+                   entt::registry& reg) : RigidState(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
     };
     struct CubeShape    { 
         Vector3r halfExtents{Vector3r::Zero()};
@@ -168,6 +171,21 @@ public:
             return std::pow(width, (real_t)3) * height / (real_t)12.0;
         }
         real_t Jp() const { return Iy() + Iz(); } // polar approx
+
+        real_t sectionModulus() const {
+        if (type == BeamBodyType::Capsule) {
+            // Circle: c = R, Iy = Iz = I. W = I/R = (pi*R^4/4) / R = pi*R^3/4
+            real_t r = (std::min(width, height)) * (real_t)0.5;
+            if (r == (real_t)0.0) return (real_t)0.0;
+            return (real_t)M_PI * std::pow(r, 3) / (real_t)4.0;
+        } else { // Cube/Rectangle
+            // W_y = Iy / (height/2) 
+            real_t Wy = Iy() / ((real_t)0.5 * height);
+            // W_z = Iz / (width/2)
+            real_t Wz = Iz() / ((real_t)0.5 * width);
+            return std::min(Wy, Wz);
+        }
+    }
     };
 
     struct BeamSpringParams {
@@ -177,6 +195,9 @@ public:
         // Independent scales for each component
         Vector3r scaleKe{Vector3r::Ones()}; // [axial, shearY, shearZ]
         Vector3r scaleKf{Vector3r::Ones()}; // [torsion, bendY, bendZ]
+        // Rankine cracking model: maximum crack strain threshold for shear retention
+        real_t crackStrainMax{std::numeric_limits<real_t>::infinity()};
+        real_t tensileStrength{std::numeric_limits<real_t>::infinity()};
         // Optional direct per-segment stiffness overrides (units already [*/L])
         std::optional<Vector3r> Ke_direct;
         std::optional<Vector3r> Kf_direct;
@@ -293,6 +314,12 @@ public:
                                                                   const RigidProps& propsDefaults,
                                                                   size_t segmentsPerSpline);
 
+    // Beam element component (single tag with data)
+
+
+    void updateBeamElementEntity(entt::entity e);
+    void updateEntities();
+
     // Dynamics getters (Cache them inside the entity to avoid recomputation)
     MatrixXXr getMass( entt::entity e ) const;        // Linear Inertia and Angular Inertia
     // Inverse mass diagonal (vector) for the entity's velocity-space dofs.
@@ -368,6 +395,13 @@ public:
     struct C_SoftBodySurface {
         std::vector<Eigen::Vector3i> triangles;    // topology (indices into nodes)
         std::vector<entt::entity> nodes;           // one node per original OBJ vertex
+    };
+    // Beam element component
+    struct C_BeamElement {
+        std::optional<entt::entity> prev;
+        std::optional<entt::entity> next;
+        real_t l0{(real_t)0};
+        real_t l{(real_t)0};
     };
     // Mesh components
     struct C_Mesh { std::string path; Vector3r scale{1,1,1}; };

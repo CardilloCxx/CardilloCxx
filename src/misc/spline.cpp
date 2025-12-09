@@ -38,21 +38,21 @@ Vector3r LinearSpline::centerOfMass() const {
 }
 
 // CircleSpline ---------------------------------------------------------------
-CircleSpline::CircleSpline(const Vector3r &center, real_t radius, const Vector3r &normal, const Vector3r &dir0)
-: m_c(center), m_r(radius), m_n(normal.normalized()) {
+CircleSpline::CircleSpline(const Vector3r &center, real_t radius, const Vector3r &normal, const Vector3r &dir0, real_t thetaStart, real_t thetaSpan)
+: m_c(center), m_r(radius), m_n(normal.normalized()), m_theta0(thetaStart), m_thetaSpan(thetaSpan) {
     Vector3r d = dir0 - dir0.dot(m_n) * m_n; // project onto plane
     if (d.squaredNorm() < (real_t)1e-10) d = Vector3r::UnitX() - Vector3r::UnitX().dot(m_n)*m_n;
     m_u = d.normalized();
     m_v = m_n.cross(m_u).normalized();
 }
 
-real_t CircleSpline::totalLength() const { return (real_t)2 * M_PI * m_r; }
+real_t CircleSpline::totalLength() const { return std::abs(m_thetaSpan) * m_r; }
 
-bool CircleSpline::isLoop() const { return true; }
+bool CircleSpline::isLoop() const { return std::abs(std::abs(m_thetaSpan) - (real_t)(2*M_PI)) < (real_t)1e-8; }
 
 SplineSample CircleSpline::sample(real_t alpha) const {
     alpha = std::min((real_t)1, std::max((real_t)0, alpha));
-    real_t theta = (real_t)2 * M_PI * alpha;
+    real_t theta = m_theta0 + m_thetaSpan * alpha;
     Vector3r radial = std::cos(theta) * m_u + std::sin(theta) * m_v; // outward in plane
     Vector3r tangent = (-std::sin(theta) * m_u + std::cos(theta) * m_v).normalized();
     Vector3r normal = radial.normalized();

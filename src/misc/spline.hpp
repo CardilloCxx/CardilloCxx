@@ -44,7 +44,13 @@ private:
 
 class CircleSpline : public SplinePattern {
 public:
-    CircleSpline(const Vector3r &center, real_t radius, const Vector3r &normal = Vector3r::UnitZ(), const Vector3r &dir0 = Vector3r::UnitX());
+    // Full circle by default (theta in [0, 2pi)). Optionally specify start angle and span (radians).
+    CircleSpline(const Vector3r &center,
+                 real_t radius,
+                 const Vector3r &normal = Vector3r::UnitZ(),
+                 const Vector3r &dir0 = Vector3r::UnitX(),
+                 real_t thetaStart = (real_t)0,
+                 real_t thetaSpan  = (real_t)(2 * M_PI));
     real_t totalLength() const override;
     bool isLoop() const override;
     SplineSample sample(real_t alpha) const override;
@@ -55,6 +61,8 @@ private:
     Vector3r m_n{Vector3r::UnitZ()};
     Vector3r m_u{Vector3r::UnitX()};
     Vector3r m_v{Vector3r::UnitY()};
+    real_t m_theta0{(real_t)0};
+    real_t m_thetaSpan{(real_t)(2 * M_PI)};
 };
 
 class HelixSpline : public SplinePattern {

@@ -104,7 +104,7 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
     m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{state.angularVelocity});
 
     if (props.visual)    m_reg.emplace<C_VisualObject>(e);
-    if (props.collidable)m_reg.emplace<C_Collidable>(e);
+    if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_Collidable>(e);
 
     // Determine mass from props.mass or density + shape volume
     std::optional<real_t> massOpt = props.mass;
@@ -138,7 +138,7 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
         using T = std::decay_t<decltype(s)>;
         if constexpr (std::is_same_v<T, CubeShape>) {
             if (props.visual)    m_reg.emplace<C_CubeVisualTag>(e);
-            if (props.collidable)m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{s.halfExtents});
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{s.halfExtents});
             m_reg.emplace<C_Cube>(e, C_Cube{s.halfExtents});
             if (mass > 0) {
                 m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
@@ -146,7 +146,7 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
             }
         } else if constexpr (std::is_same_v<T, SphereShape>) {
             if (props.visual)    m_reg.emplace<C_PointVisualTag>(e);
-            if (props.collidable)m_reg.emplace<C_RB_Sphere>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Sphere>(e);
             m_reg.emplace<C_Radius>(e, C_Radius{s.radius});
             if (mass > 0) {
                 m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
@@ -154,7 +154,7 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
             }
         } else if constexpr (std::is_same_v<T, CapsuleShape>) {
             if (props.visual)    m_reg.emplace<C_CapsuleVisualTag>(e);
-            if (props.collidable)m_reg.emplace<C_RB_Capsule>(e, C_RB_Capsule{s.radius, s.halfLength});
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Capsule>(e, C_RB_Capsule{s.radius, s.halfLength});
             m_reg.emplace<C_Capsule>(e, C_Capsule{s.radius, s.halfLength});
             if (mass > 0) {
                 m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
@@ -162,12 +162,12 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
             }
         } else if constexpr (std::is_same_v<T, PlaneShape>) {
             if (props.visual)    m_reg.emplace<C_PlaneVisualTag>(e);
-            if (props.collidable)m_reg.emplace<C_RB_Plane>(e, C_RB_Plane{s.normal, s.up, s.sizeX, s.sizeY});
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Plane>(e, C_RB_Plane{s.normal, s.up, s.sizeX, s.sizeY});
             m_reg.emplace<C_Plane>(e, C_Plane{s.normal, s.up, s.sizeX, s.sizeY});
 
         } else if constexpr (std::is_same_v<T, MeshShape>) {
             if (props.visual)    m_reg.emplace<C_MeshVisualTag>(e);
-            if (props.collidable)m_reg.emplace<C_RB_Mesh>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Mesh>(e);
             m_reg.emplace<C_Mesh>(e, C_Mesh{s.path, s.scale});
             const bool dynamic = mass > 0;
             const ::cardillo::MeshAsset& asset = assets().getMesh(s.path, s.scale, dynamic);
@@ -213,7 +213,7 @@ index_t PhysicsSystem::addPointMass(real_t mass, const Vector3r& x0, const Vecto
     auto e = m_reg.create();
     m_reg.emplace<C_PhysicsObject>(e);
     m_reg.emplace<C_PointMassTag>(e);
-    m_reg.emplace<C_Collidable>(e);
+    if (!m_cfg.collision_disable_all) m_reg.emplace<C_Collidable>(e);
     m_reg.emplace<C_VisualObject>(e);
     m_reg.emplace<C_PointVisualTag>(e);
     m_reg.emplace<C_Mass>(e, C_Mass{mass});
@@ -228,7 +228,7 @@ index_t PhysicsSystem::addPointMass(real_t mass, const Vector3r& x0, const Vecto
 // Helper: create a purely visual/collidable rigid-like entity (no physics)
 entt::entity PhysicsSystem::createRigidVisualEntity_(const Vector3r& center) {
     auto e = m_reg.create();
-    m_reg.emplace<C_Collidable>(e);
+    if (!m_cfg.collision_disable_all) m_reg.emplace<C_Collidable>(e);
     m_reg.emplace<C_VisualObject>(e);
     m_reg.emplace<C_Position3>(e, C_Position3{center});
     markStructureDirty();
@@ -245,14 +245,14 @@ index_t PhysicsSystem::addObstacleHeightField(const Vector3r& position,
                                               real_t z_scale,
                                               real_t min_height) {
     auto e = m_reg.create();
-    m_reg.emplace<C_Collidable>(e);
+    if (!m_cfg.collision_disable_all) m_reg.emplace<C_Collidable>(e);
     m_reg.emplace<C_VisualObject>(e);
     m_reg.emplace<C_Position3>(e, C_Position3{position});
     m_reg.emplace<C_Orientation>(e, C_Orientation{orientation});
     // Visual + collider markers
     m_reg.emplace<C_HeightFieldVisualTag>(e);
     m_reg.emplace<C_HeightField>(e, C_HeightField{exrPath, x_dim, y_dim, z_scale, min_height});
-    m_reg.emplace<C_RB_HeightField>(e);
+    if (!m_cfg.collision_disable_all) m_reg.emplace<C_RB_HeightField>(e);
     if (!m_reg.any_of<C_Friction>(e)) m_reg.emplace<C_Friction>(e, C_Friction{m_cfg.friction_default_mu});
     markStructureDirty();
     // Touch the asset so failures surface early
@@ -520,8 +520,14 @@ real_t PhysicsSystem::getKineticEnergy(entt::entity e) const {
 int PhysicsSystem::numBodies() const {
     if (m_num_bodies_dirty) {
         int count = 0;
-        auto view = m_reg.view<C_BodyIndex, C_PhysicsObject>();
-        for (auto e : view) (void)e, ++count;
+        // Prefer assembler-assigned body indices when available
+        auto viewIndexed = m_reg.view<C_BodyIndex, C_PhysicsObject>();
+        for (auto e : viewIndexed) (void)e, ++count;
+        if (count == 0) {
+            // Fallback: count dynamic physics objects directly before assembler runs
+            auto viewDyn = m_reg.view<C_PhysicsObject>();
+            for (auto e : viewDyn) (void)e, ++count;
+        }
         m_num_bodies_cached = count;
         m_num_bodies_dirty = false;
     }
@@ -686,12 +692,18 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
     Vector3r v_body_world = Rbody * stateDefaults.linearVelocity;
     Vector3r w_body_world = Rbody * stateDefaults.angularVelocity; // body-frame to world
 
+    Quaternion4r q_prev = Quaternion4r::Identity();
+
     for (size_t i = 0; i < segments; ++i) {
         real_t alpha = (real_t)i / (real_t)segments; // alpha in [0, 1)
         misc::SplineSample si = spline.sample(alpha);
         Matrix33r Rlocal; Rlocal.col(0)=si.tangent; Rlocal.col(1)=si.normal; Rlocal.col(2)=si.binormal;
         Matrix33r Rworld =  Rbody * Rlocal * Rshape;
         Quaternion4r qworld(Rworld); qworld.normalize();
+        
+        // Ensure quaternion continuity
+        if (q_prev.dot(qworld) < (real_t)0) qworld.coeffs() = -qworld.coeffs();
+        q_prev = qworld;
 
         // Rotate about spline COM, then add COM shift + state translation
         Vector3r worldPos = splineCOMWorld + stateDefaults.position + Rbody * (si.position - splineCOMWorld);
@@ -706,8 +718,27 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
         segState.angularVelocity = Rlocal.transpose() * stateDefaults.angularVelocity;
         entt::entity cur = addRigidBody(shape, segState, segProps);
 
+        // Beam element component and neighbor setup (data lives on entity)
+        C_BeamElement be_cur;
+        be_cur.l0 = segLen;
+        be_cur.l  = segLen;
         if (prev != entt::null) {
-            addConstraint<BeamConstraint>(ecs(), prev, cur, Ke, Kf, De, Df);
+            be_cur.prev = prev;
+            // Ensure prev has a component and set its next
+            if (!m_reg.any_of<C_BeamElement>(prev)) {
+                C_BeamElement be_prev;
+                be_prev.l0 = segLen;
+                be_prev.l  = segLen;
+                be_prev.next = cur;
+                m_reg.emplace<C_BeamElement>(prev, be_prev);
+            } else {
+                m_reg.get<C_BeamElement>(prev).next = cur;
+            }
+        }
+        m_reg.emplace<C_BeamElement>(cur, be_cur);
+
+        if (prev != entt::null) {
+            addConstraint<BeamConstraint>(ecs(), prev, cur, springs, section);
             disableCollisionBetween(prev, cur);
         }
         if (root == entt::null) root = cur;
@@ -715,8 +746,11 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
         end = cur;
     }
     if (loop && root != entt::null && end != entt::null && end != root) {
-        addConstraint<BeamConstraint>(ecs(), end, root, Ke, Kf, De, Df);
+        addConstraint<BeamConstraint>(ecs(), end, root, springs, section);
         disableCollisionBetween(end, root);
+        // Close neighbor links for looped beam
+        if (m_reg.any_of<C_BeamElement>(end)) m_reg.get<C_BeamElement>(end).next = root;
+        if (m_reg.any_of<C_BeamElement>(root)) m_reg.get<C_BeamElement>(root).prev = end;
     }
     return {root, end};
 }
@@ -739,7 +773,6 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vect
         auto pair = createBeam(*splines[i], section, springs, stateDefaults, propsDefaults, (size_t) (segments * (splines[i]->totalLength() / totalLen)));
         if (first == entt::null) first = pair.first;
         if (prevEnd != entt::null && pair.first != entt::null) {
-            // addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first, Vector3r::Zero(), Vector3r::Zero());
             addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first);
             disableCollisionBetween(prevEnd, pair.first);
         }
@@ -770,6 +803,7 @@ void PhysicsSystem::explicitPositionUpdate(real_t h) {
         // re-normalize to avoid quaternion drift
         orientation.value.normalize();
     }
+    updateEntities();
 }
 
 void PhysicsSystem::linearImplicitPositionUpdate(real_t h) {
@@ -803,6 +837,119 @@ void PhysicsSystem::linearImplicitPositionUpdate(real_t h) {
 
         // re-normalize to avoid quaternion drift
         orientation.value.normalize();
+    }
+
+    // Update beam element lengths after full pose (position + orientation) update
+    updateEntities();
+}
+
+void PhysicsSystem::updateBeamElementEntity(entt::entity e) {
+    if (!m_reg.valid(e) || !m_reg.any_of<C_BeamElement, C_Position3>(e)) return;
+    auto& be = m_reg.get<C_BeamElement>(e);
+    const auto& pos = m_reg.get<C_Position3>(e).value;
+    real_t newLen = be.l0;
+
+    auto getDesiredLengthBetween = [&](entt::entity a, entt::entity b)->real_t {
+        if (!(m_reg.valid(a) && m_reg.valid(b))) {
+            std::cout << "Beam length: invalid entities a=" << (int)a << " b=" << (int)b << "\eaen";
+        }
+        if (!m_reg.any_of<C_Position3>(a) || !m_reg.any_of<C_Position3>(b)) {
+            std::cout << "Beam length: missing positions a=" << m_reg.any_of<C_Position3>(a) << " b=" << m_reg.any_of<C_Position3>(b) << " for entities a=" << (int)a << " b=" << (int)b << "\n";
+        }
+        if (!m_reg.any_of<C_Orientation>(a) || !m_reg.any_of<C_Orientation>(b)) {
+            std::cout << "Beam length: missing orientations a=" << m_reg.any_of<C_Orientation>(a) << " b=" << m_reg.any_of<C_Orientation>(b) << " for entities a=" << (int)a << " b=" << (int)b << "\n";
+        }
+        if (m_reg.valid(a) && m_reg.valid(b) &&
+            m_reg.any_of<C_Position3>(a) && m_reg.any_of<C_Position3>(b) &&
+            m_reg.any_of<C_Orientation>(a) && m_reg.any_of<C_Orientation>(b)) {
+            const auto& pa = m_reg.get<C_Position3>(a).value;
+            const auto& pb = m_reg.get<C_Position3>(b).value;
+            auto r_AB = pb - pa;
+            auto R_A = m_reg.get<C_Orientation>(a).value.toRotationMatrix();
+            auto R_B = m_reg.get<C_Orientation>(b).value.toRotationMatrix();
+            
+            index_t x_col_A = m_reg.any_of<C_Capsule>(a) ? 2 : 0; 
+            index_t x_col_B = m_reg.any_of<C_Capsule>(b) ? 2 : 0;
+
+            auto e_Ax = R_A.col(x_col_A);
+            auto e_Bx = R_B.col(x_col_B);
+            real_t base = r_AB.norm();
+            if (base > (real_t)0) {
+                auto r_hat = r_AB.normalized();
+                real_t d1 = std::clamp(e_Ax.dot(r_hat), (real_t)-1, (real_t)1);
+                real_t d2 = std::clamp(e_Bx.dot(r_hat), (real_t)-1, (real_t)1);
+                // Circular mean of angles: atan2(sum sin, sum cos)
+                // Since alpha in [0,pi], sin is non-negative; compute from cos using sin=√(1-cos^2)
+                real_t s1 = std::sqrt(std::max((real_t)0, (real_t)1 - d1*d1));
+                real_t s2 = std::sqrt(std::max((real_t)0, (real_t)1 - d2*d2));
+                real_t base_angle = std::atan2(s1 + s2, d1 + d2);
+                real_t c = std::cos(base_angle);
+                if (std::abs(c) > (real_t)1e-12) return base / c;
+            }
+        }
+        return (real_t) 0;
+    };
+
+    index_t contributions = 0;
+    real_t totalLen = (real_t)0;
+
+    if (be.prev.has_value()) {
+        totalLen += getDesiredLengthBetween(be.prev.value(), e);
+        contributions++;
+    }
+
+    if (be.next.has_value()) {
+        totalLen += getDesiredLengthBetween(e, be.next.value());
+        contributions++;
+    }
+
+    if (contributions > 0) {
+        real_t avgLen = totalLen / (real_t)contributions;
+        newLen = avgLen;
+    }
+    else std::cout << "Warning: beam element has no neighbors to compute length from.\n";
+
+    // Write back current length
+    const real_t prevLen = be.l;
+    be.l = newLen;
+
+    // If length changed, update collider/visual geometry to reflect new x-extent
+    const real_t eps = (real_t)1e-8;
+    if (std::abs(be.l - prevLen) > eps) {
+        bool shapeChanged = false;
+        // Visual cube/capsule
+        if (m_reg.any_of<C_Cube>(e)) {
+            auto& cb = m_reg.get<C_Cube>(e);
+            const real_t newHalfX = be.l * (real_t)0.5;
+            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) { cb.halfExtents.x() = newHalfX; shapeChanged = true; }
+        }
+        if (m_reg.any_of<C_Capsule>(e)) {
+            auto& cap = m_reg.get<C_Capsule>(e);
+            const real_t newHalf = be.l * (real_t)0.5;
+            if (std::abs(cap.halfLength - newHalf) > eps) { cap.halfLength = newHalf; shapeChanged = true; }
+        }
+        // Collider cube/capsule
+        if (m_reg.any_of<C_RB_Cube>(e)) {
+            auto& cb = m_reg.get<C_RB_Cube>(e);
+            const real_t newHalfX = be.l * (real_t)0.5;
+            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) { cb.halfExtents.x() = newHalfX; shapeChanged = true; }
+        }
+        if (m_reg.any_of<C_RB_Capsule>(e)) {
+            auto& cap = m_reg.get<C_RB_Capsule>(e);
+            const real_t newHalf = be.l * (real_t)0.5;
+            if (std::abs(cap.halfLength - newHalf) > eps) { cap.halfLength = newHalf; shapeChanged = true; }
+        }
+        if (shapeChanged) {
+            markStructureDirty();
+        }
+    }
+}
+
+void PhysicsSystem::updateEntities() {
+    auto view = m_reg.view<C_BeamElement, const C_Position3>();
+    for (auto [e, be, pos] : view.each()) {
+        (void)be; (void)pos;
+        updateBeamElementEntity(e);
     }
 }
 

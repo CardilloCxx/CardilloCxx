@@ -176,8 +176,6 @@ public:
             PhysicsSystem::RigidState(Vector3r(-1.0, 0.0, 1.9), Vector3r(-4.0, 0.0, 0.0)),
             PhysicsSystem::RigidProps(1.0)
         );
-        sys.track(midSphere, "mid_sphere");
-        sys.track(bottomSphere, "bottom_sphere");
 
         // Hinge between top (static) sphere and first mass
         sys.addConstraint<physics::HingeConstraint>(
@@ -213,6 +211,9 @@ public:
             PhysicsSystem::RigidState(Vector3r(-1.5, 1.0, 0.2)),
             PhysicsSystem::RigidProps::withDensity(2500.0)
         );
+        real_t mass = sys.getMass(m_lever_1)(0,0);
+        real_t Iz_com = sys.getInertiaDiag(m_lever_1)(2);
+        real_t Iz_hinge_1 = Iz_com + mass * 0.4*0.4; // parallel axis theorem
 
         // Hinge at the left end of the lever, anchored in the world frame
         sys.addConstraint<physics::HingeConstraint>(
@@ -232,6 +233,10 @@ public:
             PhysicsSystem::RigidProps::withDensity(2500.0)
         );
 
+        mass = sys.getMass(m_lever_2)(0,0);
+        Iz_com = sys.getInertiaDiag(m_lever_2)(2);
+        real_t Iz_hinge_2 = Iz_com + mass * 0.4*0.4; // parallel axis theorem
+
         sys.addConstraint<physics::HingeConstraint>(
             sys.ecs(), floor, m_lever_2,
             physics::JointFrame::fromAxis(
@@ -241,6 +246,54 @@ public:
             ),
             2e0
         );
+
+        sys.track(m_lever_1, "lever_Iz=" + std::to_string(Iz_hinge_1) + "_k_=1");
+        sys.track(m_lever_2, "lever_Iz=" + std::to_string(Iz_hinge_2) + "_k_=2");
+
+                // First lever: stiffer hinge
+        m_lever_3 = sys.addRigidBody(
+            PhysicsSystem::CubeShape(Vector3r(0.4, 0.05, 0.02)),
+            PhysicsSystem::RigidState(Vector3r(-1.5, 3.0, 0.2)),
+            PhysicsSystem::RigidProps::withDensity(2500.0)
+        );
+        mass = sys.getMass(m_lever_3)(0,0);
+        Iz_com = sys.getInertiaDiag(m_lever_3)(2);
+        real_t Iz_hinge_3 = Iz_com; // parallel axis theorem
+
+        // Hinge at the left end of the lever, anchored in the world frame
+        sys.addConstraint<physics::HingeConstraint>(
+            sys.ecs(),floor,  m_lever_3,
+            physics::JointFrame::fromAxis(
+                Vector3r(-0.0, 0.0, 0.0),   // world anchor position
+                Vector3r::UnitZ(),          // hinge axis
+                m_lever_3
+            ),
+            1e0
+        );
+
+        // Second lever: softer hinge
+        m_lever_4 = sys.addRigidBody(
+            PhysicsSystem::CubeShape(Vector3r(0.4, 0.05, 0.02)),
+            PhysicsSystem::RigidState(Vector3r(-1.5, -3.0, 0.2)),
+            PhysicsSystem::RigidProps::withDensity(2500.0)
+        );
+
+        mass = sys.getMass(m_lever_4)(0,0);
+        Iz_com = sys.getInertiaDiag(m_lever_4)(2);
+        real_t Iz_hinge_4 = Iz_com; // parallel axis theorem
+
+        sys.addConstraint<physics::HingeConstraint>(
+            sys.ecs(), floor, m_lever_4,
+            physics::JointFrame::fromAxis(
+                Vector3r(-0.0, 0.0, 0.0),
+                Vector3r::UnitZ(),
+                m_lever_4
+            ),
+            2e0
+        );
+
+        sys.track(m_lever_3, "lever_Iz=" + std::to_string(Iz_hinge_3) + "_k_=1");
+        sys.track(m_lever_4, "lever_Iz=" + std::to_string(Iz_hinge_4) + "_k_=2");
     }
 
     void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
@@ -249,12 +302,16 @@ public:
 
         sys.applyForce(m_lever_1, Vector3r::Zero(), torque);
         sys.applyForce(m_lever_2, Vector3r::Zero(), torque);
+        sys.applyForce(m_lever_3, Vector3r::Zero(), torque);
+        sys.applyForce(m_lever_4, Vector3r::Zero(), torque);
 
         sys.applyForce(m_cube, 1e10 * Vector3r(0,0,9.81), Vector3r::Zero());  // counteract gravity
     }
 
     private:
-       entt::entity m_cube;
-       entt::entity m_lever_1;
-       entt::entity m_lever_2;
+        entt::entity m_cube;
+        entt::entity m_lever_1;
+        entt::entity m_lever_2;
+        entt::entity m_lever_3;
+        entt::entity m_lever_4;
 };

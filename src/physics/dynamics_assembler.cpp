@@ -362,6 +362,12 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
     const int nSprings = (int)m_Wg.rows();
     const int nDampers = (int)m_Wgamma.rows();
     const int extV = totalV + nSprings + nDampers;
+    
+    if (extV == 0) {
+        m_S_sparse_lu.reset();
+        m_S_sparse.resize(0,0);
+        return true;
+    }
 
     // Build sparse block matrix using triplets
     std::vector<Eigen::Triplet<real_t>> trips;
@@ -443,6 +449,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
 // Solve full extended system and return complete solution
 VectorXr DynamicsAssembler::solveS(const VectorXr& rhs_ext) const
 {  
+    if (rhs_ext.size() == 0) return rhs_ext; // empty system: identity solve
     if (!m_S_sparse_lu.has_value()) throw std::runtime_error("DynamicsAssembler::solveS called but S matrix is not factorized");
 
     Eigen::VectorXd sol = m_S_sparse_lu->solve(rhs_ext);
