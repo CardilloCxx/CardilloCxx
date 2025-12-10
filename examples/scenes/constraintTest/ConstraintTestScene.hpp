@@ -247,8 +247,8 @@ public:
             2e0
         );
 
-        sys.track(m_lever_1, "lever_Iz=" + std::to_string(Iz_hinge_1) + "_k_=1");
-        sys.track(m_lever_2, "lever_Iz=" + std::to_string(Iz_hinge_2) + "_k_=2");
+        // sys.track(m_lever_1, "lever_Iz=" + std::to_string(Iz_hinge_1) + "_k_=1");
+        // sys.track(m_lever_2, "lever_Iz=" + std::to_string(Iz_hinge_2) + "_k_=2");
 
                 // First lever: stiffer hinge
         m_lever_3 = sys.addRigidBody(
@@ -292,8 +292,8 @@ public:
             2e0
         );
 
-        sys.track(m_lever_3, "lever_Iz=" + std::to_string(Iz_hinge_3) + "_k_=1");
-        sys.track(m_lever_4, "lever_Iz=" + std::to_string(Iz_hinge_4) + "_k_=2");
+        // sys.track(m_lever_3, "lever_Iz=" + std::to_string(Iz_hinge_3) + "_k_=1");
+        // sys.track(m_lever_4, "lever_Iz=" + std::to_string(Iz_hinge_4) + "_k_=2");
     }
 
     void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {

@@ -378,7 +378,11 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	rhs.segment(0, Nv).noalias() += Wref.transpose() * p;
 	VectorXr x = m_dyn.solveS(rhs);
 	
-	if (C == 0 || Wref.nonZeros() == 0) return x; // no contacts, return preliminary velocity as-is
+	if (C == 0 || Wref.nonZeros() == 0) {
+		m_lastIterations = 0;
+		m_lastError = (real_t)0;
+		return x; // no contacts, return preliminary velocity as-is
+	}
 
 	// Configure iteration context
 	ctx.worldRank = worldRank;
@@ -404,6 +408,9 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 			std::cout << "[ProjectedJacobi+Nesterov] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
 	}
+
+	m_lastIterations = static_cast<int>(ctx.iteration);
+	m_lastError = ctx.err_global;
 
 	// Store last impulses into cache for next step warmstarting
 	if (m_wsProvider != nullptr) {

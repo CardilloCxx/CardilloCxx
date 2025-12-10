@@ -929,7 +929,6 @@ void PhysicsSystem::updateBeamElementEntity(entt::entity e) {
         real_t avgLen = totalLen / (real_t)contributions;
         newLen = avgLen;
     }
-    else std::cout << "Warning: beam element has no neighbors to compute length from.\n";
 
     // Write back current length
     const real_t prevLen = be.l;

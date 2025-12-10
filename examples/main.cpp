@@ -158,7 +158,11 @@ int main(int argc, char** argv) {
             }
             t += dt;
             if (writer) writer->maybeWrite(k+1, t, sys);
-            if (pbar) pbar->update(1);
+            if (pbar) {
+                int jorIters = solver->lastProjectedJacobiIterations();
+                if (jorIters >= 0) pbar->set_postfix("jor=" + std::to_string(jorIters) + "        ");
+                pbar->update(1);
+            }
         }
     }
     if (pbar) pbar->close();

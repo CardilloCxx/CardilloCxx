@@ -538,7 +538,7 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
     for (int i = 0; i < nDampers; ++i) {
         real_t Ai = m_Adiag[i];
         if (!std::isfinite(Ai)) continue;
-        real_t aval = - (real_t)2.0 / dt * Ai; // h assumed = dt
+        real_t aval = - (real_t)2.0 / dt * Ai;
         trips.emplace_back(totalV + nSprings + i, totalV + nSprings + i, aval);
     }
 

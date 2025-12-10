@@ -23,6 +23,7 @@ public:
 
 	// Midpoint rule for unconstrained translation-only point masses
 	void stepMidpoint(real_t dt) override;
+	int lastProjectedJacobiIterations() const override { return m_pj.lastIterations(); }
 
 	// Access dynamics assembler if needed (e.g., for contacts/W/G)
 	cardillo::physics::DynamicsAssembler& dynamics() { return m_dyn; }

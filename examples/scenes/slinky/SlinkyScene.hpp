@@ -39,11 +39,11 @@ public:
         const real_t diameter = (real_t)0.065; // ~6.5 cm OD
         const real_t pitch = (real_t)rise / turns;   // axial rise per turn ~2.5 mm
         const real_t radius = diameter * (real_t)0.7;
-        const size_t segments = turns * 16.5;   // fewer segments per turn for performance
+        const size_t segments = turns * 16.5;   // uneven per turn to avoid interlocking
         const real_t density = (real_t)700;   // plastic density kg/m^3
-        const real_t E = (real_t)5e9;         // lower Young's modulus for plastic 1e9 
+        const real_t E = (real_t)1e9;         // lower Young's modulus for plastic 1e9, 5e9 for metal
         const real_t nu = (real_t)0.35;
-        PhysicsSystem::BeamCrossSection section(pitch*0.99, pitch*0.99, PhysicsSystem::BeamBodyType::Capsule); // pitch*2, pitch*0.99, PhysicsSystem::BeamBodyType::Cube for plastic-like
+        PhysicsSystem::BeamCrossSection section(pitch*2, pitch*0.99, PhysicsSystem::BeamBodyType::Cube); // (pitch*0.99, pitch*0.99, PhysicsSystem::BeamBodyType::Capsule); for metal pitch*2, pitch*0.99, PhysicsSystem::BeamBodyType::Cube for plastic-like
         auto springs = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
 
         // Place the spring centered over the top step tread and build a helix
@@ -74,7 +74,7 @@ public:
     void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t dt) override {
         auto A_IK = sys.ecs().get<cardillo::PhysicsSystem::C_Orientation>(m_slinky_end_entity).value.toRotationMatrix();
         
-        if (t < 0.15) sys.applyForce(m_slinky_end_entity, Vector3r(-0.1, 0.0, 0.0), A_IK.transpose()* Vector3r(0.0, -0.02, 0.0));
+        if (t < 0.15) sys.applyForce(m_slinky_end_entity, Vector3r(0.00, 0.0, 0.0), A_IK.transpose()* Vector3r(0.0, -0.01, 0.0));
 //         sys.setAngularVelocity(m_guide_entity, Vector3r(0.0, -0.1, 0.0));
 //         sys.applyForce(m_guide_entity, -sys.gravity() * sys.getMass(m_guide_entity).diagonal(), Vector3r::Zero());
     }

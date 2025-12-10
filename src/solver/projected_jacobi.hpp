@@ -36,6 +36,8 @@ public:
     {}
 
     real_t alpha() const { return m_alpha; }
+    int lastIterations() const { return m_lastIterations; }
+    real_t lastError() const { return m_lastError; }
     
     // Concatenated API: accept stacked preliminary velocities and return stacked velocities
     VectorXr solve(VectorXr& rhs, real_t tol = 1e-5);
@@ -52,6 +54,8 @@ private:
     double m_nest_beta_threshold{0.995};
     int m_nest_restart_limit{4};
     WarmstartProvider* m_wsProvider{nullptr};
+    int m_lastIterations{0};
+    real_t m_lastError{(real_t)0};
 };
 
 } // namespace cardillo::solver

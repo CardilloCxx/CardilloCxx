@@ -72,7 +72,7 @@ struct Config {
     bool debug_mesh{false}; // debug.mesh - print mesh normalization info (volume, COM, inertia)
 
     // Solver selection
-    SolverType solver{SolverType::Moreau};
+    SolverType solver{SolverType::StoermerVerlet};
 
     std::string scene_name{"none-specified"};
 };
