@@ -77,6 +77,11 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
             cfg.debug_mesh = (v == "1" || v == "true" || v == "yes" || v == "on");
         }
+        else if (key == "solver.name") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            if (v == "moreau" || v == "first_order") cfg.solver = SolverType::Moreau;
+            else cfg.solver = SolverType::StoermerVerlet;
+        }
         else if (key == "sim.T") {
             try { cfg.sim_T = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }

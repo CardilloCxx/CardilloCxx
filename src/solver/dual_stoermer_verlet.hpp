@@ -8,10 +8,11 @@
 #include "warmstart.hpp"
 #include "../config/config.hpp"
 #include "../physics/dynamics_assembler.hpp"
+#include "solver_base.hpp"
 
 namespace cardillo::solver {
 
-class DualStoermerVerletSolver {
+class DualStoermerVerletSolver : public SolverBase {
 public:
 		explicit DualStoermerVerletSolver(cardillo::PhysicsSystem& sys)
 			: m_sys(sys), m_dyn(sys),
@@ -21,7 +22,8 @@ public:
 	}
 
 	// Midpoint rule for unconstrained translation-only point masses
-	void stepMidpoint(real_t dt);
+	void stepMidpoint(real_t dt) override;
+	int lastProjectedJacobiIterations() const override { return m_pj.lastIterations(); }
 
 	// Access dynamics assembler if needed (e.g., for contacts/W/G)
 	cardillo::physics::DynamicsAssembler& dynamics() { return m_dyn; }

@@ -1,5 +1,6 @@
 #include "cardillo.hpp"
 #include "io/vtk_writer_binary.hpp"
+#include "solver/solver_base.hpp"
 #include "solver/moreau.hpp"
 #include "solver/dual_stoermer_verlet.hpp"
 #include <mpi.h>
@@ -118,10 +119,15 @@ int main(int argc, char** argv) {
     cfg.output_filename_prefix = scene.sceneName();
     scene.populate(sys);
 
-    // Setup Moreau solver
-    cardillo::solver::MoreauSolver solver(sys);
-    // cardillo::solver::DualStoermerVerletSolver solver(sys);
+    // Setup solver based on config
+    std::unique_ptr<cardillo::solver::SolverBase> solver;
+    if (cfg.solver == cardillo::config::SolverType::StoermerVerlet) solver = std::make_unique<cardillo::solver::DualStoermerVerletSolver>(sys);
+    else solver = std::make_unique<cardillo::solver::MoreauSolver>(sys);
 
+    std::cout << "[Info] Selected solver: " 
+              << ((cfg.solver == cardillo::config::SolverType::StoermerVerlet) ? "Dual Stoermer-Verlet" : "Moreau") 
+              << std::endl;
+    
     // Writer (rank 0)
     std::unique_ptr<cardillo::io::VtkWriterBinary> writer;
     if (worldRank == 0) {
@@ -148,13 +154,17 @@ int main(int argc, char** argv) {
         auto totalScope = sys.timings().scope(cardillo::misc::TimingManager::TimerId::Total);
         for (int k = 0; k < steps; ++k) {
             scene.updateScene(sys, t, dt);
-            solver.stepMidpoint(dt);
+            solver->stepMidpoint(dt);
             if (worldRank == 0) {
                 sys.writeTrackedStateToCsv(t + dt);
             }
             t += dt;
             if (writer) writer->maybeWrite(k+1, t, sys);
-            if (pbar) pbar->update(1);
+            if (pbar) {
+                int jorIters = solver->lastProjectedJacobiIterations();
+                if (jorIters >= 0) pbar->set_postfix("jor=" + std::to_string(jorIters) + "        ");
+                pbar->update(1);
+            }
         }
     }
     if (pbar) pbar->close();

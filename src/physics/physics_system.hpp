@@ -331,7 +331,9 @@ public:
     Vector3r getInertiaDiag(entt::entity e) const;
     VectorXr getPosition( entt::entity e ) const;     // Linear and angular combined
     VectorXr getVelocity( entt::entity e ) const;     // Linear and angular combined
-    VectorXr getForce( entt::entity e ) const;        // Linear and angular combined
+    VectorXr getForce( entt::entity e ) const;        // Linear and angular combined (gravity + external + gyroscopic)
+    VectorXr getForceExternal( entt::entity e ) const; // Gravity + external forces/torques only
+    VectorXr getForceGyroscopic( entt::entity e ) const; // Gyroscopic torque only (tau = -w x (I*w))
     real_t getKineticEnergy( entt::entity e ) const;
 
     // Shared asset access (wrappers over PhysicsAssets using entity components)

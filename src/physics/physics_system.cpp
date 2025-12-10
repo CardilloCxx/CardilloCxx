@@ -444,18 +444,12 @@ VectorXr PhysicsSystem::getVelocity(entt::entity e) const {
     return VectorXr(0);
 }
 
-VectorXr PhysicsSystem::getForce(entt::entity e) const {
+VectorXr PhysicsSystem::getForceExternal(entt::entity e) const {
     // Prefer rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
         Vector3r fg = m * m_gravity;
         Vector3r tau = Vector3r::Zero();
-        if (m_reg.all_of<C_InertiaDiag>(e)) {
-            const Vector3r w = m_reg.get<C_AngularVelocity3>(e).value; // body-frame
-            Vector3r Idiag = m_reg.get<C_InertiaDiag>(e).I;
-            const Vector3r Iw = Idiag.cwiseProduct(w);
-            tau = -w.cross(Iw);
-        }
         // Add any external one-shot forces/torques
         if (m_reg.any_of<C_ExternalForce>(e)) {
             fg += m_reg.get<C_ExternalForce>(e).f;
@@ -479,6 +473,34 @@ VectorXr PhysicsSystem::getForce(entt::entity e) const {
         return out;
     }
     return VectorXr(0);
+}
+
+VectorXr PhysicsSystem::getForceGyroscopic(entt::entity e) const {
+    // Gyroscopic forces only apply to rigid bodies
+    if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass>(e)) {
+        Vector3r tau = Vector3r::Zero();
+        if (m_reg.all_of<C_InertiaDiag>(e)) {
+            const Vector3r w = m_reg.get<C_AngularVelocity3>(e).value; // body-frame
+            Vector3r Idiag = m_reg.get<C_InertiaDiag>(e).I;
+            const Vector3r Iw = Idiag.cwiseProduct(w);
+            tau = -w.cross(Iw);
+        }
+        VectorXr out(6); out.setZero();
+        out[3] = tau.x(); out[4] = tau.y(); out[5] = tau.z();
+        return out;
+    }
+    // Point masses have no gyroscopic contribution
+    if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass>(e)) {
+        return VectorXr::Zero(3);
+    }
+    return VectorXr(0);
+}
+
+VectorXr PhysicsSystem::getForce(entt::entity e) const {
+    // Combined: external + gyroscopic
+    VectorXr f_ext = getForceExternal(e);
+    VectorXr f_gyro = getForceGyroscopic(e);
+    return f_ext + f_gyro;
 }
 
 Vector3r PhysicsSystem::getInertiaDiag(entt::entity e) const {
@@ -907,7 +929,6 @@ void PhysicsSystem::updateBeamElementEntity(entt::entity e) {
         real_t avgLen = totalLen / (real_t)contributions;
         newLen = avgLen;
     }
-    else std::cout << "Warning: beam element has no neighbors to compute length from.\n";
 
     // Write back current length
     const real_t prevLen = be.l;
