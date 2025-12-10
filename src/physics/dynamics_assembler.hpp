@@ -26,6 +26,8 @@ public:
     const VectorXr& qVec();   // stacked positions
     const VectorXr& vVec();   // stacked velocities
     const VectorXr& fVec();   // stacked external forces
+    const VectorXr& fVecExternal();   // stacked external forces (gravity + applied forces) only
+    const VectorXr& fVecGyroscopic(); // stacked gyroscopic forces/torques only
 
     // Columns correspond to stacked body velocity DOFs in body order, laid out contiguously per body
     const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W() const { return m_W_sparse; }
@@ -63,6 +65,7 @@ public:
     // Check system dirty flags and structural updates once per step and rebuild caches as needed
     void refreshState();
     void refreshCollisionsAndSprings( real_t dt );
+    void refreshCollisionsAndSpringsStormerVerlet(real_t dt);
 
 
 private:
@@ -73,6 +76,8 @@ private:
     VectorXr m_q_vec;
     VectorXr m_v_vec;
     VectorXr m_f_vec;
+    VectorXr m_f_vec_external;   // gravity + external forces/torques only
+    VectorXr m_f_vec_gyroscopic; // gyroscopic forces/torques only
     // Legacy caches removed
     std::vector<VectorXr> m_v_compat; // kept temporarily for transition; unused in solvers
 
@@ -148,6 +153,7 @@ public:
     void rebuildForces_();
     void rebuildW_();
     void rebuildInteractionW_();
+    bool buildAndFactorS_StormerVerlet(real_t dt);
 };
 
 } // namespace cardillo::physics

@@ -13,8 +13,6 @@ void DualStoermerVerletSolver::stepMidpoint(real_t dt)
     // 1) Get current state vectors
     m_dyn.refreshState();
     // const auto& qn = m_dyn.qVec();
-    const auto& vn = m_dyn.vVec();
-    const auto& fn = m_dyn.fVec();
     // const auto& offQ = m_dyn.bodyPosOffsets();
     // const auto& offV = m_dyn.bodyVelOffsets();
     // const int Nb = (int)offV.size() - 1;
@@ -22,11 +20,14 @@ void DualStoermerVerletSolver::stepMidpoint(real_t dt)
     // 2) Inplace midpoint position update
     m_sys.linearImplicitPositionUpdate(0.5 * dt);
 
-    // 3) Evaluate contacts at midpoint positions
-    m_dyn.refreshCollisionsAndSprings(dt);
+    // 3) Evaluate contacts at midpoint positions (Stormer-Verlet variant with gyro-effective mass)
+    m_dyn.refreshCollisionsAndSpringsStormerVerlet(dt);
 
     // 4) Build the full extended RHS and solve the extended system S * x = b
+    const auto& vn = m_dyn.vVec();
+    const auto& fn = m_dyn.fVec();
     const auto& Wg = m_dyn.WgSparse();
+    const auto& Wgamma = m_dyn.WgammaSparse();
     const auto& M_diag = m_dyn.MDiag();
     const int totalV = (m_dyn.bodyVelOffsets().empty() ? 0 : m_dyn.bodyVelOffsets().back());
     const int nSprings = (int)m_dyn.Cdiag().size();
@@ -40,7 +41,8 @@ void DualStoermerVerletSolver::stepMidpoint(real_t dt)
 
     VectorXr rhs = VectorXr::Zero((index_t)extV);
     rhs.segment(0, totalV) =  M_diag.cwiseProduct(vn) + dt * fn;
-    if (nSprings > 0) rhs.segment(totalV, nSprings) = - (1.0 / (dt * dt)) * Cdiag.cwiseProduct(Lambda_g);
+    if (nSprings > 0) rhs.segment(totalV, nSprings) = - (2.0 / (dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - Wg * vn;
+    if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = - Wgamma * vn;
 
     // 5) Solve extended system
     auto xnp1 = m_pj.solve(rhs, m_sys.config().pj_tol_abs);

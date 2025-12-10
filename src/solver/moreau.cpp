@@ -14,7 +14,8 @@ void MoreauSolver::stepMidpoint(real_t dt)
     m_dyn.refreshState();
     // const auto& qn = m_dyn.qVec();
     const auto& vn = m_dyn.vVec();
-    const auto& fn = m_dyn.fVec();
+    const auto& fn_ext = m_dyn.fVecExternal();    // gravity + applied external forces
+    const auto& fn_gyro = m_dyn.fVecGyroscopic(); // gyroscopic forces from current state
     // const auto& offQ = m_dyn.bodyPosOffsets();
     // const auto& offV = m_dyn.bodyVelOffsets();
     // const int Nb = (int)offV.size() - 1;
@@ -38,8 +39,10 @@ void MoreauSolver::stepMidpoint(real_t dt)
     VectorXr Lambda_g = m_dyn.Lambda_g();
     if ((int)Lambda_g.size() != nSprings) Lambda_g = VectorXr::Zero(nSprings);
 
+    // RHS: M*vn + dt*(f_ext + f_gyro)
+    // External forces are integrated over the time step; gyroscopic forces are evaluated at current state
     VectorXr rhs = VectorXr::Zero((index_t)extV);
-    rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * fn;
+    rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * (fn_ext + fn_gyro);
     if (nSprings > 0) rhs.segment(totalV, nSprings) = - (1.0 / (dt * dt)) * Cdiag.cwiseProduct(Lambda_g);
 
     // 5) Solve extended system

@@ -1,9 +1,12 @@
+#include <optional>
 #pragma once
 
 #include <string>
 #include "../misc/types.hpp"
 
 namespace cardillo::config {
+
+enum class SolverType { Moreau, StoermerVerlet };
 
 struct Config {
 
@@ -67,6 +70,9 @@ struct Config {
     bool debug_rb{false};   // debug.rb  - enable rigid-body contact/W diagnostics in Moreau
     bool debug_pj{false};   // debug.pj  - enable ProjectedJacobi iteration logging
     bool debug_mesh{false}; // debug.mesh - print mesh normalization info (volume, COM, inertia)
+
+    // Solver selection
+    SolverType solver{SolverType::Moreau};
 
     std::string scene_name{"none-specified"};
 };
