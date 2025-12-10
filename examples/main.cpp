@@ -37,6 +37,7 @@
 // #include "scenes/pendulum/PendulumScene.hpp"     // temporarily disabled (rigid/hinge refactor)
 #include "scenes/leaningTower/LeaningTowerScene.hpp"
 #include "scenes/constraintTest/ConstraintTestScene.hpp"
+#include "scenes/cantilever/CantileverScene.hpp"
 
 using namespace cardillo;
 
@@ -89,6 +90,7 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<LeaningTowerScene>());
     // scenes.emplace_back(std::make_unique<PendulumScene>());    // uses RigidConstraint/Hinge (under refactor)
     scenes.emplace_back(std::make_unique<ConstraintTestScene>());
+    scenes.emplace_back(std::make_unique<CantileverScene>());
 
     SceneBase* selected = nullptr;
     for (auto& s : scenes) {
