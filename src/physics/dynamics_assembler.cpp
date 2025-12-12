@@ -497,9 +497,11 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
             if (nV >= 6) {
                 const Vector3r w = reg.get<PhysicsSystem::C_AngularVelocity3>(e).value; // body-frame
                 const Vector3r I = m_sys.getInertiaDiag(e);
-                auto omegaSkew = skew_from_vector(w);
                 auto Idiag = I.asDiagonal().toDenseMatrix();
-                auto rotBlock = Idiag + ((dt * (real_t)0.5) * (omegaSkew * Idiag));
+                auto Iw = I.cwiseProduct(w);
+                auto omegaSkew = skew_from_vector(w);
+                auto IwSkew = skew_from_vector(Iw);
+                auto rotBlock = Idiag - ((dt * (real_t)0.5) * (IwSkew - omegaSkew * Idiag));
                 for (int r = 0; r < 3; ++r) {
                     for (int c = 0; c < 3; ++c) {
                         const real_t val = rotBlock(r, c);
@@ -553,7 +555,7 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
         m_S_sparse_lu->factorize(m_S_sparse);
         if (m_S_sparse_lu->info() != Eigen::Success) {
             m_S_sparse_lu.reset();
-            std::cout << "DynamicsAssembler::buildAndFactorS_StormerVerlet: SparseLU factorization failed\n";
+            std::cout << "[DynamicsAssembler] SparseLU factorization failed\n";
             return false;
         } else if (m_sys.config().debug_rb) {
             std::cout << "[DynamicsAssembler] SparseLU factorization success (Stormer-Verlet).\n";

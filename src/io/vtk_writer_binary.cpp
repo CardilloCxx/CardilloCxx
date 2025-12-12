@@ -223,7 +223,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                                cardillo::PhysicsSystem::C_Orientation>();
         for (auto [e, pos, cb, ori] : vcubes.each()) {
             CubeOut co;
-            co.center = pos.value; co.halfExtents = cb.halfExtents; co.q = ori.value;
+            Quaternion4r q_local = cb.q;
+            Quaternion4r q_world = ori.value * q_local;
+            co.center = pos.value + q_world * cb.center; // apply local center offset under local cube rotation
+            co.halfExtents = cb.halfExtents; co.q = q_world;
             co.entityId = static_cast<int>(entt::to_integral(e));
             co.partition = partitionFromBodyIndex_(sys, reg, e);
             co.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);

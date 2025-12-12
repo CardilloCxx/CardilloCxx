@@ -45,6 +45,17 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
         x = reg.get<cardillo::PhysicsSystem::C_Position3>(e).value;
     if (reg.any_of<cardillo::PhysicsSystem::C_Orientation>(e))
         q = reg.get<cardillo::PhysicsSystem::C_Orientation>(e).value;
+    if (reg.any_of<cardillo::PhysicsSystem::C_RB_Cube>(e)) {
+        const auto& cb = reg.get<cardillo::PhysicsSystem::C_RB_Cube>(e);
+        // Apply local cube orientation on top of body orientation
+        q = q * cb.q;
+        x += q * cb.center; // center expressed in cube-local frame
+    } else if (reg.any_of<cardillo::PhysicsSystem::C_Cube>(e)) {
+        // If only visual cube exists, still honor its center/q
+        const auto& cb = reg.get<cardillo::PhysicsSystem::C_Cube>(e);
+        q = q * cb.q;
+        x += q * cb.center;
+    }
     q.normalize();
     X.setTranslation(toCoalVec3(x));
     X.setQuatRotation(toCoalQuat(q));

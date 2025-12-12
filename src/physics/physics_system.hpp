@@ -120,10 +120,10 @@ public:
         explicit SphereShape(real_t r) : radius(r) {}
     };
     struct MeshShape    { 
-        std::string path; Vector3r scale{1,1,1};
+        std::string path; Vector3r scale{1,1,1}; bool use_bbox_collider{false}; bool show_collider{false};
         MeshShape() = default;
-        explicit MeshShape(const std::string& p) : path(p) {}
-        MeshShape(const std::string& p, const Vector3r& s) : path(p), scale(s) {}
+        explicit MeshShape(const std::string& p, bool bbox=false, bool showCol=false) : path(p), use_bbox_collider(bbox), show_collider(showCol) {}
+        MeshShape(const std::string& p, const Vector3r& s, bool bbox=false, bool showCol=false) : path(p), scale(s), use_bbox_collider(bbox), show_collider(showCol) {}
     };
     using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, SphereShape, MeshShape>;
     struct RigidProps {
@@ -382,7 +382,7 @@ public:
     struct C_PointMassTag {};
     struct C_RigidBodyTag {};
     struct C_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
-    struct C_Cube { Vector3r halfExtents; };
+    struct C_Cube { Vector3r center{Vector3r::Zero()}; Vector3r halfExtents; Quaternion4r q{Quaternion4r::Identity()}; };
     struct C_Capsule { real_t radius; real_t halfLength; };
     struct C_Friction { real_t mu; }; // optional friction coefficient per entity (>=0), absent => 0
     struct C_VisualObject {};
@@ -413,7 +413,7 @@ public:
     struct C_HeightFieldVisualTag {};
     struct C_RB_HeightField { };
     // Rigid-body type components (exactly one per rigid body kind)
-    struct C_RB_Cube { Vector3r halfExtents; };
+    struct C_RB_Cube { Vector3r center{Vector3r::Zero()}; Vector3r halfExtents; Quaternion4r q{Quaternion4r::Identity()}; };
     struct C_RB_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
     struct C_RB_Mesh { };
     struct C_RB_Sphere { };

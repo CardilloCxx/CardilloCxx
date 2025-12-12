@@ -1,3 +1,4 @@
+#include <optional>
 #include "physics_system.hpp"
 #include "assets.hpp"
 #include "constraints.hpp"
@@ -11,11 +12,33 @@
 #include <sstream>
 #include <iomanip>
 #include <fstream>
+#include <limits>
 #include "../io/heightmap_loader.hpp"
 #include <coal/hfield.h>
 #include <coal/shape/geometric_shapes.h>
 
 namespace cardillo {
+
+namespace {
+// Compute mesh AABB center and half-extents from asset vertices. Returns false on failure.
+bool meshAabbFromAsset(const MeshAsset& asset, Vector3r& center_out, Vector3r& he_out) {
+    if (!asset.bvh || !asset.bvh->vertices || asset.bvh->vertices->empty()) return false;
+    Vector3r minv = Vector3r::Constant(std::numeric_limits<real_t>::max());
+    Vector3r maxv = Vector3r::Constant(std::numeric_limits<real_t>::lowest());
+    const Matrix33r Rpa = asset.Rpa;
+    for (const auto& v : *asset.bvh->vertices) {
+        Vector3r vp((real_t)v[0], (real_t)v[1], (real_t)v[2]);
+        // Transform into principal-axis frame to account for intrinsic rotation
+        vp = Rpa.transpose() * vp;
+        minv.x() = std::min(minv.x(), vp.x()); maxv.x() = std::max(maxv.x(), vp.x());
+        minv.y() = std::min(minv.y(), vp.y()); maxv.y() = std::max(maxv.y(), vp.y());
+        minv.z() = std::min(minv.z(), vp.z()); maxv.z() = std::max(maxv.z(), vp.z());
+    }
+    center_out = (real_t)0.5 * (maxv + minv);
+    he_out = (real_t)0.5 * (maxv - minv);
+    return true;
+}
+}
 
 // Compute diagonal inertia for a box with half-extents (body frame), mass m
 inline Vector3r boxInertiaDiag(real_t m, const Vector3r& he) {
@@ -103,7 +126,9 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
     m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{state.linearVelocity});
     m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{state.angularVelocity});
 
-    if (props.visual)    m_reg.emplace<C_VisualObject>(e);
+    // Allow collider-only visuals for meshes when show_collider is requested
+    bool wantsColliderVisual = std::holds_alternative<MeshShape>(shape) && std::get<MeshShape>(shape).show_collider;
+    if (props.visual || wantsColliderVisual)    m_reg.emplace<C_VisualObject>(e);
     if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_Collidable>(e);
 
     // Determine mass from props.mass or density + shape volume
@@ -138,8 +163,8 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
         using T = std::decay_t<decltype(s)>;
         if constexpr (std::is_same_v<T, CubeShape>) {
             if (props.visual)    m_reg.emplace<C_CubeVisualTag>(e);
-            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{s.halfExtents});
-            m_reg.emplace<C_Cube>(e, C_Cube{s.halfExtents});
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
+            m_reg.emplace<C_Cube>(e, C_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
             if (mass > 0) {
                 m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
                 m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{boxInertiaDiag(mass, s.halfExtents)});
@@ -167,10 +192,27 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
 
         } else if constexpr (std::is_same_v<T, MeshShape>) {
             if (props.visual)    m_reg.emplace<C_MeshVisualTag>(e);
-            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Mesh>(e);
             m_reg.emplace<C_Mesh>(e, C_Mesh{s.path, s.scale});
+
             const bool dynamic = mass > 0;
             const ::cardillo::MeshAsset& asset = assets().getMesh(s.path, s.scale, dynamic);
+
+            if (props.collidable && !m_cfg.collision_disable_all) {
+                if (s.use_bbox_collider) {
+                    Vector3r center = Vector3r::Zero();
+                    Vector3r he = Vector3r((real_t)0.05, (real_t)0.05, (real_t)0.05);
+                    meshAabbFromAsset(asset, center, he);
+                    Quaternion4r q_local(asset.Rpa.transpose());
+                    m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{center, he, q_local});
+                    if (s.show_collider) {
+                        m_reg.emplace<C_Cube>(e, C_Cube{center, he, q_local});
+                        m_reg.emplace<C_CubeVisualTag>(e);
+                    }
+                } else {
+                    m_reg.emplace<C_RB_Mesh>(e);
+                }
+            }
+
             if (dynamic) {
                 // Adjust pose by principal axes & COM
                 Quaternion4r q_rpa(asset.Rpa);
