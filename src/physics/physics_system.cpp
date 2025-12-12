@@ -501,7 +501,7 @@ VectorXr PhysicsSystem::getForceExternal(entt::entity e) const {
         }
         VectorXr out(6); out.setZero();
         out[0] = fg[0]; out[1] = fg[1]; out[2] = fg[2];
-        out[3] = tau.x(); out[4] = tau.y(); out[5] = tau.z();
+        out[3] = tau[0]; out[4] = tau[1]; out[5] = tau[2];
         return out;
     }
     // Point mass
@@ -598,15 +598,15 @@ int PhysicsSystem::numBodies() const {
     return m_num_bodies_cached;
 }
 
-void PhysicsSystem::applyForce(entt::entity e, const Vector3r& force_world, const Vector3r& torque_world) {
+void PhysicsSystem::applyForce(entt::entity e, const Vector3r& force_world, const Vector3r& torque_body) {
     if (!m_reg.valid(e)) return;
     if (force_world.allFinite() && !force_world.isZero()) {
         if (m_reg.any_of<C_ExternalForce>(e)) m_reg.get<C_ExternalForce>(e).f += force_world;
         else m_reg.emplace<C_ExternalForce>(e, C_ExternalForce{force_world});
     }
-    if (torque_world.allFinite() && !torque_world.isZero()) {
-        if (m_reg.any_of<C_ExternalTorque>(e)) m_reg.get<C_ExternalTorque>(e).tau += torque_world;
-        else m_reg.emplace<C_ExternalTorque>(e, C_ExternalTorque{torque_world});
+    if (torque_body.allFinite() && !torque_body.isZero()) {
+        if (m_reg.any_of<C_ExternalTorque>(e)) m_reg.get<C_ExternalTorque>(e).tau += torque_body;
+        else m_reg.emplace<C_ExternalTorque>(e, C_ExternalTorque{torque_body});
     }
     m_forces_dirty = true;
 }

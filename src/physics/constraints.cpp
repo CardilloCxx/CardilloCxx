@@ -253,6 +253,9 @@ ConstraintResult BeamConstraint::getConstraint() const {
     // Mid-orientation and strains (robust): enforce quaternion hemisphere continuity and use slerp
     Quaternion4r qA = wa.qA;
     Quaternion4r qB = wa.qB;
+    if (qA.coeffs().dot(qB.coeffs()) < (real_t)0.0) {
+        std::cout << "BeamConstraint: Quaterions not on same half space.\n";
+    }
     const Quaternion4r qMidQ(0.5 * (qA.coeffs() + qB.coeffs()));   // 0.5*(qA + qB) 
     const Matrix33r A_mid = qMidQ.normalized().toRotationMatrix();
     const Vector3r gamma = A_mid.transpose() * (wa.xB - wa.xA);   // axial + shear strain
@@ -276,7 +279,6 @@ ConstraintResult BeamConstraint::getConstraint() const {
     out.WgB.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
     out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
-    // out.WgA = -out.WgB;
     out.WgammaA = out.WgA;
     out.WgammaB = out.WgB;
 
@@ -298,61 +300,61 @@ ConstraintResult BeamConstraint::getConstraint() const {
         return out;
     }
 
-    // 1. Calculate Stresses (N, My, Mz, Vy, Vz) -> then stress tensor and sigma_1 at critical point(s)
-    real_t sigma_1 = CalculateMaxPrincipalTensileStress(
-        gamma, kappa,
-        Ke_eff,
-        Kf_eff,
-        m_section
-    );
+    // // 1. Calculate Stresses (N, My, Mz, Vy, Vz) -> then stress tensor and sigma_1 at critical point(s)
+    // real_t sigma_1 = CalculateMaxPrincipalTensileStress(
+    //     gamma, kappa,
+    //     Ke_eff,
+    //     Kf_eff,
+    //     m_section
+    // );
 
-    const Vector3r strain_e = gamma - m_delta0; 
-    real_t e_ck_current = std::max(std::abs(strain_e.y() / l_0), std::abs(strain_e.z() / l_0));
+    // const Vector3r strain_e = gamma - m_delta0; 
+    // real_t e_ck_current = std::max(std::abs(strain_e.y() / l_0), std::abs(strain_e.z() / l_0));
 
-    // 2. Rankine Criterion for Crack Initiation
-    if (!m_crackReported && sigma_1 > m_springs.tensileStrength) {
-        m_crackReported = true;
-        m_crackStrainPeak = e_ck_current; // Initialize the peak strain when crack first forms
-    }
+    // // 2. Rankine Criterion for Crack Initiation
+    // if (!m_crackReported && sigma_1 > m_springs.tensileStrength) {
+    //     m_crackReported = true;
+    //     m_crackStrainPeak = e_ck_current; // Initialize the peak strain when crack first forms
+    // }
 
-    // 3. Shear Retention Driven by Peak Crack Strain (post-initiation)
-    real_t retention = (real_t)1.0;
-    if (m_crackReported) {
-        // Only update the peak strain AFTER the crack has been initiated by Rankine
-        if (e_ck_current > m_crackStrainPeak) m_crackStrainPeak = e_ck_current;
+    // // 3. Shear Retention Driven by Peak Crack Strain (post-initiation)
+    // real_t retention = (real_t)1.0;
+    // if (m_crackReported) {
+    //     // Only update the peak strain AFTER the crack has been initiated by Rankine
+    //     if (e_ck_current > m_crackStrainPeak) m_crackStrainPeak = e_ck_current;
         
-        // Apply the softening law (Retention = 1 - e_ck_peak / e_ck_max)
-        if (m_crackStrainPeak > 0) {
-            retention = std::clamp((real_t)1.0 - (m_crackStrainPeak / m_springs.crackStrainMax), (real_t)0.0, (real_t)1.0);
-        }
-    }
+    //     // Apply the softening law (Retention = 1 - e_ck_peak / e_ck_max)
+    //     if (m_crackStrainPeak > 0) {
+    //         retention = std::clamp((real_t)1.0 - (m_crackStrainPeak / m_springs.crackStrainMax), (real_t)0.0, (real_t)1.0);
+    //     }
+    // }
 
-    // 4. Apply Retention and Check for Permanent Break (The rest of your code)
-    Ke_eff.y() *= retention;
-    Ke_eff.z() *= retention;
-    // Break permanently once retention reaches 0
-    if (retention <= (real_t)0.0) m_broken = true;
+    // // 4. Apply Retention and Check for Permanent Break (The rest of your code)
+    // Ke_eff.y() *= retention;
+    // Ke_eff.z() *= retention;
+    // // Break permanently once retention reaches 0
+    // if (retention <= (real_t)0.0) m_broken = true;
 
-    if (m_broken) {
-        if (m_reg && m_reg->valid(m_a) && m_reg->all_of<cardillo::PhysicsSystem::C_BeamElement>(m_a)) {
-            auto &beam_a = m_reg->get<cardillo::PhysicsSystem::C_BeamElement>(m_a);
-            beam_a.next = std::nullopt;
-            if (!beam_a.next.has_value() && !beam_a.prev.has_value()) {
-                m_reg->remove<cardillo::PhysicsSystem::C_BeamElement>(m_a);
-            }
-        }
-        if (m_reg && m_reg->valid(m_b) && m_reg->all_of<cardillo::PhysicsSystem::C_BeamElement>(m_b)) {
-            auto &beam_b = m_reg->get<cardillo::PhysicsSystem::C_BeamElement>(m_b);
-            beam_b.prev = std::nullopt;
-            if (!beam_b.next.has_value() && !beam_b.prev.has_value()) {
-                m_reg->remove<cardillo::PhysicsSystem::C_BeamElement>(m_b);
-            }
-        }
-        Ke_eff = Vector3r::Zero();
-        Kf_eff = Vector3r::Zero();
-        De_eff = Vector3r::Zero();
-        Df_eff = Vector3r::Zero();
-    }
+    // if (m_broken) {
+    //     if (m_reg && m_reg->valid(m_a) && m_reg->all_of<cardillo::PhysicsSystem::C_BeamElement>(m_a)) {
+    //         auto &beam_a = m_reg->get<cardillo::PhysicsSystem::C_BeamElement>(m_a);
+    //         beam_a.next = std::nullopt;
+    //         if (!beam_a.next.has_value() && !beam_a.prev.has_value()) {
+    //             m_reg->remove<cardillo::PhysicsSystem::C_BeamElement>(m_a);
+    //         }
+    //     }
+    //     if (m_reg && m_reg->valid(m_b) && m_reg->all_of<cardillo::PhysicsSystem::C_BeamElement>(m_b)) {
+    //         auto &beam_b = m_reg->get<cardillo::PhysicsSystem::C_BeamElement>(m_b);
+    //         beam_b.prev = std::nullopt;
+    //         if (!beam_b.next.has_value() && !beam_b.prev.has_value()) {
+    //             m_reg->remove<cardillo::PhysicsSystem::C_BeamElement>(m_b);
+    //         }
+    //     }
+    //     Ke_eff = Vector3r::Zero();
+    //     Kf_eff = Vector3r::Zero();
+    //     De_eff = Vector3r::Zero();
+    //     Df_eff = Vector3r::Zero();
+    // }
 
     fillCompliance3(out.Crows, 0, Ke_eff);
     fillCompliance3(out.Crows, 3, Kf_eff);

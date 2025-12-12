@@ -30,7 +30,8 @@ public:
         const real_t rho = (real_t)0.4 / (M_PI * r * r * L);  // kg/m^3 (mass 0.4 kg)
 
         // Cross-section: circular (capsule body type uses circle properties via min(width,height))
-        PhysicsSystem::BeamCrossSection section(d, d, PhysicsSystem::BeamBodyType::Capsule);
+        // PhysicsSystem::BeamCrossSection section(d, d, PhysicsSystem::BeamBodyType::Capsule);
+        PhysicsSystem::BeamCrossSection section(d, d, PhysicsSystem::BeamBodyType::Cube);
 
         // Beam spring params from material (no extra damping by default).
         auto springs = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
@@ -61,8 +62,13 @@ public:
 
     void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
         if (m_beamRightEnd != entt::null) {
-            if (t < (real_t)1)
-                sys.applyForce(m_beamRightEnd, Vector3r(0, 0, -0.5), Vector3r::Zero());
+            real_t t1 = 1.0;
+            if (t < t1)
+                // sys.applyForce(m_beamRightEnd, Vector3r(-0.5 * std::max(t1, t), -0.5 * std::max(t1, t), 1.5 * std::max(t1, t)), Vector3r::Zero());
+                sys.applyForce(m_beamRightEnd, Vector3r(0, -0.5 * std::max(t1, t), 0), Vector3r(0, -1.0 * std::max(t1, t), 0));
+                // sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(-1.0 * std::max(t1, t), 0, 0));
+                // sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, -1.0 * std::max(t1, t), 0));
+                // sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, 0, -1.0 * std::max(t1, t)));
             else
                 sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r::Zero());
         }
