@@ -22,12 +22,13 @@ public:
         sys.setGravity(Vector3r(0, 0, 0)); // no gravity for this scene
 
         // Material and geometry for spaghetti
-        const real_t L  = (real_t)1.0;    // 1 m
-        const real_t r  = (real_t)0.03;   // 30 mm radius
-        const real_t d  = (real_t)2 * r;  // 60 mm diameter
-        const real_t E  = (real_t)7e5;    // 7 GPa
-        const real_t nu = (real_t)0.75;   // Poisson ratio
-        const real_t rho = (real_t)0.4 / (M_PI * r * r * L);  // kg/m^3 (mass 0.4 kg)
+        const real_t L  = (real_t)0.31415; // 31 cm
+        const real_t r  = (real_t)0.01;    // 10 mm radius
+        const real_t d  = (real_t)2 * r;   // 20 mm diameter
+        const real_t E  = (real_t)7e5;     // 7 GPa
+        const real_t nu = (real_t)0.75;    // Poisson ratio
+        // const real_t rho = (real_t)0.4 / (M_PI * r * r * L);  // kg/m^3 (mass 0.4 kg)
+        const real_t rho = (real_t)1350.0;  // kg/m^3 (typical plastic)
 
         // Cross-section: circular (capsule body type uses circle properties via min(width,height))
         // PhysicsSystem::BeamCrossSection section(d, d, PhysicsSystem::BeamBodyType::Capsule);
@@ -53,6 +54,10 @@ public:
         m_beamRightEnd = beam_ends.second;
         sys.makeStatic(m_beamLeftEnd);
 
+        m_Kf = springs.Kf(L / segments, section);
+        m_L = L;
+        m_segments = segments;
+
         // // sys.disableCollisionBetween(m_cube, cube2);
         // auto view = sys.ecs().view<PhysicsSystem::C_Collidable>();
         // for (auto e : view.each()) {
@@ -62,14 +67,17 @@ public:
 
     void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
         if (m_beamRightEnd != entt::null) {
-            real_t t1 = 1.0;
-            if (t < t1)
+            real_t t1 = 5.0;
+            if (t < t1) {
                 // sys.applyForce(m_beamRightEnd, Vector3r(-0.5 * std::max(t1, t), -0.5 * std::max(t1, t), 1.5 * std::max(t1, t)), Vector3r::Zero());
-                sys.applyForce(m_beamRightEnd, Vector3r(0, -0.5 * std::max(t1, t), 0), Vector3r(0, -1.0 * std::max(t1, t), 0));
+                Vector3r force(0.0, -0.1 * t / t1, 0.0);
+                Vector3r moment(0.0, -2 * M_PI * m_Kf(1) * m_L / m_segments / m_L * t / t1 / 2, 0.0);
+                sys.applyForce(m_beamRightEnd, force, moment);
+                // sys.applyForce(m_beamRightEnd, Vector3r(0, -0.5 * std::max(t1, t), 0), Vector3r(0, -1.0 * std::max(t1, t), 0));
                 // sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(-1.0 * std::max(t1, t), 0, 0));
                 // sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, -1.0 * std::max(t1, t), 0));
                 // sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, 0, -1.0 * std::max(t1, t)));
-            else
+            } else
                 sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r::Zero());
         }
     }
@@ -77,4 +85,7 @@ public:
     private:
         entt::entity m_beamLeftEnd{entt::null};
         entt::entity m_beamRightEnd{entt::null};
+        Vector3r m_Kf{Vector3r::Zero()};
+        real_t m_L{0.0};
+        size_t m_segments{0};
 };
