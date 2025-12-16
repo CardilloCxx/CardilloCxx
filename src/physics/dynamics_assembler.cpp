@@ -480,43 +480,49 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
     std::vector<Eigen::Triplet<real_t>> trips;
     trips.reserve((size_t)totalV + (size_t)(nSprings + nDampers) * (size_t)totalV * 2 + (size_t)(nSprings + nDampers));
 
-    // Top-left: M - dt/2 * G(u) where G(u) contains gyroscopic skew term (-w_skew * I)
-    const auto &reg = m_sys.ecs();
-    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
-    for (auto [e, bi] : view.each()) {
-        const int b = bi.b;
-        if (b < 0 || b + 1 >= (int)m_body_vel_offsets.size()) continue;
-        const int off = m_body_vel_offsets[(size_t)b];
-        const int nV = m_body_vel_offsets[(size_t)b + 1] - off;
+    // // Top-left: M - dt/2 * G(u) where G(u) contains gyroscopic skew term (-w_skew * I)
+    // const auto &reg = m_sys.ecs();
+    // auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    // for (auto [e, bi] : view.each()) {
+    //     const int b = bi.b;
+    //     if (b < 0 || b + 1 >= (int)m_body_vel_offsets.size()) continue;
+    //     const int off = m_body_vel_offsets[(size_t)b];
+    //     const int nV = m_body_vel_offsets[(size_t)b + 1] - off;
 
-        // Point mass: translational block only
-        if (reg.all_of<PhysicsSystem::C_PointMassTag, PhysicsSystem::C_Mass>(e)) {
-            const real_t m = reg.get<PhysicsSystem::C_Mass>(e).m;
-            for (int i = 0; i < nV; ++i) trips.emplace_back(off + i, off + i, m);
-            continue;
-        }
+    //     // Point mass: translational block only
+    //     if (reg.all_of<PhysicsSystem::C_PointMassTag, PhysicsSystem::C_Mass>(e)) {
+    //         const real_t m = reg.get<PhysicsSystem::C_Mass>(e).m;
+    //         for (int i = 0; i < nV; ++i) trips.emplace_back(off + i, off + i, m);
+    //         continue;
+    //     }
 
-        // Rigid body: translational mass and rotational inertia plus gyro skew term
-        if (reg.all_of<PhysicsSystem::C_RigidBodyTag, PhysicsSystem::C_Mass, PhysicsSystem::C_InertiaDiag, PhysicsSystem::C_AngularVelocity3>(e)) {
-            const real_t m = reg.get<PhysicsSystem::C_Mass>(e).m;
-            for (int i = 0; i < 3 && i < nV; ++i) trips.emplace_back(off + i, off + i, m);
+    //     // Rigid body: translational mass and rotational inertia plus gyro skew term
+    //     if (reg.all_of<PhysicsSystem::C_RigidBodyTag, PhysicsSystem::C_Mass, PhysicsSystem::C_InertiaDiag, PhysicsSystem::C_AngularVelocity3>(e)) {
+    //         const real_t m = reg.get<PhysicsSystem::C_Mass>(e).m;
+    //         for (int i = 0; i < 3 && i < nV; ++i) trips.emplace_back(off + i, off + i, m);
 
-            if (nV >= 6) {
-                const Vector3r w = reg.get<PhysicsSystem::C_AngularVelocity3>(e).value; // body-frame
-                const Vector3r I = m_sys.getInertiaDiag(e);
-                auto Idiag = I.asDiagonal().toDenseMatrix();
-                auto Iw = I.cwiseProduct(w);
-                auto omegaSkew = skew_from_vector(w);
-                auto IwSkew = skew_from_vector(Iw);
-                auto rotBlock = Idiag - ((dt * (real_t)0.5) * (IwSkew - omegaSkew * Idiag));
-                for (int r = 0; r < 3; ++r) {
-                    for (int c = 0; c < 3; ++c) {
-                        const real_t val = rotBlock(r, c);
-                        if (val != (real_t)0) trips.emplace_back(off + 3 + r, off + 3 + c, val);
-                    }
-                }
-            }
-        }
+    //         if (nV >= 6) {
+    //             const Vector3r w = reg.get<PhysicsSystem::C_AngularVelocity3>(e).value; // body-frame
+    //             const Vector3r I = m_sys.getInertiaDiag(e);
+    //             Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
+    //             const Vector3r Iw = I.cwiseProduct(w);
+    //             auto omegaSkew = skew_from_vector(w);
+    //             Matrix33r IwSkew = skew_from_vector(Iw);
+    //             auto rotBlock = Idiag - ((dt * (real_t)0.5) * (IwSkew - omegaSkew * Idiag));
+    //             for (int r = 0; r < 3; ++r) {
+    //                 for (int c = 0; c < 3; ++c) {
+    //                     const real_t val = rotBlock(r, c);
+    //                     if (val != (real_t)0) trips.emplace_back(off + 3 + r, off + 3 + c, val);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+    // Top-left: M diagonal (no gyroscopic term)
+    for (int i = 0; i < totalV; ++i) {
+        real_t mval = m_M_diag[i];
+        if (mval != (real_t)0) trips.emplace_back(i, i, mval);
     }
 
     // Wg and Wgamma contributions

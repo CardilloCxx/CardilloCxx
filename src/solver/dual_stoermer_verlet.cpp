@@ -12,20 +12,21 @@ void DualStoermerVerletSolver::stepMidpoint(real_t dt)
 {
     // 1) Get current state vectors
     m_dyn.refreshState();
-    // const auto& qn = m_dyn.qVec();
-    // const auto& offQ = m_dyn.bodyPosOffsets();
-    // const auto& offV = m_dyn.bodyVelOffsets();
-    // const int Nb = (int)offV.size() - 1;
+    const auto& vn = m_dyn.vVec();
+    const auto& fn_ext = m_dyn.fVecExternal();    // gravity + applied external forces
+    const auto& fn_gyro = m_dyn.fVecGyroscopic(); // gyroscopic forces from current state
 
     // 2) Inplace midpoint position update
     m_sys.linearImplicitPositionUpdate(0.5 * dt);
+
+    // TODO: Why does this break the solver?
+    //       This function rebuilds the collusion mangager, so it should be called after the position update?
+    // m_dyn.refreshState();
 
     // 3) Evaluate contacts at midpoint positions (Stormer-Verlet variant with gyro-effective mass)
     m_dyn.refreshCollisionsAndSpringsStormerVerlet(dt);
 
     // 4) Build the full extended RHS and solve the extended system S * x = b
-    const auto& vn = m_dyn.vVec();
-    const auto& fn_ext = m_dyn.fVecExternal();    // gravity + applied external forces
     const auto& Wg = m_dyn.WgSparse();
     const auto& Wgamma = m_dyn.WgammaSparse();
     const auto& M_diag = m_dyn.MDiag();
@@ -37,7 +38,12 @@ void DualStoermerVerletSolver::stepMidpoint(real_t dt)
 
     // Lambda vectors may be uninitialized on first step; copy locally and ensure correct sizes
     VectorXr Lambda_g = m_dyn.Lambda_g();
-    if ((int)Lambda_g.size() != nSprings) Lambda_g = VectorXr::Zero(nSprings);
+    // std::cout << "Lambda_g:\n" << Lambda_g << "\n";
+    // std::cout << "Lambda_g size: " << Lambda_g.size() << ", nSprings: " << nSprings << "\n";
+    if ((int)Lambda_g.size() != nSprings) {
+        std::cout << "Initializing Lambda_g to zero vector of size " << nSprings << "\n";
+        Lambda_g = VectorXr::Zero(nSprings);
+    }
      
 //     VectorXr rhs = VectorXr::Zero((index_t)extV);
 //     rhs.segment(0, totalV) =  M_diag.cwiseProduct(vn) + dt * fn_ext - Wg.transpose() * Lambda_g;
@@ -55,8 +61,9 @@ void DualStoermerVerletSolver::stepMidpoint(real_t dt)
 
 
     VectorXr rhs = VectorXr::Zero((index_t)extV);
-    rhs.segment(0, totalV) =  M_diag.cwiseProduct(vn) + dt * fn_ext;
-    if (nSprings > 0) rhs.segment(totalV, nSprings) = -Wg * vn -(8.0 / (dt * dt)) * Cdiag.cwiseProduct(Lambda_g);
+    // rhs.segment(0, totalV) =  M_diag.cwiseProduct(vn) + dt * fn_ext;
+    rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * (fn_ext + fn_gyro);
+    if (nSprings > 0) rhs.segment(totalV, nSprings) = -Wg * vn - (8.0 / (dt * dt)) * Cdiag.cwiseProduct(Lambda_g);
     if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = - Wgamma * vn;
 
     // 5) Solve extended system
@@ -65,7 +72,7 @@ void DualStoermerVerletSolver::stepMidpoint(real_t dt)
     VectorXr vnp1 = xnp1.segment(0, totalV);
     VectorXr Lambda_g_12 = xnp1.segment(totalV, nSprings);
 
-    if (nSprings > 0) m_dyn.setLambda_g(Lambda_g_12 - Lambda_g); 
+    if (nSprings > 0) m_dyn.setLambda_g(Lambda_g_12 - Lambda_g);
     else m_dyn.setLambda_g(VectorXr(0));
 
     // 6) Write final velocity to ECS
