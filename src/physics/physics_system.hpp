@@ -202,15 +202,13 @@ public:
         std::optional<Vector3r> Ke_direct;
         std::optional<Vector3r> Kf_direct;
         // Damping compliances
-        Vector3r De{Vector3r::Zero()};
-        Vector3r Df{Vector3r::Zero()};
+        real_t dampingFactor = 0.0;
 
         BeamSpringParams() = default;
         // Direct constructor for per-segment stiffness vectors
         BeamSpringParams(const Vector3r& Ke_in, const Vector3r& Kf_in,
-                         const Vector3r& De_in = Vector3r::Zero(),
-                         const Vector3r& Df_in = Vector3r::Zero())
-            : Ke_direct(Ke_in), Kf_direct(Kf_in), De(De_in), Df(Df_in) {}
+                         real_t dampingFactor_in = 0.0)
+            : Ke_direct(Ke_in), Kf_direct(Kf_in), dampingFactor(dampingFactor_in) {}
 
         // Accessors to per-segment stiffness vectors given section and segment length
         Vector3r Ke(real_t segLen, const BeamCrossSection& sec) const {
@@ -227,6 +225,10 @@ public:
             return base.cwiseProduct(scaleKf);
         }
 
+        void setDampingFromFactor(real_t d) {
+            dampingFactor = d;
+        }
+
         // Factory for material-based parameters without needing section at construction
         static BeamSpringParams fromMaterial(real_t E_in, real_t nu_in,
                                              real_t axialScale=(real_t)1,
@@ -234,14 +236,13 @@ public:
                                              real_t torsionScale=(real_t)1,
                                              real_t bendYScale=(real_t)1,
                                              real_t bendZScale=(real_t)1,
-                                             const Vector3r& De_in=Vector3r::Zero(),
-                                             const Vector3r& Df_in=Vector3r::Zero())
+                                             real_t dampingFactor_in=(real_t)0)
         {
             BeamSpringParams p;
             p.E = E_in; p.nu = nu_in;
             p.scaleKe = Vector3r(axialScale, shearScale, shearScale);
             p.scaleKf = Vector3r(torsionScale, bendYScale, bendZScale);
-            p.De = De_in; p.Df = Df_in;
+            p.dampingFactor = dampingFactor_in;
             return p;
         }
     };

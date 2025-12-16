@@ -17,6 +17,7 @@
 #include "scenes/SceneBase.hpp"
 #include "scenes/heightmap/HeightmapScene.hpp"
 #include "scenes/domino/DominoScene.hpp"
+#include "scenes/cardhouse/CardhouseScene.hpp"
 #include "scenes/painleve/painleveScene.hpp"
 #include "scenes/rotating_ball/RotatingBallScene.hpp"
 #include "scenes/chain/ChainScene.hpp"
@@ -72,6 +73,7 @@ int main(int argc, char** argv) {
     std::vector<std::unique_ptr<SceneBase>> scenes;
     scenes.emplace_back(std::make_unique<HeightmapScene>());
     scenes.emplace_back(std::make_unique<DominoScene>());
+    scenes.emplace_back(std::make_unique<CardhouseScene>());
     scenes.emplace_back(std::make_unique<SpringTestScene>());
     scenes.emplace_back(std::make_unique<RodAssemblyScene>());
     scenes.emplace_back(std::make_unique<NetScene>());
@@ -147,7 +149,6 @@ int main(int argc, char** argv) {
 
     auto t0 = std::chrono::steady_clock::now();
     std::unique_ptr<cardillo::misc::ProgressBar> pbar;
-
     if (worldRank == 0) {
         pbar = std::make_unique<cardillo::misc::ProgressBar>(static_cast<std::size_t>(steps), std::cout);
         pbar->set_description("Simulating");

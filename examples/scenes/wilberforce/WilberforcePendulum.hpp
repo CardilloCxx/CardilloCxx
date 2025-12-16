@@ -41,6 +41,8 @@ public:
         // Beam cross-section (capsule) used by createBeam
         PhysicsSystem::BeamCrossSection sec(wireDiameter, wireDiameter, PhysicsSystem::BeamBodyType::Capsule);
         auto springs = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
+        springs.setDampingFromFactor(0.02); // set damping factor
+
         const real_t pitch = freeLength / static_cast<real_t>(turns);
         // Build spring via CompoundSpline (single helix segment now, extensible for future pieces)
         auto helix = misc::HelixSpline(Vector3r::Zero(), -Vector3r::UnitZ(), coilRadius, pitch, static_cast<real_t>(turns), Vector3r::UnitX());

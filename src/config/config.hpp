@@ -19,6 +19,7 @@ struct Config {
     real_t pj_nesterov_beta_threshold{(real_t)0.995}; // pj.nesterov_beta_threshold
     int    pj_nesterov_restart_limit{4};              // pj.nesterov_restart_limit
     bool   pj_warmstart{true};                        // pj.warmstart (enable warmstart & cache)
+    std::string pj_convergence_csv_dir{""};          // pj.convergence_csv_dir (empty to disable)
 
     // Presence flags for precedence handling (e.g., pj.alpha overrides alpha if both set)
     bool has_pj_alpha{false};

@@ -287,8 +287,8 @@ ConstraintResult BeamConstraint::getConstraint() const {
     // Effective stiffnesses (considering scaling factors)
     Vector3r Ke_eff = m_springs.Ke(l_0, m_section).cwiseProduct(m_springs.scaleKe);
     Vector3r Kf_eff = m_springs.Kf(l_0, m_section).cwiseProduct(m_springs.scaleKf);
-    Vector3r De_eff = m_springs.De;
-    Vector3r Df_eff = m_springs.Df;
+    Vector3r De_eff = Ke_eff * m_springs.dampingFactor;
+    Vector3r Df_eff = Kf_eff * m_springs.dampingFactor;
 
     if (!std::isfinite( m_springs.tensileStrength)) { 
         fillCompliance3(out.Crows, 0, Ke_eff);

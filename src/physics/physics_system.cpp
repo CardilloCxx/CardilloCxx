@@ -737,10 +737,10 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
     segProps.mass = (massPerSegment > 0 ? std::optional<real_t>(massPerSegment) : std::nullopt);
 
     // Per-segment stiffness (material or direct overrides)
-    const Vector3r Ke = springs.Ke(segLen, section);
-    const Vector3r Kf = springs.Kf(segLen, section);
-    const Vector3r De = springs.De;
-    const Vector3r Df = springs.Df;
+    // const Vector3r Ke = springs.Ke(segLen, section);
+    // const Vector3r Kf = springs.Kf(segLen, section);
+    // const Vector3r De = Ke * springs.dampingFactor;
+    // const Vector3r Df = Kf * springs.dampingFactor;
 
     entt::entity root = entt::null;
     entt::entity prev = entt::null;

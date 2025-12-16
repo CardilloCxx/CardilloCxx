@@ -65,6 +65,9 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
             cfg.pj_warmstart = (v == "1" || v == "true" || v == "yes" || v == "on");
         }
+        else if (key == "pj.convergence_csv_dir") {
+            cfg.pj_convergence_csv_dir = val;
+        }
         else if (key == "debug.rb") {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
             cfg.debug_rb = (v == "1" || v == "true" || v == "yes" || v == "on");

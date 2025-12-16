@@ -6,6 +6,8 @@
 #include <cmath>
 #include <unordered_map>
 #include <vector>
+#include <fstream>
+#include <filesystem>
 #include "../partitioning/naive_partitioner.hpp"
 #include "../comm/communication.hpp"
 
@@ -67,6 +69,41 @@ struct PJIterContext {
 	index_t iteration{0};
 };
 }
+
+class ConvergenceCsvWriter {
+public:
+	ConvergenceCsvWriter(const std::string& dir, int worldRank)
+		: m_enabled(!dir.empty() && worldRank == 0), m_dir(dir) {
+		if (m_enabled) {
+			std::error_code ec;
+			std::filesystem::create_directories(m_dir, ec);
+		}
+	}
+
+	void startTimestep(int stepIdx) {
+		if (!m_enabled) return;
+		if (m_out.is_open()) m_out.close();
+		const std::filesystem::path path = std::filesystem::path(m_dir) / ("pj_convergence_" + std::to_string(stepIdx) + ".csv");
+		m_out.open(path);
+		if (m_out) {
+			m_out << "iteration,vel_error,percussion_error,beta,reset,reason\n";
+		}
+	}
+
+	void report(int iteration, real_t velErr, real_t percErr, double beta, bool reset, const std::string& reason) {
+		if (!m_enabled || !m_out) return;
+		m_out << iteration << ',' << velErr << ',' << percErr << ',' << beta << ',' << (reset ? 1 : 0) << ',';
+		if (reset) m_out << reason;
+		m_out << '\n';
+	}
+
+private:
+	bool m_enabled{false};
+	std::string m_dir;
+	std::ofstream m_out;
+};
+
+static int g_pj_convergence_counter = 0;
 
 // Compact holder for grouped contact rows and friction coefficients
 struct ContactGroups {
@@ -234,6 +271,16 @@ static inline real_t global_segment_norm(const PJIterContext& ctx, const VectorX
 	return (real_t)std::sqrt(gsum);
 }
 
+static inline real_t global_contact_norm(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b) {
+	double loc_sum = 0.0;
+	for (int cid : ctx.res.allContacts) {
+		real_t diff = a[cid] - b[cid];
+		loc_sum += static_cast<double>(diff) * static_cast<double>(diff);
+	}
+	double gsum = 0.0; MPI_Allreduce(&loc_sum, &gsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	return (real_t)std::sqrt(gsum);
+}
+
 static inline double global_segment_dot(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b) {
 	const auto& bo = ctx.bodyOffsets; const auto& res = ctx.res;
 	double loc = 0.0;
@@ -251,7 +298,8 @@ namespace {
 
 // Standard fixed-point iteration loop
 static inline void standard_loop(PJIterContext& ctx,
-								 VectorXr& u, VectorXr& p) {
+				 VectorXr& u, VectorXr& p,
+				 ConvergenceCsvWriter* logger) {
 	ctx.err_global = std::numeric_limits<real_t>::max();
 	ctx.iteration = 0;
 	VectorXr u_prev = u;
@@ -259,6 +307,10 @@ static inline void standard_loop(PJIterContext& ctx,
 	while (ctx.iteration < ctx.maxIterations) {
 		pj_sweep(ctx, u_prev, p_prev, u, p);
 		ctx.err_global = global_segment_norm(ctx, u, u_prev);
+		real_t err_p = global_contact_norm(ctx, p, p_prev);
+		if (logger) {
+			logger->report(static_cast<int>(ctx.iteration + 1), ctx.err_global, err_p, 0.0, false, "");
+		}
 		++ctx.iteration;
 		if (ctx.err_global <= ctx.tol) break;
 		if (ctx.debug && ctx.worldRank == 0 && (ctx.iteration % 1000 == 0)) {
@@ -271,8 +323,9 @@ static inline void standard_loop(PJIterContext& ctx,
 
 // Nesterov-accelerated loop
 static inline void nesterov_loop(PJIterContext& ctx,
-								VectorXr& u, VectorXr& p,
-								double beta_threshold, int restart_limit) {
+				VectorXr& u, VectorXr& p,
+				double beta_threshold, int restart_limit,
+				ConvergenceCsvWriter* logger) {
 	ctx.err_global = std::numeric_limits<real_t>::max();
 	ctx.iteration = 0;
 	VectorXr xuk = u;
@@ -288,23 +341,26 @@ static inline void nesterov_loop(PJIterContext& ctx,
 	while (ctx.iteration < ctx.maxIterations) {
 		pj_sweep(ctx, yuk, ypk, xuk1, xpk1);
 		ctx.err_global = global_segment_norm(ctx, xuk1, yuk);
+		real_t err_p = global_contact_norm(ctx, xpk1, ypk);
 		++ctx.iteration;
-		if (ctx.err_global <= ctx.tol) break;
-
-		bool restart = false;
-		if (!std::isfinite((double)ctx.err_global)) restart = true;
-		else if (err_prev < std::numeric_limits<real_t>::infinity() && ctx.err_global > (real_t)1.05 * err_prev) restart = true;
-
 		double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
 		double betak1 = (thk - 1.0) / thk1;
-		if (betak1 > beta_threshold) restart = true;
-		{
-			// only consider velocity step to be important
+
+		bool restart = false;
+		std::string resetReason;
+		if (!std::isfinite((double)ctx.err_global)) { restart = true; resetReason = "nan_error"; }
+		else if (err_prev < std::numeric_limits<real_t>::infinity() && ctx.err_global > (real_t)1.05 * err_prev) { restart = true; resetReason = "error_increase"; }
+		if (!restart && betak1 > beta_threshold) { restart = true; resetReason = "beta_threshold"; }
+		if (!restart) {
 			VectorXr a = yuk - xuk1; VectorXr b = xuk1 - xuk;
 			double d = global_segment_dot(ctx, a, b);
-			if (d > 0.0) restart = true;
+			if (d > 0.0) { restart = true; resetReason = "direction_conflict"; }
 		}
-		if (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0) restart = true;
+		if (!restart && (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0)) { restart = true; resetReason = "beta_invalid"; }
+		if (logger) {
+			logger->report(static_cast<int>(ctx.iteration), ctx.err_global, err_p, betak1, restart, resetReason);
+		}
+		if (ctx.err_global <= ctx.tol) break;
 
 		if (restart) {
 			yuk = xuk1;
@@ -391,6 +447,12 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	ctx.relax = m_relax;
 	ctx.debug = m_debug;
 
+	ConvergenceCsvWriter csvWriter(m_convCsvDir, worldRank);
+	ConvergenceCsvWriter* logger = (!m_convCsvDir.empty() && worldRank == 0) ? &csvWriter : nullptr;
+	if (logger) {
+		csvWriter.startTimestep(g_pj_convergence_counter++);
+	}
+
 	// Initial ghost exchanges to ensure consistent data across ranks before first sweep
 	// cardillo::comm::Communication::exchangeBodyVelocitiesOwnerPushConcat(u, ctx.res, ctx.bodyOffsets);
 	// if (m_warmStart) {
@@ -398,12 +460,12 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	// }
 
 	if (!m_useNesterov) {
-		standard_loop(ctx, x, p);
+		standard_loop(ctx, x, p, logger);
 		if (m_debug && worldRank == 0) {
 			std::cout << "[ProjectedJacobi] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
 	} else {
-		nesterov_loop(ctx, x, p, m_nest_beta_threshold, m_nest_restart_limit);
+		nesterov_loop(ctx, x, p, m_nest_beta_threshold, m_nest_restart_limit, logger);
 		if (m_debug && worldRank == 0) {
 			std::cout << "[ProjectedJacobi+Nesterov] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}

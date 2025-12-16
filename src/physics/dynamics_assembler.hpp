@@ -126,7 +126,7 @@ public:
     // Accessors for Lagrange multipliers
     const VectorXr& Lambda_g() const { return m_Lambda_g; }
     const VectorXr& Lambda_gamma() const { return m_Lambda_gamma; }
-    void setLambda_g(const VectorXr& lam) { m_Lambda_g = lam; }
+    void setLambda_g(const VectorXr& lam);
     void setLambda_gamma(const VectorXr& lam) { m_Lambda_gamma = lam; }
 
     // Extended block matrix S (sparse) accessor and solver

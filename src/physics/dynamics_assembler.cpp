@@ -4,6 +4,7 @@
 #include "../collision/collision_coal.hpp"
 #include <Eigen/Cholesky>
 #include <cmath>
+#include <iostream>
 
 
 namespace cardillo::physics {
@@ -43,6 +44,12 @@ void DynamicsAssembler::updateContactsFromSystem() {
     if (m_sys.consumeStructureDirty()) mgr.rebuild();
     mgr.applyTransforms();
     m_contacts = mgr.detectAll();
+}
+
+void DynamicsAssembler::setLambda_g(const VectorXr& lam) {
+    m_Lambda_g = lam;
+    static bool headerPrinted = false;
+    static int step = 0;
 }
 
 // ---------- Cached API (block-based) ----------
