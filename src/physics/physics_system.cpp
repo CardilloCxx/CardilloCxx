@@ -611,6 +611,16 @@ void PhysicsSystem::applyForce(entt::entity e, const Vector3r& force_world, cons
     m_forces_dirty = true;
 }
 
+// Apply a pure moment expressed in world coordinates.
+void PhysicsSystem::applyInertialTorque(entt::entity e, const Vector3r& torque_world) {
+    if (!m_reg.valid(e)) return;
+    if (!torque_world.allFinite() || torque_world.isZero()) return;
+    if (!m_reg.any_of<C_Orientation>(e)) return;
+    const Quaternion4r q = m_reg.get<C_Orientation>(e).value;
+    const Vector3r torque_body = q.conjugate() * torque_world; // R^T * tau_world
+    applyForce(e, Vector3r::Zero(), torque_body);
+}
+
 void PhysicsSystem::makeStatic(entt::entity e) {
     if (!m_reg.valid(e)) return;
     // Remove dynamic physics components; keep visuals/collidable and shape tags

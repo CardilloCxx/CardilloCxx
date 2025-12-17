@@ -451,6 +451,9 @@ public:
     bool consumeForcesDirty() const { bool b = m_forces_dirty; m_forces_dirty = false; return b; }
 
     void applyForce(entt::entity e, const Vector3r& force_world, const Vector3r& torque_world);
+    // Apply a pure moment specified in world coordinates; internally converted to body frame
+    // (used when a torque is defined about an inertial-axis hinge).
+    void applyInertialTorque(entt::entity e, const Vector3r& torque_world);
     void makeStatic(entt::entity e);
 
     // Minimal setters
