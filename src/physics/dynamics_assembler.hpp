@@ -64,7 +64,7 @@ public:
 
     // Check system dirty flags and structural updates once per step and rebuild caches as needed
     void refreshState();
-    void refreshCollisionsAndSprings( real_t dt );
+    void refreshCollisionsAndSprings(real_t dt, real_t theta);
     void refreshCollisionsAndSpringsStormerVerlet(real_t dt);
 
 
@@ -134,7 +134,7 @@ public:
 
     // Build and factorize the effective mass matrix S = M + dt^2 * Wg * K * Wg^T + h * W_gamma * D * W_gamma^T
     // Returns true on successful factorization.
-    bool buildAndFactorS(real_t dt);
+    bool buildAndFactorS(real_t dt, real_t theta);
     // Solve the full extended system S * x = rhs_ext and return the complete solution (ext-length)
     VectorXr solveS(const VectorXr& rhs_ext) const;
 
