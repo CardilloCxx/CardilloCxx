@@ -36,6 +36,7 @@
 #include "scenes/woodpecker/WoodpeckerScene.hpp"
 #include "scenes/spaghetti/SpaghettiScene.hpp"
 #include "scenes/metronome/MetronomeScene.hpp"
+#include "scenes/strandbeest/StrandbeestScene.hpp"
 // #include "scenes/gears/GearsScene.hpp"           // temporarily disabled (hinge refactor)
 // #include "scenes/pendulum/PendulumScene.hpp"     // temporarily disabled (rigid/hinge refactor)
 #include "scenes/leaningTower/LeaningTowerScene.hpp"
@@ -91,6 +92,7 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<WoodpeckerScene>());
     scenes.emplace_back(std::make_unique<SpaghettiScene>());
     scenes.emplace_back(std::make_unique<MetronomeScene>());
+    scenes.emplace_back(std::make_unique<StrandbeestScene>());
     // scenes.emplace_back(std::make_unique<GearsScene>());       // uses HingeConstraint (under refactor)
     scenes.emplace_back(std::make_unique<LeaningTowerScene>());
     // scenes.emplace_back(std::make_unique<PendulumScene>());    // uses RigidConstraint/Hinge (under refactor)
