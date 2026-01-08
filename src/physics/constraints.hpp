@@ -73,6 +73,12 @@ struct JointProperties {
                              const JointFrame& jf)
         : entityA(A), entityB(B)
     {
+        const auto& r_OA = reg.get<cardillo::PhysicsSystem::C_Position3>(A).value;
+        const auto& A_A  = reg.get<cardillo::PhysicsSystem::C_Orientation>(A).value.toRotationMatrix();
+
+        const auto& r_OB = reg.get<cardillo::PhysicsSystem::C_Position3>(B).value;
+        const auto& A_B  = reg.get<cardillo::PhysicsSystem::C_Orientation>(B).value.toRotationMatrix();
+
         Vector3r  r_ORef;
         Matrix33r A_Ref;
 
@@ -80,22 +86,28 @@ struct JointProperties {
             r_ORef = reg.get<cardillo::PhysicsSystem::C_Position3>(*jf.ref).value;
             A_Ref  = reg.get<cardillo::PhysicsSystem::C_Orientation>(*jf.ref).value.toRotationMatrix();
         } else {
-            r_ORef = Vector3r::Zero();
-            A_Ref  = Matrix33r::Identity();
+            // r_ORef = Vector3r::Zero();
+            // A_Ref  = Matrix33r::Identity();
+            r_ORef = r_OA;
+            A_Ref  = A_A;
         }
 
-        Vector3r r_OJ_world = r_ORef + A_Ref * jf.r_refJ;
+        // Vector3r r_OJ_world = r_ORef; // + A_Ref * jf.r_refJ;
 
-        const auto& r_OA = reg.get<cardillo::PhysicsSystem::C_Position3>(A).value;
-        const auto& A_A  = reg.get<cardillo::PhysicsSystem::C_Orientation>(A).value.toRotationMatrix();
-        K1_r_S1J = A_A.transpose() * (r_OJ_world - r_OA);
+        // const auto& r_OA = reg.get<cardillo::PhysicsSystem::C_Position3>(A).value;
+        // const auto& A_A  = reg.get<cardillo::PhysicsSystem::C_Orientation>(A).value.toRotationMatrix();
+        // K1_r_S1J = A_A.transpose() * (r_OJ_world - r_OA);
+        K1_r_S1J = A_A.transpose() * (r_ORef - r_OA);
 
-        const auto& r_OB = reg.get<cardillo::PhysicsSystem::C_Position3>(B).value;
-        const auto& A_B  = reg.get<cardillo::PhysicsSystem::C_Orientation>(B).value.toRotationMatrix();
-        K2_r_S2J = A_B.transpose() * (r_OJ_world - r_OB);
+        // const auto& r_OB = reg.get<cardillo::PhysicsSystem::C_Position3>(B).value;
+        // const auto& A_B  = reg.get<cardillo::PhysicsSystem::C_Orientation>(B).value.toRotationMatrix();
+        K2_r_S2J = A_B.transpose() * (r_ORef - r_OB);
 
-        const auto& A_IJ = A_Ref * jf.A_refJ;
-        A_K1J = A_A.transpose() * A_IJ;  // J -> Ref -> I -> A ==== J -> A
+        // const auto& A_IJ = A_Ref; // * jf.A_refJ;
+        // A_K1J = A_A.transpose() * A_IJ;  // J -> Ref -> I -> A ==== J -> A
+        // A_K2J = A_B.transpose() * A_IJ;
+        A_K1J = A_A.transpose() * A_Ref;
+        A_K2J = A_B.transpose() * A_Ref;
 
         // Precompute local skew matrices
         K1_r_S1J_skew = skew_from_vector(K1_r_S1J);
@@ -106,18 +118,19 @@ struct JointProperties {
     Vector3r K1_r_S1J{Vector3r::Zero()}; // Joint pos in body A frame from S1
     Vector3r K2_r_S2J{Vector3r::Zero()}; // Joint pos in body B frame from S2
     Matrix33r A_K1J{Matrix33r::Identity()};  // Joint orientation that maps J -> A
+    Matrix33r A_K2J{Matrix33r::Identity()};  // Joint orientation that maps J -> B
     Matrix33r K1_r_S1J_skew{Matrix33r::Zero()};
     Matrix33r K2_r_S2J_skew{Matrix33r::Zero()};
 
-    // Compute current joint offset g in joint frame from world attachments
-    Vector3r compute_g(const Vector3r& r_OA, const Vector3r& r_OB, const Matrix33r& A_IK1, const Matrix33r& A_IK2) const {
-        const Vector3r r_S1_world = A_IK1 * K1_r_S1J;
-        const Vector3r r_OJ1_world = r_OA + r_S1_world;
-        const Vector3r r_S2_world = A_IK2 * K2_r_S2J;
-        const Vector3r r_OJ2_world = r_OB + r_S2_world;
-        const Matrix33r A_IJ = A_IK1 * A_K1J;
-        return A_IJ.transpose() * (r_OJ2_world - r_OJ1_world);
-    }
+    // // Compute current joint offset g in joint frame from world attachments
+    // Vector3r compute_g(const Vector3r& r_OA, const Vector3r& r_OB, const Matrix33r& A_IK1, const Matrix33r& A_IK2) const {
+    //     const Vector3r r_S1_world = A_IK1 * K1_r_S1J;
+    //     const Vector3r r_OJ1_world = r_OA + r_S1_world;
+    //     const Vector3r r_S2_world = A_IK2 * K2_r_S2J;
+    //     const Vector3r r_OJ2_world = r_OB + r_S2_world;
+    //     const Matrix33r A_IJ = A_IK1 * A_K1J;
+    //     return A_IJ.transpose() * (r_OJ2_world - r_OJ1_world);
+    // }
 
     entt::entity entityA{entt::null};
     entt::entity entityB{entt::null};
@@ -199,7 +212,7 @@ public:
                                   const JointFrame& frame,
                                   const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
                                   const Vector3r& D_trans = Vector3r::Zero(),
-                                  const Vector3r& K_rot   = Vector3r::Zero(),
+                                  const Vector3r& K_rot   = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
                                   const Vector3r& D_rot   = Vector3r::Zero());
 
     ConstraintResult getConstraint() const override;
@@ -227,7 +240,9 @@ public:
         : TranslationRotationConstraint(reg,
                                         a,
                                         b,
-                                        JointFrame(reg.get<cardillo::PhysicsSystem::C_Position3>(a).value),
+                                        JointFrame(
+                                            reg.get<cardillo::PhysicsSystem::C_Position3>(a).value,
+                                            reg.get<cardillo::PhysicsSystem::C_Orientation>(a).value.toRotationMatrix()),
                                         Vector3r::Constant(std::numeric_limits<real_t>::infinity()), // K_trans
                                         Vector3r::Zero(),                                            // D_trans
                                         Vector3r::Constant(std::numeric_limits<real_t>::infinity()), // K_rot

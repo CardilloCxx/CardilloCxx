@@ -104,7 +104,7 @@ TranslationRotationConstraint::TranslationRotationConstraint(entt::registry& reg
                                                              const Vector3r& D_trans,
                                                              const Vector3r& K_rot,
                                                              const Vector3r& D_rot)
-    : ConstraintPattern(reg, a, b,Vector3r::Zero(), Vector3r::Zero())
+    : ConstraintPattern(reg, a, b, Vector3r::Zero(), Vector3r::Zero())
     , m_joint(JointProperties(reg, a, b, frame))
     , m_K_trans(K_trans)
     , m_D_trans(D_trans)
@@ -128,19 +128,55 @@ void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::
     const auto& A_IK1 = wa.RA;
     const auto& A_IK2 = wa.RB;
     const auto& A_K1J = m_joint.A_K1J;
-    const Matrix33r A_IJ = A_IK1 * A_K1J;
-    const Matrix33r A_K2J =  A_IK2.transpose() * A_IJ;
-    const Matrix33r skew_g = skew_from_vector(m_joint.compute_g(wa.pA, wa.pB, wa.RA, wa.RB));
-    
+    // const auto& A_K2J = m_joint.A_K2J;
+    const Matrix33r A_IJ1 = A_IK1 * A_K1J;
+    // const Matrix33r A_IJ2 = A_IK2 * A_K2J;
+    const Matrix33r A_K2J =  A_IK2.transpose() * A_IJ1;
+    // const Matrix33r skew_g = skew_from_vector(m_joint.compute_g(wa.pA, wa.pB, wa.RA, wa.RB));
+    const Vector3r r_OA = wa.pA + A_IK1 * m_joint.K1_r_S1J;
+    const Vector3r r_OB = wa.pB + A_IK2 * m_joint.K2_r_S2J;
+    const Vector3r g = A_IJ1.transpose() * (r_OB - r_OA);
+    const Matrix33r skew_g = skew_from_vector(g);
+
     // translations
-    WgA.block<3,3>(0,0) = -A_IJ; 
+    WgA.block<3,3>(0,0) = -A_IJ1;
     WgA.block<3,3>(3,0) = -m_joint.K1_r_S1J_skew * A_K1J - A_K1J * skew_g;
-    WgB.block<3,3>(0,0) = A_IJ;
+    WgB.block<3,3>(0,0) = A_IJ1;
     WgB.block<3,3>(3,0) = m_joint.K2_r_S2J_skew * A_K2J;
 
     // orientations
     WgA.block<3,3>(3,3) = A_K1J;
     WgB.block<3,3>(3,3) = -A_K2J;
+
+    // ///////////////////////////
+    // // version rigid constraint
+    // ///////////////////////////
+    // WgA = MatrixXXr::Zero(6, 6);
+    // WgB = MatrixXXr::Zero(6, 6);
+
+    // const auto& A_IK1 = wa.RA;
+    // const auto& A_IK2 = wa.RB;
+    // const auto& A_K1J = m_joint.A_K1J;
+    // const auto& A_K2J = m_joint.A_K2J;
+
+    // // translations
+    // WgA.block<3,3>(0,0) = -Matrix33r::Identity();
+    // WgA.block<3,3>(3,0) = -m_joint.K1_r_S1J_skew * A_IK1.transpose();
+    // WgB.block<3,3>(0,0) = Matrix33r::Identity();
+    // WgB.block<3,3>(3,0) = m_joint.K2_r_S2J_skew * A_IK2.transpose();
+
+    // // orientations
+    // // 1. x x y = z
+    // WgA.block<3,1>(3,3) = A_K1J.col(2);
+    // WgB.block<3,1>(3,3) = -A_K2J.col(2);
+
+    // // 2. y @ z = x
+    // WgA.block<3,1>(3,4) = A_K1J.col(0);
+    // WgB.block<3,1>(3,4) = -A_K2J.col(0);
+
+    // // 3. z x x = y
+    // WgA.block<3,1>(3,5) = A_K1J.col(1);
+    // WgB.block<3,1>(3,5) = -A_K2J.col(1);
 }
 
 ConstraintResult TranslationRotationConstraint::getConstraint() const {
