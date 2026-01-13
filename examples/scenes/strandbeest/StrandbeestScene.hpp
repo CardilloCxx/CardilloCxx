@@ -373,7 +373,7 @@ private:
             Vector3r p2Offset = p2_world + (real_t)i * pairSpacing * n;
             size_t fidx = (frames.empty()) ? 0 : std::min<size_t>(i, frames.size() - 1);
             entt::entity frameForPair = frames.empty() ? entt::null : frames[fidx];
-            real_t phaseAlpha = baseAlphaDeg + (360.0 / nPairs) * i;
+            real_t phaseAlpha = baseAlphaDeg + (360.0 / nPairs) * i + 180.0 * i;
             auto pair = buildLegPair(sys, params, L, phaseAlpha, p2Offset, planeNormal, xAxis, frameForPair);
             for (auto e : pair.first.addedEntities) pushEntity(e);
             for (auto e : pair.second.addedEntities) pushEntity(e);

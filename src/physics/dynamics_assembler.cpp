@@ -387,7 +387,11 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
 
     // Build sparse block matrix using triplets
     std::vector<Eigen::Triplet<real_t>> trips;
-    trips.reserve((size_t)totalV + (size_t)(nSprings + nDampers) * (size_t)totalV * 2 + (size_t)(nSprings + nDampers));
+    const std::size_t tripEstimate = static_cast<std::size_t>(totalV)              
+                                   + static_cast<std::size_t>(m_Wg.nonZeros() * 2) 
+                                   + static_cast<std::size_t>(m_Wgamma.nonZeros() * 2) 
+                                   + static_cast<std::size_t>(nSprings + nDampers);
+    trips.reserve(tripEstimate);
 
     // Top-left: M diagonal (no gyroscopic term)
     for (int i = 0; i < totalV; ++i) {
@@ -478,7 +482,11 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
     }
 
     std::vector<Eigen::Triplet<real_t>> trips;
-    trips.reserve((size_t)totalV + (size_t)(nSprings + nDampers) * (size_t)totalV * 2 + (size_t)(nSprings + nDampers));
+    const std::size_t tripEstimate = static_cast<std::size_t>(totalV)
+                                   + static_cast<std::size_t>(m_Wg.nonZeros() * 2)
+                                   + static_cast<std::size_t>(m_Wgamma.nonZeros() * 2)
+                                   + static_cast<std::size_t>(nSprings + nDampers);
+    trips.reserve(tripEstimate);
 
     // // Top-left: M - dt/2 * G(u) where G(u) contains gyroscopic skew term (-w_skew * I)
     // const auto &reg = m_sys.ecs();
