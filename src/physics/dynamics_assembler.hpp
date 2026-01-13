@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 #include <Eigen/SparseCore>
+#include <Eigen/OrderingMethods>
 
 #include "../misc/types.hpp"
 #include "physics_system.hpp"
@@ -104,6 +105,7 @@ private:
     CscMatrix m_S_sparse; // size extV x extV
     // Use SparseLU on the symmetric S matrix.
     std::optional<Eigen::SparseLU<CscMatrix>> m_S_sparse_lu; // lazily constructed
+    // std::optional<Eigen::SparseQR<CscMatrix, Eigen::COLAMDOrdering<index_t>>> m_S_sparse_lu; // lazily constructed
 
     // Store Lagrange multipliers (they are being integrated)
     VectorXr m_Lambda_g;

@@ -40,7 +40,8 @@ void MoreauSolver::stepMidpoint(real_t dt)
     // RHS: M*vn + dt*(f_ext + f_gyro)
     // External forces are integrated over the time step; gyroscopic forces are evaluated at current state
     VectorXr rhs = VectorXr::Zero((index_t)extV);
-    rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * (fn_ext + fn_gyro);
+    // rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * (fn_ext + fn_gyro);
+    rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * fn_ext;
     if (nSprings > 0) rhs.segment(totalV, nSprings) = -(1.0 / (m_theta * dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - (1.0 - m_theta) / m_theta * Wg * vn;
     if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -(1.0 - m_theta) / m_theta * Wgamma * vn;
 

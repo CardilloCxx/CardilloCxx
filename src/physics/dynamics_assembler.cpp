@@ -326,7 +326,8 @@ void DynamicsAssembler::rebuildInteractionW_()
         // Spring rows
         for (int i = 0; i < nrows; ++i) {
             const real_t Ci = crN.Crows[i];
-            if (Ci < 1 / EPS_C) {
+            // if (Ci < 1 / EPS_C) {
+            if (true) {
                 Crows.push_back(Ci);
                 const int row = springRowCounter++;
                 if (i < crN.WgA.cols()) emitRowRef(tripsWg, row, crN.a, crN.WgA.col(i));
@@ -337,7 +338,9 @@ void DynamicsAssembler::rebuildInteractionW_()
         const int ndamp = (int)crN.Arows.size();
         for (int i = 0; i < ndamp; ++i) {
             const real_t Ai = crN.Arows[i];
-            if (Ai < 1 / EPS_A) {
+            // if (Ai < 1 / EPS_A) {
+            // if (true) {
+            if (false) {
                 Arows.push_back(Ai);
                 const int row = damperRowCounter++;
                 if (i < crN.WgammaA.cols()) emitRowRef(tripsWgamma, row, crN.a, crN.WgammaA.col(i));
@@ -345,7 +348,6 @@ void DynamicsAssembler::rebuildInteractionW_()
             }
         }
     }
-
 
     // Build sparse matrices from accumulated triplets
     const int nSprings = (int)Crows.size();
@@ -393,10 +395,49 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta)
                                    + static_cast<std::size_t>(nSprings + nDampers);
     trips.reserve(tripEstimate);
 
-    // Top-left: M diagonal (no gyroscopic term)
-    for (int i = 0; i < totalV; ++i) {
-        real_t mval = m_M_diag[i];
-        if (mval != (real_t)0) trips.emplace_back(i, i, mval);
+    // // Top-left: M diagonal (no gyroscopic term)
+    // for (int i = 0; i < totalV; ++i) {
+    //     real_t mval = m_M_diag[i];
+    //     if (mval != (real_t)0) trips.emplace_back(i, i, mval);
+    // }
+
+    // Top-left: M - dt * G(u) where G(u) contains gyroscopic skew term (-w_skew * I)
+    const auto &reg = m_sys.ecs();
+    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    for (auto [e, bi] : view.each()) {
+        const int b = bi.b;
+        if (b < 0 || b + 1 >= (int)m_body_vel_offsets.size()) continue;
+        const int off = m_body_vel_offsets[(size_t)b];
+        const int nV = m_body_vel_offsets[(size_t)b + 1] - off;
+
+        // Point mass: translational block only
+        if (reg.all_of<PhysicsSystem::C_PointMassTag, PhysicsSystem::C_Mass>(e)) {
+            const real_t m = reg.get<PhysicsSystem::C_Mass>(e).m;
+            for (int i = 0; i < nV; ++i) trips.emplace_back(off + i, off + i, m);
+            continue;
+        }
+
+        // Rigid body: translational mass and rotational inertia plus gyro skew term
+        if (reg.all_of<PhysicsSystem::C_RigidBodyTag, PhysicsSystem::C_Mass, PhysicsSystem::C_InertiaDiag, PhysicsSystem::C_AngularVelocity3>(e)) {
+            const real_t m = reg.get<PhysicsSystem::C_Mass>(e).m;
+            for (int i = 0; i < 3 && i < nV; ++i) trips.emplace_back(off + i, off + i, m);
+
+            if (nV >= 6) {
+                const Vector3r w = reg.get<PhysicsSystem::C_AngularVelocity3>(e).value; // body-frame
+                const Vector3r I = m_sys.getInertiaDiag(e);
+                Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
+                const Vector3r Iw = I.cwiseProduct(w);
+                auto omegaSkew = skew_from_vector(w);
+                Matrix33r IwSkew = skew_from_vector(Iw);
+                auto rotBlock = Idiag - (dt * (real_t)0.5) * (IwSkew - omegaSkew * Idiag);
+                for (int r = 0; r < 3; ++r) {
+                    for (int c = 0; c < 3; ++c) {
+                        const real_t val = rotBlock(r, c);
+                        if (val != (real_t)0) trips.emplace_back(off + 3 + r, off + 3 + c, val);
+                    }
+                }
+            }
+        }
     }
 
     // Wg and Wgamma contributions: m_Wg is (nSprings x totalV)
@@ -445,7 +486,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta)
     // Factorize using SparseLU for symmetric matrices.
     try {
         m_S_sparse_lu.emplace();
-        m_S_sparse_lu->isSymmetric(true);
+        m_S_sparse_lu->isSymmetric(false);
         m_S_sparse_lu->analyzePattern(m_S_sparse);
         m_S_sparse_lu->factorize(m_S_sparse);
         if (m_S_sparse_lu->info() != Eigen::Success) {
@@ -653,6 +694,7 @@ void DynamicsAssembler::refreshState() {
 void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt, real_t theta) {
     updateContactsFromSystem();
     rebuildW_();
+    rebuildInteractionW_();
     if (!buildAndFactorS(dt, theta)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
 }
 
