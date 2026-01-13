@@ -16,18 +16,16 @@ void MoreauSolver::stepMidpoint(real_t dt)
     const auto& vn = m_dyn.vVec();
     const auto& fn_ext = m_dyn.fVecExternal();    // gravity + applied external forces
     const auto& fn_gyro = m_dyn.fVecGyroscopic(); // gyroscopic forces from current state
-    // const auto& offQ = m_dyn.bodyPosOffsets();
-    // const auto& offV = m_dyn.bodyVelOffsets();
-    // const int Nb = (int)offV.size() - 1;
 
     // 2) Inplace midpoint position update
-    m_sys.explicitPositionUpdate(0.5 * dt);
+    m_sys.explicitPositionUpdate((1.0 - m_theta) * dt);
 
     // 3) Evaluate contacts at midpoint positions
-    m_dyn.refreshCollisionsAndSprings(dt);
+    m_dyn.refreshCollisionsAndSprings(dt, m_theta);
 
     // 4) Build the full extended RHS and solve the extended system S * x = b
     const auto& Wg = m_dyn.WgSparse();
+    const auto& Wgamma = m_dyn.WgammaSparse();
     const auto& M_diag = m_dyn.MDiag();
     const int totalV = (m_dyn.bodyVelOffsets().empty() ? 0 : m_dyn.bodyVelOffsets().back());
     const int nSprings = (int)m_dyn.Cdiag().size();
@@ -43,7 +41,8 @@ void MoreauSolver::stepMidpoint(real_t dt)
     // External forces are integrated over the time step; gyroscopic forces are evaluated at current state
     VectorXr rhs = VectorXr::Zero((index_t)extV);
     rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * (fn_ext + fn_gyro);
-    if (nSprings > 0) rhs.segment(totalV, nSprings) = - (1.0 / (dt * dt)) * Cdiag.cwiseProduct(Lambda_g);
+    if (nSprings > 0) rhs.segment(totalV, nSprings) = -(1.0 / (m_theta * dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - (1.0 - m_theta) / m_theta * Wg * vn;
+    if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -(1.0 - m_theta) / m_theta * Wgamma * vn;
 
     // 5) Solve extended system
     auto xnp1 = m_pj.solve(rhs, m_sys.config().pj_tol_abs);
@@ -55,7 +54,7 @@ void MoreauSolver::stepMidpoint(real_t dt)
     m_dyn.writeVelocityToSystem(vnp1);
 
     // 7) Inplace final position update
-    m_sys.explicitPositionUpdate(0.5 * dt);
+    m_sys.explicitPositionUpdate(m_theta * dt);
 }
 
 }

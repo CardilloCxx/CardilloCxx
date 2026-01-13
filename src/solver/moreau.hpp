@@ -14,8 +14,8 @@ namespace cardillo::solver {
 
 class MoreauSolver : public SolverBase {
 public:
-		explicit MoreauSolver(cardillo::PhysicsSystem& sys)
-			: m_sys(sys), m_dyn(sys),
+		explicit MoreauSolver(cardillo::PhysicsSystem& sys, real_t theta=0.55)
+			: m_sys(sys), m_dyn(sys), m_theta(theta),
 			  m_pj(m_dyn, sys.config(), sys.config().pj_warmstart ? sys.warmstartProvider() : nullptr) {
 		// Build initial DOF layout, offsets, and load state
 		m_dyn.refreshState();
@@ -35,6 +35,7 @@ private:
 	cardillo::solver::ProjectedJacobiSolver m_pj;
 	// Constraint-space Lagrange multipliers for generalized springs (size = C_dyn)
 	VectorXr m_Lambda_g;
+	real_t m_theta;
 };
 
 // No legacy free function; use MoreauSolver directly

@@ -369,7 +369,7 @@ void DynamicsAssembler::rebuildInteractionW_()
     m_S_sparse_lu.reset();
 }
 
-bool DynamicsAssembler::buildAndFactorS(real_t dt)
+bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta)
 {
     auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS);
     // Ensure current blocks are built
@@ -426,14 +426,14 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt)
     for (int i = 0; i < nSprings; ++i) {
         real_t Ci = m_Cdiag[i];
         if (!std::isfinite(Ci)) continue; // skip non-finite
-        real_t cval = - (real_t)1.0 / (dt * dt) * Ci;
+        real_t cval = - (real_t)1.0 / (theta * dt * dt) * Ci;
         trips.emplace_back(totalV + i, totalV + i, cval);
     }
     // A block over nDampers rows (assemble damping compliance; clamp zeros similarly)
     for (int i = 0; i < nDampers; ++i) {
         real_t Ai = m_Adiag[i];
         if (!std::isfinite(Ai)) continue;
-        real_t aval = - (real_t)1.0 / dt * Ai;
+        real_t aval = - (real_t)1.0 / (theta * dt) * Ai;
         trips.emplace_back(totalV + nSprings + i, totalV + nSprings + i, aval);
     }
 
@@ -650,10 +650,10 @@ void DynamicsAssembler::refreshState() {
     }
 }
 
-void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt) {
+void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt, real_t theta) {
     updateContactsFromSystem();
     rebuildW_();
-    if (!buildAndFactorS(dt)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
+    if (!buildAndFactorS(dt, theta)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
 }
 
 void DynamicsAssembler::refreshCollisionsAndSpringsStormerVerlet(real_t dt) {
