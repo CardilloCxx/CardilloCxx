@@ -14,7 +14,10 @@ namespace cardillo::solver {
 
 class MoreauSolver : public SolverBase {
 public:
-		explicit MoreauSolver(cardillo::PhysicsSystem& sys, real_t theta=0.55)
+		explicit MoreauSolver(cardillo::PhysicsSystem& sys)
+			: MoreauSolver(sys, sys.config().moreau_theta) {}
+
+		explicit MoreauSolver(cardillo::PhysicsSystem& sys, real_t theta)
 			: m_sys(sys), m_dyn(sys), m_theta(theta),
 			  m_pj(m_dyn, sys.config(), sys.config().pj_warmstart ? sys.warmstartProvider() : nullptr) {
 		// Build initial DOF layout, offsets, and load state
@@ -37,8 +40,5 @@ private:
 	VectorXr m_Lambda_g;
 	real_t m_theta;
 };
-
-// No legacy free function; use MoreauSolver directly
-
 }
 

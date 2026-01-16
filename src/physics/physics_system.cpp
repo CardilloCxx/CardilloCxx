@@ -313,25 +313,28 @@ void PhysicsSystem::writeTrackedStateToCsv(real_t t)
             "name",
             "px","py","pz",
             "vx","vy","vz",
-            "wx","wy","wz"
+            "wx","wy","wz",
+            "euler_x","euler_y","euler_z"
         };
         writer.open(path, header);
         initialized = true;
     }
     if (!writer.isOpen()) return;
 
-    auto view = m_reg.view<C_TrackTag, C_Position3, C_LinearVelocity3, C_AngularVelocity3>();
+    auto view = m_reg.view<C_TrackTag, C_Position3, C_LinearVelocity3, C_AngularVelocity3, C_Orientation>();
     for (auto e : view) {
         const auto& tag   = view.get<C_TrackTag>(e);
         const auto& pos   = view.get<C_Position3>(e).value;
         const auto& v     = view.get<C_LinearVelocity3>(e).value;
         const auto& w     = view.get<C_AngularVelocity3>(e).value;
+        const auto& euler = view.get<C_Orientation>(e).value.toRotationMatrix().eulerAngles(0, 1, 2);
         writer.writeRow(
             t,
             tag.name,
             pos.x(), pos.y(), pos.z(),
             v.x(), v.y(), v.z(),
-            w.x(), w.y(), w.z()
+            w.x(), w.y(), w.z(),
+            euler.x(), euler.y(), euler.z()
         );
     }
 }

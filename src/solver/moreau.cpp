@@ -17,11 +17,13 @@ void MoreauSolver::stepMidpoint(real_t dt)
     const auto& fn_ext = m_dyn.fVecExternal();    // gravity + applied external forces
     const auto& fn_gyro = m_dyn.fVecGyroscopic(); // gyroscopic forces from current state
 
+    const bool implicitGyro = m_sys.config().moreau_implicit_gyroscopy;
+
     // 2) Inplace midpoint position update
     m_sys.explicitPositionUpdate((1.0 - m_theta) * dt);
 
     // 3) Evaluate contacts at midpoint positions
-    m_dyn.refreshCollisionsAndSprings(dt, m_theta);
+    m_dyn.refreshCollisionsAndSprings(dt, m_theta, implicitGyro);
 
     // 4) Build the full extended RHS and solve the extended system S * x = b
     const auto& Wg = m_dyn.WgSparse();
@@ -37,10 +39,10 @@ void MoreauSolver::stepMidpoint(real_t dt)
     VectorXr Lambda_g = m_dyn.Lambda_g();
     if ((int)Lambda_g.size() != nSprings) Lambda_g = VectorXr::Zero(nSprings);
 
-    // RHS: M*vn + dt*(f_ext + f_gyro)
-    // External forces are integrated over the time step; gyroscopic forces are evaluated at current state
+    // RHS: M*vn + dt*f_ext (+ dt*f_gyro if treated explicitly)
     VectorXr rhs = VectorXr::Zero((index_t)extV);
-    rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * (fn_ext + fn_gyro);
+    rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * fn_ext;
+    if (!implicitGyro) rhs.segment(0, totalV) += dt * fn_gyro;
     if (nSprings > 0) rhs.segment(totalV, nSprings) = -(1.0 / (m_theta * dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - (1.0 - m_theta) / m_theta * Wg * vn;
     if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -(1.0 - m_theta) / m_theta * Wgamma * vn;
 

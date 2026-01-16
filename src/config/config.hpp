@@ -73,7 +73,9 @@ struct Config {
     bool debug_mesh{false}; // debug.mesh - print mesh normalization info (volume, COM, inertia)
 
     // Solver selection
-    SolverType solver{SolverType::StoermerVerlet};
+    SolverType solver{SolverType::Moreau};
+    real_t moreau_theta{(real_t)1.0};
+    bool moreau_implicit_gyroscopy{false};
 
     std::string scene_name{"none-specified"};
 };

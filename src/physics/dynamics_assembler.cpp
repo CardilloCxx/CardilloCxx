@@ -369,7 +369,7 @@ void DynamicsAssembler::rebuildInteractionW_()
     m_S_sparse_lu.reset();
 }
 
-bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta)
+bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyroInMatrix)
 {
     auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS);
     // Ensure current blocks are built
@@ -393,10 +393,43 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta)
                                    + static_cast<std::size_t>(nSprings + nDampers);
     trips.reserve(tripEstimate);
 
-    // Top-left: M diagonal (no gyroscopic term)
+    // Top-left: M diagonal
     for (int i = 0; i < totalV; ++i) {
         real_t mval = m_M_diag[i];
         if (mval != (real_t)0) trips.emplace_back(i, i, mval);
+    }
+
+    // Optionally include linearized gyroscopic term in the system matrix.
+    // This adds -dt * G(omega_n) to each rigid body's rotational 3x3 block and breaks symmetry.
+    if (includeGyroInMatrix) {
+        const auto& reg = m_sys.ecs();
+        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+        for (auto [e, bi] : view.each()) {
+            const int b = bi.b;
+            if (b < 0 || b + 1 >= (int)m_body_vel_offsets.size()) continue;
+            const int off = m_body_vel_offsets[(size_t)b];
+            const int nV = m_body_vel_offsets[(size_t)b + 1] - off;
+            if (nV < 6) continue;
+            if (!reg.all_of<PhysicsSystem::C_RigidBodyTag, PhysicsSystem::C_AngularVelocity3>(e)) continue;
+
+            const Vector3r omega = reg.get<PhysicsSystem::C_AngularVelocity3>(e).value; // body-frame
+            const Vector3r I = m_sys.getInertiaDiag(e);
+            const Vector3r Iomega = I.cwiseProduct(omega);
+            const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
+            const Matrix33r omegaSkew = skew_from_vector(omega);
+            const Matrix33r IomegaSkew = skew_from_vector(Iomega);
+
+            // G_rot = 0.5 * ( [I*omega]_x - [omega]_x * I )
+            const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * Idiag);
+            const Matrix33r corr = -dt * Grot; // M_eff = M - dt*G
+
+            for (int r = 0; r < 3; ++r) {
+                for (int c = 0; c < 3; ++c) {
+                    const real_t val = corr(r, c);
+                    if (val != (real_t)0) trips.emplace_back(off + 3 + r, off + 3 + c, val);
+                }
+            }
+        }
     }
 
     // Wg and Wgamma contributions: m_Wg is (nSprings x totalV)
@@ -442,10 +475,10 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta)
     m_S_sparse.setFromTriplets(trips.begin(), trips.end());
     m_S_sparse.makeCompressed();
 
-    // Factorize using SparseLU for symmetric matrices.
+    // Factorize using SparseLU (provide symmetry hint when applicable).
     try {
         m_S_sparse_lu.emplace();
-        m_S_sparse_lu->isSymmetric(true);
+        m_S_sparse_lu->isSymmetric(!includeGyroInMatrix);
         m_S_sparse_lu->analyzePattern(m_S_sparse);
         m_S_sparse_lu->factorize(m_S_sparse);
         if (m_S_sparse_lu->info() != Eigen::Success) {
@@ -650,10 +683,10 @@ void DynamicsAssembler::refreshState() {
     }
 }
 
-void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt, real_t theta) {
+void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt, real_t theta, bool includeGyroInMatrix) {
     updateContactsFromSystem();
     rebuildW_();
-    if (!buildAndFactorS(dt, theta)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
+    if (!buildAndFactorS(dt, theta, includeGyroInMatrix)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
 }
 
 void DynamicsAssembler::refreshCollisionsAndSpringsStormerVerlet(real_t dt) {

@@ -45,6 +45,7 @@ public:
         const real_t nu = (real_t)0.35;
         PhysicsSystem::BeamCrossSection section(pitch*2, pitch*0.99, PhysicsSystem::BeamBodyType::Cube); // (pitch*0.99, pitch*0.99, PhysicsSystem::BeamBodyType::Capsule); for metal pitch*2, pitch*0.99, PhysicsSystem::BeamBodyType::Cube for plastic-like
         auto springs = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
+        springs.setDampingFromFactor(0.00);
 
         // Place the spring centered over the top step tread and build a helix
         const real_t topZ = stairOrigin.z() + (real_t)(steps - 1) * rise;
@@ -74,7 +75,7 @@ public:
     void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t dt) override {
         auto A_IK = sys.ecs().get<cardillo::PhysicsSystem::C_Orientation>(m_slinky_end_entity).value.toRotationMatrix();
         
-        if (t < 0.15) sys.applyForce(m_slinky_end_entity, Vector3r(0.00, 0.0, 0.0), A_IK.transpose()* Vector3r(0.0, -0.01, 0.0));
+        if (t < 0.28) sys.applyForce(m_slinky_end_entity, Vector3r(0.00, 0.0, 0.0), A_IK.transpose()* Vector3r(0.0, -0.015, 0.0));
 //         sys.setAngularVelocity(m_guide_entity, Vector3r(0.0, -0.1, 0.0));
 //         sys.applyForce(m_guide_entity, -sys.gravity() * sys.getMass(m_guide_entity).diagonal(), Vector3r::Zero());
     }

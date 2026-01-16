@@ -33,6 +33,7 @@
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/discreteRod/DiscreteRodScene.hpp"
 #include "scenes/slinky/SlinkyScene.hpp"
+#include "scenes/unilateral/UnilateralScene.hpp"
 #include "scenes/woodpecker/WoodpeckerScene.hpp"
 #include "scenes/spaghetti/SpaghettiScene.hpp"
 #include "scenes/metronome/MetronomeScene.hpp"
@@ -66,7 +67,7 @@ int main(int argc, char** argv) {
         ? cardillo::config::ConfigReader::fromFile(argv[1])
         : cardillo::config::Config{}; // defaults from header
     
-    if (argc == 0 && worldRank == 0) std::cout << "No config file provided, using defaults." << std::endl;
+    if (argc <= 1 && worldRank == 0) std::cout << "No config file provided, using defaults." << std::endl;
     
     sys.setConfig(cfg);
 
@@ -89,6 +90,7 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<ParcelScene>());
     scenes.emplace_back(std::make_unique<DiscreteRodScene>());
     scenes.emplace_back(std::make_unique<SlinkyScene>());
+    scenes.emplace_back(std::make_unique<UnilateralScene>());
     scenes.emplace_back(std::make_unique<WoodpeckerScene>());
     scenes.emplace_back(std::make_unique<SpaghettiScene>());
     scenes.emplace_back(std::make_unique<MetronomeScene>());
@@ -127,12 +129,24 @@ int main(int argc, char** argv) {
 
     // Setup solver based on config
     std::unique_ptr<cardillo::solver::SolverBase> solver;
-    if (cfg.solver == cardillo::config::SolverType::StoermerVerlet) solver = std::make_unique<cardillo::solver::DualStoermerVerletSolver>(sys);
-    else solver = std::make_unique<cardillo::solver::MoreauSolver>(sys);
+    if (cfg.solver == cardillo::config::SolverType::StoermerVerlet) {
+        if (worldRank == 0) {
+            std::cout << "[Warning] Dual Stoermer-Verlet is deprecated; prefer Moreau (solver.name=moreau).\n";
+        }
+        solver = std::make_unique<cardillo::solver::DualStoermerVerletSolver>(sys);
+    } else {
+        solver = std::make_unique<cardillo::solver::MoreauSolver>(sys, cfg.moreau_theta);
+    }
 
     std::cout << "[Info] Selected solver: " 
               << ((cfg.solver == cardillo::config::SolverType::StoermerVerlet) ? "Dual Stoermer-Verlet" : "Moreau") 
               << std::endl;
+
+    if (cfg.solver == cardillo::config::SolverType::Moreau) {
+        std::cout << "[Info] Moreau settings: theta=" << cfg.moreau_theta
+                  << ", implicit_gyroscopy=" << (cfg.moreau_implicit_gyroscopy ? "true" : "false")
+                  << std::endl;
+    }
     
     // Writer (rank 0)
     std::unique_ptr<cardillo::io::VtkWriterBinary> writer;

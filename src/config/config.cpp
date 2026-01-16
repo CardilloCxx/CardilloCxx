@@ -82,8 +82,15 @@ Config ConfigReader::fromFile(const std::string& path) {
         }
         else if (key == "solver.name") {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
-            if (v == "moreau" || v == "first_order") cfg.solver = SolverType::Moreau;
+            if (v == "moreau" || v == "first_order" || v == "theta") cfg.solver = SolverType::Moreau;
+            else if (v == "stoermverlet" || v == "stoermerverlet" || v == "sv") cfg.solver = SolverType::StoermerVerlet;
             else cfg.solver = SolverType::StoermerVerlet;
+        }
+        else if (key == "moreau.theta" || key == "solver.theta") {
+            try { cfg.moreau_theta = static_cast<real_t>(std::stod(val)); } catch (...) {}
+        }
+        else if (key == "moreau.implicit_gyroscopy" || key == "solver.implicit_gyroscopy") {
+            cfg.moreau_implicit_gyroscopy = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
         }
         else if (key == "sim.T") {
             try { cfg.sim_T = static_cast<real_t>(std::stod(val)); } catch (...) {}
