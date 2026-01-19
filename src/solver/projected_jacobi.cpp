@@ -37,6 +37,38 @@ static inline VectorXr precompute_Rdiag_sparse(
 	return R;
 }
 
+static inline VectorXr precompute_Rdiag_true_delassus(
+	const cardillo::physics::DynamicsAssembler& dyn,
+	const std::vector<int>& relevantContacts,
+	real_t alpha)
+{
+	const auto& W = dyn.W();
+	const int C = (int)W.rows();
+	VectorXr R = VectorXr::Zero(C);
+	const int totalV = (dyn.bodyVelOffsets().empty() ? 0 : dyn.bodyVelOffsets().back());
+	const int nSprings = (int)dyn.Cdiag().size();
+	const int nDampers = (int)dyn.Adiag().size();
+	const int extV = totalV + nSprings + nDampers;
+	VectorXr rhs_ext = VectorXr::Zero(extV);
+
+	for (int cid : relevantContacts) {
+		if (cid < 0 || cid >= C) continue;
+		rhs_ext.setZero();
+		for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
+			const int col = it.col();
+			rhs_ext[col] = it.value();
+		}
+		const VectorXr x = dyn.solveS(rhs_ext);
+		real_t Dii = 0;
+		for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
+			const int col = it.col();
+			Dii += it.value() * x[col];
+		}
+		R[cid] = (Dii > (real_t)0) ? (alpha / Dii) : (real_t)0;
+	}
+	return R;
+}
+
 // Small context to avoid re-passing many references for each sweep
 namespace {
 struct PJIterContext {
@@ -139,7 +171,8 @@ static inline ContactGroups build_contact_groups(const cardillo::physics::Dynami
 
 static inline PJIterContext build_context(
 	cardillo::physics::DynamicsAssembler& dyn,
-	real_t alpha)
+	real_t alpha,
+	bool useTrueDelassus)
 {
     auto& sys = dyn.system();
 	const auto& W = dyn.W();
@@ -169,7 +202,9 @@ static inline PJIterContext build_context(
 	PJIterContext ctx{dyn.W(), &dyn, std::vector<int>{}, std::move(res), VectorXr()};
 	ctx.bodyOffsets = dyn.bodyVelOffsets();
 	// Use Minv diagonal from DynamicsAssembler when computing diagonal of G = W * Minv * W^T
-	ctx.Rdiag = precompute_Rdiag_sparse(W, dyn.MinvDiag(), ctx.res.allContacts, alpha);
+	ctx.Rdiag = useTrueDelassus
+		? precompute_Rdiag_true_delassus(dyn, ctx.res.allContacts, alpha)
+		: precompute_Rdiag_sparse(W, dyn.MinvDiag(), ctx.res.allContacts, alpha);
 	// Populate dimension helpers: velocity dofs, percussion (contact) rows, and spring dofs
 	const int dofConcat = (ctx.bodyOffsets.empty() ? 0 : ctx.bodyOffsets.back());
 	ctx.nV = dofConcat;
@@ -418,7 +453,7 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
 
 	// Build iteration context and precomputations
-	PJIterContext ctx = build_context(m_dyn, alpha());
+	PJIterContext ctx = build_context(m_dyn, alpha(), m_useTrueDelassus);
 	const auto& bodyOffsets = ctx.bodyOffsets;
 
 	// Initialize impulses

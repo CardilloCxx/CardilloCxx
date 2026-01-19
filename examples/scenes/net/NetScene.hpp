@@ -16,9 +16,9 @@ public:
         using namespace cardillo;
         using namespace cardillo::misc;
 
-        const real_t radius = 0.75;
+        const real_t radius = 0.5;
         const real_t length = 2.0 * M_PI * radius;
-        const real_t thickness = 0.05;
+        const real_t thickness = 0.03;
 
         // Steel properties
         const real_t density = 7850; // kg/m^3
@@ -29,8 +29,8 @@ public:
         PhysicsSystem::BeamCrossSection sec_ring(thickness, thickness, PhysicsSystem::BeamBodyType::Capsule); 
         auto springs_ring = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
 
-        const int n = 10;
-        const int m = 15;
+        const int n = 12;
+        const int m = 18;
         const size_t segments = 32;
         const real_t eps = 1e-3;
 

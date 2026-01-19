@@ -29,6 +29,7 @@ public:
         , m_maxIterations(std::max(1, cfg.pj_max_iterations))
         , m_epsRel(cfg.pj_tol_rel)
         , m_warmStart(cfg.pj_warmstart)
+        , m_useTrueDelassus(cfg.pj_rdiag_true_delassus)
         , m_debug(cfg.debug_pj)
         , m_useNesterov(cfg.pj_nesterov)
         , m_nest_beta_threshold((double)cfg.pj_nesterov_beta_threshold)
@@ -51,6 +52,7 @@ private:
     real_t m_relax{(real_t)1};
     int m_maxIterations{1000000};
     bool m_warmStart{true};
+    bool m_useTrueDelassus{false};
     bool m_debug{false};
     bool m_useNesterov{false};
     double m_nest_beta_threshold{0.995};

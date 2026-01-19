@@ -486,6 +486,7 @@ public:
     void setOrientation(entt::entity e, const Quaternion4r& q);
     void setLinearVelocity(entt::entity e, const Vector3r& v);
     void setAngularVelocity(entt::entity e, const Vector3r& w);
+    void setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w);
 
     void explicitPositionUpdate(real_t dt);
     void linearImplicitPositionUpdate(real_t dt);

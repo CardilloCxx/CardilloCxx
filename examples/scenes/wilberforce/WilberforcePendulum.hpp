@@ -28,7 +28,7 @@ public:
         const real_t coilDiameter = 0.032;               // spring mean radius 32 mm
         const real_t coilRadius = 0.5 * coilDiameter;    // spring mean radius 16 mm
         // const size_t turns = 20;                         // helical turns count
-        const size_t turns = 6;                          // helical turns count
+        const size_t turns = 12;                          // helical turns count
         const size_t segmentsPerTurn = 30;               // recommended minimum segments per turn (24)
         const size_t segments = turns * segmentsPerTurn;
         // // const real_t freeLength = wireRadius * turns * 3 * 5;
@@ -40,6 +40,8 @@ public:
         const real_t E = 206e9;                      // Young's modulus (GPa)
         const real_t nu = 0.2638;                    // Poisson ratio (G ~ 81.5 GPa)
         const real_t G = E / (2.0 * (1.0 + nu));     // Shear modulus
+
+        sys.setGravity(Vector3r(0, 0, -9.81)); // no gravity
 
         // real_t custom_mass = 0.5240569245269475;
         // // real_t Ixx = 0.00013237;
@@ -129,6 +131,8 @@ public:
         const real_t sizeX = std::sqrt(6 / tunedMass * (Iy + Iz - Ix));
         const real_t sizeY = std::sqrt(6 / tunedMass * (Ix + Iz - Iy));
         const real_t sizeZ = std::sqrt(6 / tunedMass * (Ix + Iy - Iz));
+
+        // Ixx = 0.000104211, Iyy = 0.000122214, Izz = 0.000122214
         // const real_t tunedSize = std::sqrt(6 * Iz / tunedMass); // Iz = 1 / 12 m (a^2 + a^2) = 1/6 m a^2 => a = sqrt(6 Iz / m)
 
         // std::cout << "Tuning info: K = " << K << " N/m, lambda = " << lambda << " Nm/rad, m = " << tunedMass
@@ -138,15 +142,31 @@ public:
         std::cout << "sizeX: " << sizeX << ", sizeY: " << sizeY << ", sizeZ: " << sizeZ << std::endl;
 
         // m_bob = sys.addRigidBody(PhysicsSystem::CubeShape(Vector3r(tunedSize,tunedSize,tunedSize)),
-        m_bob = sys.addRigidBody(PhysicsSystem::CubeShape(Vector3r(sizeX/2, sizeY/2, sizeZ/2)),
-        // PhysicsSystem::RigidState(Vector3r(0,0,-tunedSize) + sys.getPosition(m_bottom).head<3>()),
-        // PhysicsSystem::RigidState(Vector3r(0,0,-sizeZ) + sys.getPosition(m_bottom).head<3>()),
-        PhysicsSystem::RigidState(Vector3r(0,0,-sizeZ - static_cast<real_t>(turns) * pitch - wireDiameter)),
-        PhysicsSystem::RigidProps(tunedMass));
-        // track bob trajectory in csv file
-        sys.ecs().emplace<PhysicsSystem::C_TrackTag>(m_bob, PhysicsSystem::C_TrackTag{});
+        // m_bob = sys.addRigidBody(PhysicsSystem::CubeShape(Vector3r(sizeX/2, sizeY/2, sizeZ/2)),
+        m_bob = sys.addRigidBody(PhysicsSystem::MeshShape("res/meshes/bob2.obj"),
+            // PhysicsSystem::RigidState(Vector3r(0,0,-tunedSize) + sys.getPosition(m_bottom).head<3>()),
+            // PhysicsSystem::RigidState(Vector3r(0,0,-sizeZ) + sys.getPosition(m_bottom).head<3>()),
+            PhysicsSystem::RigidState(Vector3r(0,0,-0.025 - static_cast<real_t>(turns) * pitch - wireDiameter), Vector3r(0, 0, 0)),
+            PhysicsSystem::RigidProps(tunedMass));
 
-        sys.disableCollisionBetween(m_bottom, m_bob);
+        
+
+        // Set inertia to match target Iz for cube
+        sys.ecs().get<PhysicsSystem::C_InertiaDiag>(m_bob).I *= 0.75;
+
+        // track bob trajectory in csv file
+        sys.track(m_bob, "bob");
+        // Print Inertia for verification
+        auto Idiag = sys.ecs().get<PhysicsSystem::C_InertiaDiag>(m_bob).I;
+        std::cout << "Bob inertia diag: Ixx = " << Idiag.x() << ", Iyy = " << Idiag.y() << ", Izz = " << Idiag.z() << std::endl;
+
+
+        // Constraint the bob to only allow vertical and torsional motion
+        const real_t inf = std::numeric_limits<real_t>::infinity();
+        sys.addConstraint<physics::TranslationRotationConstraint>(sys.ecs(), m_bob, m_top, physics::JointFrame{},
+            Vector3r(inf, inf, 0), Vector3r::Zero(),
+            Vector3r(inf, inf, 0), Vector3r::Zero());
+        
 
         // Pin bottom endpoint to bob using a rigid constraint
         // sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_bottom, m_bob, Vector3r::Zero(), Vector3r(0,0,tunedSize));
@@ -159,7 +179,14 @@ public:
         // sys.setAngularVelocity(m_bob, Vector3r(0,0,wz0));
     }
 
-    void updateScene(cardillo::PhysicsSystem& /*sys*/, real_t /*t*/, real_t /*dt*/) override {
+    void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override 
+    {
+        // Pull bob downward slowly to start vertical oscillation
+        const real_t vz0 = -0.5;
+        const real_t t0 = 0.3;
+        if (t < t0) {
+            sys.setVelocityByForce(m_bob, Vector3r(0,0,vz0 * t / t0), Vector3r(0,0,0));
+        }
 
     }
 
@@ -167,4 +194,5 @@ private:
     entt::entity m_top{entt::null};
     entt::entity m_bottom{entt::null};
     entt::entity m_bob{entt::null};
+    bool m_reset{false};
 };

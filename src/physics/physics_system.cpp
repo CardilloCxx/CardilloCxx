@@ -715,6 +715,27 @@ void PhysicsSystem::setAngularVelocity(entt::entity e, const Vector3r& w) {
     markStateDirty();
 }
 
+void PhysicsSystem::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w)
+{
+    if (!m_reg.valid(e)) return;
+
+    Vector3r currentV = Vector3r::Zero();
+    Vector3r currentW = Vector3r::Zero();
+    if (m_reg.any_of<C_LinearVelocity3>(e)) currentV = m_reg.get<C_LinearVelocity3>(e).value;
+    if (m_reg.any_of<C_AngularVelocity3>(e)) currentW = m_reg.get<C_AngularVelocity3>(e).value;
+
+    Vector3r deltaV = currentV - v;
+    Vector3r deltaW = currentW - w;
+    const real_t dt = m_cfg.sim_dt;
+
+    if (!deltaV.isZero() || !deltaW.isZero()) {
+        real_t mass = (m_reg.any_of<C_Mass>(e) ? m_reg.get<C_Mass>(e).m : (real_t)0);
+        Vector3r inertia = (m_reg.any_of<C_InertiaDiag>(e) ? m_reg.get<C_InertiaDiag>(e).I : Vector3r::Zero());
+        applyForce(e, -deltaV * mass / dt, -deltaW.cwiseProduct(inertia) / dt);
+    }
+    m_forces_dirty = true;
+}
+
 // ---------- Subsystems ----------
 
 cardillo::collision::CollisionCoal& PhysicsSystem::collisionManager() {
