@@ -153,8 +153,9 @@ void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
                 const_cast<PhysicsSystem::C_Position3&>(reg.get<PhysicsSystem::C_Position3>(e)).value = qb.head<3>();
             }
             if (qb.size() >= 7 && reg.any_of<PhysicsSystem::C_Orientation>(e)) {
-                Quaternion4r qn(qb.tail<4>()); qn.normalize();
-                const_cast<PhysicsSystem::C_Orientation&>(reg.get<PhysicsSystem::C_Orientation>(e)).value = qn;
+                Quaternion4r qn(qb.tail<4>());
+                const Quaternion4r q_ref = reg.get<PhysicsSystem::C_Orientation>(e).value;
+                const_cast<PhysicsSystem::C_Orientation&>(reg.get<PhysicsSystem::C_Orientation>(e)).value = PhysicsSystem::alignQuaternionTo(qn, q_ref);
             }
         }
     }
@@ -369,7 +370,7 @@ void DynamicsAssembler::rebuildInteractionW_()
     m_S_sparse_lu.reset();
 }
 
-bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyroInMatrix)
+bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyroInMatrix, bool lambdaTheta)
 {
     auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS);
     // Ensure current blocks are built
@@ -432,6 +433,8 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
         }
     }
 
+    const real_t topScale = lambdaTheta ? theta : (real_t)1.0;
+
     // Wg and Wgamma contributions: m_Wg is (nSprings x totalV)
     for (int k = 0; k < m_Wg.outerSize(); ++k) {
         for (typename Eigen::SparseMatrix<real_t>::InnerIterator it(m_Wg, k); it; ++it) {
@@ -439,7 +442,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
             int col = it.col(); // velocity index
             real_t v = it.value();
             // top-right: (col, totalV + row)
-            trips.emplace_back(col, totalV + row, v);
+            trips.emplace_back(col, totalV + row, topScale * v);
             // middle-left: (totalV + row, col)
             trips.emplace_back(totalV + row, col, v);
         }
@@ -448,7 +451,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
         for (typename Eigen::SparseMatrix<real_t>::InnerIterator it(m_Wgamma, k); it; ++it) {
             int row = it.row(); int col = it.col(); real_t v = it.value();
             // top-right gamma: (col, totalV + nSprings + row)
-            trips.emplace_back(col, totalV + nSprings + row, v);
+            trips.emplace_back(col, totalV + nSprings + row, topScale * v);
             // lower-left gamma: (totalV + nSprings + row, col)
             trips.emplace_back(totalV + nSprings + row, col, v);
         }
@@ -478,7 +481,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
     // Factorize using SparseLU (provide symmetry hint when applicable).
     try {
         m_S_sparse_lu.emplace();
-        m_S_sparse_lu->isSymmetric(!includeGyroInMatrix);
+        m_S_sparse_lu->isSymmetric(!includeGyroInMatrix && !lambdaTheta);
         m_S_sparse_lu->analyzePattern(m_S_sparse);
         m_S_sparse_lu->factorize(m_S_sparse);
         if (m_S_sparse_lu->info() != Eigen::Success) {
@@ -683,10 +686,10 @@ void DynamicsAssembler::refreshState() {
     }
 }
 
-void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt, real_t theta, bool includeGyroInMatrix) {
+void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt, real_t theta, bool includeGyroInMatrix, bool lambdaTheta) {
     updateContactsFromSystem();
     rebuildW_();
-    if (!buildAndFactorS(dt, theta, includeGyroInMatrix)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
+    if (!buildAndFactorS(dt, theta, includeGyroInMatrix, lambdaTheta)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
 }
 
 void DynamicsAssembler::refreshCollisionsAndSpringsStormerVerlet(real_t dt) {

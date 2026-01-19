@@ -40,6 +40,14 @@ namespace cardillo {
 // with translational DOFs only (no rotations).
 class PhysicsSystem {
 public:
+    static Quaternion4r alignQuaternionTo(const Quaternion4r& q_in, const Quaternion4r& q_ref) {
+        Quaternion4r q = q_in;
+        if (!q.coeffs().allFinite()) return q_ref;
+        q.normalize();
+        if (q_ref.dot(q) < (real_t)0) q.coeffs() = -q.coeffs();
+        return q;
+    }
+
     // Unified rigid-body creation API --------------------------------------------------
     struct RigidState {
         Vector3r     position       = Vector3r::Zero();
@@ -114,6 +122,17 @@ public:
         CapsuleShape() = default;
         CapsuleShape(real_t r, real_t h) : radius(r), halfLength(h) {}
     };
+    struct CylinderShape {
+        real_t radius{0}; real_t halfLength{0};
+        CylinderShape() = default;
+        CylinderShape(real_t r, real_t h) : radius(r), halfLength(h) {}
+    };
+    struct ConeShape {
+        real_t radius{0};
+        real_t height{0};
+        ConeShape() = default;
+        ConeShape(real_t r, real_t h) : radius(r), height(h) {}
+    };
     struct SphereShape  { 
         real_t radius{0};
         SphereShape() = default;
@@ -125,7 +144,7 @@ public:
         explicit MeshShape(const std::string& p, bool bbox=false, bool showCol=false) : path(p), use_bbox_collider(bbox), show_collider(showCol) {}
         MeshShape(const std::string& p, const Vector3r& s, bool bbox=false, bool showCol=false) : path(p), scale(s), use_bbox_collider(bbox), show_collider(showCol) {}
     };
-    using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, SphereShape, MeshShape>;
+    using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape>;
     struct RigidProps {
         // If neither mass nor density set => static (no physics object)
         std::optional<real_t> mass;     
@@ -140,7 +159,7 @@ public:
     };
 
     // Beam cross-section and spring params --------------------------------------------------
-    enum class BeamBodyType { Cube, Capsule };
+    enum class BeamBodyType { Cube, Capsule, Cylinder };
     struct BeamCrossSection {
         real_t width{0};
         real_t height{0};
@@ -149,7 +168,7 @@ public:
         BeamCrossSection(real_t w, real_t h, BeamBodyType t=BeamBodyType::Cube) : width(w), height(h), type(t) {}
         // Area
         real_t area() const {
-            if (type == BeamBodyType::Capsule) {
+            if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
                 real_t r = (std::min(width, height)) * (real_t)0.5;
                 return (real_t)M_PI * r * r;
             }
@@ -157,14 +176,14 @@ public:
         }
         // Second moments of area about local Y and Z
         real_t Iy() const {
-            if (type == BeamBodyType::Capsule) {
+            if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
                 real_t r = (std::min(width, height)) * (real_t)0.5;
                 return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0; // circle
             }
             return width * std::pow(height, (real_t)3) / (real_t)12.0;
         }
         real_t Iz() const {
-            if (type == BeamBodyType::Capsule) {
+            if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
                 real_t r = (std::min(width, height)) * (real_t)0.5;
                 return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0; // circle
             }
@@ -173,7 +192,7 @@ public:
         real_t Jp() const { return Iy() + Iz(); } // polar approx
 
         real_t sectionModulus() const {
-        if (type == BeamBodyType::Capsule) {
+        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
             // Circle: c = R, Iy = Iz = I. W = I/R = (pi*R^4/4) / R = pi*R^3/4
             real_t r = (std::min(width, height)) * (real_t)0.5;
             if (r == (real_t)0.0) return (real_t)0.0;
@@ -385,12 +404,16 @@ public:
     struct C_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
     struct C_Cube { Vector3r center{Vector3r::Zero()}; Vector3r halfExtents; Quaternion4r q{Quaternion4r::Identity()}; };
     struct C_Capsule { real_t radius; real_t halfLength; };
+    struct C_Cylinder { real_t radius; real_t halfLength; };
+    struct C_Cone { real_t radius; real_t height; };
     struct C_Friction { real_t mu; }; // optional friction coefficient per entity (>=0), absent => 0
     struct C_VisualObject {};
     struct C_PointVisualTag {};
     struct C_PlaneVisualTag {};
     struct C_CubeVisualTag {};
     struct C_CapsuleVisualTag {};
+    struct C_CylinderVisualTag {};
+    struct C_ConeVisualTag {};
     struct C_Collidable {};
     struct C_Radius { real_t r; };
     // Softbody visual surface: stores mesh topology (triangles) and the node entities driving vertices
@@ -419,6 +442,8 @@ public:
     struct C_RB_Mesh { };
     struct C_RB_Sphere { };
     struct C_RB_Capsule { real_t radius; real_t halfLength; };
+    struct C_RB_Cylinder { real_t radius; real_t halfLength; };
+    struct C_RB_Cone { real_t radius; real_t height; };
 
     // One-shot external wrench components (cleared every force rebuild)
     struct C_ExternalForce { Vector3r f; };

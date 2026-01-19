@@ -4,6 +4,7 @@
 #include <Eigen/Geometry>
 #include <cmath>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace cardillo {
@@ -82,6 +83,33 @@ private:
     Vector3r m_u{Vector3r::UnitX()};
     Vector3r m_v{Vector3r::UnitY()};
 };
+
+// Catmull-Rom spline (uniform parameterization, supports open or closed loops)
+class CatmullRomSpline : public SplinePattern {
+public:
+    CatmullRomSpline(std::vector<Vector3r> controlPoints, bool loop);
+    real_t totalLength() const override;
+    bool isLoop() const override;
+    SplineSample sample(real_t alpha) const override;
+    Vector3r centerOfMass() const override;
+private:
+    Vector3r controlPoint(int idx) const;
+    Vector3r segmentPosition(int seg, real_t t) const;
+    Vector3r segmentTangent(int seg, real_t t) const;
+    real_t approximateLength(int samplesPerSegment) const;
+    void buildArcLengthLUT(int samplesPerSegment);
+
+    std::vector<Vector3r> m_cp;
+    bool m_loop{false};
+    real_t m_len{(real_t)0};
+    std::vector<real_t> m_arcLut;
+    int m_lutSamplesPerSeg{0};
+    int m_lutSegCount{0};
+};
+
+// Load a list of splines from a BCC file (Catmull-Rom)
+std::vector<std::shared_ptr<SplinePattern>> loadSplinesFromBCC(const std::string &filePath,
+                                                                real_t scale = (real_t)1);
 
 } // namespace misc
 } // namespace cardillo

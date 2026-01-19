@@ -1,4 +1,4 @@
 build/
 .vscode/
 literature/
-vtk_out/
+vtk_out*

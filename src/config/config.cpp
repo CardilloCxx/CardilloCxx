@@ -44,6 +44,9 @@ Config ConfigReader::fromFile(const std::string& path) {
         else if (key == "pj.tol_abs") {
             try { cfg.pj_tol_abs = static_cast<real_t>(std::stod(val)); cfg.has_pj_tol_abs = true; } catch (...) {}
         }
+        else if (key == "pj.tol_rel") {
+            try { cfg.pj_tol_rel = static_cast<real_t>(std::stod(val)); cfg.has_pj_tol_rel = true; } catch (...) {}
+        }
         else if (key == "pj.relaxation") {
             try { cfg.pj_relaxation = static_cast<real_t>(std::stod(val)); cfg.has_pj_relaxation = true; } catch (...) {}
         }
@@ -91,6 +94,9 @@ Config ConfigReader::fromFile(const std::string& path) {
         }
         else if (key == "moreau.implicit_gyroscopy" || key == "solver.implicit_gyroscopy") {
             cfg.moreau_implicit_gyroscopy = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
+        }
+        else if (key == "moreau.lambda_theta" || key == "solver.lambda_theta") {
+            cfg.moreau_lambda_theta = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
         }
         else if (key == "sim.T") {
             try { cfg.sim_T = static_cast<real_t>(std::stod(val)); } catch (...) {}

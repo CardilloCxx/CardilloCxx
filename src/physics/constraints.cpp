@@ -253,8 +253,8 @@ ConstraintResult BeamConstraint::getConstraint() const {
     // Mid-orientation and strains (robust): enforce quaternion hemisphere continuity and use slerp
     Quaternion4r qA = wa.qA;
     Quaternion4r qB = wa.qB;
-    if (qA.coeffs().dot(qB.coeffs()) < (real_t)0.0) {
-        std::cout << "BeamConstraint: Quaterions not on same half space.\n";
+    if (qA.coeffs().dot(qB.coeffs()) < (real_t)0.0) { 
+        qB.coeffs() = -qB.coeffs();
     }
     const Quaternion4r qMidQ(0.5 * (qA.coeffs() + qB.coeffs()));   // 0.5*(qA + qB) 
     const Matrix33r A_mid = qMidQ.normalized().toRotationMatrix();

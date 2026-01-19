@@ -3,7 +3,7 @@ import numpy as np
 
 if __name__ == "__main__":
     # TODO: This needs to be adapted!
-    file = "/home/jonas/gitprojects/CardilloMPI/vtk_out/wilberforce_tracked.csv"
+    file = "../../../vtk_out/wilberforce_tracked.csv"
     usecols = (0, 2, 3, 4, 5, 6, 7, 8, 9, 10)
     data = np.loadtxt(file, delimiter=",", skiprows=1, usecols=usecols)
     print(f"data.shape: {data.shape}")

@@ -64,6 +64,7 @@ struct PJIterContext {
 	real_t tol{(real_t)1e-5};
 	real_t relax{(real_t)1};
 	bool debug{false};
+	real_t eps_rel{(real_t)0};
 	// Outputs
 	real_t err_global{std::numeric_limits<real_t>::max()};
 	index_t iteration{0};
@@ -252,14 +253,22 @@ static inline void pj_sweep(PJIterContext& ctx, const VectorXr& x_in,
 }
 
 // Compute global L2 norm of difference across local body segments
-static inline real_t global_segment_norm(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b) {
+static inline real_t global_segment_norm(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b, real_t eps_abs) {
 	const auto& bo = ctx.bodyOffsets; const auto& res = ctx.res;
 	double loc_sum = 0.0;
 	for (int br = res.bodyStart; br < res.bodyEnd; ++br) {
 		int off = bo[(size_t)br]; int n = bo[(size_t)br+1] - off;
 		if (n > 0) {
 			Eigen::Map<const VectorXr> va(a.data()+off, n), vb(b.data()+off, n);
-			loc_sum += (va - vb).squaredNorm();
+			if (ctx.eps_rel > (real_t)0) {
+				const VectorXr scale = VectorXr::Constant(n, eps_abs)
+					+ ctx.eps_rel * va.cwiseAbs().cwiseMax(vb.cwiseAbs());
+				const VectorXr diff = (va - vb).cwiseQuotient(scale);
+				loc_sum += diff.squaredNorm();
+			} else {
+				const VectorXr diff = (va - vb) / eps_abs;
+				loc_sum += diff.squaredNorm();
+			}
 		}
 	}
 	double gsum = 0.0; MPI_Allreduce(&loc_sum, &gsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -268,7 +277,8 @@ static inline real_t global_segment_norm(const PJIterContext& ctx, const VectorX
 		std::cerr << "[ProjectedJacobi] Warning: NaN detected in global_segment_norm" << std::endl;
 	}
 
-	return (real_t)std::sqrt(gsum);
+	const real_t denom = (ctx.nV > 0) ? (real_t)std::sqrt((double)ctx.nV) : (real_t)1;
+	return (real_t)std::sqrt(gsum) / denom;
 }
 
 static inline real_t global_contact_norm(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b) {
@@ -306,13 +316,13 @@ static inline void standard_loop(PJIterContext& ctx,
 	VectorXr p_prev = p;
 	while (ctx.iteration < ctx.maxIterations) {
 		pj_sweep(ctx, u_prev, p_prev, u, p);
-		ctx.err_global = global_segment_norm(ctx, u, u_prev);
+		ctx.err_global = global_segment_norm(ctx, u, u_prev, ctx.tol);
 		real_t err_p = global_contact_norm(ctx, p, p_prev);
 		if (logger) {
 			logger->report(static_cast<int>(ctx.iteration + 1), ctx.err_global, err_p, 0.0, false, "");
 		}
 		++ctx.iteration;
-		if (ctx.err_global <= ctx.tol) break;
+		if (ctx.err_global <= (real_t)1) break;
 		if (ctx.debug && ctx.worldRank == 0 && (ctx.iteration % 1000 == 0)) {
 			std::cout << "[ProjectedJacobi] Iteration " << ctx.iteration << ", error = " << ctx.err_global << std::endl;
 		}
@@ -340,7 +350,7 @@ static inline void nesterov_loop(PJIterContext& ctx,
 	bool momentum_disabled = false;
 	while (ctx.iteration < ctx.maxIterations) {
 		pj_sweep(ctx, yuk, ypk, xuk1, xpk1);
-		ctx.err_global = global_segment_norm(ctx, xuk1, yuk);
+		ctx.err_global = global_segment_norm(ctx, xuk1, yuk, ctx.tol);
 		real_t err_p = global_contact_norm(ctx, xpk1, ypk);
 		++ctx.iteration;
 		double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
@@ -360,7 +370,7 @@ static inline void nesterov_loop(PJIterContext& ctx,
 		if (logger) {
 			logger->report(static_cast<int>(ctx.iteration), ctx.err_global, err_p, betak1, restart, resetReason);
 		}
-		if (ctx.err_global <= ctx.tol) break;
+		if (ctx.err_global <= (real_t)1) break;
 
 		if (restart) {
 			yuk = xuk1;
@@ -446,6 +456,7 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	ctx.tol = tol;
 	ctx.relax = m_relax;
 	ctx.debug = m_debug;
+	ctx.eps_rel = m_epsRel;
 
 	ConvergenceCsvWriter csvWriter(m_convCsvDir, worldRank);
 	ConvergenceCsvWriter* logger = (!m_convCsvDir.empty() && worldRank == 0) ? &csvWriter : nullptr;

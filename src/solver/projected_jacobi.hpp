@@ -27,6 +27,7 @@ public:
         
         , m_relax(std::clamp<real_t>(cfg.pj_relaxation, 0, 1))
         , m_maxIterations(std::max(1, cfg.pj_max_iterations))
+        , m_epsRel(cfg.pj_tol_rel)
         , m_warmStart(cfg.pj_warmstart)
         , m_debug(cfg.debug_pj)
         , m_useNesterov(cfg.pj_nesterov)
@@ -54,6 +55,7 @@ private:
     bool m_useNesterov{false};
     double m_nest_beta_threshold{0.995};
     int m_nest_restart_limit{4};
+    real_t m_epsRel{(real_t)0};
     WarmstartProvider* m_wsProvider{nullptr};
     std::string m_convCsvDir{};
     int m_lastIterations{0};

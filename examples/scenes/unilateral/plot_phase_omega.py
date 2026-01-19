@@ -7,6 +7,8 @@ from scipy.integrate import cumulative_trapezoid
 
 p = Path(__file__).resolve().parents[3] / "vtk_out" / "unilateral_tracked.csv"
 out_pdf = Path(__file__).resolve().parent / "unilateral_phase_wy_integral.pdf"
+tikz_data_dir = Path(__file__).resolve().parents[3] / "latex" / "plots" / "data_tikz"
+tikz_data_dir.mkdir(parents=True, exist_ok=True)
 groups = defaultdict(lambda: {"t": [], "wy": []})
 with p.open() as f:
     for r in csv.DictReader(f):
@@ -46,6 +48,13 @@ for ax, name in zip(axes, names):
 
     I = cumulative_trapezoid(wy_sorted, t_sorted, initial=0.0)
     I = [v - I[-1] for v in I]
+
+    # Export for tikz
+    out_dat = tikz_data_dir / f"unilateral_phase_{name}.dat"
+    with out_dat.open("w") as f:
+        f.write("phi, phidot\n")
+        for phi, phidot in zip(I, wy_sorted):
+            f.write(f"{phi}, {phidot}\n")
 
     # Ensure 0 is centered on the x-axis by using symmetric limits.
     if I:

@@ -66,6 +66,26 @@ inline Vector3r capsuleInertiaDiag(real_t m, real_t radius, real_t halfLength) {
                     static_cast<real_t>(Iunit(2,2))) * scale;
 }
 
+inline Vector3r cylinderInertiaDiag(real_t m, real_t radius, real_t halfLength) {
+    const real_t h = halfLength * (real_t)2.0;
+    const real_t r2 = radius * radius;
+    const real_t Izz = (real_t)0.5 * m * r2; // axis along local Z
+    const real_t Ixx = (real_t)1.0/12.0 * m * ((real_t)3.0 * r2 + h * h);
+    const real_t Iyy = Ixx;
+    return Vector3r(Ixx, Iyy, Izz);
+}
+
+inline Vector3r coneInertiaDiag(real_t m, real_t radius, real_t height) {
+    coal::Cone cone((coal::CoalScalar)radius, (coal::CoalScalar)height);
+    const real_t volume = static_cast<real_t>(cone.computeVolume());
+    if (volume <= (real_t)0) return Vector3r::Zero();
+    const auto Iunit = cone.computeMomentofInertia();
+    const real_t scale = m / volume;
+    return Vector3r(static_cast<real_t>(Iunit(0,0)),
+                    static_cast<real_t>(Iunit(1,1)),
+                    static_cast<real_t>(Iunit(2,2))) * scale;
+}
+
 // Helper to populate common rigid body components
 inline void emplaceRigidBodyCommon(entt::registry& reg,
                                    entt::entity e,
@@ -81,7 +101,7 @@ inline void emplaceRigidBodyCommon(entt::registry& reg,
     reg.emplace<PhysicsSystem::C_Collidable>(e);
     reg.emplace<PhysicsSystem::C_VisualObject>(e);
     reg.emplace<PhysicsSystem::C_Position3>(e, PhysicsSystem::C_Position3{position});
-    reg.emplace<PhysicsSystem::C_Orientation>(e, PhysicsSystem::C_Orientation{orientation});
+    reg.emplace<PhysicsSystem::C_Orientation>(e, PhysicsSystem::C_Orientation{Quaternion4r(orientation).normalized()});
     reg.emplace<PhysicsSystem::C_LinearVelocity3>(e, PhysicsSystem::C_LinearVelocity3{linearVelocity});
     reg.emplace<PhysicsSystem::C_AngularVelocity3>(e, PhysicsSystem::C_AngularVelocity3{angularVelocity});
     reg.emplace<PhysicsSystem::C_Mass>(e, PhysicsSystem::C_Mass{mass});
@@ -136,16 +156,20 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
     real_t computedMass = (real_t)0;
     auto computeVolumeCube = [](const Vector3r& he){ return (real_t)8 * he.x()*he.y()*he.z(); };
     auto computeVolumeCapsule = [](real_t r, real_t h){ return (real_t)M_PI * r*r * (2*h + (real_t)4.0/3.0 * r); };
+    auto computeVolumeCylinder = [](real_t r, real_t h){ return (real_t)M_PI * r*r * (2*h); };
     auto computeVolumeSphere = [](real_t r){ return (real_t)4.0/3.0 * (real_t)M_PI * r*r*r; };
+    auto computeVolumeCone = [](real_t r, real_t h){ return (real_t)1.0/3.0 * (real_t)M_PI * r*r*h; };
     real_t densityUsed = props.density.value_or((real_t)0);
 
     // Pre-extract shape volume if density is provided and mass absent
     if (!massOpt.has_value() && props.density.has_value()) {
         std::visit([&](auto&& s){ 
             using T = std::decay_t<decltype(s)>; 
-            if constexpr (std::is_same_v<T, CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents); 
-            else if constexpr (std::is_same_v<T, CapsuleShape>) computedMass = densityUsed * computeVolumeCapsule(s.radius, s.halfLength); 
-            else if constexpr (std::is_same_v<T, SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius); 
+                        if constexpr (std::is_same_v<T, CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents); 
+                        else if constexpr (std::is_same_v<T, CapsuleShape>) computedMass = densityUsed * computeVolumeCapsule(s.radius, s.halfLength);
+                        else if constexpr (std::is_same_v<T, CylinderShape>) computedMass = densityUsed * computeVolumeCylinder(s.radius, s.halfLength);
+                        else if constexpr (std::is_same_v<T, SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius); 
+                        else if constexpr (std::is_same_v<T, ConeShape>) computedMass = densityUsed * computeVolumeCone(s.radius, s.height);
             else if constexpr (std::is_same_v<T, PlaneShape>) computedMass = 0; 
           else if constexpr (std::is_same_v<T, MeshShape>) { const ::cardillo::MeshAsset& ma = assets().getMesh(s.path, s.scale, true); 
                  if (ma.volume > (real_t)0) computedMass = densityUsed * ma.volume; } }, shape);
@@ -177,6 +201,14 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
                 m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
                 m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{sphereInertiaDiag(mass, s.radius)});
             }
+        } else if constexpr (std::is_same_v<T, ConeShape>) {
+            if (props.visual)    m_reg.emplace<C_ConeVisualTag>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Cone>(e, C_RB_Cone{s.radius, s.height});
+            m_reg.emplace<C_Cone>(e, C_Cone{s.radius, s.height});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{coneInertiaDiag(mass, s.radius, s.height)});
+            }
         } else if constexpr (std::is_same_v<T, CapsuleShape>) {
             if (props.visual)    m_reg.emplace<C_CapsuleVisualTag>(e);
             if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Capsule>(e, C_RB_Capsule{s.radius, s.halfLength});
@@ -184,6 +216,14 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
             if (mass > 0) {
                 m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
                 m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{capsuleInertiaDiag(mass, s.radius, s.halfLength)});
+            }
+        } else if constexpr (std::is_same_v<T, CylinderShape>) {
+            if (props.visual)    m_reg.emplace<C_CylinderVisualTag>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Cylinder>(e, C_RB_Cylinder{s.radius, s.halfLength});
+            m_reg.emplace<C_Cylinder>(e, C_Cylinder{s.radius, s.halfLength});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{cylinderInertiaDiag(mass, s.radius, s.halfLength)});
             }
         } else if constexpr (std::is_same_v<T, PlaneShape>) {
             if (props.visual)    m_reg.emplace<C_PlaneVisualTag>(e);
@@ -219,7 +259,7 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
                 Quaternion4r q_new = state.orientation * q_rpa;
                 Vector3r pos_new = state.position + (state.orientation * asset.com);
                 m_reg.get<C_Position3>(e).value = pos_new;
-                m_reg.get<C_Orientation>(e).value = q_new;
+                m_reg.get<C_Orientation>(e).value = Quaternion4r(q_new).normalized();
                 m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
                 if (asset.volume > (real_t)0) {
                     const real_t rho = mass / asset.volume;
@@ -653,8 +693,13 @@ void PhysicsSystem::setPosition(entt::entity e, const Vector3r& p) {
 
 void PhysicsSystem::setOrientation(entt::entity e, const Quaternion4r& q_in) {
     if (!m_reg.valid(e)) return;
-    Quaternion4r q = q_in; q.normalize();
-    if (m_reg.any_of<C_Orientation>(e)) m_reg.get<C_Orientation>(e).value = q; else m_reg.emplace<C_Orientation>(e, C_Orientation{q});
+    if (m_reg.any_of<C_Orientation>(e)) {
+        const Quaternion4r q_ref = m_reg.get<C_Orientation>(e).value;
+        m_reg.get<C_Orientation>(e).value = PhysicsSystem::alignQuaternionTo(q_in, q_ref);
+    } else {
+        Quaternion4r q = q_in; q.normalize();
+        m_reg.emplace<C_Orientation>(e, C_Orientation{q});
+    }
     markStateDirty();
 }
 
@@ -720,117 +765,180 @@ const ::cardillo::HeightFieldAsset& PhysicsSystem::getHeightFieldAsset(entt::ent
     return assets().getHeightField(ch.path, ch.x_dim, ch.y_dim, ch.z_scale, ch.min_height);
 }
 
+namespace {
+struct BeamSample {
+    Vector3r position;
+    Vector3r tangent;
+    Vector3r normal;
+    Vector3r binormal;
+    real_t   segLen;
+};
+
+static inline Matrix33r makeFrameFromTangentLocal(const Vector3r &tangent) {
+    Vector3r T = tangent.normalized();
+    Vector3r up = std::abs(T.z()) < (real_t)0.9 ? Vector3r(0,0,1) : Vector3r(0,1,0);
+    Vector3r N = up.cross(T).normalized();
+    if (N.squaredNorm() < (real_t)1e-12) {
+        up = Vector3r(1,0,0);
+        N = up.cross(T).normalized();
+    }
+    Vector3r B = T.cross(N).normalized();
+    Matrix33r M; M.col(0)=T; M.col(1)=N; M.col(2)=B; return M;
+}
+
+static std::pair<entt::entity, entt::entity> buildBeamFromSamples(PhysicsSystem &sys,
+                                                                   const std::vector<BeamSample> &samples,
+                                                                   bool loop,
+                                                                   const PhysicsSystem::BeamCrossSection &section,
+                                                                   const PhysicsSystem::BeamSpringParams &springs,
+                                                                   const PhysicsSystem::RigidState &stateDefaults,
+                                                                   const PhysicsSystem::RigidProps &propsDefaults,
+                                                                   const Vector3r &splineCOMWorld) {
+    using namespace cardillo::physics;
+    if (samples.empty()) return {entt::null, entt::null};
+
+    real_t totalLen = (real_t)0;
+    for (const auto &s : samples) totalLen += s.segLen;
+    if (totalLen <= (real_t)0) totalLen = (real_t)1;
+
+    Matrix33r Rshape = Matrix33r::Identity();
+    if (section.type == PhysicsSystem::BeamBodyType::Capsule || section.type == PhysicsSystem::BeamBodyType::Cylinder) {
+        Rshape = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), Vector3r::UnitX()).toRotationMatrix();
+    }
+
+    entt::entity root = entt::null;
+    entt::entity prev = entt::null;
+    entt::entity end  = entt::null;
+
+    Matrix33r Rbody = stateDefaults.orientation.toRotationMatrix();
+    Vector3r worldCOM = splineCOMWorld + stateDefaults.position;
+    Vector3r v_body_world = Rbody * stateDefaults.linearVelocity;
+    Vector3r w_body_world = Rbody * stateDefaults.angularVelocity;
+
+    Quaternion4r q_prev = Quaternion4r::Identity();
+
+    for (const auto &s : samples) {
+        const real_t segLen = s.segLen;
+        PhysicsSystem::RigidShape shape;
+        if (section.type == PhysicsSystem::BeamBodyType::Cube) {
+            shape = PhysicsSystem::CubeShape(Vector3r(segLen * (real_t)0.5, section.width*(real_t)0.5, section.height*(real_t)0.5));
+        } else if (section.type == PhysicsSystem::BeamBodyType::Cylinder) {
+            real_t r = std::min(section.width, section.height) * (real_t)0.5;
+            shape = PhysicsSystem::CylinderShape(r, segLen * (real_t)0.5);
+        } else {
+            real_t r = std::min(section.width, section.height) * (real_t)0.5;
+            shape = PhysicsSystem::CapsuleShape(r, segLen * (real_t)0.5);
+        }
+
+        PhysicsSystem::RigidProps segProps = propsDefaults;
+        real_t massPerSegment = 0;
+        if (propsDefaults.mass.has_value()) massPerSegment = *propsDefaults.mass * (segLen / totalLen);
+        else if (propsDefaults.density.has_value()) massPerSegment = *propsDefaults.density * (section.area() * segLen);
+        segProps.mass = (massPerSegment > 0 ? std::optional<real_t>(massPerSegment) : std::nullopt);
+
+        Matrix33r Rlocal;
+        if (s.normal.squaredNorm() > (real_t)0 && s.binormal.squaredNorm() > (real_t)0) {
+            Rlocal.col(0) = s.tangent.normalized();
+            Rlocal.col(1) = s.normal.normalized();
+            Rlocal.col(2) = s.binormal.normalized();
+        } else {
+            Rlocal = makeFrameFromTangentLocal(s.tangent);
+        }
+        Matrix33r Rworld = Rbody * Rlocal * Rshape;
+        Quaternion4r qworld(Rworld); qworld.normalize();
+
+        qworld = PhysicsSystem::alignQuaternionTo(qworld, q_prev);
+        q_prev = qworld;
+
+        Vector3r worldPos = splineCOMWorld + stateDefaults.position + Rbody * (s.position - splineCOMWorld);
+        Vector3r v_world = v_body_world + w_body_world.cross(worldPos - worldCOM);
+
+        PhysicsSystem::RigidState segState;
+        segState.position = worldPos;
+        segState.orientation = qworld;
+        segState.linearVelocity = v_world;
+        segState.angularVelocity = Rlocal.transpose() * stateDefaults.angularVelocity;
+        entt::entity cur = sys.addRigidBody(shape, segState, segProps);
+
+        PhysicsSystem::C_BeamElement be_cur;
+        be_cur.l0 = segLen;
+        be_cur.l  = segLen;
+        if (prev != entt::null) {
+            be_cur.prev = prev;
+            if (!sys.ecs().any_of<PhysicsSystem::C_BeamElement>(prev)) {
+                PhysicsSystem::C_BeamElement be_prev;
+                be_prev.l0 = segLen;
+                be_prev.l  = segLen;
+                be_prev.next = cur;
+                sys.ecs().emplace<PhysicsSystem::C_BeamElement>(prev, be_prev);
+            } else {
+                sys.ecs().get<PhysicsSystem::C_BeamElement>(prev).next = cur;
+            }
+        }
+        sys.ecs().emplace<PhysicsSystem::C_BeamElement>(cur, be_cur);
+
+        if (prev != entt::null) {
+            sys.addConstraint<BeamConstraint>(sys.ecs(), prev, cur, springs, section);
+            sys.disableCollisionBetween(prev, cur);
+        }
+        if (root == entt::null) root = cur;
+        prev = cur;
+        end = cur;
+    }
+
+    if (loop && root != entt::null && end != entt::null && end != root) {
+        sys.addConstraint<BeamConstraint>(sys.ecs(), end, root, springs, section);
+        sys.disableCollisionBetween(end, root);
+        if (sys.ecs().any_of<PhysicsSystem::C_BeamElement>(end)) sys.ecs().get<PhysicsSystem::C_BeamElement>(end).next = root;
+        if (sys.ecs().any_of<PhysicsSystem::C_BeamElement>(root)) sys.ecs().get<PhysicsSystem::C_BeamElement>(root).prev = end;
+    }
+    return {root, end};
+}
+} // namespace
+
 std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::SplinePattern& spline,
                                                                const BeamCrossSection& section,
                                                                const BeamSpringParams& springs,
                                                                const RigidState& stateDefaults,
                                                                const RigidProps& propsDefaults,
                                                                size_t segments) {
-    using namespace physics;
     const real_t totalLen = spline.totalLength();
     const real_t segLen   = totalLen / (real_t)segments;
+    const bool endsOnSpline = true;
 
-    // Mass per segment
-    real_t massPerSegment = 0;
-    if (propsDefaults.mass.has_value()) massPerSegment = *propsDefaults.mass / (real_t)segments;
-    else if (propsDefaults.density.has_value()) massPerSegment = *propsDefaults.density * (section.area() * segLen);
+    std::vector<BeamSample> samples;
+    samples.reserve(segments);
 
-    // Shape
-    RigidShape shape;
-    Matrix33r Rshape = Matrix33r::Identity();
-    if (section.type == BeamBodyType::Cube) {
-        shape = CubeShape(Vector3r(segLen * (real_t)0.5, section.width*(real_t)0.5, section.height*(real_t)0.5));
-    } else {
-        real_t r = std::min(section.width, section.height) * (real_t)0.5;
-        shape = CapsuleShape(r, segLen * (real_t)0.5);
-        Rshape = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), Vector3r::UnitX()).toRotationMatrix();
+    if (endsOnSpline) {
+        const real_t minSegLen = (real_t)1e-8;
+        const size_t segCount = segments;
+        for (size_t i = 0; i < segCount; ++i) {
+            real_t alpha0 = (real_t)i / (real_t)segments; // alpha in [0, 1)
+            real_t alpha1 = (real_t)(i + 1) / (real_t)segments;
+            if (spline.isLoop() && i + 1 == segCount) alpha1 = (real_t)0;
+
+            misc::SplineSample si0 = spline.sample(alpha0); 
+            misc::SplineSample si1 = spline.sample(alpha1);
+            Vector3r midPos = (si0.position + si1.position) * (real_t)0.5;
+            real_t local_segLen = (si1.position - si0.position).norm();
+            if (local_segLen <= minSegLen) continue;
+            Vector3r midTangent = (si1.position - si0.position) / local_segLen;
+            Vector3r midNormal = (si0.normal + si1.normal).normalized();
+            Vector3r midBinormal = (si0.binormal + si1.binormal).normalized();
+            samples.push_back(BeamSample{midPos, midTangent, midNormal, midBinormal, local_segLen});
+        }
+    }else {
+        for (size_t i = 0; i <= segments; ++i) {
+            real_t alpha = (real_t)i / (real_t)segments; // alpha in [0, 1)
+            misc::SplineSample si = spline.sample(alpha);
+            samples.push_back(BeamSample{si.position, si.tangent, si.normal, si.binormal, segLen});
+        }
     }
 
-    RigidProps segProps = propsDefaults;
-    segProps.mass = (massPerSegment > 0 ? std::optional<real_t>(massPerSegment) : std::nullopt);
-
-    // Per-segment stiffness (material or direct overrides)
-    // const Vector3r Ke = springs.Ke(segLen, section);
-    // const Vector3r Kf = springs.Kf(segLen, section);
-    // const Vector3r De = Ke * springs.dampingFactor;
-    // const Vector3r Df = Kf * springs.dampingFactor;
-
-    entt::entity root = entt::null;
-    entt::entity prev = entt::null;
-    entt::entity end  = entt::null;
-
-    const bool loop = spline.isLoop();
-    // Compute spline COM in world coordinates and compose with state
     Vector3r splineCOMWorld = spline.centerOfMass();
-    Matrix33r Rbody = stateDefaults.orientation.toRotationMatrix();
-    // Rotating about COM keeps COM itself unchanged; state translation shifts COM
-    Vector3r worldCOM = splineCOMWorld + stateDefaults.position;
-    // Precompute state (body-frame) velocities expressed in world frame
-    Vector3r v_body_world = Rbody * stateDefaults.linearVelocity;
-    Vector3r w_body_world = Rbody * stateDefaults.angularVelocity; // body-frame to world
-
-    Quaternion4r q_prev = Quaternion4r::Identity();
-
-    for (size_t i = 0; i < segments; ++i) {
-        real_t alpha = (real_t)i / (real_t)segments; // alpha in [0, 1)
-        misc::SplineSample si = spline.sample(alpha);
-        Matrix33r Rlocal; Rlocal.col(0)=si.tangent; Rlocal.col(1)=si.normal; Rlocal.col(2)=si.binormal;
-        Matrix33r Rworld =  Rbody * Rlocal * Rshape;
-        Quaternion4r qworld(Rworld); qworld.normalize();
-        
-        // Ensure quaternion continuity
-        if (q_prev.dot(qworld) < (real_t)0) qworld.coeffs() = -qworld.coeffs();
-        q_prev = qworld;
-
-        // Rotate about spline COM, then add COM shift + state translation
-        Vector3r worldPos = splineCOMWorld + stateDefaults.position + Rbody * (si.position - splineCOMWorld);
-
-        // v = v_body_world + w_body_world x (worldPos - worldCOM)
-        Vector3r v_world = v_body_world + w_body_world.cross(worldPos - worldCOM);
-        RigidState segState;
-        segState.position = worldPos;
-        segState.orientation = qworld;
-        segState.linearVelocity = v_world;
-        // Convert provided body-frame angular velocity (state frame) to final body frame (state*spline)
-        segState.angularVelocity = Rlocal.transpose() * stateDefaults.angularVelocity;
-        entt::entity cur = addRigidBody(shape, segState, segProps);
-
-        // Beam element component and neighbor setup (data lives on entity)
-        C_BeamElement be_cur;
-        be_cur.l0 = segLen;
-        be_cur.l  = segLen;
-        if (prev != entt::null) {
-            be_cur.prev = prev;
-            // Ensure prev has a component and set its next
-            if (!m_reg.any_of<C_BeamElement>(prev)) {
-                C_BeamElement be_prev;
-                be_prev.l0 = segLen;
-                be_prev.l  = segLen;
-                be_prev.next = cur;
-                m_reg.emplace<C_BeamElement>(prev, be_prev);
-            } else {
-                m_reg.get<C_BeamElement>(prev).next = cur;
-            }
-        }
-        m_reg.emplace<C_BeamElement>(cur, be_cur);
-
-        if (prev != entt::null) {
-            addConstraint<BeamConstraint>(ecs(), prev, cur, springs, section);
-            disableCollisionBetween(prev, cur);
-        }
-        if (root == entt::null) root = cur;
-        prev = cur;
-        end = cur;
-    }
-    if (loop && root != entt::null && end != entt::null && end != root) {
-        addConstraint<BeamConstraint>(ecs(), end, root, springs, section);
-        disableCollisionBetween(end, root);
-        // Close neighbor links for looped beam
-        if (m_reg.any_of<C_BeamElement>(end)) m_reg.get<C_BeamElement>(end).next = root;
-        if (m_reg.any_of<C_BeamElement>(root)) m_reg.get<C_BeamElement>(root).prev = end;
-    }
-    return {root, end};
+    return buildBeamFromSamples(*this, samples, spline.isLoop(), section, springs, stateDefaults, propsDefaults, splineCOMWorld);
 }
+
 std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vector<const misc::SplinePattern*>& splines,
                                                                   const BeamCrossSection& section,
                                                                   const BeamSpringParams& springs,
@@ -850,6 +958,11 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vect
         auto pair = createBeam(*splines[i], section, springs, stateDefaults, propsDefaults, (size_t) (segments * (splines[i]->totalLength() / totalLen)));
         if (first == entt::null) first = pair.first;
         if (prevEnd != entt::null && pair.first != entt::null) {
+            if (ecs().any_of<C_Orientation>(prevEnd) && ecs().any_of<C_Orientation>(pair.first)) {
+                auto& qNext = ecs().get<C_Orientation>(pair.first).value;
+                const auto& qPrev = ecs().get<C_Orientation>(prevEnd).value;
+                qNext = PhysicsSystem::alignQuaternionTo(qNext, qPrev);
+            }
             addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first);
             disableCollisionBetween(prevEnd, pair.first);
         }
@@ -858,6 +971,7 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vect
     second = prevEnd;
     return {first, second};
 }
+
 void PhysicsSystem::explicitPositionUpdate(real_t h) {
     auto _sc = timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
 
@@ -871,14 +985,15 @@ void PhysicsSystem::explicitPositionUpdate(real_t h) {
     auto orientation_view = m_reg.view<C_Orientation, const C_AngularVelocity3>();
     for (auto [e, orientation, angularVel] : orientation_view.each()) {
         const Vector3r& omega = angularVel.value;
+        const Quaternion4r q_prev = orientation.value;
 
         Vector4r& P = orientation.value.coeffs();
         real_t w = P(3);
         P(3) -= h * 0.5 * P.head<3>().dot(omega);
         P.head<3>() += h * 0.5 * (w * omega + P.head<3>().cross(omega));
 
-        // re-normalize to avoid quaternion drift
-        orientation.value.normalize();
+        // re-normalize to avoid quaternion drift and keep hemisphere consistent with previous
+        orientation.value = PhysicsSystem::alignQuaternionTo(orientation.value, q_prev);
     }
     updateEntities();
 }
@@ -896,6 +1011,7 @@ void PhysicsSystem::linearImplicitPositionUpdate(real_t h) {
     auto orientation_view = m_reg.view<C_Orientation, const C_AngularVelocity3>();
     for (auto [e, orientation, angularVel] : orientation_view.each()) {
         const Vector3r& omega = angularVel.value;
+        const Quaternion4r q_prev = orientation.value;
 
         // skew matrix q_dot = 0.5 * D * P
         Matrix44r D = Matrix44r::Zero();
@@ -912,10 +1028,9 @@ void PhysicsSystem::linearImplicitPositionUpdate(real_t h) {
         // linear implicit update
         P = A.inverse() * P;
 
-        // re-normalize to avoid quaternion drift
-        orientation.value.normalize();
+        // re-normalize to avoid quaternion drift and keep hemisphere consistent with previous
+        orientation.value = PhysicsSystem::alignQuaternionTo(orientation.value, q_prev);
     }
-
     // Update beam element lengths after full pose (position + orientation) update
     updateEntities();
 }
@@ -945,8 +1060,8 @@ void PhysicsSystem::updateBeamElementEntity(entt::entity e) {
             auto R_A = m_reg.get<C_Orientation>(a).value.toRotationMatrix();
             auto R_B = m_reg.get<C_Orientation>(b).value.toRotationMatrix();
             
-            index_t x_col_A = m_reg.any_of<C_Capsule>(a) ? 2 : 0; 
-            index_t x_col_B = m_reg.any_of<C_Capsule>(b) ? 2 : 0;
+            index_t x_col_A = (m_reg.any_of<C_Capsule>(a) || m_reg.any_of<C_Cylinder>(a)) ? 2 : 0; 
+            index_t x_col_B = (m_reg.any_of<C_Capsule>(b) || m_reg.any_of<C_Cylinder>(b)) ? 2 : 0;
 
             auto e_Ax = R_A.col(x_col_A);
             auto e_Bx = R_B.col(x_col_B);
@@ -993,7 +1108,7 @@ void PhysicsSystem::updateBeamElementEntity(entt::entity e) {
     const real_t eps = (real_t)1e-8;
     if (std::abs(be.l - prevLen) > eps) {
         bool shapeChanged = false;
-        // Visual cube/capsule
+        // Visual cube/capsule/cylinder
         if (m_reg.any_of<C_Cube>(e)) {
             auto& cb = m_reg.get<C_Cube>(e);
             const real_t newHalfX = be.l * (real_t)0.5;
@@ -1003,6 +1118,11 @@ void PhysicsSystem::updateBeamElementEntity(entt::entity e) {
             auto& cap = m_reg.get<C_Capsule>(e);
             const real_t newHalf = be.l * (real_t)0.5;
             if (std::abs(cap.halfLength - newHalf) > eps) { cap.halfLength = newHalf; shapeChanged = true; }
+        }
+        if (m_reg.any_of<C_Cylinder>(e)) {
+            auto& cyl = m_reg.get<C_Cylinder>(e);
+            const real_t newHalf = be.l * (real_t)0.5;
+            if (std::abs(cyl.halfLength - newHalf) > eps) { cyl.halfLength = newHalf; shapeChanged = true; }
         }
         // Collider cube/capsule
         if (m_reg.any_of<C_RB_Cube>(e)) {
@@ -1014,6 +1134,11 @@ void PhysicsSystem::updateBeamElementEntity(entt::entity e) {
             auto& cap = m_reg.get<C_RB_Capsule>(e);
             const real_t newHalf = be.l * (real_t)0.5;
             if (std::abs(cap.halfLength - newHalf) > eps) { cap.halfLength = newHalf; shapeChanged = true; }
+        }
+        if (m_reg.any_of<C_RB_Cylinder>(e)) {
+            auto& cyl = m_reg.get<C_RB_Cylinder>(e);
+            const real_t newHalf = be.l * (real_t)0.5;
+            if (std::abs(cyl.halfLength - newHalf) > eps) { cyl.halfLength = newHalf; shapeChanged = true; }
         }
         if (shapeChanged) {
             markStructureDirty();

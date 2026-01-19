@@ -16,9 +16,6 @@ public:
         using namespace cardillo;
         using namespace cardillo::misc;
 
-        // Floor (static)
-        sys.addStaticBody(PhysicsSystem::CubeShape(Vector3r(50.0, 50.0, 0.1)), PhysicsSystem::RigidState(Vector3r(0,0,-0.1)));
-
         const real_t radius = 0.75;
         const real_t length = 2.0 * M_PI * radius;
         const real_t thickness = 0.05;
@@ -34,7 +31,7 @@ public:
 
         const int n = 10;
         const int m = 15;
-        const size_t segments = 24;
+        const size_t segments = 32;
         const real_t eps = 1e-3;
 
         const real_t c = (radius * 2 - thickness * 1.5);

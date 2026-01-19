@@ -50,6 +50,7 @@ private:
         Vector3r omega{Vector3r::Zero()};
         float partition{-1.0f};
         int entityId{-1};
+        float beamLengthRatio{1.0f};
         bool hasKinematics{false};
         bool isDynamic{false};
     };
@@ -69,6 +70,7 @@ private:
         bool hasKinematics{false};
         float partition{-1.0f};
         int entityId{-1};
+        float beamLengthRatio{1.0f};
         bool isDynamic{false};
     };
 

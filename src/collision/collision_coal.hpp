@@ -49,7 +49,7 @@ public:
     bool isPairDisabled(entt::entity a, entt::entity b) const;
 
 private:
-    enum class ColliderKind { Box, Sphere, Halfspace, Mesh, HeightField, Capsule };
+    enum class ColliderKind { Box, Sphere, Halfspace, Mesh, HeightField, Capsule, Cylinder, Cone };
 
     // Helpers
     void ensureBroadphaseFromConfig_();

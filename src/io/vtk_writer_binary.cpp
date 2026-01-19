@@ -176,6 +176,109 @@ void generateCapsuleMesh(int segmentsCircumference,
     }
 }
 
+void generateCylinderMesh(int segmentsCircumference,
+                          real_t radius,
+                          real_t halfLength,
+                          std::vector<Vector3r>& vertices,
+                          std::vector<Eigen::Vector3i>& triangles)
+{
+    vertices.clear();
+    triangles.clear();
+    if (radius <= (real_t)0) return;
+    const int nCirc = std::max(segmentsCircumference, 3);
+
+    const real_t pi = std::acos(static_cast<real_t>(-1));
+
+    const int bottomCenterIdx = static_cast<int>(vertices.size());
+    vertices.emplace_back(0, 0, -halfLength);
+    const int topCenterIdx = static_cast<int>(vertices.size());
+    vertices.emplace_back(0, 0, +halfLength);
+
+    std::vector<int> bottomRing;
+    std::vector<int> topRing;
+    bottomRing.reserve(nCirc);
+    topRing.reserve(nCirc);
+
+    for (int i = 0; i < nCirc; ++i) {
+        const real_t angle = static_cast<real_t>(2.0 * pi * i / nCirc);
+        const real_t cx = radius * std::cos(angle);
+        const real_t cy = radius * std::sin(angle);
+        bottomRing.push_back(static_cast<int>(vertices.size()));
+        vertices.emplace_back(cx, cy, -halfLength);
+        topRing.push_back(static_cast<int>(vertices.size()));
+        vertices.emplace_back(cx, cy, +halfLength);
+    }
+
+    // Side faces
+    for (int i = 0; i < nCirc; ++i) {
+        const int i0 = bottomRing[i];
+        const int i1 = bottomRing[(i + 1) % nCirc];
+        const int j0 = topRing[i];
+        const int j1 = topRing[(i + 1) % nCirc];
+        triangles.emplace_back(i0, i1, j1);
+        triangles.emplace_back(i0, j1, j0);
+    }
+
+    // Bottom cap
+    for (int i = 0; i < nCirc; ++i) {
+        const int i0 = bottomRing[i];
+        const int i1 = bottomRing[(i + 1) % nCirc];
+        triangles.emplace_back(bottomCenterIdx, i1, i0);
+    }
+
+    // Top cap
+    for (int i = 0; i < nCirc; ++i) {
+        const int i0 = topRing[i];
+        const int i1 = topRing[(i + 1) % nCirc];
+        triangles.emplace_back(topCenterIdx, i0, i1);
+    }
+}
+
+void generateConeMesh(int segmentsCircumference,
+                      real_t radius,
+                      real_t height,
+                      std::vector<Vector3r>& vertices,
+                      std::vector<Eigen::Vector3i>& triangles)
+{
+    vertices.clear();
+    triangles.clear();
+    if (radius <= (real_t)0 || height <= (real_t)0) return;
+    const int nCirc = std::max(segmentsCircumference, 3);
+
+    const real_t pi = std::acos(static_cast<real_t>(-1));
+    const real_t halfH = height * (real_t)0.5;
+
+    const int baseCenterIdx = static_cast<int>(vertices.size());
+    vertices.emplace_back(0, 0, -halfH);
+
+    std::vector<int> ringIdx;
+    ringIdx.reserve(nCirc);
+    for (int i = 0; i < nCirc; ++i) {
+        const real_t angle = static_cast<real_t>(2.0 * pi * i / nCirc);
+        const real_t cx = radius * std::cos(angle);
+        const real_t cy = radius * std::sin(angle);
+        ringIdx.push_back(static_cast<int>(vertices.size()));
+        vertices.emplace_back(cx, cy, -halfH);
+    }
+
+    const int apexIdx = static_cast<int>(vertices.size());
+    vertices.emplace_back(0, 0, halfH);
+
+    // Base triangles
+    for (int i = 0; i < nCirc; ++i) {
+        const int i0 = ringIdx[i];
+        const int i1 = ringIdx[(i + 1) % nCirc];
+        triangles.emplace_back(baseCenterIdx, i1, i0);
+    }
+
+    // Side triangles
+    for (int i = 0; i < nCirc; ++i) {
+        const int i0 = ringIdx[i];
+        const int i1 = ringIdx[(i + 1) % nCirc];
+        triangles.emplace_back(i0, i1, apexIdx);
+    }
+}
+
 } // namespace
 
 VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSystem& sys) const {
@@ -230,6 +333,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             co.entityId = static_cast<int>(entt::to_integral(e));
             co.partition = partitionFromBodyIndex_(sys, reg, e);
             co.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+                co.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
+            }
             if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
                 const auto& vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
                 const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
@@ -255,12 +362,93 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+                mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
+            }
             Quaternion4r qn = ori.value; qn.normalize();
             const Matrix33r R = qn.toRotationMatrix();
             mo.vertices.reserve(verts.size());
             for (const auto& v : verts) {
                 mo.vertices.push_back(R * v + pos.value);
             }
+            mo.R = R;
+            mo.triangles = std::move(tris);
+            if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
+                mo.vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
+                const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
+                mo.omega = omega_body;
+                mo.hasKinematics = true;
+            }
+            out.meshes.push_back(std::move(mo));
+        }
+    }
+
+    // Cylinders (emitted as triangle meshes)
+    {
+        auto vcyl = reg.view<cardillo::PhysicsSystem::C_VisualObject,
+                              cardillo::PhysicsSystem::C_Cylinder,
+                              cardillo::PhysicsSystem::C_Position3,
+                              cardillo::PhysicsSystem::C_Orientation>();
+        for (auto [e, cyl, pos, ori] : vcyl.each()) {
+            std::vector<Vector3r> verts;
+            std::vector<Eigen::Vector3i> tris;
+            generateCylinderMesh(16, cyl.radius, cyl.halfLength, verts, tris);
+            if (verts.empty() || tris.empty()) continue;
+            MeshOut mo;
+            mo.entityId = static_cast<int>(entt::to_integral(e));
+            mo.partition = partitionFromBodyIndex_(sys, reg, e);
+            mo.center = pos.value;
+            mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+                mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
+            }
+            Quaternion4r qn = ori.value; qn.normalize();
+            const Matrix33r R = qn.toRotationMatrix();
+            mo.vertices.reserve(verts.size());
+            for (const auto& v : verts) {
+                mo.vertices.push_back(R * v + pos.value);
+            }
+            mo.R = R;
+            mo.triangles = std::move(tris);
+            if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
+                mo.vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
+                const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
+                mo.omega = omega_body;
+                mo.hasKinematics = true;
+            }
+            out.meshes.push_back(std::move(mo));
+        }
+    }
+
+    // Cones (emitted as triangle meshes)
+    {
+        auto vcones = reg.view<cardillo::PhysicsSystem::C_VisualObject,
+                               cardillo::PhysicsSystem::C_Cone,
+                               cardillo::PhysicsSystem::C_Position3,
+                               cardillo::PhysicsSystem::C_Orientation>();
+        for (auto [e, cone, pos, ori] : vcones.each()) {
+            std::vector<Vector3r> verts;
+            std::vector<Eigen::Vector3i> tris;
+            generateConeMesh(24, cone.radius, cone.height, verts, tris);
+            if (verts.empty() || tris.empty()) continue;
+            MeshOut mo;
+            mo.entityId = static_cast<int>(entt::to_integral(e));
+            mo.partition = partitionFromBodyIndex_(sys, reg, e);
+            mo.center = pos.value;
+            mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+                mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
+            }
+            Quaternion4r qn = ori.value; qn.normalize();
+            const Matrix33r R = qn.toRotationMatrix();
+            mo.vertices.reserve(verts.size());
+            for (const auto& v : verts) {
+                mo.vertices.push_back(R * v + pos.value);
+            }
+            mo.R = R;
             mo.triangles = std::move(tris);
             if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
                 mo.vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
@@ -284,6 +472,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+                mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
+            }
             try {
                 const auto& asset = sys.getMeshAsset(e);
                 coal::BVHModelPtr_t bvh = asset.bvh;
@@ -722,6 +914,12 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
     for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, int32_t(-1));
     for (const auto& cu : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, int32_t(cu.entityId)); }
     for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, int32_t(m.entityId)); }
+
+    // beam length ratio: l / l0 for beam elements, 1 for others
+    out << "SCALARS beam_length_ratio float 1\nLOOKUP_TABLE default\n";
+    for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, 1.0f);
+    for (const auto& cu : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, cu.beamLengthRatio); }
+    for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, m.beamLengthRatio); }
 }
 
 // (Normals output removed intentionally)

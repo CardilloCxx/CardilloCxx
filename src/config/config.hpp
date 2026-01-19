@@ -13,6 +13,7 @@ struct Config {
     // PROJECTED_JACOBI scoped settings
     int    pj_max_iterations{200000};   // pj.max_iterations
     real_t pj_tol_abs{(real_t)1e-4};    // pj.tol_abs
+    real_t pj_tol_rel{(real_t)0};       // pj.tol_rel
     real_t pj_relaxation{(real_t)0.9};  // pj.relaxation
     real_t pj_alpha{(real_t)0.3};       // pj.alpha
     bool   pj_nesterov{false};          // pj.nesterov (enable Nesterov acceleration)
@@ -25,6 +26,7 @@ struct Config {
     bool has_pj_alpha{false};
     bool has_pj_max_iterations{false};
     bool has_pj_tol_abs{false};
+    bool has_pj_tol_rel{false};
     bool has_pj_relaxation{false};
     
 
@@ -76,6 +78,7 @@ struct Config {
     SolverType solver{SolverType::Moreau};
     real_t moreau_theta{(real_t)1.0};
     bool moreau_implicit_gyroscopy{false};
+    bool moreau_lambda_theta{false};
 
     std::string scene_name{"none-specified"};
 };
