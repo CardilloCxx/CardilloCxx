@@ -326,6 +326,21 @@ static inline real_t global_contact_norm(const PJIterContext& ctx, const VectorX
 	return (real_t)std::sqrt(gsum);
 }
 
+static inline real_t global_velocity_l2_norm(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b) {
+	const auto& bo = ctx.bodyOffsets; const auto& res = ctx.res;
+	double loc_sum = 0.0;
+	for (int br = res.bodyStart; br < res.bodyEnd; ++br) {
+		int off = bo[(size_t)br]; int n = bo[(size_t)br+1] - off;
+		if (n > 0) {
+			Eigen::Map<const VectorXr> va(a.data()+off, n), vb(b.data()+off, n);
+			const VectorXr diff = (va - vb);
+			loc_sum += diff.squaredNorm();
+		}
+	}
+	double gsum = 0.0; MPI_Allreduce(&loc_sum, &gsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	return (real_t)std::sqrt(gsum);
+}
+
 static inline double global_segment_dot(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b) {
 	const auto& bo = ctx.bodyOffsets; const auto& res = ctx.res;
 	double loc = 0.0;
@@ -352,9 +367,10 @@ static inline void standard_loop(PJIterContext& ctx,
 	while (ctx.iteration < ctx.maxIterations) {
 		pj_sweep(ctx, u_prev, p_prev, u, p);
 		ctx.err_global = global_segment_norm(ctx, u, u_prev, ctx.tol);
-		real_t err_p = global_contact_norm(ctx, p, p_prev);
 		if (logger) {
-			logger->report(static_cast<int>(ctx.iteration + 1), ctx.err_global, err_p, 0.0, false, "");
+			const real_t log_du = global_velocity_l2_norm(ctx, u, u_prev);
+			const real_t log_dp = global_contact_norm(ctx, p, p_prev);
+			logger->report(static_cast<int>(ctx.iteration + 1), log_du, log_dp, 0.0, false, "");
 		}
 		++ctx.iteration;
 		if (ctx.err_global <= (real_t)1) break;
@@ -385,8 +401,8 @@ static inline void nesterov_loop(PJIterContext& ctx,
 	bool momentum_disabled = false;
 	while (ctx.iteration < ctx.maxIterations) {
 		pj_sweep(ctx, yuk, ypk, xuk1, xpk1);
+
 		ctx.err_global = global_segment_norm(ctx, xuk1, yuk, ctx.tol);
-		real_t err_p = global_contact_norm(ctx, xpk1, ypk);
 		++ctx.iteration;
 		double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
 		double betak1 = (thk - 1.0) / thk1;
@@ -403,7 +419,9 @@ static inline void nesterov_loop(PJIterContext& ctx,
 		}
 		if (!restart && (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0)) { restart = true; resetReason = "beta_invalid"; }
 		if (logger) {
-			logger->report(static_cast<int>(ctx.iteration), ctx.err_global, err_p, betak1, restart, resetReason);
+			const real_t log_du = global_velocity_l2_norm(ctx, xuk1, xuk);
+			const real_t log_dp = global_contact_norm(ctx, xpk1, xpk);
+			logger->report(static_cast<int>(ctx.iteration), log_du, log_dp, betak1, restart, resetReason);
 		}
 		if (ctx.err_global <= (real_t)1) break;
 

@@ -1,10 +1,22 @@
-import matplotlib.pyplot as plt
+import os
+import sys
 import numpy as np
+import matplotlib
+
+# Use non-interactive backend when no DISPLAY is available (headless test runs)
+if "DISPLAY" not in os.environ:
+    matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
+
 
 if __name__ == "__main__":
-    # TODO: This needs to be adapted!
     file = "../../../vtk_out/wilberforce_tracked.csv"
     usecols = (0, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    if not os.path.exists(file):
+        print(f"File not found: {file}")
+        sys.exit(1)
+
     data = np.loadtxt(file, delimiter=",", skiprows=1, usecols=usecols)
     print(f"data.shape: {data.shape}")
     t, x, y, z, ux, uy, uz, omegax, omegay, omegaz = data.T
@@ -14,24 +26,41 @@ if __name__ == "__main__":
     beta = np.cumsum(omegay) * dt * 180 / np.pi
     gamma = np.cumsum(omegaz) * dt * 180 / np.pi
 
-    fig, ax = plt.subplots(3, 1)
+    # Clip time window for plotting
+    start_time = 0.3
+    end_time = 8.0
+    mask = (t >= start_time) & (t <= end_time)
+    if not np.any(mask):
+        print(f"Warning: no data in [{start_time}, {end_time}]s — plotting full range")
+    else:
+        t = t[mask]
+        alpha = alpha[mask]
+        z = z[mask]
 
-    ax[0].plot(t, x, label="x")
-    ax[0].plot(t, y, label="y")
-    ax[0].plot(t, z, label="z")
-    ax[0].grid()
-    ax[0].legend()
+    fig, ax = plt.subplots(1, 1, figsize=(10, 5))
 
-    ax[1].plot(t, alpha, label="alpha")
-    ax[1].plot(t, beta, label="beta")
-    ax[1].plot(t, gamma, label="gamma")
-    ax[1].grid()
-    ax[1].legend()
+    # Plot alpha in black on left y-axis
+    ax.plot(t, alpha, color="black", label="alpha (deg)")
+    ax.set_xlabel("time")
+    ax.set_ylabel("alpha (deg)", color="black")
+    ax.tick_params(axis='y', labelcolor='black')
+    ax.set_xlim(t[0], t[-1])
+    ax.grid(True)
 
-    ax[2].plot(t, omegax, label="omega x")
-    ax[2].plot(t, omegay, label="omega y")
-    ax[2].plot(t, omegaz, label="omega z")
-    ax[2].grid()
-    ax[2].legend()
+    # Create a secondary y-axis for z (red)
+    ax2 = ax.twinx()
+    ax2.plot(t, z, color="red", label="z")
+    ax2.set_ylabel("z", color="red")
+    ax2.tick_params(axis='y', labelcolor='red')
 
-    plt.show()
+    # Combined legend: gather handles from both axes
+    handles1, labels1 = ax.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    # ax.legend(handles1 + handles2, labels1 + labels2, loc="upper right")
+
+    plt.tight_layout()
+
+    # Always save a PNG (useful for headless runs); also show interactively if DISPLAY is set
+    out = "visualize_wilberforce.png"
+    fig.savefig(out, dpi=150)
+    print(f"Saved figure to {out}")

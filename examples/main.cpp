@@ -26,6 +26,7 @@
 #include "scenes/springTest/SpringTestScene.hpp"
 #include "scenes/rodAssembly/RodAssemblyScene.hpp"
 #include "scenes/net/NetScene.hpp"
+#include "scenes/euler_disk/EulerDiskScene.hpp"
 #include "scenes/wilberforce/WilberforcePendulum.hpp"
 #include "scenes/hangbride/HangbrideScene.hpp"
 #include "scenes/softbody/SoftbodyTestScene.hpp"
@@ -38,8 +39,8 @@
 #include "scenes/spaghetti/SpaghettiScene.hpp"
 #include "scenes/metronome/MetronomeScene.hpp"
 #include "scenes/strandbeest/StrandbeestScene.hpp"
-// #include "scenes/gears/GearsScene.hpp"           // temporarily disabled (hinge refactor)
-// #include "scenes/pendulum/PendulumScene.hpp"     // temporarily disabled (rigid/hinge refactor)
+// #include "scenes/gears/GearsScene.hpp"         
+// #include "scenes/pendulum/PendulumScene.hpp"  
 #include "scenes/leaningTower/LeaningTowerScene.hpp"
 #include "scenes/constraintTest/ConstraintTestScene.hpp"
 #include "scenes/cantilever/CantileverScene.hpp"
@@ -91,14 +92,15 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<ParcelScene>());
     scenes.emplace_back(std::make_unique<DiscreteRodScene>());
     scenes.emplace_back(std::make_unique<SlinkyScene>());
+    scenes.emplace_back(std::make_unique<EulerDiskScene>());
     scenes.emplace_back(std::make_unique<UnilateralScene>());
     scenes.emplace_back(std::make_unique<WoodpeckerScene>());
     scenes.emplace_back(std::make_unique<SpaghettiScene>());
     scenes.emplace_back(std::make_unique<MetronomeScene>());
     scenes.emplace_back(std::make_unique<StrandbeestScene>());
-    // scenes.emplace_back(std::make_unique<GearsScene>());       // uses HingeConstraint (under refactor)
+    // scenes.emplace_back(std::make_unique<GearsScene>());   
     scenes.emplace_back(std::make_unique<LeaningTowerScene>());
-    // scenes.emplace_back(std::make_unique<PendulumScene>());    // uses RigidConstraint/Hinge (under refactor)
+    // scenes.emplace_back(std::make_unique<PendulumScene>());  
     scenes.emplace_back(std::make_unique<ConstraintTestScene>());
     scenes.emplace_back(std::make_unique<CantileverScene>());
     scenes.emplace_back(std::make_unique<FabricScene>());

@@ -31,10 +31,7 @@ public:
         const size_t turns = 12;                          // helical turns count
         const size_t segmentsPerTurn = 30;               // recommended minimum segments per turn (24)
         const size_t segments = turns * segmentsPerTurn;
-        // // const real_t freeLength = wireRadius * turns * 3 * 5;
-        // const real_t freeLength = wireRadius * turns * 3 * 5;
-        // std::cout << "freeLength: " << freeLength << std::endl;
-
+        
         // Material properties
         const real_t density = 7850.0;               // kg/m^3
         const real_t E = 206e9;                      // Young's modulus (GPa)
@@ -160,14 +157,18 @@ public:
         auto Idiag = sys.ecs().get<PhysicsSystem::C_InertiaDiag>(m_bob).I;
         std::cout << "Bob inertia diag: Ixx = " << Idiag.x() << ", Iyy = " << Idiag.y() << ", Izz = " << Idiag.z() << std::endl;
 
+        auto RotMat = sys.ecs().get<PhysicsSystem::C_Orientation>(m_bob).value.toRotationMatrix();
+        std::cout << "Bob inertia world frame:\n" << RotMat * Idiag.asDiagonal() * RotMat.transpose() << std::endl;
+        std::cout << "Bob mass: " << sys.getMass(m_bob).col(0).row(0) << " kg" << std::endl;
+
 
         // Constraint the bob to only allow vertical and torsional motion
-        const real_t inf = std::numeric_limits<real_t>::infinity();
-        sys.addConstraint<physics::TranslationRotationConstraint>(sys.ecs(), m_bob, m_top, physics::JointFrame{},
-            Vector3r(inf, inf, 0), Vector3r::Zero(),
-            Vector3r(inf, inf, 0), Vector3r::Zero());
+        // const real_t inf = std::numeric_limits<real_t>::infinity();
+        // sys.addConstraint<physics::TranslationRotationConstraint>(sys.ecs(), m_bob, m_top, physics::JointFrame{},
+        //     Vector3r(inf, inf, 0), Vector3r::Zero(),
+        //     Vector3r(inf, inf, 0), Vector3r::Zero());
         
-
+ 
         // Pin bottom endpoint to bob using a rigid constraint
         // sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_bottom, m_bob, Vector3r::Zero(), Vector3r(0,0,tunedSize));
         sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_bottom, m_bob);
