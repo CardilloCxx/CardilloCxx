@@ -332,6 +332,8 @@ index_t PhysicsSystem::addObstacleHeightField(const Vector3r& position,
     m_reg.emplace<C_Position3>(e, C_Position3{position});
     m_reg.emplace<C_Orientation>(e, C_Orientation{orientation});
     // Visual + collider markers
+    // TODO: Is this necessary?
+    // m_reg.emplace<PhysicsSystem::C_Collidable>(e);
     m_reg.emplace<C_HeightFieldVisualTag>(e);
     m_reg.emplace<C_HeightField>(e, C_HeightField{exrPath, x_dim, y_dim, z_scale, min_height});
     if (!m_cfg.collision_disable_all) m_reg.emplace<C_RB_HeightField>(e);

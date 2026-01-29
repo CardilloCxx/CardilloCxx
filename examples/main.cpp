@@ -44,6 +44,7 @@
 #include "scenes/constraintTest/ConstraintTestScene.hpp"
 #include "scenes/cantilever/CantileverScene.hpp"
 #include "scenes/fabric/FabricScene.hpp"
+#include "scenes/heightmap/HeightmapScene.hpp"
 
 using namespace cardillo;
 
@@ -102,6 +103,7 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<ConstraintTestScene>());
     scenes.emplace_back(std::make_unique<CantileverScene>());
     scenes.emplace_back(std::make_unique<FabricScene>());
+    scenes.emplace_back(std::make_unique<HeightmapScene>());
 
     SceneBase* selected = nullptr;
     for (auto& s : scenes) {
