@@ -38,6 +38,7 @@
 #include "scenes/woodpecker/WoodpeckerScene.hpp"
 #include "scenes/spaghetti/SpaghettiScene.hpp"
 #include "scenes/metronome/MetronomeScene.hpp"
+#include "scenes/stacked_spheres/StackedSpheresScene.hpp"
 #include "scenes/strandbeest/StrandbeestScene.hpp"
 // #include "scenes/gears/GearsScene.hpp"         
 // #include "scenes/pendulum/PendulumScene.hpp"  
@@ -78,6 +79,7 @@ int main(int argc, char** argv) {
     // Construct all available scenes and select the one matching cfg.scene_name
     std::vector<std::unique_ptr<SceneBase>> scenes;
     scenes.emplace_back(std::make_unique<HeightmapScene>());
+    scenes.emplace_back(std::make_unique<StackedSpheresScene>());
     scenes.emplace_back(std::make_unique<DominoScene>());
     scenes.emplace_back(std::make_unique<CardhouseScene>());
     scenes.emplace_back(std::make_unique<SpringTestScene>());
