@@ -109,7 +109,7 @@ inline void emplaceRigidBodyCommon(entt::registry& reg,
 }
 
 // Construction and configuration
-PhysicsSystem::PhysicsSystem() 
+PhysicsSystem::PhysicsSystem()
 {
     m_gravity = Vector3r(0, 0, -9.81);
     // Default warmstart provider: simple global-index cache
@@ -163,15 +163,15 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
 
     // Pre-extract shape volume if density is provided and mass absent
     if (!massOpt.has_value() && props.density.has_value()) {
-        std::visit([&](auto&& s){ 
-            using T = std::decay_t<decltype(s)>; 
-            if constexpr (std::is_same_v<T, CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents); 
+        std::visit([&](auto&& s){
+            using T = std::decay_t<decltype(s)>;
+            if constexpr (std::is_same_v<T, CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents);
             else if constexpr (std::is_same_v<T, CapsuleShape>) computedMass = densityUsed * computeVolumeCapsule(s.radius, s.halfLength);
             else if constexpr (std::is_same_v<T, CylinderShape>) computedMass = densityUsed * computeVolumeCylinder(s.radius, s.halfLength);
-            else if constexpr (std::is_same_v<T, SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius); 
+            else if constexpr (std::is_same_v<T, SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius);
             else if constexpr (std::is_same_v<T, ConeShape>) computedMass = densityUsed * computeVolumeCone(s.radius, s.height);
-            else if constexpr (std::is_same_v<T, PlaneShape>) computedMass = 0; 
-            else if constexpr (std::is_same_v<T, MeshShape>) { const ::cardillo::MeshAsset& ma = assets().getMesh(s.path, s.scale, true); 
+            else if constexpr (std::is_same_v<T, PlaneShape>) computedMass = 0;
+            else if constexpr (std::is_same_v<T, MeshShape>) { const ::cardillo::MeshAsset& ma = assets().getMesh(s.path, s.scale, true);
             if (ma.volume > (real_t)0) computedMass = densityUsed * ma.volume; } }, shape);
         if (computedMass > (real_t)0) massOpt = computedMass;
     }
@@ -273,6 +273,151 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
     markStructureDirty();
     return e;
 }
+
+// start addRigidDirectorBody /////////////////////////
+// toRotationMatrix
+entt::entity PhysicsSystem::addRigidDirectorBody(const RigidShape& shape,
+                                                 const RigidState& state,
+                                                 const RigidProps& props) {
+    auto e = m_reg.create();
+
+    // Always pose components
+    m_reg.emplace<C_Position3>(e, C_Position3{state.position});
+    m_reg.emplace<C_DirectorOrientation>(e, C_Orientation{state.orientation.normalized().toRotationMatrix()});
+    m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{state.linearVelocity});
+    m_reg.emplace<C_DirectorAngularVelocity>(e, C_AngularVelocity3{state.orientation * skew(state.angularVelocity)});
+
+// TODO: check if this needs readjusting START
+    // Allow collider-only visuals for meshes when show_collider is requested
+    bool wantsColliderVisual = std::holds_alternative<MeshShape>(shape) && std::get<MeshShape>(shape).show_collider;
+    if (props.visual || wantsColliderVisual)    m_reg.emplace<C_VisualObject>(e);
+    if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_Collidable>(e);
+
+    // Determine mass from props.mass or density + shape volume
+    std::optional<real_t> massOpt = props.mass;
+    real_t computedMass = (real_t)0;
+    auto computeVolumeCube = [](const Vector3r& he){ return (real_t)8 * he.x()*he.y()*he.z(); };
+    auto computeVolumeCapsule = [](real_t r, real_t h){ return (real_t)M_PI * r*r * (2*h + (real_t)4.0/3.0 * r); };
+    auto computeVolumeCylinder = [](real_t r, real_t h){ return (real_t)M_PI * r*r * (2*h); };
+    auto computeVolumeSphere = [](real_t r){ return (real_t)4.0/3.0 * (real_t)M_PI * r*r*r; };
+    auto computeVolumeCone = [](real_t r, real_t h){ return (real_t)1.0/3.0 * (real_t)M_PI * r*r*h; };
+    real_t densityUsed = props.density.value_or((real_t)0);
+
+    // Pre-extract shape volume if density is provided and mass absent
+    if (!massOpt.has_value() && props.density.has_value()) {
+        std::visit([&](auto&& s){
+            using T = std::decay_t<decltype(s)>;
+            if constexpr (std::is_same_v<T, CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents);
+            else if constexpr (std::is_same_v<T, CapsuleShape>) computedMass = densityUsed * computeVolumeCapsule(s.radius, s.halfLength);
+            else if constexpr (std::is_same_v<T, CylinderShape>) computedMass = densityUsed * computeVolumeCylinder(s.radius, s.halfLength);
+            else if constexpr (std::is_same_v<T, SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius);
+            else if constexpr (std::is_same_v<T, ConeShape>) computedMass = densityUsed * computeVolumeCone(s.radius, s.height);
+            else if constexpr (std::is_same_v<T, PlaneShape>) computedMass = 0;
+            else if constexpr (std::is_same_v<T, MeshShape>) { const ::cardillo::MeshAsset& ma = assets().getMesh(s.path, s.scale, true);
+            if (ma.volume > (real_t)0) computedMass = densityUsed * ma.volume; } }, shape);
+        if (computedMass > (real_t)0) massOpt = computedMass;
+    }
+
+    const real_t mass = std::max((real_t)0, massOpt.value_or((real_t)0));
+
+    // Friction
+    real_t mu = (props.friction >= (real_t)0) ? props.friction : m_cfg.friction_default_mu;
+    m_reg.emplace<C_Friction>(e, C_Friction{mu});
+
+    // Populate according to shape variant
+    std::visit([&](auto&& s){
+        using T = std::decay_t<decltype(s)>;
+        if constexpr (std::is_same_v<T, CubeShape>) {
+            if (props.visual)    m_reg.emplace<C_CubeVisualTag>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
+            m_reg.emplace<C_Cube>(e, C_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyDirectorTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{boxInertiaDiag(mass, s.halfExtents)});
+            }
+        } else if constexpr (std::is_same_v<T, SphereShape>) {
+            if (props.visual)    m_reg.emplace<C_PointVisualTag>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Sphere>(e);
+            m_reg.emplace<C_Radius>(e, C_Radius{s.radius});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyDirectorTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{sphereInertiaDiag(mass, s.radius)});
+            }
+        } else if constexpr (std::is_same_v<T, ConeShape>) {
+            if (props.visual)    m_reg.emplace<C_ConeVisualTag>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Cone>(e, C_RB_Cone{s.radius, s.height});
+            m_reg.emplace<C_Cone>(e, C_Cone{s.radius, s.height});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyDirectorTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{coneInertiaDiag(mass, s.radius, s.height)});
+            }
+        } else if constexpr (std::is_same_v<T, CapsuleShape>) {
+            if (props.visual)    m_reg.emplace<C_CapsuleVisualTag>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Capsule>(e, C_RB_Capsule{s.radius, s.halfLength});
+            m_reg.emplace<C_Capsule>(e, C_Capsule{s.radius, s.halfLength});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyDirectorTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{capsuleInertiaDiag(mass, s.radius, s.halfLength)});
+            }
+        } else if constexpr (std::is_same_v<T, CylinderShape>) {
+            if (props.visual)    m_reg.emplace<C_CylinderVisualTag>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Cylinder>(e, C_RB_Cylinder{s.radius, s.halfLength});
+            m_reg.emplace<C_Cylinder>(e, C_Cylinder{s.radius, s.halfLength});
+            if (mass > 0) {
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyDirectorTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{cylinderInertiaDiag(mass, s.radius, s.halfLength)});
+            }
+        } else if constexpr (std::is_same_v<T, PlaneShape>) {
+            if (props.visual)    m_reg.emplace<C_PlaneVisualTag>(e);
+            if (props.collidable && !m_cfg.collision_disable_all) m_reg.emplace<C_RB_Plane>(e, C_RB_Plane{s.normal, s.up, s.sizeX, s.sizeY});
+            m_reg.emplace<C_Plane>(e, C_Plane{s.normal, s.up, s.sizeX, s.sizeY});
+
+        } else if constexpr (std::is_same_v<T, MeshShape>) {
+            if (props.visual)    m_reg.emplace<C_MeshVisualTag>(e);
+            m_reg.emplace<C_Mesh>(e, C_Mesh{s.path, s.scale});
+
+            const bool dynamic = mass > 0;
+            const ::cardillo::MeshAsset& asset = assets().getMesh(s.path, s.scale, dynamic);
+
+            if (props.collidable && !m_cfg.collision_disable_all) {
+                if (s.use_bbox_collider) {
+                    Vector3r center = Vector3r::Zero();
+                    Vector3r he = Vector3r((real_t)0.05, (real_t)0.05, (real_t)0.05);
+                    meshAabbFromAsset(asset, center, he);
+                    Quaternion4r q_local(asset.Rpa.transpose());
+                    m_reg.emplace<C_RB_Cube>(e, C_RB_Cube{center, he, q_local});
+                    if (s.show_collider) {
+                        m_reg.emplace<C_Cube>(e, C_Cube{center, he, q_local});
+                        m_reg.emplace<C_CubeVisualTag>(e);
+                    }
+                } else {
+                    m_reg.emplace<C_RB_Mesh>(e);
+                }
+            }
+
+        // TODO: find out what I should do with these
+            if (dynamic) {
+                // Adjust pose by principal axes & COM
+                Quaternion4r q_rpa(asset.Rpa);
+                Quaternion4r q_new = state.orientation * q_rpa;
+                Vector3r pos_new = state.position + (state.orientation * asset.com);
+                m_reg.get<C_Position3>(e).value = pos_new;
+                m_reg.get<C_Orientation>(e).value = Quaternion4r(q_new).normalized();
+                m_reg.emplace<C_PhysicsObject>(e); m_reg.emplace<C_RigidBodyDirectorTag>(e); m_reg.emplace<C_Mass>(e, C_Mass{mass});
+                if (asset.volume > (real_t)0) {
+                    const real_t rho = mass / asset.volume;
+                    Vector3r Idiag = rho * asset.inertia_diag_unit.cwiseMax(Vector3r::Zero());
+                    m_reg.emplace<C_InertiaDiag>(e, C_InertiaDiag{Idiag});
+                }
+            }
+        }
+    }, shape);
+
+    markStructureDirty();
+    return e;
+}
+// TODO: check if this needs readjusting END
+// end addRigidDirectorBody //////////////////////////
 
 entt::entity PhysicsSystem::addStaticBody(const RigidShape& shape,
                                           const RigidState& state) {
@@ -940,7 +1085,7 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeam(const misc::Spli
             real_t alpha1 = (real_t)(i + 1) / (real_t)segments;
             if (spline.isLoop() && i + 1 == segCount) alpha1 = (real_t)0;
 
-            misc::SplineSample si0 = spline.sample(alpha0); 
+            misc::SplineSample si0 = spline.sample(alpha0);
             misc::SplineSample si1 = spline.sample(alpha1);
             Vector3r midPos = (si0.position + si1.position) * (real_t)0.5;
             real_t local_segLen = (si1.position - si0.position).norm();
@@ -989,7 +1134,7 @@ std::pair<entt::entity, entt::entity> PhysicsSystem::createBeams(const std::vect
             addConstraint<physics::RigidConstraint>(ecs(), prevEnd, pair.first);
             disableCollisionBetween(prevEnd, pair.first);
         }
-        prevEnd = pair.second;   
+        prevEnd = pair.second;
     }
     second = prevEnd;
     return {first, second};
@@ -1004,6 +1149,8 @@ void PhysicsSystem::explicitPositionUpdate(real_t h) {
         pos.value += h * vel.value;
     }
 
+    // orientation director update
+    auto orientation_view = m_reg.view<C_DirectorOrientation, const C_DirectorAngularVelocity>();
     // auto director_orientation_view = m_reg.view<C_DirectorTriad, const C_DirectorTriadVelocity>();
     // for (auto [e, pos, vel] : position_view.each()) {
     //     pos.value += h * vel.value;
@@ -1096,8 +1243,8 @@ void PhysicsSystem::updateBeamElementEntity(entt::entity e) {
             auto r_AB = pb - pa;
             auto R_A = m_reg.get<C_Orientation>(a).value.toRotationMatrix();
             auto R_B = m_reg.get<C_Orientation>(b).value.toRotationMatrix();
-            
-            index_t x_col_A = (m_reg.any_of<C_Capsule>(a) || m_reg.any_of<C_Cylinder>(a)) ? 2 : 0; 
+
+            index_t x_col_A = (m_reg.any_of<C_Capsule>(a) || m_reg.any_of<C_Cylinder>(a)) ? 2 : 0;
             index_t x_col_B = (m_reg.any_of<C_Capsule>(b) || m_reg.any_of<C_Cylinder>(b)) ? 2 : 0;
 
             auto e_Ax = R_A.col(x_col_A);

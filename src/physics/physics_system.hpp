@@ -103,21 +103,21 @@ public:
          RigidState(const Vector3r& p_local,
                    entt::entity refEntity,
                    entt::registry& reg) : RigidState(p_local, Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
-        
+
         RigidState(entt::entity refEntity,
                    entt::registry& reg) : RigidState(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
     };
-    struct CubeShape    { 
+    struct CubeShape    {
         Vector3r halfExtents{Vector3r::Zero()};
         CubeShape() = default;
         explicit CubeShape(const Vector3r& he) : halfExtents(he) {}
     };
-    struct PlaneShape   { 
+    struct PlaneShape   {
         Vector3r normal{Vector3r(0,0,1)}; Vector3r up{Vector3r(0,1,0)}; real_t sizeX{5}; real_t sizeY{5};
         PlaneShape() = default;
         PlaneShape(const Vector3r& n, const Vector3r& u, real_t sx, real_t sy) : normal(n), up(u), sizeX(sx), sizeY(sy) {}
     };
-    struct CapsuleShape { 
+    struct CapsuleShape {
         real_t radius{0}; real_t halfLength{0};
         CapsuleShape() = default;
         CapsuleShape(real_t r, real_t h) : radius(r), halfLength(h) {}
@@ -133,12 +133,12 @@ public:
         ConeShape() = default;
         ConeShape(real_t r, real_t h) : radius(r), height(h) {}
     };
-    struct SphereShape  { 
+    struct SphereShape  {
         real_t radius{0};
         SphereShape() = default;
         explicit SphereShape(real_t r) : radius(r) {}
     };
-    struct MeshShape    { 
+    struct MeshShape    {
         std::string path; Vector3r scale{1,1,1}; bool use_bbox_collider{false}; bool show_collider{false};
         MeshShape() = default;
         explicit MeshShape(const std::string& p, bool bbox=false, bool showCol=false) : path(p), use_bbox_collider(bbox), show_collider(showCol) {}
@@ -147,8 +147,8 @@ public:
     using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape>;
     struct RigidProps {
         // If neither mass nor density set => static (no physics object)
-        std::optional<real_t> mass;     
-        std::optional<real_t> density; 
+        std::optional<real_t> mass;
+        std::optional<real_t> density;
         real_t friction = -1; // <0 => use default from config
         bool   collidable = true;
         bool   visual     = true;
@@ -198,7 +198,7 @@ public:
             if (r == (real_t)0.0) return (real_t)0.0;
             return (real_t)M_PI * std::pow(r, 3) / (real_t)4.0;
         } else { // Cube/Rectangle
-            // W_y = Iy / (height/2) 
+            // W_y = Iy / (height/2)
             real_t Wy = Iy() / ((real_t)0.5 * height);
             // W_z = Iz / (width/2)
             real_t Wz = Iz() / ((real_t)0.5 * width);
@@ -306,7 +306,7 @@ public:
                                    real_t y_dim,
                                    real_t z_scale = (real_t)1.0,
                                    real_t min_height = (real_t)0.0);
-  
+
     index_t addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);
 
     // Create a mass-spring soft body from an OBJ file by instantiating one point mass per vertex
@@ -398,7 +398,8 @@ public:
     struct C_LinearVelocity3 { Vector3r value; };
     struct C_AngularVelocity3 { Vector3r value; };
     struct C_Orientation { Quaternion4r value; };
-    struct C_DirectorTriad { Matrix33r value; };
+    struct C_DirectorOrientation { Matrix33r value; };
+    struct C_DirectorAngularVelocity { Matrix33r value; };
     struct C_PhysicsObject {};
     struct C_PointMassTag {};
     struct C_RigidBodyTag {};
