@@ -244,7 +244,6 @@ real_t CalculateMaxPrincipalTensileStress(
     // We only care about TENSION for the Rankine failure criterion
     return std::max((real_t)0.0, sigma_1);
 }
-    
 
 ConstraintResult BeamConstraint::getConstraint() const {
     ConstraintResult out; out.a = m_a; out.b = m_b;

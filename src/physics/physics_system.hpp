@@ -398,9 +398,11 @@ public:
     struct C_LinearVelocity3 { Vector3r value; };
     struct C_AngularVelocity3 { Vector3r value; };
     struct C_Orientation { Quaternion4r value; };
+    struct C_DirectorTriad { Matrix33r value; };
     struct C_PhysicsObject {};
     struct C_PointMassTag {};
     struct C_RigidBodyTag {};
+    struct C_RigidBodyDirectorTag {};
     struct C_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
     struct C_Cube { Vector3r center{Vector3r::Zero()}; Vector3r halfExtents; Quaternion4r q{Quaternion4r::Identity()}; };
     struct C_Capsule { real_t radius; real_t halfLength; };
