@@ -165,14 +165,14 @@ entt::entity PhysicsSystem::addRigidBody(const RigidShape& shape,
     if (!massOpt.has_value() && props.density.has_value()) {
         std::visit([&](auto&& s){ 
             using T = std::decay_t<decltype(s)>; 
-                        if constexpr (std::is_same_v<T, CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents); 
-                        else if constexpr (std::is_same_v<T, CapsuleShape>) computedMass = densityUsed * computeVolumeCapsule(s.radius, s.halfLength);
-                        else if constexpr (std::is_same_v<T, CylinderShape>) computedMass = densityUsed * computeVolumeCylinder(s.radius, s.halfLength);
-                        else if constexpr (std::is_same_v<T, SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius); 
-                        else if constexpr (std::is_same_v<T, ConeShape>) computedMass = densityUsed * computeVolumeCone(s.radius, s.height);
+            if constexpr (std::is_same_v<T, CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents); 
+            else if constexpr (std::is_same_v<T, CapsuleShape>) computedMass = densityUsed * computeVolumeCapsule(s.radius, s.halfLength);
+            else if constexpr (std::is_same_v<T, CylinderShape>) computedMass = densityUsed * computeVolumeCylinder(s.radius, s.halfLength);
+            else if constexpr (std::is_same_v<T, SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius); 
+            else if constexpr (std::is_same_v<T, ConeShape>) computedMass = densityUsed * computeVolumeCone(s.radius, s.height);
             else if constexpr (std::is_same_v<T, PlaneShape>) computedMass = 0; 
-          else if constexpr (std::is_same_v<T, MeshShape>) { const ::cardillo::MeshAsset& ma = assets().getMesh(s.path, s.scale, true); 
-                 if (ma.volume > (real_t)0) computedMass = densityUsed * ma.volume; } }, shape);
+            else if constexpr (std::is_same_v<T, MeshShape>) { const ::cardillo::MeshAsset& ma = assets().getMesh(s.path, s.scale, true); 
+            if (ma.volume > (real_t)0) computedMass = densityUsed * ma.volume; } }, shape);
         if (computedMass > (real_t)0) massOpt = computedMass;
     }
 
@@ -573,7 +573,7 @@ VectorXr PhysicsSystem::getForceGyroscopic(entt::entity e) const {
             tau = -w.cross(Iw);
         }
         VectorXr out(6); out.setZero();
-        out[3] = tau.x(); out[4] = tau.y(); out[5] = tau.z();
+        out.tail<3>() = tau;
         return out;
     }
     // Point masses have no gyroscopic contribution
@@ -1003,6 +1003,20 @@ void PhysicsSystem::explicitPositionUpdate(real_t h) {
     for (auto [e, pos, vel] : position_view.each()) {
         pos.value += h * vel.value;
     }
+
+    // auto director_orientation_view = m_reg.view<C_DirectorTriad, const C_DirectorTriadVelocity>();
+    // for (auto [e, pos, vel] : position_view.each()) {
+    //     pos.value += h * vel.value;
+    // }
+
+    // Matrix33r A_IK = VectorXr::Zero(9).reshaped<3,3>();
+    // Vector3r d1 = A_IK.col<0>();
+    // Vector3r d2 = A_IK.col<1>();
+    // Vector3r d3 = A_IK.col<2>();
+    // VectorXr q = VectorXr::Zero(9);
+    // Vector3r d1 = q.head<3>();
+    // Vector3r d2 = q.segment<3>(3);
+    // Vector3r d3 = q.tail<3>();
 
     // orientations
     auto orientation_view = m_reg.view<C_Orientation, const C_AngularVelocity3>();

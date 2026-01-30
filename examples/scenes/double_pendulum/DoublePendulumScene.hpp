@@ -36,7 +36,7 @@ public:
             // is in the model, yet the COM may not be zero. 
             PhysicsSystem::RigidState{
                 Vector3r{0.007, 0.0, 0.035}, // initial position
-                Quaternion4r{Eigen::AngleAxis<real_t>(-M_PI / 2, Vector3r::UnitX())}, // initial orientation
+                Quaternion4r{AngleAxis3r(-M_PI / 2, Vector3r::UnitX())}, // initial orientation
             },
             PhysicsSystem::RigidProps::withDensity(density)
         );

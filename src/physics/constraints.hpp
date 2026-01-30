@@ -269,7 +269,7 @@ public:
                     entt::entity a,
                     entt::entity b,
                     const JointFrame& frame,
-                    real_t K_axis = 0,
+                    real_t K_axis = (real_t)0,
                     real_t D_axis = (real_t)0,
                     const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
                     const Vector3r& D_trans = Vector3r::Zero())
