@@ -19,7 +19,7 @@ public:
         using namespace cardillo;
         using namespace cardillo::misc;
         // Simple ground
-        sys.addStaticBody(PhysicsSystem::CubeShape(Vector3r(15.0, 15.0, 0.1)), PhysicsSystem::RigidState(Vector3r(0,0,-0.1)));
+        cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape(Vector3r(15.0, 15.0, 0.1)), PhysicsSystem::RigidState(Vector3r(0,0,-0.1)));
 
         // Common material/geometry
         const size_t seg_arc = 160;         // smooth semicircles
@@ -35,11 +35,11 @@ public:
 
         // Create two rigid rods (the straight sides of the Ds), very heavy
         const Vector3r halfExtents((real_t)0.03, radius * 1.1, (real_t)0.03); // length 2R along Y
-        m_leftRod = sys.addRigidBody(PhysicsSystem::CubeShape(halfExtents),
+        m_leftRod = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CubeShape(halfExtents),
                                      PhysicsSystem::RigidState(Vector3r(C.x() - radius * 0.8, 0, C.z()),
                                        Quaternion4r(Eigen::AngleAxis<real_t>((real_t)M_PI, Vector3r::UnitY()))),
                                      PhysicsSystem::RigidProps((real_t)1e10));
-        m_rightRod = sys.addRigidBody(PhysicsSystem::CubeShape(halfExtents),
+        m_rightRod = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CubeShape(halfExtents),
                                       PhysicsSystem::RigidState(Vector3r(C.x() + radius * 0.8, 0, C.z()),
                                         Quaternion4r(Eigen::AngleAxis<real_t>((real_t)0.5*M_PI, Vector3r::UnitX()))),
                                       PhysicsSystem::RigidProps((real_t)1e10));
@@ -48,8 +48,8 @@ public:
         const real_t thetaSpan = (real_t)M_PI;
         CircleSpline arc(Vector3r::Zero(), radius, Vector3r::UnitZ(), Vector3r::UnitX(), (real_t)(0.5*M_PI), thetaSpan);
 
-        auto arcRightEnds = sys.createBeam(arc, section, springs, PhysicsSystem::RigidState(Vector3r(-halfExtents.x(), 0, 0), m_leftRod, sys.ecs()),  PhysicsSystem::RigidProps::withDensity(density), seg_arc);
-        auto arcLeftEnds  = sys.createBeam(arc, section, springs, PhysicsSystem::RigidState(Vector3r(-halfExtents.x(), 0, 0), m_rightRod, sys.ecs()), PhysicsSystem::RigidProps::withDensity(density), seg_arc);
+        auto arcRightEnds = cardillo::physics::BodyFactory::createBeam(sys, arc, section, springs, PhysicsSystem::RigidState(Vector3r(-halfExtents.x(), 0, 0), m_leftRod, sys.ecs()),  PhysicsSystem::RigidProps::withDensity(density), seg_arc);
+        auto arcLeftEnds  = cardillo::physics::BodyFactory::createBeam(sys, arc, section, springs, PhysicsSystem::RigidState(Vector3r(-halfExtents.x(), 0, 0), m_rightRod, sys.ecs()), PhysicsSystem::RigidProps::withDensity(density), seg_arc);
 
         // Attach semicircle endpoints to corresponding rods to form two Ds
         sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_leftRod,  arcRightEnds.first);

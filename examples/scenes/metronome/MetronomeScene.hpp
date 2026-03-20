@@ -22,7 +22,7 @@ public:
         using namespace cardillo;
 
         // Static ground
-        auto floor = sys.addStaticBody(PhysicsSystem::CubeShape(Vector3r(5.0, 5.0, 0.1)), PhysicsSystem::RigidState(Vector3r(0, 0, -0.1)));
+        auto floor = cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape(Vector3r(5.0, 5.0, 0.1)), PhysicsSystem::RigidState(Vector3r(0, 0, -0.1)));
 
         const int nx = 1;
         const int ny = 3;
@@ -40,14 +40,14 @@ public:
         const real_t rollerOffsetY = plateHalfWidth * (real_t)0.4;
 
         const real_t styrofoamRho = (real_t)50.0; // approximate density for styrofoam
-        sys.addRigidBody(PhysicsSystem::CapsuleShape(rollerR, rollerHalfL), PhysicsSystem::RigidState(Vector3r(0.0, -rollerOffsetY, rollerR), rollerQ), PhysicsSystem::RigidProps(0.015));
-        sys.addRigidBody(PhysicsSystem::CapsuleShape(rollerR, rollerHalfL), PhysicsSystem::RigidState(Vector3r(0.0, rollerOffsetY, rollerR), rollerQ), PhysicsSystem::RigidProps(0.015)); 
+        cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CapsuleShape(rollerR, rollerHalfL), PhysicsSystem::RigidState(Vector3r(0.0, -rollerOffsetY, rollerR), rollerQ), PhysicsSystem::RigidProps(0.015));
+        cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CapsuleShape(rollerR, rollerHalfL), PhysicsSystem::RigidState(Vector3r(0.0, rollerOffsetY, rollerR), rollerQ), PhysicsSystem::RigidProps(0.015)); 
 
         // Sheet resting on rollers
         const real_t sheetThickness = (real_t)0.0025;
         const Vector3r sheetHalfExt(plateHalfLength, plateHalfWidth, sheetThickness);
         const real_t sheetCenterZ = 2* rollerR + sheetThickness + (real_t)0.001; // lifted slightly above roller top
-        m_sheet = sys.addRigidBody(
+        m_sheet = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(sheetHalfExt),
             PhysicsSystem::RigidState(Vector3r(0, 0, sheetCenterZ)),
             PhysicsSystem::RigidProps::withDensity(styrofoamRho));
@@ -88,13 +88,13 @@ public:
                 const Vector3r pos(baseX + (real_t)ix * spacing, baseY + (real_t)iy * spacing, baseZ + 0.001);
 
                 PhysicsSystem::MeshShape bodyShape("res/meshes/metronome.obj", true);
-                auto body = sys.addRigidBody(
+                auto body = cardillo::physics::BodyFactory::addRigidBody(sys, 
                     bodyShape,
                     PhysicsSystem::RigidState(pos),
                     PhysicsSystem::RigidProps((real_t)0.015)); // 100g body
 
                 PhysicsSystem::MeshShape leverShape("res/meshes/metronome_lever.obj", true);
-                auto lever = sys.addRigidBody(
+                auto lever = cardillo::physics::BodyFactory::addRigidBody(sys, 
                     leverShape,
                     PhysicsSystem::RigidState(pos, Vector3r(0, 0, 0)),
                     PhysicsSystem::RigidProps((real_t)0.05)); // metal lever

@@ -21,13 +21,13 @@ public:
         Vector3r scale{1.0, 1.0, 1.0};
 
         // base link
-        m_base = sys.addStaticBody(
+        m_base = cardillo::physics::BodyFactory::addStaticBody(sys, 
             PhysicsSystem::MeshShape("res/meshes/double_pendulum/base_link.stl", scale), 
             PhysicsSystem::RigidState{}
         );
 
         // first rigid body
-        m_rb1 = sys.addRigidBody(
+        m_rb1 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::MeshShape("res/meshes/double_pendulum/link1.stl", scale),
             // When using meshes the actually position and orientation differ 
             // to values passed here, as the mesh COM and principal axes are 
@@ -58,7 +58,7 @@ public:
         );
 
         // second rigid body
-        m_rb2 = sys.addRigidBody(
+        m_rb2 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::MeshShape("res/meshes/double_pendulum/link2.stl", scale),
             PhysicsSystem::RigidState{
                 Vector3r{0.007, 0.1, 0.04 - 0.004}, // initial position

@@ -35,10 +35,10 @@ public:
         // Create cliff blocks as static obstacle cubes
         PhysicsSystem::CubeShape leftCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
         PhysicsSystem::RigidState leftCliffState; leftCliffState.position = Vector3r(leftX, 0.0, cliffCenterZ); leftCliffState.orientation = Quaternion4r::Identity();
-        PhysicsSystem::RigidProps leftCliffProps; entt::entity eLeft = sys.addRigidBody(leftCliffShape, leftCliffState, leftCliffProps);
+        PhysicsSystem::RigidProps leftCliffProps; entt::entity eLeft = cardillo::physics::BodyFactory::addRigidBody(sys, leftCliffShape, leftCliffState, leftCliffProps);
         PhysicsSystem::CubeShape rightCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
         PhysicsSystem::RigidState rightCliffState; rightCliffState.position = Vector3r(rightX, 0.0, cliffCenterZ); rightCliffState.orientation = Quaternion4r::Identity();
-        PhysicsSystem::RigidProps rightCliffProps; entt::entity eRight = sys.addRigidBody(rightCliffShape, rightCliffState, rightCliffProps);
+        PhysicsSystem::RigidProps rightCliffProps; entt::entity eRight = cardillo::physics::BodyFactory::addRigidBody(sys, rightCliffShape, rightCliffState, rightCliffProps);
         (void)eLeft; (void)eRight; // not needed further
 
         // Tripod parameters
@@ -134,7 +134,7 @@ public:
             for (int i = 0; i < segments; ++i) {
                 real_t t = (segments == 1) ? (real_t)0.5 : (real_t)i / (real_t)(segments - 1);
                 Vector3r p = (real_t)1.0 * ((real_t)1.0 - t) * pA + t * pB;
-                (void)sys.addPointMass(nodeMass, p, Vector3r::Zero(), (real_t)0.03); // sphere radius
+                (void)cardillo::physics::BodyFactory::addPointMass(sys, nodeMass, p, Vector3r::Zero(), (real_t)0.03); // sphere radius
                 // Retrieve the last created entity (point mass). addPointMass returns an index_t, not entity, so we can't directly get it here.
                 // Instead, find the last physics object without C_BodyIndex yet would be brittle; better to create entities manually.
             }
@@ -248,7 +248,7 @@ public:
             // Create plank as a rigid body cube (identity orientation)
             PhysicsSystem::CubeShape plankShape{plankHalf};
             PhysicsSystem::RigidState plankState; plankState.position = center; plankState.orientation = Quaternion4r::Identity();
-            PhysicsSystem::RigidProps plankProps; plankProps.mass = plankMass; entt::entity plank = sys.addRigidBody(plankShape, plankState, plankProps);
+            PhysicsSystem::RigidProps plankProps; plankProps.mass = plankMass; entt::entity plank = cardillo::physics::BodyFactory::addRigidBody(sys, plankShape, plankState, plankProps);
             planks.push_back(plank);
 
             // Attach plank to rope nodes at its top-left and top-right surfaces

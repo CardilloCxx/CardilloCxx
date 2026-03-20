@@ -27,7 +27,7 @@ public:
         // const Vector3r angularVelocity(Omega, eps, eps);
         const Vector3r angularVelocity(eps, Omega, eps);
         // const Vector3r angularVelocity(eps, eps, Omega);
-    PhysicsSystem::RigidState state; state.position = position; state.orientation = orientation; state.linearVelocity = linearVelocity; state.angularVelocity = angularVelocity; PhysicsSystem::RigidProps props; props.mass = mass; sys.addRigidBody(shape, state, props);
+    PhysicsSystem::RigidState state; state.position = position; state.orientation = orientation; state.linearVelocity = linearVelocity; state.angularVelocity = angularVelocity; PhysicsSystem::RigidProps props; props.mass = mass; cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
 
         const auto& reg = sys.ecs();
         entt::entity rodEntity = entt::null;

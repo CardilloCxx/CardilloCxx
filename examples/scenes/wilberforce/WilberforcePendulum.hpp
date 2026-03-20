@@ -70,7 +70,7 @@ public:
         // std::vector<const misc::SplinePattern*> parts{&helix, &linear, &linear2};
         // std::vector<const misc::SplinePattern*> parts{&helix, &linear};
         std::vector<const misc::SplinePattern*> parts{&helix};
-        auto endpoints = sys.createBeams(parts, sec, springs, PhysicsSystem::RigidState{}, PhysicsSystem::RigidProps::withDensity(density), segments);
+        auto endpoints = cardillo::physics::BodyFactory::createBeams(sys, parts, sec, springs, PhysicsSystem::RigidState{}, PhysicsSystem::RigidProps::withDensity(density), segments);
         m_top = endpoints.first; sys.makeStatic(m_top);
         m_bottom = endpoints.second;
     
@@ -138,9 +138,9 @@ public:
 
         std::cout << "sizeX: " << sizeX << ", sizeY: " << sizeY << ", sizeZ: " << sizeZ << std::endl;
 
-        // m_bob = sys.addRigidBody(PhysicsSystem::CubeShape(Vector3r(tunedSize,tunedSize,tunedSize)),
-        // m_bob = sys.addRigidBody(PhysicsSystem::CubeShape(Vector3r(sizeX/2, sizeY/2, sizeZ/2)),
-        m_bob = sys.addRigidBody(PhysicsSystem::MeshShape("res/meshes/bob2.obj"),
+        // m_bob = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CubeShape(Vector3r(tunedSize,tunedSize,tunedSize)),
+        // m_bob = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CubeShape(Vector3r(sizeX/2, sizeY/2, sizeZ/2)),
+        m_bob = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::MeshShape("res/meshes/bob2.obj"),
             // PhysicsSystem::RigidState(Vector3r(0,0,-tunedSize) + sys.getPosition(m_bottom).head<3>()),
             // PhysicsSystem::RigidState(Vector3r(0,0,-sizeZ) + sys.getPosition(m_bottom).head<3>()),
             PhysicsSystem::RigidState(Vector3r(0,0,-0.025 - static_cast<real_t>(turns) * pitch - wireDiameter), Vector3r(0, 0, 0)),

@@ -83,7 +83,7 @@ public:
         PhysicsSystem::CubeShape groundShape{Vector3r((real_t)20.0, (real_t)20.0, (real_t)1.0)}; // half extents; 2m tall block
         PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, (real_t)-1.0); // top face at z=0
         PhysicsSystem::RigidProps groundProps; groundProps.visual = true; groundProps.collidable = true; groundProps.mass = std::nullopt;
-        sys.addRigidBody(groundShape, groundState, groundProps);
+        cardillo::physics::BodyFactory::addRigidBody(sys, groundShape, groundState, groundProps);
 
         const real_t layerWidth = (real_t)0.12; // spacing between leg pair slices
         entt::entity middleAxle = buildWalker(sys, params, L, baseAlphaDeg, nLegPairs, p2_world, planeNormal, xAxis, layerWidth);
@@ -451,7 +451,7 @@ private:
         props.visual = true;
         props.collidable = collidable;
         if (density > 0) props.density = density; else props.mass = std::nullopt;
-        return sys.addRigidBody(shape, state, props);
+        return cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
     }
 
     static entt::entity addFrameCube(cardillo::PhysicsSystem& sys,
@@ -465,7 +465,7 @@ private:
         props.visual = true;
         props.collidable = false;
         if (density > 0) props.density = density; else props.mass = std::nullopt;
-        return sys.addRigidBody(shape, state, props);
+        return cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
     }
 
     std::optional<LegGeom3D> last_leg_world_;

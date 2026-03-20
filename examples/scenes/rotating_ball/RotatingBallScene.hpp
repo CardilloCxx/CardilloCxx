@@ -18,7 +18,7 @@ public:
         // Ground plane for visual + collision
     PhysicsSystem::PlaneShape groundShape{Vector3r(0,0,1), Vector3r(0,1,0), (real_t)5.0, (real_t)5.0};
     PhysicsSystem::RigidState groundState; groundState.position = Vector3r::Zero(); groundState.orientation = Quaternion4r::Identity();
-    sys.addStaticBody(groundShape, groundState);
+    cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
 
         const real_t mass = (real_t)1.0;
         const real_t radius = (real_t)0.1; // 10 cm radius
@@ -26,12 +26,12 @@ public:
         // High-spin sphere dropped from height
         const Vector3r position1(0.0, 0.0, 1.0);
         const Vector3r angularVelocity1((real_t)0.0, (real_t)50.0, (real_t)0.0);
-        entt::entity highSpin = sys.addRigidBody(PhysicsSystem::SphereShape(radius), PhysicsSystem::RigidState(position1, Vector3r::Zero(), angularVelocity1), PhysicsSystem::RigidProps(mass));
+        entt::entity highSpin = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::SphereShape(radius), PhysicsSystem::RigidState(position1, Vector3r::Zero(), angularVelocity1), PhysicsSystem::RigidProps(mass));
 
         // Lower-spin sphere
         const Vector3r position2(0.0, 1.0, 1.0);
         const Vector3r angularVelocity2((real_t)0.0, (real_t)10.0, (real_t)0.0);
-        entt::entity lowSpin = sys.addRigidBody(PhysicsSystem::SphereShape(radius), PhysicsSystem::RigidState(position2, Vector3r::Zero(), angularVelocity2), PhysicsSystem::RigidProps(mass));
+        entt::entity lowSpin = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::SphereShape(radius), PhysicsSystem::RigidState(position2, Vector3r::Zero(), angularVelocity2), PhysicsSystem::RigidProps(mass));
 
         sys.track(highSpin, "rot_ball_high");
         sys.track(lowSpin, "rot_ball_low");

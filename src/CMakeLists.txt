@@ -1,6 +1,7 @@
 add_library(${PROJECT_NAME} STATIC
     cardillo.cpp
     physics/physics_system.cpp
+    physics/body_factory.cpp
     physics/assets.cpp
     physics/constraints.cpp
     io/vtk_writer_binary.cpp

@@ -27,15 +27,15 @@ public:
         sys.setGravity(Vector3r(0, 0, -9.81));
 
         // Plane
-        // sys.addStaticBody(PhysicsSystem::PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), (real_t)8, (real_t)8),
+        // cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), (real_t)8, (real_t)8),
         //                   PhysicsSystem::RigidState(Vector3r(0, 0, 0)));
 
         // Cone
-        // sys.addStaticBody(PhysicsSystem::ConeShape((real_t)0.01, (real_t)0.10),
+        // cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::ConeShape((real_t)0.01, (real_t)0.10),
         //             PhysicsSystem::RigidState(Vector3r(0, 0, 0)));
 
         // Sphere
-        // sys.addStaticBody(PhysicsSystem::SphereShape((real_t)0.05),
+        // cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::SphereShape((real_t)0.05),
         //             PhysicsSystem::RigidState(Vector3r(0, 0, 0)));
 
         // Load BCC splines
@@ -128,7 +128,7 @@ public:
         for (const auto& sp : splines) {
             if (!sp) continue;
             int segments = sp.get()->totalLength() / (totalLength / (real_t)resampleSegments);
-            sys.createBeam(*sp.get(), section, springs, stateDefaults, props, segments);
+            cardillo::physics::BodyFactory::createBeam(sys, *sp.get(), section, springs, stateDefaults, props, segments);
             std::cout << "[FabricScene] Created beam from spline with " << segments << " segments." << std::endl;
         }
 
@@ -206,10 +206,10 @@ public:
         const Vector3r leftCubePos(bbMinW.x() - cubeHalfExtents.x() - 0.0025, centerY, centerZ);
         const Vector3r rightCubePos(bbMaxW.x() + cubeHalfExtents.x() + 0.0075, centerY, centerZ);
 
-        m_leftCube = sys.addRigidBody(PhysicsSystem::CubeShape(cubeHalfExtents),
+        m_leftCube = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CubeShape(cubeHalfExtents),
                                       PhysicsSystem::RigidState(leftCubePos),
                                       PhysicsSystem::RigidProps((real_t)1e10));
-        m_rightCube = sys.addRigidBody(PhysicsSystem::CubeShape(cubeHalfExtents),
+        m_rightCube = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CubeShape(cubeHalfExtents),
                                        PhysicsSystem::RigidState(rightCubePos),
                                        PhysicsSystem::RigidProps((real_t)1e10));
 

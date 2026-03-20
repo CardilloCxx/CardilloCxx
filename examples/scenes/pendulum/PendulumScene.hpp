@@ -18,7 +18,7 @@ public:
         using namespace cardillo::misc;
 
         // floor 
-        auto floor = sys.addStaticBody(
+        auto floor = cardillo::physics::BodyFactory::addStaticBody(sys, 
             PhysicsSystem::CubeShape{Vector3r{5,5,0.1}}, 
             PhysicsSystem::RigidState{Vector3r{0,0,-3.5}}
         );
@@ -39,7 +39,7 @@ public:
         PhysicsSystem::RigidProps props1;
         props1.mass = mass1;
 
-        auto capsule1 = sys.addRigidBody(shape1, state1, props1);
+        auto capsule1 = cardillo::physics::BodyFactory::addRigidBody(sys, shape1, state1, props1);
 
         // capsule 2
         const real_t phi2 = M_PI / 2;
@@ -57,7 +57,7 @@ public:
         PhysicsSystem::RigidProps props2;
         props2.mass = mass2;
 
-        auto capsule2 = sys.addRigidBody(shape2, state2, props2);
+        auto capsule2 = cardillo::physics::BodyFactory::addRigidBody(sys, shape2, state2, props2);
 
         // disable collisions
         // sys.disableCollisionBetween(floor, capsule1);

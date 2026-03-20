@@ -23,7 +23,7 @@ public:
         // Ground plane
         PhysicsSystem::CubeShape groundShape{Vector3r(2.0, 2.0, 0.1)};
         PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.1);
-        sys.addStaticBody(groundShape, groundState);
+        cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
 
         // Real card dimensions (meters): long=88.9mm along x, short=63.5mm along y, thickness ~0.3 mm along z
         const Vector3r halfExtents((real_t)0.0889 * (real_t)0.5, (real_t)0.0635 * (real_t)0.5, (real_t)0.0003 * (real_t)0.5);
@@ -64,7 +64,7 @@ public:
             Quaternion4r q = Quaternion4r(Eigen::AngleAxis<real_t>(yaw, Vector3r::UnitY()));
             PhysicsSystem::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = Vector3r::Zero(); state.angularVelocity = Vector3r::Zero();
             PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(density);
-            sys.addRigidBody(cardShape, state, props);
+            cardillo::physics::BodyFactory::addRigidBody(sys, cardShape, state, props);
             return baseZ + (real_t)2.0 * vertHalf;
         };
 
@@ -81,7 +81,7 @@ public:
             state.linearVelocity = Vector3r::Zero();
             state.angularVelocity = Vector3r::Zero();
             PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(density);
-            sys.addRigidBody(cardShape, state, props);
+            cardillo::physics::BodyFactory::addRigidBody(sys, cardShape, state, props);
         };
 
         real_t layerBaseZ = (real_t)0.0;
@@ -119,6 +119,6 @@ public:
         ballState.linearVelocity = Vector3r(0.0, 4.0, 0.0);
         ballState.angularVelocity = Vector3r::Zero();
         PhysicsSystem::RigidProps ballProps = PhysicsSystem::RigidProps::withDensity((real_t)1000.0);
-        sys.addRigidBody(ballShape, ballState, ballProps);
+        cardillo::physics::BodyFactory::addRigidBody(sys, ballShape, ballState, ballProps);
     }
 };

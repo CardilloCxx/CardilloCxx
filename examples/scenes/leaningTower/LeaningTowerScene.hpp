@@ -38,7 +38,7 @@ public:
             auto state = PhysicsSystem::RigidState( Vector3r(x, 0.0, z) );
             auto props = PhysicsSystem::RigidProps::withDensity(density);
 
-            auto entity = sys.addRigidBody(blockShape, state, props);
+            auto entity = cardillo::physics::BodyFactory::addRigidBody(sys, blockShape, state, props);
             if (k == 0) sys.makeStatic(entity);
         }
 
@@ -50,7 +50,7 @@ public:
             auto state = PhysicsSystem::RigidState( Vector3r(x, 0.0, z) );
             auto props = PhysicsSystem::RigidProps::withDensity(density);
 
-            auto entity = sys.addRigidBody(blockShape, state, props);
+            auto entity = cardillo::physics::BodyFactory::addRigidBody(sys, blockShape, state, props);
             if (k == 0) sys.makeStatic(entity);
         }
     }

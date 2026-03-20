@@ -18,11 +18,11 @@ public:
         using namespace cardillo::misc;
 
         // Floor (static)
-        auto floor = sys.addStaticBody(PhysicsSystem::CubeShape(Vector3r(15.0, 15.0, 0.1)), PhysicsSystem::RigidState(Vector3r(0,0,-0.1)));
+        auto floor = cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape(Vector3r(15.0, 15.0, 0.1)), PhysicsSystem::RigidState(Vector3r(0,0,-0.1)));
         const real_t cubeHalfExt = 0.5;
 
         // Cube with fixed constraint
-        m_cube = sys.addRigidBody(
+        m_cube = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(cubeHalfExt, cubeHalfExt, cubeHalfExt)),
             PhysicsSystem::RigidState(Vector3r(0,0,4), Vector3r(0,0,0), Quaternion4r::UnitRandom(),
                  Vector3r(1, 0.2, 0.3)),
@@ -31,7 +31,7 @@ public:
         );
 
         // small cube allowed to move in a plane
-        auto cube2 = sys.addRigidBody(
+        auto cube2 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.05,0.05,0.05)),
             PhysicsSystem::RigidState(Vector3r(cubeHalfExt + 0.05, cubeHalfExt + 0.05, cubeHalfExt + 0.05), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -41,7 +41,7 @@ public:
         sys.disableCollisionBetween(m_cube, cube2);
 
         // small cube allowed to move in a plane
-        auto cube3 = sys.addRigidBody(
+        auto cube3 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.05,0.05,0.05)),
             PhysicsSystem::RigidState(Vector3r(-cubeHalfExt - 0.05, cubeHalfExt + 0.05, cubeHalfExt + 0.05), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -52,7 +52,7 @@ public:
         sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), m_cube, cube3, physics::JointFrame(cube3), K_trans);
         sys.disableCollisionBetween(m_cube, cube3);
 
-        auto cube4 = sys.addRigidBody(
+        auto cube4 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.05,0.05,0.05)),
             PhysicsSystem::RigidState(Vector3r(-cubeHalfExt - 0.05, -cubeHalfExt - 0.05, cubeHalfExt + 0.05), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -63,7 +63,7 @@ public:
         sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), m_cube, cube4, physics::JointFrame(cube4), K_trans);
         sys.disableCollisionBetween(m_cube, cube4);
 
-        auto cube5 = sys.addRigidBody(
+        auto cube5 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.05,0.05,0.05)),
             PhysicsSystem::RigidState(Vector3r(cubeHalfExt + 0.05, -cubeHalfExt - 0.05, cubeHalfExt + 0.05), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -74,7 +74,7 @@ public:
         sys.addConstraint<physics::TranslationalConstraint>(sys.ecs(), m_cube, cube5, physics::JointFrame(cube5), K_trans);
         sys.disableCollisionBetween(m_cube, cube5);
 
-        auto cube6 = sys.addRigidBody(
+        auto cube6 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.05,0.05,0.05)),
             PhysicsSystem::RigidState(Vector3r(cubeHalfExt + 0.05, cubeHalfExt + 0.05, -cubeHalfExt - 0.05), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -85,7 +85,7 @@ public:
             physics::JointFrame(Vector3r(cubeHalfExt, cubeHalfExt, -cubeHalfExt), Matrix33r::Identity(), m_cube), K_trans);
 
 
-        auto plate = sys.addRigidBody(
+        auto plate = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.3,0.3,0.02)),
             PhysicsSystem::RigidState(Vector3r(0,0,cubeHalfExt + 0.02 + 0.05), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -94,7 +94,7 @@ public:
             physics::JointFrame::fromAxis(Vector3r::Zero(), Vector3r::UnitZ(), plate)
         );
 
-        auto cube7 = sys.addRigidBody(
+        auto cube7 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.05,0.05,0.05)),
             PhysicsSystem::RigidState(Vector3r(0.2,0.2,0.05), plate, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -107,7 +107,7 @@ public:
         const real_t wallLength = 0.45;
         const real_t wallThickness = 0.01;
 
-        auto wall1 = sys.addRigidBody(
+        auto wall1 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(wallHeight, wallLength, wallThickness)),
             PhysicsSystem::RigidState(Vector3r(cubeHalfExt + wallHeight, 0, wallLength), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -115,7 +115,7 @@ public:
         sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_cube, wall1);
         sys.disableCollisionBetween(m_cube, wall1); 
 
-        auto wall2 = sys.addRigidBody(
+        auto wall2 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(wallHeight, wallLength, wallThickness)),
             PhysicsSystem::RigidState(Vector3r(cubeHalfExt + wallHeight, 0, -wallLength), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -123,7 +123,7 @@ public:
         sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_cube, wall2);
         sys.disableCollisionBetween(m_cube, wall2);
 
-        auto wall3 = sys.addRigidBody(
+        auto wall3 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(wallHeight, wallThickness, wallLength)),
             PhysicsSystem::RigidState(Vector3r(cubeHalfExt + wallHeight, wallLength, 0), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -131,7 +131,7 @@ public:
         sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_cube, wall3);
         sys.disableCollisionBetween(m_cube, wall3);
 
-        auto wall4 = sys.addRigidBody(
+        auto wall4 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(wallHeight, wallThickness, wallLength)),
             PhysicsSystem::RigidState(Vector3r(cubeHalfExt + 0.05, -wallLength, 0), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -139,7 +139,7 @@ public:
         sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_cube, wall4);
         sys.disableCollisionBetween(m_cube, wall4);
 
-        auto cube8 = sys.addRigidBody(
+        auto cube8 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.05,0.05,0.05)),
             PhysicsSystem::RigidState(Vector3r(cubeHalfExt + 0.05 + 0.01, 0, 0), m_cube, sys.ecs()),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -157,21 +157,21 @@ public:
         const real_t sphereRadius = 0.00005;
 
         // Top sphere: static, acts as fixed anchor in world
-        auto topSphere = sys.addStaticBody(
+        auto topSphere = cardillo::physics::BodyFactory::addStaticBody(sys, 
             PhysicsSystem::SphereShape(sphereRadius),
             PhysicsSystem::RigidState(Vector3r(-1.0, 0.0, 2.5))
         );
         sys.makeStatic(topSphere);
 
         // First pendulum mass
-        auto midSphere = sys.addRigidBody(
+        auto midSphere = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::SphereShape(sphereRadius),
             PhysicsSystem::RigidState(Vector3r(-1.0, 0.0, 2.2), Vector3r(1.0, 0.0, 0.0)),
             PhysicsSystem::RigidProps(1.0)
         );
 
         // Second pendulum mass
-        auto bottomSphere = sys.addRigidBody(
+        auto bottomSphere = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::SphereShape(sphereRadius),
             PhysicsSystem::RigidState(Vector3r(-1.0, 0.0, 1.9), Vector3r(-4.0, 0.0, 0.0)),
             PhysicsSystem::RigidProps(1.0)
@@ -206,7 +206,7 @@ public:
         // -------------------------------------------------------------
 
         // First lever: stiffer hinge
-        m_lever_1 = sys.addRigidBody(
+        m_lever_1 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.4, 0.05, 0.02)),
             PhysicsSystem::RigidState(Vector3r(-1.5, 1.0, 0.2)),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -227,7 +227,7 @@ public:
         );
 
         // Second lever: softer hinge
-        m_lever_2 = sys.addRigidBody(
+        m_lever_2 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.4, 0.05, 0.02)),
             PhysicsSystem::RigidState(Vector3r(-1.5, -1.0, 0.2)),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -251,7 +251,7 @@ public:
         // sys.track(m_lever_2, "lever_Iz=" + std::to_string(Iz_hinge_2) + "_k_=2");
 
                 // First lever: stiffer hinge
-        m_lever_3 = sys.addRigidBody(
+        m_lever_3 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.4, 0.05, 0.02)),
             PhysicsSystem::RigidState(Vector3r(-1.5, 3.0, 0.2)),
             PhysicsSystem::RigidProps::withDensity(2500.0)
@@ -272,7 +272,7 @@ public:
         );
 
         // Second lever: softer hinge
-        m_lever_4 = sys.addRigidBody(
+        m_lever_4 = cardillo::physics::BodyFactory::addRigidBody(sys, 
             PhysicsSystem::CubeShape(Vector3r(0.4, 0.05, 0.02)),
             PhysicsSystem::RigidState(Vector3r(-1.5, -3.0, 0.2)),
             PhysicsSystem::RigidProps::withDensity(2500.0)

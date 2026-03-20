@@ -49,7 +49,7 @@ public:
         PhysicsSystem::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());
         PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(rho);
 
-        auto beam_ends = sys.createBeam(spline, section, springs, stateDefaults, props, segments);
+        auto beam_ends = cardillo::physics::BodyFactory::createBeam(sys, spline, section, springs, stateDefaults, props, segments);
         m_beamLeftEnd = beam_ends.first;
         m_beamRightEnd = beam_ends.second;
         sys.makeStatic(m_beamLeftEnd);

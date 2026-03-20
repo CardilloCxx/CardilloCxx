@@ -51,12 +51,12 @@ public:
                 if ((i > 0 || j % 2 == 1) && (i < n-1 || j % 2 == 0) && (j > 0 && j < m-1)) props = PhysicsSystem::RigidProps::withDensity(density);
                 else props = PhysicsSystem::RigidProps(0); // static boundary rings
 
-                sys.createBeam(ring, sec_ring, springs_ring, PhysicsSystem::RigidState{center, rotation}, props, segments);
+                cardillo::physics::BodyFactory::createBeam(sys, ring, sec_ring, springs_ring, PhysicsSystem::RigidState{center, rotation}, props, segments);
             }
         }
 
         // Boulder
-        auto boulder = sys.addRigidBody(PhysicsSystem::MeshShape("res/meshes/rock.obj", Vector3r(0.75,0.75,0.75)),
+        auto boulder = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::MeshShape("res/meshes/rock.obj", Vector3r(0.75,0.75,0.75)),
                          PhysicsSystem::RigidState(Vector3r(-3,0,0) + netCenter, Vector3r(30.0, 0.0, 0.0), Vector3r(10,20,50)),
                          PhysicsSystem::RigidProps::withDensity(2500));
 

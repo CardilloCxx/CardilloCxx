@@ -23,18 +23,18 @@ public:
         double normalMass = 1.0;
 
         // Create 4 static cubes as tube walls
-        sys.addStaticBody(cardillo::PhysicsSystem::CubeShape({wallThickness / 2, tubeDepth / 2, tubeHeight / 2}),
+        cardillo::physics::BodyFactory::addStaticBody(sys, cardillo::PhysicsSystem::CubeShape({wallThickness / 2, tubeDepth / 2, tubeHeight / 2}),
             cardillo::PhysicsSystem::RigidState{{-tubeWidth/2.0-wallThickness/2.0, 0, tubeHeight/2.0}});
-        sys.addStaticBody(cardillo::PhysicsSystem::CubeShape({wallThickness / 2, tubeDepth / 2, tubeHeight / 2}),
+        cardillo::physics::BodyFactory::addStaticBody(sys, cardillo::PhysicsSystem::CubeShape({wallThickness / 2, tubeDepth / 2, tubeHeight / 2}),
             cardillo::PhysicsSystem::RigidState{{tubeWidth/2.0+wallThickness/2.0, 0, tubeHeight/2.0}});
-        sys.addStaticBody(cardillo::PhysicsSystem::CubeShape({tubeWidth / 2 + wallThickness, wallThickness / 2, tubeHeight / 2}),
+        cardillo::physics::BodyFactory::addStaticBody(sys, cardillo::PhysicsSystem::CubeShape({tubeWidth / 2 + wallThickness, wallThickness / 2, tubeHeight / 2}),
             cardillo::PhysicsSystem::RigidState{{0, -tubeDepth/2.0-wallThickness/2.0, tubeHeight/2.0}});
-        sys.addStaticBody(cardillo::PhysicsSystem::CubeShape({tubeWidth / 2 + wallThickness, wallThickness / 2, tubeHeight / 2}),
+        cardillo::physics::BodyFactory::addStaticBody(sys, cardillo::PhysicsSystem::CubeShape({tubeWidth / 2 + wallThickness, wallThickness / 2, tubeHeight / 2}),
             cardillo::PhysicsSystem::RigidState{{0, tubeDepth/2.0+wallThickness/2.0, tubeHeight/2.0}});
 
         // Place bottom cube (replaces bottom sphere)
         double bottomCubeHeight = 2 * sphereRadius;
-        auto bottomCube = sys.addRigidBody(
+        auto bottomCube = cardillo::physics::BodyFactory::addRigidBody(sys, 
             cardillo::PhysicsSystem::CubeShape({tubeWidth/2.0, tubeDepth/2.0, bottomCubeHeight/2.0}),
             cardillo::PhysicsSystem::RigidState{{0, 0, bottomCubeHeight/2.0}},
             cardillo::PhysicsSystem::RigidProps(bottomMass)
@@ -44,7 +44,7 @@ public:
         // Stack spheres above the bottom cube
         double z = bottomCubeHeight + sphereRadius;
         for (size_t i = 1; i < nSpheres; ++i) {
-            auto ent = sys.addRigidBody(
+            auto ent = cardillo::physics::BodyFactory::addRigidBody(sys, 
                 cardillo::PhysicsSystem::SphereShape(sphereRadius),
                 cardillo::PhysicsSystem::RigidState{{0, i * disturb * 1e-12, z}},
                 cardillo::PhysicsSystem::RigidProps(normalMass)

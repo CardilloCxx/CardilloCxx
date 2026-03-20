@@ -266,13 +266,6 @@ public:
         }
     };
 
-    entt::entity addRigidBody(const RigidShape& shape,
-                              const RigidState& state,
-                              const RigidProps& props);
-
-    entt::entity addStaticBody(const RigidShape& shape,
-                               const RigidState& state);
-
     PhysicsSystem();
     explicit PhysicsSystem(const config::Config& cfg);
     ~PhysicsSystem();
@@ -298,45 +291,6 @@ public:
         Vector3r up{0,1,0};
         real_t sizeX{5}, sizeY{5}; // half extents for visualization
     };
-    // Static HeightField obstacle sourced from an EXR heightmap
-    index_t addObstacleHeightField(const Vector3r& position,
-                                   const Quaternion4r& orientation,
-                                   const std::string& exrPath,
-                                   real_t x_dim,
-                                   real_t y_dim,
-                                   real_t z_scale = (real_t)1.0,
-                                   real_t min_height = (real_t)0.0);
-  
-    index_t addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);
-
-    // Create a mass-spring soft body from an OBJ file by instantiating one point mass per vertex
-    // and connecting unique triangle edges with 3D translational springs (x,y,z).
-    std::vector<entt::entity> addSoftBody(const std::string& objPath,
-                                        real_t stiffness,
-                                        real_t damping,
-                                        const Vector3r& position = Vector3r::Zero(),
-                                        const Quaternion4r& orientation = Quaternion4r::Identity(),
-                                        const Vector3r& linearVelocity = Vector3r::Zero(),
-                                        const Vector3r& angularVelocity = Vector3r::Zero(),
-                                        real_t totalMass = (real_t)0.0);
-
-    std::pair<entt::entity, entt::entity> createBeam(const misc::SplinePattern& spline,
-                                        const BeamCrossSection& section,
-                                        const BeamSpringParams& springs,
-                                        const RigidState& stateDefaults,
-                                        const RigidProps& propsDefaults,
-                                        size_t segments);
-    // Create multiple beams from a sequence of splines; returns vector of (root,end) pairs in order.
-    std::pair<entt::entity, entt::entity> createBeams(const std::vector<const misc::SplinePattern*>& splines,
-                                                                  const BeamCrossSection& section,
-                                                                  const BeamSpringParams& springs,
-                                                                  const RigidState& stateDefaults,
-                                                                  const RigidProps& propsDefaults,
-                                                                  size_t segmentsPerSpline);
-
-    // Beam element component (single tag with data)
-
-
     void updateBeamElementEntity(entt::entity e);
     void updateEntities();
 
@@ -497,15 +451,6 @@ public:
     void writeTrackedStateToCsv(real_t t);
 
 private:
-    // Helper to add common rigid-body components
-    void emplaceRigidBodyCommon_(entt::entity e,
-                                 real_t mass,
-                                 const Vector3r& position,
-                                 const Quaternion4r& orientation,
-                                 const Vector3r& linearVelocity,
-                                 const Vector3r& angularVelocity);
-
-private:
 
     entt::registry m_reg;
     Vector3r m_gravity;  // gravity vector
@@ -521,7 +466,6 @@ private:
     mutable bool m_num_bodies_dirty = true;
 
     // assignDofs_ moved to DynamicsAssembler
-    entt::entity createRigidVisualEntity_(const Vector3r& center);
 
     // Persistent subsystems
     config::Config m_cfg{}; // global config

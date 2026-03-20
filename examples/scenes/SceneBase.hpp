@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../src/physics/physics_system.hpp"
+#include "../src/physics/physics.hpp"
 #include "../src/misc/types.hpp"
 
 // Abstract base for example scenes. Derive and implement `populate` which

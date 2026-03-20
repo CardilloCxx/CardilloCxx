@@ -19,7 +19,7 @@ public:
         // const Vector3r pos(0.0, 0.0, 0.0);
         const Vector3r pos(0.0, 0.0, -15.0);
         const Quaternion4r q = Quaternion4r::Identity();
-        sys.addObstacleHeightField(pos, q, exrPath, x_dim, y_dim, z_scale, min_height);
+        cardillo::physics::BodyFactory::addObstacleHeightField(sys, pos, q, exrPath, x_dim, y_dim, z_scale, min_height);
 
         // Drop a few rigid-body spheres onto the mountain
         {
@@ -34,7 +34,7 @@ public:
                     PhysicsSystem::SphereShape shape{radius};
                     PhysicsSystem::RigidState state; state.position = start; state.orientation = Quaternion4r::Identity();
                     PhysicsSystem::RigidProps props; props.mass = mass;
-                    sys.addRigidBody(shape, state, props);
+                    cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
                 }
             }
         }

@@ -21,7 +21,7 @@ public:
         // Ground plane
         PhysicsSystem::CubeShape groundShape(Vector3r(1, 1, 0.1));
         PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0,0,-0.1); groundState.orientation = Quaternion4r::Identity();
-        sys.addStaticBody(groundShape, groundState);
+        cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
 
         // Cylinder approximation
         const real_t radius = (real_t)0.05;      // 5 cm radius
@@ -37,7 +37,7 @@ public:
         state.orientation = q;
         state.angularVelocity = q.toRotationMatrix().transpose() * Vector3r((real_t)0.00, (real_t)0.0, (real_t)50.0);
         PhysicsSystem::RigidProps props(mass);
-        entt::entity e = sys.addRigidBody(PhysicsSystem::CylinderShape(radius, halfLength), state, props);
+        entt::entity e = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CylinderShape(radius, halfLength), state, props);
         sys.track(e, "euler_disk_cylinder");
     }
 };

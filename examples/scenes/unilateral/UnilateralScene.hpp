@@ -61,11 +61,11 @@ public:
             const real_t supportRadius = supportRadius0;
             const real_t supportHalfLength = supportHalfLength0;
             const real_t H = supportZ0;
-            sys.addStaticBody(
+            cardillo::physics::BodyFactory::addStaticBody(sys, 
                 PhysicsSystem::CapsuleShape(supportRadius, supportHalfLength),
                 PhysicsSystem::RigidState(Vector3r(-a, (real_t)0.0, H) + offset, qSupport)
             );
-            sys.addStaticBody(
+            cardillo::physics::BodyFactory::addStaticBody(sys, 
                 PhysicsSystem::CapsuleShape(supportRadius, supportHalfLength),
                 PhysicsSystem::RigidState(Vector3r(+a, (real_t)0.0, H) + offset, qSupport)
             );
@@ -91,7 +91,7 @@ public:
             PhysicsSystem::RigidProps rodProps;
             rodProps.mass = m;
 
-            auto rod = sys.addRigidBody(PhysicsSystem::CapsuleShape(rodRadius, rodHalfLength), rodState, rodProps);
+            auto rod = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CapsuleShape(rodRadius, rodHalfLength), rodState, rodProps);
             const std::string aTag = formatAForName(a);
             sys.track(rod, "unilateral_rod_a" + aTag);
 

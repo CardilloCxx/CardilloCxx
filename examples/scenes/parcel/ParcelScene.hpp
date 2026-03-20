@@ -25,7 +25,7 @@ public:
     PhysicsSystem::CubeShape beltShape{Vector3r(belt_halfLength, 0.5, 0.1)};
     PhysicsSystem::RigidState beltState; beltState.position = m_position; beltState.orientation = orientation; beltState.linearVelocity = linearVelocity; beltState.angularVelocity = angularVeloctiy;
     PhysicsSystem::RigidProps beltProps; beltProps.mass = mass;
-    m_treatmill_entity = sys.addRigidBody(beltShape, beltState, beltProps);
+    m_treatmill_entity = cardillo::physics::BodyFactory::addRigidBody(sys, beltShape, beltState, beltProps);
 
         // Static walls along the conveyor (left/right)
     const real_t beltHalfX = beltShape.halfExtents.x();
@@ -35,11 +35,11 @@ public:
         const real_t wallYoff = beltHalfY + wallThick; // place just outside belt width
         {
             PhysicsSystem::CubeShape wallShape{Vector3r(beltHalfX, wallThick, wallHalfZ)};
-            sys.addStaticBody(wallShape, PhysicsSystem::RigidState(Vector3r(m_position.x(), -wallYoff, wallHalfZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, wallShape, PhysicsSystem::RigidState(Vector3r(m_position.x(), -wallYoff, wallHalfZ)));
         }
         {
             PhysicsSystem::CubeShape wallShape{Vector3r(beltHalfX, wallThick, wallHalfZ)};
-            sys.addStaticBody(wallShape, PhysicsSystem::RigidState(Vector3r(m_position.x(), +wallYoff, wallHalfZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, wallShape, PhysicsSystem::RigidState(Vector3r(m_position.x(), +wallYoff, wallHalfZ)));
         }
 
         // Drop box at the end of the conveyor
@@ -54,26 +54,26 @@ public:
         // Floor
         {
             PhysicsSystem::CubeShape floorShape{Vector3r(boxHalfX, boxHalfY, boxFloorHalfZ)};
-            sys.addStaticBody(floorShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y(), boxFloorZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, floorShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y(), boxFloorZ)));
         }
         // Back wall
         {
             PhysicsSystem::CubeShape backShape{Vector3r(boxWallT, boxHalfY, 2 * boxWallHalfZ)};
-            sys.addStaticBody(backShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x() + boxHalfX + boxWallT, boxCenter.y(), boxCenter.z() + 2 * boxWallHalfZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, backShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x() + boxHalfX + boxWallT, boxCenter.y(), boxCenter.z() + 2 * boxWallHalfZ)));
         }
         // Front wall
         {
             PhysicsSystem::CubeShape frontShape{Vector3r(boxWallT, boxHalfY, boxWallHalfZ)};
-            sys.addStaticBody(frontShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x() - (boxHalfX + boxWallT), boxCenter.y(), boxCenter.z() + boxWallHalfZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, frontShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x() - (boxHalfX + boxWallT), boxCenter.y(), boxCenter.z() + boxWallHalfZ)));
         }
         // Side walls
         {
             PhysicsSystem::CubeShape sideLShape{Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ)};
-            sys.addStaticBody(sideLShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y() - (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, sideLShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y() - (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
         }
         {
             PhysicsSystem::CubeShape sideRShape{Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ)};
-            sys.addStaticBody(sideRShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y() + (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, sideRShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y() + (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
         }
     }
 
@@ -89,7 +89,7 @@ public:
             Vector3r linearVelocity = Vector3r::Zero();
             Vector3r angularVelocity = Vector3r::Zero();
             PhysicsSystem::CubeShape parcelShape{0.1 * (Vector3r::Random() + Vector3r::Constant(1.2)) / 2.2};
-            PhysicsSystem::RigidState st; st.position = position; st.orientation = orientation; st.linearVelocity = linearVelocity; st.angularVelocity = angularVelocity; PhysicsSystem::RigidProps pr; pr.mass = mass; sys.addRigidBody(parcelShape, st, pr);
+            PhysicsSystem::RigidState st; st.position = position; st.orientation = orientation; st.linearVelocity = linearVelocity; st.angularVelocity = angularVelocity; PhysicsSystem::RigidProps pr; pr.mass = mass; cardillo::physics::BodyFactory::addRigidBody(sys, parcelShape, st, pr);
         }
     }
 

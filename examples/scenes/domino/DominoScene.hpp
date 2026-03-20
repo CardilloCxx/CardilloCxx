@@ -19,7 +19,7 @@ public:
     // Create a ground plate (static cube via unified API)
     PhysicsSystem::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
     PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5);
-    sys.addStaticBody(groundShape, groundState);
+    cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
 
         // Domino dims: x=length/2, y=thickness/2, z=height/2
         const Vector3r dominoHalf((real_t)0.024, (real_t)0.00375, (real_t)0.012); // length 9.6cm, thickness 1.5cm, height 4.8cm
@@ -87,7 +87,7 @@ private:
 
             PhysicsSystem::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = vel; state.angularVelocity = Vector3r::Zero();
             PhysicsSystem::RigidProps props; props.mass = m;
-            sys.addRigidBody(shape, state, props);
+            cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
 
         };
 

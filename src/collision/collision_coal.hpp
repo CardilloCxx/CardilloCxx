@@ -64,6 +64,8 @@ private:
     std::unique_ptr<coal::BroadPhaseCollisionManager> m_broadphase; // manager chosen from config
     std::vector<std::shared_ptr<coal::CollisionGeometry>> m_geoms;   // one per object
     std::vector<std::unique_ptr<coal::CollisionObject>> m_objects;   // one per object
+    std::vector<std::shared_ptr<coal::CollisionGeometry>> m_meshSphereGeoms; // mesh precheck spheres (optional)
+    std::vector<std::unique_ptr<coal::CollisionObject>> m_meshSphereObjects; // mesh precheck spheres (optional)
     std::vector<entt::entity> m_entities;                            // index -> entity
     std::unordered_map<uint32_t, std::size_t> m_index_from_entity;   // entity id -> index
     std::vector<ColliderKind> m_kinds;                                // index -> kind
@@ -74,6 +76,7 @@ private:
 
     // Pairs to skip in collision (canonicalized ContactPairKey)
     std::unordered_set<ContactPairKey, ContactPairKeyHash> m_disabledPairs;
+    mutable uint64_t m_seen_structure_version = 0;
 };
 
 } // namespace cardillo::collision

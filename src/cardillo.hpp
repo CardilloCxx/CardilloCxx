@@ -4,7 +4,7 @@
 #include <Eigen/Dense>
 #include "misc/types.hpp"
 #include "misc/dofs.hpp"
-#include "physics/physics_system.hpp"
+#include "physics/physics.hpp"
 
 // A simple wrapper function
 namespace cardillo {

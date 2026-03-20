@@ -30,8 +30,8 @@ public:
             real_t x = stairOrigin.x() + (real_t)i * run;
             Vector3r halfExtents(run * (real_t)0.5, width * (real_t)0.5, thickness * (real_t)0.5);
             Vector3r pos(x + halfExtents.x(), 0, z - thickness * (real_t)0.5);
-            top_step = sys.addStaticBody(PhysicsSystem::CubeShape(halfExtents), PhysicsSystem::RigidState(pos));
-            sys.addStaticBody(PhysicsSystem::SphereShape(thickness * (real_t)0.9), PhysicsSystem::RigidState(pos + Vector3r(0, 0, halfExtents.z())));
+            top_step = cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape(halfExtents), PhysicsSystem::RigidState(pos));
+            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::SphereShape(thickness * (real_t)0.9), PhysicsSystem::RigidState(pos + Vector3r(0, 0, halfExtents.z())));
         }
 
         // Slinky parameters (plastic-like)
@@ -59,10 +59,10 @@ public:
         std::cout << "Creating slinky with " << segments << " segments, " << turns << " turns, pitch " << pitch << ", radius " << radius << "\n";
         PhysicsSystem::RigidState stateDefaults(Vector3r(0.0,0.0,thickness * 0.5 + pitch * 0.5), Vector3r::Zero(),  Quaternion4r::Identity(), Vector3r(0.0,0.0,0.0), top_step, sys.ecs());
         PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(density);
-        auto ends = sys.createBeam(helix, section, springs, stateDefaults, props, segments);
+        auto ends = cardillo::physics::BodyFactory::createBeam(sys, helix, section, springs, stateDefaults, props, segments);
         m_slinky_end_entity = ends.second;
     
-        // m_guide_entity = sys.addRigidBody(PhysicsSystem::SphereShape(radius * (real_t)0.001), 
+        // m_guide_entity = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::SphereShape(radius * (real_t)0.001), 
         //                                   PhysicsSystem::RigidState(ends.second), 
         //                                   PhysicsSystem::RigidProps(1e10));
 

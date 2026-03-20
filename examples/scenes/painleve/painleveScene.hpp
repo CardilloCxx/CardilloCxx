@@ -18,7 +18,7 @@ public:
         const real_t groundHalfSize = (real_t)6000.0;
         PhysicsSystem::CubeShape groundShape{Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness)};
         PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-groundHalfThickness); groundState.orientation = Quaternion4r::Identity();
-        sys.addStaticBody(groundShape, groundState);
+        cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
 
         const real_t phi = (real_t)(-31.0 * M_PI / 180.0);
         const real_t friction = (real_t)5 / 2;
@@ -36,7 +36,7 @@ public:
         // const Vector3r linearVelocity(v0, 0.0, 0.0);
         // PhysicsSystem::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
         // PhysicsSystem::RigidProps props; props.mass = mass; props.friction = friction;
-        // auto rod = sys.addRigidBody(rodShape, state, props);
+        // auto rod = cardillo::physics::BodyFactory::addRigidBody(sys, rodShape, state, props);
         // sys.ecs().get<PhysicsSystem::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
         // sys.track(rod, "painleve_rod");
 
@@ -65,7 +65,7 @@ public:
                 const Vector3r linearVelocity(-v0, 0.0, 0.0);
                 PhysicsSystem::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
                 PhysicsSystem::RigidProps props; props.mass = mass; props.friction = curr_friction;
-                auto rod = sys.addRigidBody(rodShape, state, props);
+                auto rod = cardillo::physics::BodyFactory::addRigidBody(sys, rodShape, state, props);
                 sys.ecs().get<PhysicsSystem::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
                 sys.track(rod, "painleve_rod_fric_" + std::to_string(curr_friction) + "_phi_" + std::to_string(curr_phi));
             }

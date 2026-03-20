@@ -25,17 +25,17 @@ public:
         const real_t rodHalfLength = (real_t)0.15; // 30cm total
         PhysicsSystem::CapsuleShape rodShape(rodRadius, rodHalfLength);
         PhysicsSystem::RigidState rodState(Vector3r(0.0,0.0,-0.145));
-        sys.addStaticBody(rodShape, rodState);
+        cardillo::physics::BodyFactory::addStaticBody(sys, rodShape, rodState);
 
         // 2) Dynamic ring and woodpecker meshes (already authored at correct positions)
         //    Use modest densities to compute mass from volume automatically
         const real_t rhoRing = (real_t)400;      // kg/m^3
         const real_t rhoWoodpecker = (real_t)400; // kg/m^3
-        auto ring = sys.addRigidBody(PhysicsSystem::MeshShape("res/meshes/woodpecker_ring.obj"),
+        auto ring = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::MeshShape("res/meshes/woodpecker_ring.obj"),
                                      PhysicsSystem::RigidState(Vector3r::Zero(), Vector3r(0.0, 0.0, 0.0)),
                                      PhysicsSystem::RigidProps::withDensity(rhoRing));
 
-        auto pecker = sys.addRigidBody(PhysicsSystem::MeshShape("res/meshes/woodpecker.obj"),
+        auto pecker = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::MeshShape("res/meshes/woodpecker.obj"),
                                        PhysicsSystem::RigidState(Vector3r::Zero(), Vector3r(0.0, 0.0, -0.2)),
                                        PhysicsSystem::RigidProps::withDensity(rhoWoodpecker));
 
@@ -96,7 +96,7 @@ public:
             auto props = PhysicsSystem::RigidProps::withDensity(density);
             props.collidable = false; 
 
-            auto endpoints = sys.createBeams(parts, sec, springs,
+            auto endpoints = cardillo::physics::BodyFactory::createBeams(sys, parts, sec, springs,
                                              PhysicsSystem::RigidState{},
                                              props,
                                              segments);

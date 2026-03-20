@@ -23,7 +23,7 @@ public:
         auto spool_shape = PhysicsSystem::MeshShape{spoolMeshPath, Vector3r(0.075, 0.075, 0.075)};
         auto spool_state = PhysicsSystem::RigidState{Vector3r(0.0, 0.0, 1.0)};
         auto spool_props = PhysicsSystem::RigidProps{1e10}; // heavy to stay put
-        m_spool = sys.addRigidBody(spool_shape, spool_state, spool_props);
+        m_spool = cardillo::physics::BodyFactory::addRigidBody(sys, spool_shape, spool_state, spool_props);
 
         // Desired physical height of one link (meters)
         const int N = 150;
@@ -48,7 +48,7 @@ public:
             PhysicsSystem::MeshShape shape{meshPath, scale};
             PhysicsSystem::RigidState state; state.position = pos; state.orientation = ori; state.linearVelocity = vlin; state.angularVelocity = omega;
             PhysicsSystem::RigidProps props; props.mass = mass;
-            auto link = sys.addRigidBody(shape, state, props);
+            auto link = cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
 
             if (i == 0) {
                   sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), m_spool, link, Vector3r(0.0, 0.0, -spool_radius), Vector3r(linkHeight / 2,  0.0, 0.0));

@@ -39,15 +39,15 @@ public:
             const real_t wallCenterZ = floorZ + floorHalfZ + wallHalfZ;
             
             // Floor
-            sys.addStaticBody(PhysicsSystem::CubeShape{floorHalfExtents}, PhysicsSystem::RigidState(Vector3r(0, 0, floorZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{floorHalfExtents}, PhysicsSystem::RigidState(Vector3r(0, 0, floorZ)));
             // +Y wall (back)
-            sys.addStaticBody(PhysicsSystem::CubeShape{wallHalfExtentsY}, PhysicsSystem::RigidState(Vector3r(0,  wallOffset, wallCenterZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{wallHalfExtentsY}, PhysicsSystem::RigidState(Vector3r(0,  wallOffset, wallCenterZ)));
             // -Y wall (front)
-            sys.addStaticBody(PhysicsSystem::CubeShape{wallHalfExtentsY}, PhysicsSystem::RigidState(Vector3r(0, -wallOffset, wallCenterZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{wallHalfExtentsY}, PhysicsSystem::RigidState(Vector3r(0, -wallOffset, wallCenterZ)));
             // +X wall (right)
-            sys.addStaticBody(PhysicsSystem::CubeShape{wallHalfExtentsX}, PhysicsSystem::RigidState(Vector3r( wallOffset, 0, wallCenterZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{wallHalfExtentsX}, PhysicsSystem::RigidState(Vector3r( wallOffset, 0, wallCenterZ)));
             // -X wall (left)
-            sys.addStaticBody(PhysicsSystem::CubeShape{wallHalfExtentsX}, PhysicsSystem::RigidState(Vector3r(-wallOffset, 0, wallCenterZ)));
+            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{wallHalfExtentsX}, PhysicsSystem::RigidState(Vector3r(-wallOffset, 0, wallCenterZ)));
         }
 
         // Cooked spaghetti properties.
@@ -92,7 +92,7 @@ public:
                 const Vector3r pBot = pTop + Vector3r(0, 0, -L);
                 LinearSpline spline(pTop, pBot);
 
-                auto ends = sys.createBeam(spline, section, springs, stateDefaults, props, segments);
+                auto ends = cardillo::physics::BodyFactory::createBeam(sys, spline, section, springs, stateDefaults, props, segments);
                 m_spaghettiEnds.push_back(ends);
             }
         }
