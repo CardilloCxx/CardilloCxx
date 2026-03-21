@@ -23,12 +23,12 @@ ConstraintPattern::WorldAttachments ConstraintPattern::computeAttachments_() con
         Quaternion4r qA = Quaternion4r::Identity();
         Quaternion4r qB = Quaternion4r::Identity();
         if (m_a != entt::null) {
-            if (m_reg->all_of<PhysicsSystem::C_Position3>(m_a)) pA = m_reg->get<PhysicsSystem::C_Position3>(m_a).value;
-            if (m_reg->all_of<PhysicsSystem::C_Orientation>(m_a)) qA = m_reg->get<PhysicsSystem::C_Orientation>(m_a).value;
+            if (m_reg->all_of<World::C_Position3>(m_a)) pA = m_reg->get<World::C_Position3>(m_a).value;
+            if (m_reg->all_of<World::C_Orientation>(m_a)) qA = m_reg->get<World::C_Orientation>(m_a).value;
         }
         if (m_b != entt::null) {
-            if (m_reg->all_of<PhysicsSystem::C_Position3>(m_b)) pB = m_reg->get<PhysicsSystem::C_Position3>(m_b).value;
-            if (m_reg->all_of<PhysicsSystem::C_Orientation>(m_b)) qB = m_reg->get<PhysicsSystem::C_Orientation>(m_b).value;
+            if (m_reg->all_of<World::C_Position3>(m_b)) pB = m_reg->get<World::C_Position3>(m_b).value;
+            if (m_reg->all_of<World::C_Orientation>(m_b)) qB = m_reg->get<World::C_Orientation>(m_b).value;
         }
         wa.qA = qA;
         wa.qB = qB;
@@ -175,12 +175,11 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
 BeamConstraint::BeamConstraint( entt::registry& reg,
                                 entt::entity a,
                                 entt::entity b,
-                                const cardillo::PhysicsSystem::BeamSpringParams& springs,
-                                const cardillo::PhysicsSystem::BeamCrossSection& section)
+                                const cardillo::World::BeamSpringParams& springs,
+                                const cardillo::World::BeamCrossSection& section)
         : ConstraintPattern(reg, a, b, Vector3r::Zero(), Vector3r::Zero()),
             m_springs(springs), m_section(section)
 {
-    m_crackStrainMax = springs.crackStrainMax;
     const auto wa = computeAttachments_();
     const Vector4r qMid = 0.5 * (wa.qA.coeffs() + wa.qB.coeffs());
     const Matrix33r A_mid = Quaternion4r(qMid).normalized().toRotationMatrix();
@@ -192,57 +191,6 @@ BeamConstraint::BeamConstraint( entt::registry& reg,
     const real_t   Qmid_w = qMid(3);
     const Vector3r Qmid_q = qMid.head<3>();
     m_kappa0 =  factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
-}
-
-real_t CalculateMaxPrincipalTensileStress(
-    const Vector3r& gamma, 
-    const Vector3r& kappa,
-    const Vector3r& Ke_eff,
-    const Vector3r& Kf_eff,
-    const PhysicsSystem::BeamCrossSection& sec
-) {
-    // Axial Force (N)
-    real_t N  = Ke_eff.x() * gamma.x();
-    
-    // Bending Moments (My, Mz)
-    real_t My = Kf_eff.y() * kappa.y();
-    real_t Mz = Kf_eff.z() * kappa.z();
-    
-    // Shear Forces (Vy, Vz)
-    real_t Vy = Ke_eff.y() * gamma.y();
-    real_t Vz = Ke_eff.z() * gamma.z();
-    
-    const real_t A = sec.area();
-    const real_t W = sec.sectionModulus(); // Assume sec.sectionModulus() returns I/R 
-    
-    // Safety check: Avoid division by zero
-    if (A <= (real_t)0.0 || W <= (real_t)0.0) return (real_t)0.0;
-    
-    // Axial Stress Component (N/A)
-    real_t sigma_axial = N / A; 
-    
-    // Combined Bending Moment Magnitude: Mb = sqrt(My^2 + Mz^2)
-    real_t Mb_mag = std::sqrt(My * My + Mz * Mz);
-    
-    // Maximum Tensile Axial/Bending Stress (Sigma_xx) at the perimeter:
-    real_t sigma_xx_max = sigma_axial + Mb_mag / W; 
-    
-    // Shear Stress (tau_xy, tau_xz) at this point:
-    // For a circular section, shear stress is ZERO at the perimeter where bending is max.
-    // The Rankine criterion simplifies significantly here:
-    real_t tau_xy_at_max = 0.0;
-    real_t tau_xz_at_max = 0.0;
-    
-    // Sigma_1 = (sigma_xx / 2) + sqrt((sigma_xx / 2)^2 + tau_xy^2 + tau_xz^2)
-    // Since tau_xy = tau_xz = 0, this simplifies to Sigma_1 = Sigma_xx_max (if tensile)
-    real_t sigma_1 = (sigma_xx_max / 2.0) + std::sqrt(
-        std::pow(sigma_xx_max / 2.0, 2) + 
-        std::pow(tau_xy_at_max, 2) + 
-        std::pow(tau_xz_at_max, 2)
-    );
-    
-    // We only care about TENSION for the Rankine failure criterion
-    return std::max((real_t)0.0, sigma_1);
 }
 
 ConstraintResult BeamConstraint::getConstraint() const {
@@ -290,70 +238,6 @@ ConstraintResult BeamConstraint::getConstraint() const {
     Vector3r Kf_eff = m_springs.Kf(l_0, m_section).cwiseProduct(m_springs.scaleKf);
     Vector3r De_eff = Ke_eff * m_springs.dampingFactor;
     Vector3r Df_eff = Kf_eff * m_springs.dampingFactor;
-
-    if (!std::isfinite( m_springs.tensileStrength)) { 
-        fillCompliance3(out.Crows, 0, Ke_eff);
-        fillCompliance3(out.Crows, 3, Kf_eff);
-        fillCompliance3(out.Arows, 0, De_eff);
-        fillCompliance3(out.Arows, 3, Df_eff);
-        return out;
-    }
-
-    // // 1. Calculate Stresses (N, My, Mz, Vy, Vz) -> then stress tensor and sigma_1 at critical point(s)
-    // real_t sigma_1 = CalculateMaxPrincipalTensileStress(
-    //     gamma, kappa,
-    //     Ke_eff,
-    //     Kf_eff,
-    //     m_section
-    // );
-
-    // const Vector3r strain_e = gamma - m_delta0; 
-    // real_t e_ck_current = std::max(std::abs(strain_e.y() / l_0), std::abs(strain_e.z() / l_0));
-
-    // // 2. Rankine Criterion for Crack Initiation
-    // if (!m_crackReported && sigma_1 > m_springs.tensileStrength) {
-    //     m_crackReported = true;
-    //     m_crackStrainPeak = e_ck_current; // Initialize the peak strain when crack first forms
-    // }
-
-    // // 3. Shear Retention Driven by Peak Crack Strain (post-initiation)
-    // real_t retention = (real_t)1.0;
-    // if (m_crackReported) {
-    //     // Only update the peak strain AFTER the crack has been initiated by Rankine
-    //     if (e_ck_current > m_crackStrainPeak) m_crackStrainPeak = e_ck_current;
-        
-    //     // Apply the softening law (Retention = 1 - e_ck_peak / e_ck_max)
-    //     if (m_crackStrainPeak > 0) {
-    //         retention = std::clamp((real_t)1.0 - (m_crackStrainPeak / m_springs.crackStrainMax), (real_t)0.0, (real_t)1.0);
-    //     }
-    // }
-
-    // // 4. Apply Retention and Check for Permanent Break (The rest of your code)
-    // Ke_eff.y() *= retention;
-    // Ke_eff.z() *= retention;
-    // // Break permanently once retention reaches 0
-    // if (retention <= (real_t)0.0) m_broken = true;
-
-    // if (m_broken) {
-    //     if (m_reg && m_reg->valid(m_a) && m_reg->all_of<cardillo::PhysicsSystem::C_BeamElement>(m_a)) {
-    //         auto &beam_a = m_reg->get<cardillo::PhysicsSystem::C_BeamElement>(m_a);
-    //         beam_a.next = std::nullopt;
-    //         if (!beam_a.next.has_value() && !beam_a.prev.has_value()) {
-    //             m_reg->remove<cardillo::PhysicsSystem::C_BeamElement>(m_a);
-    //         }
-    //     }
-    //     if (m_reg && m_reg->valid(m_b) && m_reg->all_of<cardillo::PhysicsSystem::C_BeamElement>(m_b)) {
-    //         auto &beam_b = m_reg->get<cardillo::PhysicsSystem::C_BeamElement>(m_b);
-    //         beam_b.prev = std::nullopt;
-    //         if (!beam_b.next.has_value() && !beam_b.prev.has_value()) {
-    //             m_reg->remove<cardillo::PhysicsSystem::C_BeamElement>(m_b);
-    //         }
-    //     }
-    //     Ke_eff = Vector3r::Zero();
-    //     Kf_eff = Vector3r::Zero();
-    //     De_eff = Vector3r::Zero();
-    //     Df_eff = Vector3r::Zero();
-    // }
 
     fillCompliance3(out.Crows, 0, Ke_eff);
     fillCompliance3(out.Crows, 3, Kf_eff);

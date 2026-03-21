@@ -17,13 +17,14 @@ public:
     CardhouseScene() = default;
     ~CardhouseScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         // Ground plane
-        PhysicsSystem::CubeShape groundShape{Vector3r(2.0, 2.0, 0.1)};
-        PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.1);
-        cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
+        physics::CubeShape groundShape{Vector3r(2.0, 2.0, 0.1)};
+        physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.1);
+        engine.addStaticBody(groundShape, groundState);
 
         // Real card dimensions (meters): long=88.9mm along x, short=63.5mm along y, thickness ~0.3 mm along z
         const Vector3r halfExtents((real_t)0.0889 * (real_t)0.5, (real_t)0.0635 * (real_t)0.5, (real_t)0.0003 * (real_t)0.5);
@@ -52,7 +53,7 @@ public:
         // Roof tilt: introduce a tiny pitch so the two supported ends differ by one card thickness.
         const real_t roofTilt = std::atan(halfExtents.z() / (baseSpan * 0.5));
 
-        PhysicsSystem::CubeShape cardShape{halfExtents};
+        physics::CubeShape cardShape{halfExtents};
 
         auto placeLeaningCard = [&](real_t footX, real_t xCenter, real_t baseZ, real_t angleSign) {
             const real_t yaw = (real_t)M_PI_2 + angleSign * tiltRad; // rotate about Y: 90° ± tilt
@@ -62,9 +63,9 @@ public:
             const real_t vertHalf = std::abs(cosA) * halfExtents.z() + std::abs(sinA) * halfExtents.x();
             Vector3r c(xOffset + xCenter + footX, (real_t)0.0, baseZ + vertHalf);
             Quaternion4r q = Quaternion4r(Eigen::AngleAxis<real_t>(yaw, Vector3r::UnitY()));
-            PhysicsSystem::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = Vector3r::Zero(); state.angularVelocity = Vector3r::Zero();
-            PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(density);
-            cardillo::physics::BodyFactory::addRigidBody(sys, cardShape, state, props);
+            physics::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = Vector3r::Zero(); state.angularVelocity = Vector3r::Zero();
+            physics::RigidProps props = physics::RigidProps::withDensity(density);
+            engine.addRigidBody(cardShape, state, props);
             return baseZ + (real_t)2.0 * vertHalf;
         };
 
@@ -75,13 +76,13 @@ public:
         };
 
         auto placeRoof = [&](real_t x, real_t supportZ) {
-            PhysicsSystem::RigidState state;
+            physics::RigidState state;
             state.position = Vector3r(xOffset + x, (real_t)0.0, supportZ + halfExtents.z() + roofGap);
             state.orientation = Quaternion4r(Eigen::AngleAxis<real_t>(roofTilt, Vector3r::UnitY()));
             state.linearVelocity = Vector3r::Zero();
             state.angularVelocity = Vector3r::Zero();
-            PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(density);
-            cardillo::physics::BodyFactory::addRigidBody(sys, cardShape, state, props);
+            physics::RigidProps props = physics::RigidProps::withDensity(density);
+            engine.addRigidBody(cardShape, state, props);
         };
 
         real_t layerBaseZ = (real_t)0.0;
@@ -112,13 +113,13 @@ public:
 
         // Ball rolling towards the house to knock it down
         const real_t ballRadius = (real_t)0.075;
-        PhysicsSystem::SphereShape ballShape{ballRadius};
-        PhysicsSystem::RigidState ballState;
+        physics::SphereShape ballShape{ballRadius};
+        physics::RigidState ballState;
         ballState.position = Vector3r(0.0, -1.0, ballRadius + 0.01);
         ballState.orientation = Quaternion4r::Identity();
         ballState.linearVelocity = Vector3r(0.0, 4.0, 0.0);
         ballState.angularVelocity = Vector3r::Zero();
-        PhysicsSystem::RigidProps ballProps = PhysicsSystem::RigidProps::withDensity((real_t)1000.0);
-        cardillo::physics::BodyFactory::addRigidBody(sys, ballShape, ballState, ballProps);
+        physics::RigidProps ballProps = physics::RigidProps::withDensity((real_t)1000.0);
+        engine.addRigidBody(ballShape, ballState, ballProps);
     }
 };

@@ -20,7 +20,8 @@ public:
     RodAssemblyScene() = default;
     ~RodAssemblyScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         // Mesh paths
@@ -33,21 +34,22 @@ public:
         const Quaternion4r frameOri = Quaternion4r::Identity();
         const Vector3r frameScale = Vector3r::Ones();
         {
-            PhysicsSystem::MeshShape shape{framePath, frameScale}; PhysicsSystem::RigidState st; st.position = framePos; st.orientation = frameOri; PhysicsSystem::RigidProps pr; m_frame = cardillo::physics::BodyFactory::addRigidBody(sys, shape, st, pr);
+            physics::MeshShape shape{framePath, frameScale}; physics::RigidState st; st.position = framePos; st.orientation = frameOri; physics::RigidProps pr; m_frame = engine.addRigidBody(shape, st, pr);
         }
 
         // Add lower and upper rods as dynamic rigid bodies
         const real_t rodMass = (real_t)1.0;
         {
-            PhysicsSystem::MeshShape shape{lowerPath, Vector3r::Ones()}; PhysicsSystem::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(0.0,1.0,0.0); PhysicsSystem::RigidProps pr; pr.mass = rodMass; m_lowerRod = cardillo::physics::BodyFactory::addRigidBody(sys, shape, st, pr);
+            physics::MeshShape shape{lowerPath, Vector3r::Ones()}; physics::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(0.0,1.0,0.0); physics::RigidProps pr; pr.mass = rodMass; m_lowerRod = engine.addRigidBody(shape, st, pr);
         }
         {
-            PhysicsSystem::MeshShape shape{upperPath, Vector3r::Ones()}; PhysicsSystem::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(1.0,0.0,0.0); PhysicsSystem::RigidProps pr; pr.mass = rodMass; m_upperRod = cardillo::physics::BodyFactory::addRigidBody(sys, shape, st, pr);
+            physics::MeshShape shape{upperPath, Vector3r::Ones()}; physics::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(1.0,0.0,0.0); physics::RigidProps pr; pr.mass = rodMass; m_upperRod = engine.addRigidBody(shape, st, pr);
         }
     
     }
 
-    void updateScene(cardillo::PhysicsSystem& sys, real_t /*t*/, real_t /*dt*/) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override {
+        auto& sys = engine.world();
         sys.applyForce(m_upperRod, Vector3r(50.0, 0.0, 0), Vector3r::Zero());
     }
 

@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include "../misc/types.hpp"
-#include "../physics/physics_system.hpp"
+#include "../physics/world.hpp"
 #include "vtk_sphere_util.hpp"
 
 namespace cardillo { namespace collision { struct Contact; } }
@@ -26,8 +26,8 @@ public:
     void setFrequency(int freq);
     void setHeightFieldStride(int s) { m_hfStride = s > 0 ? s : 1; }
 
-    void maybeWrite(int step, real_t time, const cardillo::PhysicsSystem& sys);
-    void write(int step, real_t time, const cardillo::PhysicsSystem& sys);
+    void maybeWrite(int step, real_t time, const cardillo::World& sys);
+    void write(int step, real_t time, const cardillo::World& sys);
 
     // Optional contacts output
     void enableContactsOutput(bool enable, const std::string& baseName) { m_writeContacts = enable; m_contactsBase = baseName; }
@@ -82,7 +82,7 @@ private:
     };
 
     // Helpers
-    Collected collect(const cardillo::PhysicsSystem& sys) const;
+    Collected collect(const cardillo::World& sys) const;
 
     // Binary (big-endian) write helpers
     static inline uint32_t bswap32(uint32_t v);
@@ -109,7 +109,7 @@ private:
     void writeGeometryOnly(int step, real_t time, const Collected& data) const;
     void writeStaticGeometry(const Collected& data) const;
     void writeDynamicGeometry(int step, const Collected& data) const;
-    void writeSprings(int step, const cardillo::PhysicsSystem& sys) const;
+    void writeSprings(int step, const cardillo::World& sys) const;
     void writeStaticGeometryStep(int step, const Collected& data) const; // write static geometry each timestep (entity transforms may change)
 
     std::string m_outputDir;

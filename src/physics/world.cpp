@@ -1,7 +1,10 @@
 #include <optional>
-#include "physics_system.hpp"
+#include "world.hpp"
 #include "assets.hpp"
 #include "constraints.hpp"
+#include "constraint_factory.hpp"
+#include "entity_state_updater.hpp"
+#include "beam_element_updater.hpp"
 #include "../collision/collision_coal.hpp"
 #include "../solver/warmstart.hpp"
 #include "../io/csv_writer.hpp"
@@ -11,33 +14,50 @@
 
 namespace cardillo {
 
+namespace {
+
+Vector3r worldPointFromLocal(const entt::registry& reg, entt::entity e, const Vector3r& r_local) {
+    Vector3r p = r_local;
+    if (reg.valid(e) && reg.all_of<World::C_Position3>(e)) {
+        p = reg.get<World::C_Position3>(e).value;
+        if (reg.all_of<World::C_Orientation>(e)) {
+            p += reg.get<World::C_Orientation>(e).value.toRotationMatrix() * r_local;
+        } else {
+            p += r_local;
+        }
+    }
+    return p;
+}
+
+} // namespace
+
 // Construction and configuration
-PhysicsSystem::PhysicsSystem() 
+World::World() 
 {
     m_gravity = Vector3r(0, 0, -9.81);
     // Default warmstart provider: simple global-index cache
     m_warmstart_provider = std::make_unique<cardillo::solver::WarmstartCache>();
 }
 
-PhysicsSystem::~PhysicsSystem() = default;
+World::~World() = default;
 
-PhysicsSystem::PhysicsSystem(const config::Config& cfg) : PhysicsSystem() {
+World::World(const config::Config& cfg) : World() {
     setConfig(cfg);
 }
 
-void PhysicsSystem::setGravity(const Vector3r& g) { m_gravity = g; m_forces_dirty = true; }
+void World::setGravity(const Vector3r& g) { m_gravity = g; m_forces_dirty = true; }
 
 // Assets access ----------------------------------
-PhysicsAssets& PhysicsSystem::assets() {
+PhysicsAssets& World::assets() {
     if (!m_assets) m_assets = std::make_shared<PhysicsAssets>();
     return *m_assets;
 }
-const PhysicsAssets& PhysicsSystem::assets() const {
-    if (!m_assets) const_cast<PhysicsSystem*>(this)->m_assets = std::make_shared<PhysicsAssets>();
+const PhysicsAssets& World::assets() const {
+    if (!m_assets) const_cast<World*>(this)->m_assets = std::make_shared<PhysicsAssets>();
     return *m_assets;
 }
 
-void PhysicsSystem::track(entt::entity e, const std::string& name)
+void World::track(entt::entity e, const std::string& name)
 {
     if (!m_reg.valid(e)) return;
     if (!m_reg.any_of<C_TrackTag>(e)) {
@@ -48,7 +68,7 @@ void PhysicsSystem::track(entt::entity e, const std::string& name)
 }
 
 
-void PhysicsSystem::writeTrackedStateToCsv(real_t t)
+void World::writeTrackedStateToCsv(real_t t)
 {
     static cardillo::io::CsvWriter writer;
     static bool initialized = false;
@@ -86,20 +106,97 @@ void PhysicsSystem::writeTrackedStateToCsv(real_t t)
 }
 
 
-// Add a general constraint pattern (ownership transferred)
-size_t PhysicsSystem::addConstraint(std::unique_ptr<cardillo::physics::ConstraintPattern> pattern)
-{
-    if (pattern) {
-    m_constraints_new.emplace_back(std::move(pattern));
-    markStructureDirty();
-        return m_constraints_new.size() - 1;
-    }
-    return static_cast<size_t>(-1);
+size_t World::addLinearDistanceConstraint(entt::entity a,
+                                          entt::entity b,
+                                          const Vector3r& rA_local,
+                                          const Vector3r& rB_local,
+                                          real_t stiffness,
+                                          real_t damping) {
+    return cardillo::physics::ConstraintFactory::addLinearDistanceConstraint(*this, a, b, rA_local, rB_local, stiffness, damping);
+}
+
+size_t World::addRigidConstraint(entt::entity a, entt::entity b) {
+    return cardillo::physics::ConstraintFactory::addRigidConstraint(*this, a, b);
+}
+
+size_t World::addRigidConstraint(entt::entity a,
+                                 entt::entity b,
+                                 const Vector3r& rA_local,
+                                 const std::optional<Vector3r>& rB_local,
+                                 const Vector3r& K_rot,
+                                 const Vector3r& D_rot,
+                                 const Vector3r& K_trans,
+                                 const Vector3r& D_trans) {
+    const Vector3r pA = worldPointFromLocal(m_reg, a, rA_local);
+    const Vector3r pJ = rB_local.has_value()
+        ? (real_t)0.5 * (pA + worldPointFromLocal(m_reg, b, *rB_local))
+        : pA;
+    const cardillo::physics::JointFrame frame(pJ);
+    return cardillo::physics::ConstraintFactory::addTranslationRotationConstraint(*this, a, b, frame, K_trans, D_trans, K_rot, D_rot);
+}
+
+size_t World::addTranslationRotationConstraint(entt::entity a,
+                                               entt::entity b,
+                                               const cardillo::physics::JointFrame& frame,
+                                               const Vector3r& K_trans,
+                                               const Vector3r& D_trans,
+                                               const Vector3r& K_rot,
+                                               const Vector3r& D_rot) {
+    return cardillo::physics::ConstraintFactory::addTranslationRotationConstraint(*this, a, b, frame, K_trans, D_trans, K_rot, D_rot);
+}
+
+size_t World::addTranslationalConstraint(entt::entity a,
+                                         entt::entity b,
+                                         const cardillo::physics::JointFrame& frame,
+                                         const Vector3r& K_trans,
+                                         const Vector3r& D_trans) {
+    return cardillo::physics::ConstraintFactory::addTranslationalConstraint(*this, a, b, frame, K_trans, D_trans);
+}
+
+size_t World::addRotationConstraint(entt::entity a,
+                                    entt::entity b,
+                                    const cardillo::physics::JointFrame& frame,
+                                    const Vector3r& K_rot,
+                                    const Vector3r& D_rot) {
+    return cardillo::physics::ConstraintFactory::addRotationConstraint(*this, a, b, frame, K_rot, D_rot);
+}
+
+size_t World::addHingeConstraint(entt::entity a,
+                                 entt::entity b,
+                                 const cardillo::physics::JointFrame& frame,
+                                 real_t K_axis,
+                                 real_t D_axis,
+                                 const Vector3r& K_trans,
+                                 const Vector3r& D_trans) {
+    return cardillo::physics::ConstraintFactory::addHingeConstraint(*this, a, b, frame, K_axis, D_axis, K_trans, D_trans);
+}
+
+size_t World::addHingeConstraint(entt::entity a,
+                                 entt::entity b,
+                                 const Vector3r& rA_local,
+                                 const Vector3r& rB_local,
+                                 const Vector3r& axis_world,
+                                 real_t K_axis,
+                                 real_t D_axis,
+                                 const Vector3r& K_trans,
+                                 const Vector3r& D_trans) {
+    const Vector3r pA = worldPointFromLocal(m_reg, a, rA_local);
+    const Vector3r pB = worldPointFromLocal(m_reg, b, rB_local);
+    const Vector3r pJ = (real_t)0.5 * (pA + pB);
+    const cardillo::physics::JointFrame frame = cardillo::physics::JointFrame::fromAxis(pJ, axis_world);
+    return cardillo::physics::ConstraintFactory::addHingeConstraint(*this, a, b, frame, K_axis, D_axis, K_trans, D_trans);
+}
+
+size_t World::addBeamConstraint(entt::entity a,
+                                entt::entity b,
+                                const BeamSpringParams& springs,
+                                const BeamCrossSection& section) {
+    return cardillo::physics::ConstraintFactory::addBeamConstraint(*this, a, b, springs, section);
 }
 
 // ---------- Dynamics getters ----------
 
-MatrixXXr PhysicsSystem::getMass(entt::entity e) const {
+MatrixXXr World::getMass(entt::entity e) const {
     // Rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass, C_InertiaDiag>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
@@ -123,7 +220,7 @@ MatrixXXr PhysicsSystem::getMass(entt::entity e) const {
     return MatrixXXr(0,0);
 }
 
-VectorXr PhysicsSystem::getMassInverseDiag(entt::entity e) const {
+VectorXr World::getMassInverseDiag(entt::entity e) const {
     // Compute from getMass() to keep a single source of truth for layout
     const MatrixXXr M = getMass(e);
     const index_t n = (index_t)M.rows();
@@ -137,7 +234,7 @@ VectorXr PhysicsSystem::getMassInverseDiag(entt::entity e) const {
     return inv;
 }
 
-VectorXr PhysicsSystem::getPosition(entt::entity e) const {
+VectorXr World::getPosition(entt::entity e) const {
     // Prefer rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Position3, C_Orientation>(e)) {
         const auto& x = m_reg.get<C_Position3>(e).value;
@@ -157,7 +254,7 @@ VectorXr PhysicsSystem::getPosition(entt::entity e) const {
     return VectorXr(0);
 }
 
-VectorXr PhysicsSystem::getVelocity(entt::entity e) const {
+VectorXr World::getVelocity(entt::entity e) const {
     // Prefer rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_LinearVelocity3, C_AngularVelocity3>(e)) {
         const auto& v = m_reg.get<C_LinearVelocity3>(e).value;
@@ -175,7 +272,7 @@ VectorXr PhysicsSystem::getVelocity(entt::entity e) const {
     return VectorXr(0);
 }
 
-VectorXr PhysicsSystem::getForceExternal(entt::entity e) const {
+VectorXr World::getForceExternal(entt::entity e) const {
     // Prefer rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
@@ -206,7 +303,7 @@ VectorXr PhysicsSystem::getForceExternal(entt::entity e) const {
     return VectorXr(0);
 }
 
-VectorXr PhysicsSystem::getForceGyroscopic(entt::entity e) const {
+VectorXr World::getForceGyroscopic(entt::entity e) const {
     // Gyroscopic forces only apply to rigid bodies
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass>(e)) {
         Vector3r tau = Vector3r::Zero();
@@ -227,33 +324,24 @@ VectorXr PhysicsSystem::getForceGyroscopic(entt::entity e) const {
     return VectorXr(0);
 }
 
-VectorXr PhysicsSystem::getForce(entt::entity e) const {
+VectorXr World::getForce(entt::entity e) const {
     // Combined: external + gyroscopic
     VectorXr f_ext = getForceExternal(e);
     VectorXr f_gyro = getForceGyroscopic(e);
     return f_ext + f_gyro;
 }
 
-Vector3r PhysicsSystem::getInertiaDiag(entt::entity e) const {
+Vector3r World::getInertiaDiag(entt::entity e) const {
     // If explicitly stored (mesh or custom bodies)
     if (m_reg.all_of<C_InertiaDiag>(e)) {
         return m_reg.get<C_InertiaDiag>(e).I;
     }
-    // Cube fallback
-    if (m_reg.all_of<C_Cube, C_Mass>(e)) {
-        const real_t m = m_reg.get<C_Mass>(e).m;
-        const Vector3r he = m_reg.get<C_Cube>(e).halfExtents;
-        Vector3r I;
-        I.x() = (real_t)1.0 / 3.0 * m * (he.y() * he.y() + he.z() * he.z());
-        I.y() = (real_t)1.0 / 3.0 * m * (he.x() * he.x() + he.z() * he.z());
-        I.z() = (real_t)1.0 / 3.0 * m * (he.x() * he.x() + he.y() * he.y());
-        return I;
-    }
+   
     // Default: zero
     return Vector3r::Zero();
 }
 
-real_t PhysicsSystem::getKineticEnergy(entt::entity e) const {
+real_t World::getKineticEnergy(entt::entity e) const {
     real_t KE = (real_t)0;
     // Rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass, C_InertiaDiag, C_LinearVelocity3, C_AngularVelocity3>(e)) {
@@ -274,7 +362,7 @@ real_t PhysicsSystem::getKineticEnergy(entt::entity e) const {
     return KE;
 }
 
-int PhysicsSystem::numBodies() const {
+int World::numBodies() const {
     if (m_num_bodies_dirty) {
         int count = 0;
         // Prefer assembler-assigned body indices when available
@@ -291,7 +379,7 @@ int PhysicsSystem::numBodies() const {
     return m_num_bodies_cached;
 }
 
-void PhysicsSystem::applyForce(entt::entity e, const Vector3r& force_world, const Vector3r& torque_body) {
+void World::applyForce(entt::entity e, const Vector3r& force_world, const Vector3r& torque_body) {
     if (!m_reg.valid(e)) return;
     if (force_world.allFinite() && !force_world.isZero()) {
         if (m_reg.any_of<C_ExternalForce>(e)) m_reg.get<C_ExternalForce>(e).f += force_world;
@@ -305,7 +393,7 @@ void PhysicsSystem::applyForce(entt::entity e, const Vector3r& force_world, cons
 }
 
 // Apply a pure moment expressed in world coordinates.
-void PhysicsSystem::applyInertialTorque(entt::entity e, const Vector3r& torque_world) {
+void World::applyInertialTorque(entt::entity e, const Vector3r& torque_world) {
     if (!m_reg.valid(e)) return;
     if (!torque_world.allFinite() || torque_world.isZero()) return;
     if (!m_reg.any_of<C_Orientation>(e)) return;
@@ -314,7 +402,7 @@ void PhysicsSystem::applyInertialTorque(entt::entity e, const Vector3r& torque_w
     applyForce(e, Vector3r::Zero(), torque_body);
 }
 
-void PhysicsSystem::makeStatic(entt::entity e) {
+void World::makeStatic(entt::entity e) {
     if (!m_reg.valid(e)) return;
     // Remove dynamic physics components; keep visuals/collidable and shape tags
     if (m_reg.any_of<C_PhysicsObject>(e)) m_reg.remove<C_PhysicsObject>(e);
@@ -335,17 +423,17 @@ void PhysicsSystem::makeStatic(entt::entity e) {
 
 // ---------- Minimal setters ----------
 
-void PhysicsSystem::setPosition(entt::entity e, const Vector3r& p) {
+void World::setPosition(entt::entity e, const Vector3r& p) {
     if (!m_reg.valid(e)) return;
     if (m_reg.any_of<C_Position3>(e)) m_reg.get<C_Position3>(e).value = p; else m_reg.emplace<C_Position3>(e, C_Position3{p});
     markStateDirty();
 }
 
-void PhysicsSystem::setOrientation(entt::entity e, const Quaternion4r& q_in) {
+void World::setOrientation(entt::entity e, const Quaternion4r& q_in) {
     if (!m_reg.valid(e)) return;
     if (m_reg.any_of<C_Orientation>(e)) {
         const Quaternion4r q_ref = m_reg.get<C_Orientation>(e).value;
-        m_reg.get<C_Orientation>(e).value = PhysicsSystem::alignQuaternionTo(q_in, q_ref);
+        m_reg.get<C_Orientation>(e).value = World::alignQuaternionTo(q_in, q_ref);
     } else {
         Quaternion4r q = q_in; q.normalize();
         m_reg.emplace<C_Orientation>(e, C_Orientation{q});
@@ -353,19 +441,19 @@ void PhysicsSystem::setOrientation(entt::entity e, const Quaternion4r& q_in) {
     markStateDirty();
 }
 
-void PhysicsSystem::setLinearVelocity(entt::entity e, const Vector3r& v) {
+void World::setLinearVelocity(entt::entity e, const Vector3r& v) {
     if (!m_reg.valid(e)) return;
     if (m_reg.any_of<C_LinearVelocity3>(e)) m_reg.get<C_LinearVelocity3>(e).value = v; else m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{v});
     markStateDirty();
 }
 
-void PhysicsSystem::setAngularVelocity(entt::entity e, const Vector3r& w) {
+void World::setAngularVelocity(entt::entity e, const Vector3r& w) {
     if (!m_reg.valid(e)) return;
     if (m_reg.any_of<C_AngularVelocity3>(e)) m_reg.get<C_AngularVelocity3>(e).value = w; else m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{w});
     markStateDirty();
 }
 
-void PhysicsSystem::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w)
+void World::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w)
 {
     if (!m_reg.valid(e)) return;
 
@@ -388,7 +476,7 @@ void PhysicsSystem::setVelocityByForce(entt::entity e, const Vector3r& v, const 
 
 // ---------- Subsystems ----------
 
-cardillo::collision::CollisionCoal& PhysicsSystem::collisionManager() {
+cardillo::collision::CollisionCoal& World::collisionManager() {
     if (!m_collision_mgr) {
         m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
         m_collision_mgr->registerSystem(this);
@@ -396,240 +484,60 @@ cardillo::collision::CollisionCoal& PhysicsSystem::collisionManager() {
     return *m_collision_mgr;
 }
 
-const cardillo::collision::CollisionCoal& PhysicsSystem::collisionManager() const {
+const cardillo::collision::CollisionCoal& World::collisionManager() const {
     // const-correct lazy init: cast away const for creation then return const ref
     if (!m_collision_mgr) {
-        auto* self = const_cast<PhysicsSystem*>(this);
+        auto* self = const_cast<World*>(this);
         self->m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
         self->m_collision_mgr->registerSystem(self);
     }
     return *m_collision_mgr;
 }
 
-cardillo::misc::TimingManager& PhysicsSystem::timings() {
+cardillo::misc::TimingManager& World::timings() {
     if (!m_timings) m_timings = std::make_unique<cardillo::misc::TimingManager>();
     return *m_timings;
 }
-const cardillo::misc::TimingManager& PhysicsSystem::timings() const {
-    auto* self = const_cast<PhysicsSystem*>(this);
+const cardillo::misc::TimingManager& World::timings() const {
+    auto* self = const_cast<World*>(this);
     if (!self->m_timings) self->m_timings = std::make_unique<cardillo::misc::TimingManager>();
     return *self->m_timings;
 }
 
 // ---------- Collision pair control ----------
 
-void PhysicsSystem::disableCollisionBetween(entt::entity a, entt::entity b) {
+void World::disableCollisionBetween(entt::entity a, entt::entity b) {
     collisionManager().disablePair(a, b);
 }
 
 // ---------- Mesh / HeightField asset access ----------
 
-const ::cardillo::MeshAsset& PhysicsSystem::getMeshAsset(entt::entity e) const {
+const ::cardillo::MeshAsset& World::getMeshAsset(entt::entity e) const {
     if (!m_reg.any_of<C_Mesh>(e)) throw std::runtime_error("getMeshAsset(entity): entity has no C_Mesh");
     const auto& cm = m_reg.get<C_Mesh>(e);
     const bool isDynamic = m_reg.any_of<C_PhysicsObject>(e);
     return assets().getMesh(cm.path, cm.scale, /*normalized*/ isDynamic);
 }
-const ::cardillo::HeightFieldAsset& PhysicsSystem::getHeightFieldAsset(entt::entity e) const {
+const ::cardillo::HeightFieldAsset& World::getHeightFieldAsset(entt::entity e) const {
     if (!m_reg.any_of<C_HeightField>(e)) throw std::runtime_error("getHeightFieldAsset(entity): entity has no C_HeightField");
     const auto& ch = m_reg.get<C_HeightField>(e);
     return assets().getHeightField(ch.path, ch.x_dim, ch.y_dim, ch.z_scale, ch.min_height);
 }
 
-void PhysicsSystem::explicitPositionUpdate(real_t h) {
-    auto _sc = timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
-
-    // position update
-    auto position_view = m_reg.view<C_Position3, const C_LinearVelocity3>();
-    for (auto [e, pos, vel] : position_view.each()) {
-        pos.value += h * vel.value;
-    }
-
-    // auto director_orientation_view = m_reg.view<C_DirectorTriad, const C_DirectorTriadVelocity>();
-    // for (auto [e, pos, vel] : position_view.each()) {
-    //     pos.value += h * vel.value;
-    // }
-
-    // Matrix33r A_IK = VectorXr::Zero(9).reshaped<3,3>();
-    // Vector3r d1 = A_IK.col<0>();
-    // Vector3r d2 = A_IK.col<1>();
-    // Vector3r d3 = A_IK.col<2>();
-    // VectorXr q = VectorXr::Zero(9);
-    // Vector3r d1 = q.head<3>();
-    // Vector3r d2 = q.segment<3>(3);
-    // Vector3r d3 = q.tail<3>();
-
-    // orientations
-    auto orientation_view = m_reg.view<C_Orientation, const C_AngularVelocity3>();
-    for (auto [e, orientation, angularVel] : orientation_view.each()) {
-        const Vector3r& omega = angularVel.value;
-        const Quaternion4r q_prev = orientation.value;
-
-        Vector4r& P = orientation.value.coeffs();
-        real_t w = P(3);
-        P(3) -= h * 0.5 * P.head<3>().dot(omega);
-        P.head<3>() += h * 0.5 * (w * omega + P.head<3>().cross(omega));
-
-        // re-normalize to avoid quaternion drift and keep hemisphere consistent with previous
-        orientation.value = PhysicsSystem::alignQuaternionTo(orientation.value, q_prev);
-    }
-    updateEntities();
+void World::explicitPositionUpdate(real_t h) {
+    physics::EntityStateUpdater::explicitPositionUpdate(*this, h);
 }
 
-void PhysicsSystem::linearImplicitPositionUpdate(real_t h) {
-    auto _sc = timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
-
-    // position update
-    auto position_view = m_reg.view<C_Position3, const C_LinearVelocity3>();
-    for (auto [e, pos, vel] : position_view.each()) {
-        pos.value += h * vel.value;
-    }
-
-    // orientations
-    auto orientation_view = m_reg.view<C_Orientation, const C_AngularVelocity3>();
-    for (auto [e, orientation, angularVel] : orientation_view.each()) {
-        const Vector3r& omega = angularVel.value;
-        const Quaternion4r q_prev = orientation.value;
-
-        // skew matrix q_dot = 0.5 * D * P
-        Matrix44r D = Matrix44r::Zero();
-        D.block<3, 3>(0, 0) = skew_from_vector(-omega);
-        D.block<3, 1>(0, 3) = omega;
-        D.block<1, 3>(3, 0) = -omega.transpose();
-
-        // iteration matrix (I - h / 2 * D) P_{n+1} = P_{n+1/2}
-        const Matrix44r A = Matrix44r::Identity() - 0.5 * h * D;
-
-        // quaternion coefficients
-        Vector4r& P = orientation.value.coeffs();
-
-        // linear implicit update
-        P = A.inverse() * P;
-
-        // re-normalize to avoid quaternion drift and keep hemisphere consistent with previous
-        orientation.value = PhysicsSystem::alignQuaternionTo(orientation.value, q_prev);
-    }
-    // Update beam element lengths after full pose (position + orientation) update
-    updateEntities();
+void World::linearImplicitPositionUpdate(real_t h) {
+    physics::EntityStateUpdater::linearImplicitPositionUpdate(*this, h);
 }
 
-void PhysicsSystem::updateBeamElementEntity(entt::entity e) {
-    if (!m_reg.valid(e) || !m_reg.any_of<C_BeamElement, C_Position3>(e)) return;
-    auto& be = m_reg.get<C_BeamElement>(e);
-    const auto& pos = m_reg.get<C_Position3>(e).value;
-    real_t newLen = be.l0;
-
-    auto getDesiredLengthBetween = [&](entt::entity a, entt::entity b)->real_t {
-        if (!(m_reg.valid(a) && m_reg.valid(b))) {
-            std::cout << "Beam length: invalid entities a=" << (int)a << " b=" << (int)b << "\eaen";
-        }
-        if (!m_reg.any_of<C_Position3>(a) || !m_reg.any_of<C_Position3>(b)) {
-            std::cout << "Beam length: missing positions a=" << m_reg.any_of<C_Position3>(a) << " b=" << m_reg.any_of<C_Position3>(b) << " for entities a=" << (int)a << " b=" << (int)b << "\n";
-        }
-        if (!m_reg.any_of<C_Orientation>(a) || !m_reg.any_of<C_Orientation>(b)) {
-            std::cout << "Beam length: missing orientations a=" << m_reg.any_of<C_Orientation>(a) << " b=" << m_reg.any_of<C_Orientation>(b) << " for entities a=" << (int)a << " b=" << (int)b << "\n";
-        }
-        if (m_reg.valid(a) && m_reg.valid(b) &&
-            m_reg.any_of<C_Position3>(a) && m_reg.any_of<C_Position3>(b) &&
-            m_reg.any_of<C_Orientation>(a) && m_reg.any_of<C_Orientation>(b)) {
-            const auto& pa = m_reg.get<C_Position3>(a).value;
-            const auto& pb = m_reg.get<C_Position3>(b).value;
-            auto r_AB = pb - pa;
-            auto R_A = m_reg.get<C_Orientation>(a).value.toRotationMatrix();
-            auto R_B = m_reg.get<C_Orientation>(b).value.toRotationMatrix();
-            
-            index_t x_col_A = (m_reg.any_of<C_Capsule>(a) || m_reg.any_of<C_Cylinder>(a)) ? 2 : 0; 
-            index_t x_col_B = (m_reg.any_of<C_Capsule>(b) || m_reg.any_of<C_Cylinder>(b)) ? 2 : 0;
-
-            auto e_Ax = R_A.col(x_col_A);
-            auto e_Bx = R_B.col(x_col_B);
-            real_t base = r_AB.norm();
-            if (base > (real_t)0) {
-                auto r_hat = r_AB.normalized();
-                real_t d1 = std::clamp(e_Ax.dot(r_hat), (real_t)-1, (real_t)1);
-                real_t d2 = std::clamp(e_Bx.dot(r_hat), (real_t)-1, (real_t)1);
-                // Circular mean of angles: atan2(sum sin, sum cos)
-                // Since alpha in [0,pi], sin is non-negative; compute from cos using sin=√(1-cos^2)
-                real_t s1 = std::sqrt(std::max((real_t)0, (real_t)1 - d1*d1));
-                real_t s2 = std::sqrt(std::max((real_t)0, (real_t)1 - d2*d2));
-                real_t base_angle = std::atan2(s1 + s2, d1 + d2);
-                real_t c = std::cos(base_angle);
-                if (std::abs(c) > (real_t)1e-12) return base / c;
-            }
-        }
-        return (real_t) 0;
-    };
-
-    index_t contributions = 0;
-    real_t totalLen = (real_t)0;
-
-    if (be.prev.has_value()) {
-        totalLen += getDesiredLengthBetween(be.prev.value(), e);
-        contributions++;
-    }
-
-    if (be.next.has_value()) {
-        totalLen += getDesiredLengthBetween(e, be.next.value());
-        contributions++;
-    }
-
-    if (contributions > 0) {
-        real_t avgLen = totalLen / (real_t)contributions;
-        newLen = avgLen;
-    }
-
-    // Write back current length
-    const real_t prevLen = be.l;
-    be.l = newLen;
-
-    // If length changed, update collider/visual geometry to reflect new x-extent
-    const real_t eps = (real_t)1e-8;
-    if (std::abs(be.l - prevLen) > eps) {
-        bool shapeChanged = false;
-        // Visual cube/capsule/cylinder
-        if (m_reg.any_of<C_Cube>(e)) {
-            auto& cb = m_reg.get<C_Cube>(e);
-            const real_t newHalfX = be.l * (real_t)0.5;
-            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) { cb.halfExtents.x() = newHalfX; shapeChanged = true; }
-        }
-        if (m_reg.any_of<C_Capsule>(e)) {
-            auto& cap = m_reg.get<C_Capsule>(e);
-            const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cap.halfLength - newHalf) > eps) { cap.halfLength = newHalf; shapeChanged = true; }
-        }
-        if (m_reg.any_of<C_Cylinder>(e)) {
-            auto& cyl = m_reg.get<C_Cylinder>(e);
-            const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cyl.halfLength - newHalf) > eps) { cyl.halfLength = newHalf; shapeChanged = true; }
-        }
-        // Collider cube/capsule
-        if (m_reg.any_of<C_RB_Cube>(e)) {
-            auto& cb = m_reg.get<C_RB_Cube>(e);
-            const real_t newHalfX = be.l * (real_t)0.5;
-            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) { cb.halfExtents.x() = newHalfX; shapeChanged = true; }
-        }
-        if (m_reg.any_of<C_RB_Capsule>(e)) {
-            auto& cap = m_reg.get<C_RB_Capsule>(e);
-            const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cap.halfLength - newHalf) > eps) { cap.halfLength = newHalf; shapeChanged = true; }
-        }
-        if (m_reg.any_of<C_RB_Cylinder>(e)) {
-            auto& cyl = m_reg.get<C_RB_Cylinder>(e);
-            const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cyl.halfLength - newHalf) > eps) { cyl.halfLength = newHalf; shapeChanged = true; }
-        }
-        if (shapeChanged) {
-            markStructureDirty();
-        }
-    }
+void World::updateBeamElementEntity(entt::entity e) {
+    physics::BeamElementUpdater::updateBeamElementEntity(*this, e);
 }
 
-void PhysicsSystem::updateEntities() {
-    auto view = m_reg.view<C_BeamElement, const C_Position3>();
-    for (auto [e, be, pos] : view.each()) {
-        (void)be; (void)pos;
-        updateBeamElementEntity(e);
-    }
+void World::updateEntities() {
+    physics::BeamElementUpdater::updateEntities(*this);
 }
 
 } // namespace cardillo::

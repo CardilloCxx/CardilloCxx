@@ -13,7 +13,8 @@ public:
     WoodpeckerScene() = default;
     ~WoodpeckerScene() override = default; 
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         std::cout << "Populating Woodpecker scene..." << std::endl;
 
         // Toggle: keep the original compliant joint constraint instead of the helical spring.
@@ -23,21 +24,21 @@ public:
         // 1) Static vertical rod as a capsule: radius 1.7mm, height 30cm (halfLength = 0.15)
         const real_t rodRadius = (real_t)0.0017;
         const real_t rodHalfLength = (real_t)0.15; // 30cm total
-        PhysicsSystem::CapsuleShape rodShape(rodRadius, rodHalfLength);
-        PhysicsSystem::RigidState rodState(Vector3r(0.0,0.0,-0.145));
-        cardillo::physics::BodyFactory::addStaticBody(sys, rodShape, rodState);
+        physics::CapsuleShape rodShape(rodRadius, rodHalfLength);
+        physics::RigidState rodState(Vector3r(0.0,0.0,-0.145));
+        engine.addStaticBody(rodShape, rodState);
 
         // 2) Dynamic ring and woodpecker meshes (already authored at correct positions)
         //    Use modest densities to compute mass from volume automatically
         const real_t rhoRing = (real_t)400;      // kg/m^3
         const real_t rhoWoodpecker = (real_t)400; // kg/m^3
-        auto ring = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::MeshShape("res/meshes/woodpecker_ring.obj"),
-                                     PhysicsSystem::RigidState(Vector3r::Zero(), Vector3r(0.0, 0.0, 0.0)),
-                                     PhysicsSystem::RigidProps::withDensity(rhoRing));
+        auto ring = engine.addRigidBody(physics::MeshShape("res/meshes/woodpecker_ring.obj"),
+                                     physics::RigidState(Vector3r::Zero(), Vector3r(0.0, 0.0, 0.0)),
+                                     physics::RigidProps::withDensity(rhoRing));
 
-        auto pecker = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::MeshShape("res/meshes/woodpecker.obj"),
-                                       PhysicsSystem::RigidState(Vector3r::Zero(), Vector3r(0.0, 0.0, -0.2)),
-                                       PhysicsSystem::RigidProps::withDensity(rhoWoodpecker));
+        auto pecker = engine.addRigidBody(physics::MeshShape("res/meshes/woodpecker.obj"),
+                                       physics::RigidState(Vector3r::Zero(), Vector3r(0.0, 0.0, -0.2)),
+                                       physics::RigidProps::withDensity(rhoWoodpecker));
 
         // 3) Place hinge at ring edge (radius 5mm) in -Y direction and offset woodpecker 1cm further -Y
         const real_t ringEdgeRadius = (real_t)0.005; // 5mm
@@ -50,7 +51,7 @@ public:
         if (keepOldConstraint) {
             physics::JointFrame jf = physics::JointFrame(hingeCenter, Matrix33r::Identity(), std::nullopt);
 
-            sys.addConstraint<physics::TranslationRotationConstraint>(sys.ecs(), ring, pecker, jf,
+            sys.addTranslationRotationConstraint(ring, pecker, jf,
                                                /*K_trans*/ Vector3r(3000, std::numeric_limits<real_t>::infinity(), std::numeric_limits<real_t>::infinity()),
                                                /*D_trans*/ Vector3r::Zero(),
                                                /*K_rot*/   Vector3r(0.05, 0.5, 0.05),
@@ -90,23 +91,23 @@ public:
             std::vector<const misc::SplinePattern*> parts{&helix};
 
         
-            PhysicsSystem::BeamCrossSection sec(wireDiameter, wireDiameter, PhysicsSystem::BeamBodyType::Capsule);
-            auto springs = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
+            physics::BeamCrossSection sec(wireDiameter, wireDiameter, physics::BeamBodyType::Capsule);
+            auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
             springs.setDampingFromFactor((real_t)0.001);
-            auto props = PhysicsSystem::RigidProps::withDensity(density);
+            auto props = physics::RigidProps::withDensity(density);
             props.collidable = false; 
 
-            auto endpoints = cardillo::physics::BodyFactory::createBeams(sys, parts, sec, springs,
-                                             PhysicsSystem::RigidState{},
+            auto endpoints = engine.createBeams(parts, sec, springs,
+                                             physics::RigidState{},
                                              props,
                                              segments);
 
             const Vector3r inf3 = Vector3r::Constant(std::numeric_limits<real_t>::infinity());
-            sys.addConstraint<physics::TranslationRotationConstraint>(sys.ecs(), endpoints.first, ring,
+            sys.addTranslationRotationConstraint(endpoints.first, ring,
                 physics::JointFrame(pA, Matrix33r::Identity(), std::nullopt),
                 /*K_trans*/ inf3, /*D_trans*/ Vector3r::Zero(),
                 /*K_rot*/   inf3, /*D_rot*/   Vector3r::Zero());
-            sys.addConstraint<physics::TranslationRotationConstraint>(sys.ecs(), endpoints.second, pecker,
+            sys.addTranslationRotationConstraint(endpoints.second, pecker,
                 physics::JointFrame(pB, Matrix33r::Identity(), std::nullopt),
                 /*K_trans*/ inf3, /*D_trans*/ Vector3r::Zero(),
                 /*K_rot*/   inf3, /*D_rot*/   Vector3r::Zero());

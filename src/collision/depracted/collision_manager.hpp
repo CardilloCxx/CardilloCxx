@@ -9,7 +9,7 @@ namespace cardillo::collision {
 
 class CollisionManager {
 public:
-    std::vector<Contact> detectAll(const PhysicsSystem& sys) const;
+    std::vector<Contact> detectAll(const World& sys) const;
 private:
     BroadPhase m_broad;
     NarrowPhase m_narrow;

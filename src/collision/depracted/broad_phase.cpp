@@ -4,20 +4,20 @@
 namespace cardillo::collision {
 
 // Collect typed colliders
-BroadPhaseData BroadPhase::collect(const PhysicsSystem& sys) const {
+BroadPhaseData BroadPhase::collect(const World& sys) const {
     BroadPhaseData out;
     const auto& reg = sys.ecs();
 
     // Spheres
     {
-        auto view = reg.view<PhysicsSystem::C_Collidable, PhysicsSystem::C_PointMassTag, PhysicsSystem::C_Position3, PhysicsSystem::C_Radius>();
+        auto view = reg.view<World::C_Collidable, World::C_PointMassTag, World::C_Position3, World::C_Radius>();
         out.spheres.reserve(view.size_hint());
         for (auto [e, pos, rad] : view.each()) out.spheres.push_back(SphereCollider{e, pos.value, rad.r});
     }
 
     // Planes
     {
-        auto view = reg.view<PhysicsSystem::C_Collidable, PhysicsSystem::C_PlaneVisualTag, PhysicsSystem::C_Position3, PhysicsSystem::C_Plane>();
+        auto view = reg.view<World::C_Collidable, World::C_PlaneVisualTag, World::C_Position3, World::C_Plane>();
         out.planes.reserve(view.size_hint());
         for (auto [e, pos, pl] : view.each()) {
             Vector3r n = pl.normal; n.normalize();
@@ -34,11 +34,11 @@ BroadPhaseData BroadPhase::collect(const PhysicsSystem& sys) const {
 
     // OBBs (cubes)
     {
-        auto view = reg.view<PhysicsSystem::C_Collidable,
-                             PhysicsSystem::C_CubeVisualTag,
-                             PhysicsSystem::C_Position3,
-                             PhysicsSystem::C_Cube,
-                             PhysicsSystem::C_Orientation>();
+        auto view = reg.view<World::C_Collidable,
+                             World::C_CubeVisualTag,
+                             World::C_Position3,
+                             World::C_Cube,
+                             World::C_Orientation>();
         out.obbs.reserve(view.size_hint());
         for (auto [e, pos, cb, ori] : view.each()) {
             Matrix33r R = ori.value.toRotationMatrix();

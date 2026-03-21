@@ -15,7 +15,8 @@ public:
     SpaghettiScene()  = default;
     ~SpaghettiScene() = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
 
@@ -39,15 +40,15 @@ public:
             const real_t wallCenterZ = floorZ + floorHalfZ + wallHalfZ;
             
             // Floor
-            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{floorHalfExtents}, PhysicsSystem::RigidState(Vector3r(0, 0, floorZ)));
+            engine.addStaticBody(physics::CubeShape{floorHalfExtents}, physics::RigidState(Vector3r(0, 0, floorZ)));
             // +Y wall (back)
-            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{wallHalfExtentsY}, PhysicsSystem::RigidState(Vector3r(0,  wallOffset, wallCenterZ)));
+            engine.addStaticBody(physics::CubeShape{wallHalfExtentsY}, physics::RigidState(Vector3r(0,  wallOffset, wallCenterZ)));
             // -Y wall (front)
-            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{wallHalfExtentsY}, PhysicsSystem::RigidState(Vector3r(0, -wallOffset, wallCenterZ)));
+            engine.addStaticBody(physics::CubeShape{wallHalfExtentsY}, physics::RigidState(Vector3r(0, -wallOffset, wallCenterZ)));
             // +X wall (right)
-            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{wallHalfExtentsX}, PhysicsSystem::RigidState(Vector3r( wallOffset, 0, wallCenterZ)));
+            engine.addStaticBody(physics::CubeShape{wallHalfExtentsX}, physics::RigidState(Vector3r( wallOffset, 0, wallCenterZ)));
             // -X wall (left)
-            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape{wallHalfExtentsX}, PhysicsSystem::RigidState(Vector3r(-wallOffset, 0, wallCenterZ)));
+            engine.addStaticBody(physics::CubeShape{wallHalfExtentsX}, physics::RigidState(Vector3r(-wallOffset, 0, wallCenterZ)));
         }
 
         // Cooked spaghetti properties.
@@ -59,8 +60,8 @@ public:
         const real_t rho = (real_t)1050.0; // kg/m^3 (water-ish density)
 
         // Capsule-shaped beam bodies.
-        PhysicsSystem::BeamCrossSection section(d, d, PhysicsSystem::BeamBodyType::Capsule);
-        auto springs = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
+        physics::BeamCrossSection section(d, d, physics::BeamBodyType::Capsule);
+        auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
         springs.setDampingFromFactor(1.0);
 
         // Grid layout above the bowl; discard points outside inner radius.
@@ -70,7 +71,7 @@ public:
         const int    halfCount       = 10;
         const size_t segments = 64;
 
-        PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(rho);
+        physics::RigidProps props = physics::RigidProps::withDensity(rho);
 
         for (int ix = -halfCount; ix <= halfCount; ++ix) {
             for (int iy = -halfCount; iy <= halfCount; ++iy) {
@@ -79,7 +80,7 @@ public:
                 Vector3r randomVec = Vector3r::Random();
                 randomVec.normalize();
 
-                PhysicsSystem::RigidState stateDefaults(Vector3r::Zero(), randomVec * 0.001, Quaternion4r::Identity());
+                physics::RigidState stateDefaults(Vector3r::Zero(), randomVec * 0.001, Quaternion4r::Identity());
 
                 const real_t x = (real_t)ix * spacing;
                 const real_t y = (real_t)iy * spacing;
@@ -92,13 +93,14 @@ public:
                 const Vector3r pBot = pTop + Vector3r(0, 0, -L);
                 LinearSpline spline(pTop, pBot);
 
-                auto ends = cardillo::physics::BodyFactory::createBeam(sys, spline, section, springs, stateDefaults, props, segments);
+                auto ends = engine.createBeam(spline, section, springs, stateDefaults, props, segments);
                 m_spaghettiEnds.push_back(ends);
             }
         }
     }
 
-    void updateScene(cardillo::PhysicsSystem& /*sys*/, real_t /*t*/, real_t /*dt*/) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override {
+        (void)engine;
         // Passive scene: gravity causes the spaghetti to drape over the bowl.
     }
 

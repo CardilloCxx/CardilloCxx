@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <entt/entt.hpp>
 #include "../misc/types.hpp"
-#include "../physics/physics_system.hpp"
+#include "../physics/world.hpp"
 
 namespace cardillo::collision {
 

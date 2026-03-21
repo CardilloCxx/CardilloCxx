@@ -9,7 +9,8 @@ public:
     HeightmapScene() = default;
     ~HeightmapScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
         const std::string exrPath = "./res/heightmaps/mountain_height.exr";
         const real_t x_dim = (real_t)50.0;
@@ -19,7 +20,7 @@ public:
         // const Vector3r pos(0.0, 0.0, 0.0);
         const Vector3r pos(0.0, 0.0, -15.0);
         const Quaternion4r q = Quaternion4r::Identity();
-        cardillo::physics::BodyFactory::addObstacleHeightField(sys, pos, q, exrPath, x_dim, y_dim, z_scale, min_height);
+        engine.addObstacleHeightField(pos, q, exrPath, x_dim, y_dim, z_scale, min_height);
 
         // Drop a few rigid-body spheres onto the mountain
         {
@@ -31,10 +32,10 @@ public:
                     // Vector3r start((real_t)i * radius * 2.0, (real_t)j * radius * 2.0, (real_t)9.0);
                     Vector3r start((real_t)i * radius * 2.0, (real_t)j * radius * 2.0, (real_t)15.0);
                     start += Vector3r(-x_dim/3.0, y_dim/3.0, 0.0);
-                    PhysicsSystem::SphereShape shape{radius};
-                    PhysicsSystem::RigidState state; state.position = start; state.orientation = Quaternion4r::Identity();
-                    PhysicsSystem::RigidProps props; props.mass = mass;
-                    cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
+                    physics::SphereShape shape{radius};
+                    physics::RigidState state; state.position = start; state.orientation = Quaternion4r::Identity();
+                    physics::RigidProps props; props.mass = mass;
+                    engine.addRigidBody(shape, state, props);
                 }
             }
         }

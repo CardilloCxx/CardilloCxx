@@ -18,11 +18,12 @@ public:
     MetronomeScene() = default;
     ~MetronomeScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         // Static ground
-        auto floor = cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape(Vector3r(5.0, 5.0, 0.1)), PhysicsSystem::RigidState(Vector3r(0, 0, -0.1)));
+        auto floor = engine.addStaticBody(physics::CubeShape(Vector3r(5.0, 5.0, 0.1)), physics::RigidState(Vector3r(0, 0, -0.1)));
 
         const int nx = 1;
         const int ny = 3;
@@ -40,31 +41,26 @@ public:
         const real_t rollerOffsetY = plateHalfWidth * (real_t)0.4;
 
         const real_t styrofoamRho = (real_t)50.0; // approximate density for styrofoam
-        cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CapsuleShape(rollerR, rollerHalfL), PhysicsSystem::RigidState(Vector3r(0.0, -rollerOffsetY, rollerR), rollerQ), PhysicsSystem::RigidProps(0.015));
-        cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CapsuleShape(rollerR, rollerHalfL), PhysicsSystem::RigidState(Vector3r(0.0, rollerOffsetY, rollerR), rollerQ), PhysicsSystem::RigidProps(0.015)); 
+        engine.addRigidBody(physics::CapsuleShape(rollerR, rollerHalfL), physics::RigidState(Vector3r(0.0, -rollerOffsetY, rollerR), rollerQ), physics::RigidProps(0.015));
+        engine.addRigidBody(physics::CapsuleShape(rollerR, rollerHalfL), physics::RigidState(Vector3r(0.0, rollerOffsetY, rollerR), rollerQ), physics::RigidProps(0.015)); 
 
         // Sheet resting on rollers
         const real_t sheetThickness = (real_t)0.0025;
         const Vector3r sheetHalfExt(plateHalfLength, plateHalfWidth, sheetThickness);
         const real_t sheetCenterZ = 2* rollerR + sheetThickness + (real_t)0.001; // lifted slightly above roller top
-        m_sheet = cardillo::physics::BodyFactory::addRigidBody(sys, 
-            PhysicsSystem::CubeShape(sheetHalfExt),
-            PhysicsSystem::RigidState(Vector3r(0, 0, sheetCenterZ)),
-            PhysicsSystem::RigidProps::withDensity(styrofoamRho));
+        m_sheet = engine.addRigidBody(            physics::CubeShape(sheetHalfExt),
+            physics::RigidState(Vector3r(0, 0, sheetCenterZ)),
+            physics::RigidProps::withDensity(styrofoamRho));
         sys.track(m_sheet, "sheet");    
 
-        sys.addConstraint<physics::RotationConstraint>(
-            sys.ecs(),
-            m_sheet,
+        sys.addRotationConstraint(m_sheet,
             floor,
             physics::JointFrame(m_sheet),
             Vector3r::Constant(std::numeric_limits<real_t>::infinity())
         );
 
         
-        sys.addConstraint<physics::TranslationalConstraint>(
-            sys.ecs(),
-            m_sheet,
+        sys.addTranslationalConstraint(m_sheet,
             floor,
             physics::JointFrame(m_sheet),
             Vector3r::Constant(0),
@@ -87,21 +83,19 @@ public:
             for (int iy = 0; iy < ny; ++iy) {
                 const Vector3r pos(baseX + (real_t)ix * spacing, baseY + (real_t)iy * spacing, baseZ + 0.001);
 
-                PhysicsSystem::MeshShape bodyShape("res/meshes/metronome.obj", true);
-                auto body = cardillo::physics::BodyFactory::addRigidBody(sys, 
-                    bodyShape,
-                    PhysicsSystem::RigidState(pos),
-                    PhysicsSystem::RigidProps((real_t)0.015)); // 100g body
+                physics::MeshShape bodyShape("res/meshes/metronome.obj", true);
+                auto body = engine.addRigidBody(                    bodyShape,
+                    physics::RigidState(pos),
+                    physics::RigidProps((real_t)0.015)); // 100g body
 
-                PhysicsSystem::MeshShape leverShape("res/meshes/metronome_lever.obj", true);
-                auto lever = cardillo::physics::BodyFactory::addRigidBody(sys, 
-                    leverShape,
-                    PhysicsSystem::RigidState(pos, Vector3r(0, 0, 0)),
-                    PhysicsSystem::RigidProps((real_t)0.05)); // metal lever
+                physics::MeshShape leverShape("res/meshes/metronome_lever.obj", true);
+                auto lever = engine.addRigidBody(                    leverShape,
+                    physics::RigidState(pos, Vector3r(0, 0, 0)),
+                    physics::RigidProps((real_t)0.05)); // metal lever
 
                 const Vector3r hingeWorld = pos + hingeLocal; // offset from bottom-center in world frame
                 physics::JointFrame jf = physics::JointFrame::fromAxis(hingeWorld, Vector3r::UnitX());
-                sys.addConstraint<physics::HingeConstraint>(sys.ecs(), body, lever, jf, hingeK, hingeD);
+                sys.addHingeConstraint(body, lever, jf, hingeK, hingeD);
                 sys.disableCollisionBetween(body, lever);
                 sys.track(lever, "lever_" + std::to_string(ix) + "_" + std::to_string(iy));
 
@@ -116,7 +110,8 @@ public:
         // std::shuffle(m_order.begin(), m_order.end(), m_rng);
     }
 
-    void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t dt) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t dt) override {
+        auto& sys = engine.world();
         const real_t kickStart = (real_t)0.25;
         const real_t kickEnd = (real_t) 0.5;
         const real_t kickInterval = (kickEnd - kickStart) / (real_t)m_levers.size();

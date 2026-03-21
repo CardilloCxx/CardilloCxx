@@ -29,11 +29,11 @@ void VtkWriterBinary::setOutputDir(const std::string& dir) {
 void VtkWriterBinary::setBaseName(const std::string& name) { m_baseName = name; }
 void VtkWriterBinary::setFrequency(int freq) { m_frequency = std::max(1, freq); }
 
-void VtkWriterBinary::maybeWrite(int step, real_t time, const cardillo::PhysicsSystem& sys) {
+void VtkWriterBinary::maybeWrite(int step, real_t time, const cardillo::World& sys) {
     if (step % m_frequency == 0) write(step, time, sys);
 }
 
-void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSystem& sys) {
+void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sys) {
     auto sc = sys.timings().scope(cardillo::misc::TimingManager::TimerId::OutputWrite);
     Collected data = collect(sys);
     writePointsOnly(step, 0, data);
@@ -48,7 +48,7 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSy
     writeDynamicGeometry(step, data);
     if (m_writeContacts) {
         try {
-            auto& mgr = const_cast<cardillo::PhysicsSystem&>(sys).collisionManager();
+            auto& mgr = const_cast<cardillo::World&>(sys).collisionManager();
             if (sys.consumeStructureDirty()) mgr.rebuild();
             const auto& contacts = mgr.lastFlattenedContacts();
             const bool writeBody = sys.config().output_contacts_body_vectors;
@@ -65,9 +65,9 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::PhysicsSy
 static inline float f32(real_t v) { return static_cast<float>(v); }
 
 // Partition helper (same heuristic as ASCII writer)
-static inline float partitionFromBodyIndex_(const cardillo::PhysicsSystem& sys, const entt::registry& reg, entt::entity e) {
-    if (reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(e)) {
-        int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(e).b;
+static inline float partitionFromBodyIndex_(const cardillo::World& sys, const entt::registry& reg, entt::entity e) {
+    if (reg.any_of<cardillo::World::C_BodyIndex>(e)) {
+        int b = reg.get<cardillo::World::C_BodyIndex>(e).b;
         int worldRank = 0, worldSize = 1;
         MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
         MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
@@ -281,21 +281,21 @@ void generateConeMesh(int segmentsCircumference,
 
 } // namespace
 
-VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSystem& sys) const {
+VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) const {
     Collected out;
     const auto& reg = sys.ecs();
 
     // Points
     {
-        auto vpoints = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                                cardillo::PhysicsSystem::C_PointVisualTag,
-                                cardillo::PhysicsSystem::C_Position3,
-                                cardillo::PhysicsSystem::C_Mass,
-                                cardillo::PhysicsSystem::C_LinearVelocity3,
-                                cardillo::PhysicsSystem::C_Radius>();
+        auto vpoints = reg.view<cardillo::World::C_VisualObject,
+                                cardillo::World::C_PointVisualTag,
+                                cardillo::World::C_Position3,
+                                cardillo::World::C_Mass,
+                                cardillo::World::C_LinearVelocity3,
+                                cardillo::World::C_Radius>();
         for (auto [e, pos, m, v, r] : vpoints.each()) {
             // Skip rigid-body spheres: they will be emitted as triangle meshes
-            if (reg.any_of<cardillo::PhysicsSystem::C_RB_Sphere>(e)) continue;
+            if (reg.any_of<cardillo::World::C_RB_Sphere>(e)) continue;
             PointOut po;
             po.pos = pos.value;
             po.mass = static_cast<float>(m.m);
@@ -309,9 +309,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
 
     // Planes
     {
-        auto vplanes = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                                cardillo::PhysicsSystem::C_Position3,
-                                cardillo::PhysicsSystem::C_Plane>();
+        auto vplanes = reg.view<cardillo::World::C_VisualObject,
+                                cardillo::World::C_Position3,
+                                cardillo::World::C_Plane>();
         for (auto [e, pos, pl] : vplanes.each()) {
             PlaneOut po; po.center = pos.value; po.normal = pl.normal; po.up = pl.up; po.sizeX = pl.sizeX; po.sizeY = pl.sizeY;
             out.planes.push_back(po);
@@ -320,10 +320,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
 
     // Cubes
     {
-        auto vcubes = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                               cardillo::PhysicsSystem::C_Position3,
-                               cardillo::PhysicsSystem::C_Cube,
-                               cardillo::PhysicsSystem::C_Orientation>();
+        auto vcubes = reg.view<cardillo::World::C_VisualObject,
+                               cardillo::World::C_Position3,
+                               cardillo::World::C_Cube,
+                               cardillo::World::C_Orientation>();
         for (auto [e, pos, cb, ori] : vcubes.each()) {
             CubeOut co;
             Quaternion4r q_local = cb.q;
@@ -332,14 +332,14 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             co.halfExtents = cb.halfExtents; co.q = q_world;
             co.entityId = static_cast<int>(entt::to_integral(e));
             co.partition = partitionFromBodyIndex_(sys, reg, e);
-            co.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+            co.isDynamic = reg.any_of<cardillo::World::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::World::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::World::C_BeamElement>(e);
                 co.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
             }
-            if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
-                const auto& vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
+            if (reg.any_of<cardillo::World::C_LinearVelocity3>(e) && reg.any_of<cardillo::World::C_AngularVelocity3>(e)) {
+                const auto& vlin = reg.get<cardillo::World::C_LinearVelocity3>(e).value;
+                const auto& omega_body = reg.get<cardillo::World::C_AngularVelocity3>(e).value;
                 co.vlin = vlin; co.omega = omega_body; co.hasKinematics = true;
             }
             out.cubes.push_back(co);
@@ -348,10 +348,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
 
     // Capsules (emitted as triangle meshes)
     {
-        auto vcaps = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                               cardillo::PhysicsSystem::C_Capsule,
-                               cardillo::PhysicsSystem::C_Position3,
-                               cardillo::PhysicsSystem::C_Orientation>();
+        auto vcaps = reg.view<cardillo::World::C_VisualObject,
+                               cardillo::World::C_Capsule,
+                               cardillo::World::C_Position3,
+                               cardillo::World::C_Orientation>();
         for (auto [e, cap, pos, ori] : vcaps.each()) {
             std::vector<Vector3r> verts;
             std::vector<Eigen::Vector3i> tris;
@@ -361,9 +361,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.entityId = static_cast<int>(entt::to_integral(e));
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+            mo.isDynamic = reg.any_of<cardillo::World::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::World::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::World::C_BeamElement>(e);
                 mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
             }
             Quaternion4r qn = ori.value; qn.normalize();
@@ -374,9 +374,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             }
             mo.R = R;
             mo.triangles = std::move(tris);
-            if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
-                mo.vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
+            if (reg.any_of<cardillo::World::C_LinearVelocity3>(e) && reg.any_of<cardillo::World::C_AngularVelocity3>(e)) {
+                mo.vlin = reg.get<cardillo::World::C_LinearVelocity3>(e).value;
+                const auto& omega_body = reg.get<cardillo::World::C_AngularVelocity3>(e).value;
                 mo.omega = omega_body;
                 mo.hasKinematics = true;
             }
@@ -386,10 +386,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
 
     // Cylinders (emitted as triangle meshes)
     {
-        auto vcyl = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                              cardillo::PhysicsSystem::C_Cylinder,
-                              cardillo::PhysicsSystem::C_Position3,
-                              cardillo::PhysicsSystem::C_Orientation>();
+        auto vcyl = reg.view<cardillo::World::C_VisualObject,
+                              cardillo::World::C_Cylinder,
+                              cardillo::World::C_Position3,
+                              cardillo::World::C_Orientation>();
         for (auto [e, cyl, pos, ori] : vcyl.each()) {
             std::vector<Vector3r> verts;
             std::vector<Eigen::Vector3i> tris;
@@ -399,9 +399,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.entityId = static_cast<int>(entt::to_integral(e));
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+            mo.isDynamic = reg.any_of<cardillo::World::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::World::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::World::C_BeamElement>(e);
                 mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
             }
             Quaternion4r qn = ori.value; qn.normalize();
@@ -412,9 +412,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             }
             mo.R = R;
             mo.triangles = std::move(tris);
-            if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
-                mo.vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
+            if (reg.any_of<cardillo::World::C_LinearVelocity3>(e) && reg.any_of<cardillo::World::C_AngularVelocity3>(e)) {
+                mo.vlin = reg.get<cardillo::World::C_LinearVelocity3>(e).value;
+                const auto& omega_body = reg.get<cardillo::World::C_AngularVelocity3>(e).value;
                 mo.omega = omega_body;
                 mo.hasKinematics = true;
             }
@@ -424,10 +424,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
 
     // Cones (emitted as triangle meshes)
     {
-        auto vcones = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                               cardillo::PhysicsSystem::C_Cone,
-                               cardillo::PhysicsSystem::C_Position3,
-                               cardillo::PhysicsSystem::C_Orientation>();
+        auto vcones = reg.view<cardillo::World::C_VisualObject,
+                               cardillo::World::C_Cone,
+                               cardillo::World::C_Position3,
+                               cardillo::World::C_Orientation>();
         for (auto [e, cone, pos, ori] : vcones.each()) {
             std::vector<Vector3r> verts;
             std::vector<Eigen::Vector3i> tris;
@@ -437,9 +437,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.entityId = static_cast<int>(entt::to_integral(e));
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+            mo.isDynamic = reg.any_of<cardillo::World::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::World::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::World::C_BeamElement>(e);
                 mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
             }
             Quaternion4r qn = ori.value; qn.normalize();
@@ -450,9 +450,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             }
             mo.R = R;
             mo.triangles = std::move(tris);
-            if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
-                mo.vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
+            if (reg.any_of<cardillo::World::C_LinearVelocity3>(e) && reg.any_of<cardillo::World::C_AngularVelocity3>(e)) {
+                mo.vlin = reg.get<cardillo::World::C_LinearVelocity3>(e).value;
+                const auto& omega_body = reg.get<cardillo::World::C_AngularVelocity3>(e).value;
                 mo.omega = omega_body;
                 mo.hasKinematics = true;
             }
@@ -462,18 +462,18 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
 
     // Meshes
     {
-        auto vmeshes = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                                 cardillo::PhysicsSystem::C_Mesh,
-                                 cardillo::PhysicsSystem::C_Position3,
-                                 cardillo::PhysicsSystem::C_Orientation>();
+        auto vmeshes = reg.view<cardillo::World::C_VisualObject,
+                                 cardillo::World::C_Mesh,
+                                 cardillo::World::C_Position3,
+                                 cardillo::World::C_Orientation>();
         for (auto [e, cm, pos, ori] : vmeshes.each()) {
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::PhysicsSystem::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::PhysicsSystem::C_BeamElement>(e);
+            mo.isDynamic = reg.any_of<cardillo::World::C_PhysicsObject>(e);
+            if (reg.any_of<cardillo::World::C_BeamElement>(e)) {
+                const auto& be = reg.get<cardillo::World::C_BeamElement>(e);
                 mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
             }
             try {
@@ -494,9 +494,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
                     for (const auto& t : F) mo.triangles.emplace_back((int)t[0], (int)t[1], (int)t[2]);
                     if (asset.hasUV && asset.uvs.size() == V.size()) { mo.uvs = asset.uvs; mo.hasUV = true; }
                     // Kinematics if available
-                    if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
-                        const auto& vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
-                        const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
+                    if (reg.any_of<cardillo::World::C_LinearVelocity3>(e) && reg.any_of<cardillo::World::C_AngularVelocity3>(e)) {
+                        const auto& vlin = reg.get<cardillo::World::C_LinearVelocity3>(e).value;
+                        const auto& omega_body = reg.get<cardillo::World::C_AngularVelocity3>(e).value;
                         mo.vlin = vlin; mo.omega = omega_body; mo.hasKinematics = true; mo.R = R;
                     }
                     out.meshes.push_back(std::move(mo));
@@ -507,8 +507,8 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
 
     // Softbody surfaces (deformed meshes driven by point-mass nodes)
     {
-        auto vsb = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                             cardillo::PhysicsSystem::C_SoftBodySurface>();
+        auto vsb = reg.view<cardillo::World::C_VisualObject,
+                             cardillo::World::C_SoftBodySurface>();
         for (auto [e, surf] : vsb.each()) {
             // Build a MeshOut by sampling current positions of the nodes
             MeshOut mo;
@@ -521,14 +521,14 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.perVertexVelocity.reserve(surf.nodes.size());
             const auto& reg2 = reg;
             for (entt::entity nodeEnt : surf.nodes) {
-                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::PhysicsSystem::C_Position3>(nodeEnt)) {
-                    mo.vertices.push_back(reg2.get<cardillo::PhysicsSystem::C_Position3>(nodeEnt).value);
+                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::World::C_Position3>(nodeEnt)) {
+                    mo.vertices.push_back(reg2.get<cardillo::World::C_Position3>(nodeEnt).value);
                 } else {
                     mo.vertices.emplace_back(Vector3r::Zero());
                 }
                 // Per-vertex velocity (default to zero if missing)
-                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(nodeEnt)) {
-                    mo.perVertexVelocity.push_back(reg2.get<cardillo::PhysicsSystem::C_LinearVelocity3>(nodeEnt).value);
+                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::World::C_LinearVelocity3>(nodeEnt)) {
+                    mo.perVertexVelocity.push_back(reg2.get<cardillo::World::C_LinearVelocity3>(nodeEnt).value);
                 } else {
                     mo.perVertexVelocity.emplace_back(Vector3r::Zero());
                 }
@@ -543,11 +543,11 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
 
     // HeightFields (emit as meshes with UVs, decimated by stride)
     {
-        auto vhfs = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                              cardillo::PhysicsSystem::C_HeightField,
-                              cardillo::PhysicsSystem::C_HeightFieldVisualTag,
-                              cardillo::PhysicsSystem::C_Position3,
-                              cardillo::PhysicsSystem::C_Orientation>();
+        auto vhfs = reg.view<cardillo::World::C_VisualObject,
+                              cardillo::World::C_HeightField,
+                              cardillo::World::C_HeightFieldVisualTag,
+                              cardillo::World::C_Position3,
+                              cardillo::World::C_Orientation>();
         for (auto [e, ch, pos, ori] : vhfs.each()) {
             try {
                 const auto& asset = sys.getHeightFieldAsset(e);
@@ -622,17 +622,17 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
         static std::vector<Eigen::Vector3i> unitTris;
         static bool inited = false;
         if (!inited) { generateUVSphere(12, 24, unitVerts, unitTris); inited = true; }
-        auto vspheres = reg.view<cardillo::PhysicsSystem::C_VisualObject,
-                                 cardillo::PhysicsSystem::C_RB_Sphere,
-                                 cardillo::PhysicsSystem::C_Radius,
-                                 cardillo::PhysicsSystem::C_Position3,
-                                 cardillo::PhysicsSystem::C_Orientation>();
+        auto vspheres = reg.view<cardillo::World::C_VisualObject,
+                                 cardillo::World::C_RB_Sphere,
+                                 cardillo::World::C_Radius,
+                                 cardillo::World::C_Position3,
+                                 cardillo::World::C_Orientation>();
         for (auto [e, rad, pos, ori] : vspheres.each()) {
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
             mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
+            mo.isDynamic = reg.any_of<cardillo::World::C_PhysicsObject>(e);
             Quaternion4r qn = ori.value; qn.normalize();
             const Matrix33r R = qn.toRotationMatrix();
             const real_t r = rad.r;
@@ -654,9 +654,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::PhysicsSyste
             mo.hasUV = true;
             mo.triangles = unitTris;
             // Kinematics
-            if (reg.any_of<cardillo::PhysicsSystem::C_LinearVelocity3>(e) && reg.any_of<cardillo::PhysicsSystem::C_AngularVelocity3>(e)) {
-                const auto& vlin = reg.get<cardillo::PhysicsSystem::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::PhysicsSystem::C_AngularVelocity3>(e).value;
+            if (reg.any_of<cardillo::World::C_LinearVelocity3>(e) && reg.any_of<cardillo::World::C_AngularVelocity3>(e)) {
+                const auto& vlin = reg.get<cardillo::World::C_LinearVelocity3>(e).value;
+                const auto& omega_body = reg.get<cardillo::World::C_AngularVelocity3>(e).value;
                 mo.vlin = vlin; mo.omega = omega_body; mo.hasKinematics = true;
             }
             out.meshes.push_back(std::move(mo));
@@ -1148,7 +1148,7 @@ void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collis
     out.close();
 }
 
-void VtkWriterBinary::writeSprings(int step, const cardillo::PhysicsSystem& sys) const {
+void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
     // Gather generic spring visuals (attachment B position, toAtoB) and
     // translation-rotation joint visuals (jointPos at B, frame, toAtoB)
     const auto& patterns = sys.constraintPatterns();
@@ -1183,8 +1183,8 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::PhysicsSystem& sys)
             // A_IK1: world rotation of body A at current step
             const auto& reg = sys.ecs();
             const entt::entity a = tr->entityA();
-            if (a == entt::null || !reg.all_of<cardillo::PhysicsSystem::C_Orientation>(a)) continue;
-            const auto& qA = reg.get<cardillo::PhysicsSystem::C_Orientation>(a).value;
+            if (a == entt::null || !reg.all_of<cardillo::World::C_Orientation>(a)) continue;
+            const auto& qA = reg.get<cardillo::World::C_Orientation>(a).value;
             const Matrix33r A_IK1 = qA.toRotationMatrix();
 
             const cardillo::physics::JointProperties& jp = tr->jointProperties();

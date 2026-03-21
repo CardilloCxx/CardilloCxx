@@ -13,41 +13,41 @@ public:
     DoublePendulumScene() = default;
     ~DoublePendulumScene() = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
+        using namespace cardillo::physics;
 
         real_t density = 7750.0; // kg/m^3
         Vector3r scale{1.0, 1.0, 1.0};
 
         // base link
-        m_base = cardillo::physics::BodyFactory::addStaticBody(sys, 
-            PhysicsSystem::MeshShape("res/meshes/double_pendulum/base_link.stl", scale), 
-            PhysicsSystem::RigidState{}
+        m_base = engine.addStaticBody(
+            MeshShape("res/meshes/double_pendulum/base_link.stl", scale),
+            RigidState{}
         );
 
         // first rigid body
-        m_rb1 = cardillo::physics::BodyFactory::addRigidBody(sys, 
-            PhysicsSystem::MeshShape("res/meshes/double_pendulum/link1.stl", scale),
+        m_rb1 = engine.addRigidBody(
+            MeshShape("res/meshes/double_pendulum/link1.stl", scale),
             // When using meshes the actually position and orientation differ 
             // to values passed here, as the mesh COM and principal axes are 
             // used. The passed values are passsed are offset from the model 
             // origin, when passing zeroes the model appears exactly where it 
             // is in the model, yet the COM may not be zero. 
-            PhysicsSystem::RigidState{
+            RigidState{
                 Vector3r{0.007, 0.0, 0.035}, // initial position
                 Quaternion4r{AngleAxis3r(-M_PI / 2, Vector3r::UnitX())}, // initial orientation
             },
-            PhysicsSystem::RigidProps::withDensity(density)
+            RigidProps::withDensity(density)
         );
 
         // no collision between base and first rigid body
         sys.disableCollisionBetween(m_base, m_rb1);
 
         // add revolute joint between base and first rigid body
-        sys.addConstraint<physics::HingeConstraint>(
-            sys.ecs(), 
-            m_base, 
+        sys.addHingeConstraint(m_base, 
             m_rb1, 
             physics::JointFrame::fromAxis(
                 Vector3r(0.02, 0.0002, 0.0349), // World position of the joint
@@ -58,22 +58,20 @@ public:
         );
 
         // second rigid body
-        m_rb2 = cardillo::physics::BodyFactory::addRigidBody(sys, 
-            PhysicsSystem::MeshShape("res/meshes/double_pendulum/link2.stl", scale),
-            PhysicsSystem::RigidState{
+        m_rb2 = engine.addRigidBody(
+            MeshShape("res/meshes/double_pendulum/link2.stl", scale),
+            RigidState{
                 Vector3r{0.007, 0.1, 0.04 - 0.004}, // initial position
                 Quaternion4r{Eigen::AngleAxis<real_t>(-M_PI / 2, Vector3r::UnitX())}, // initial orientation
             },
-            PhysicsSystem::RigidProps::withDensity(density)
+            RigidProps::withDensity(density)
         );
 
         // no collision between first and second rigid body
         sys.disableCollisionBetween(m_rb1, m_rb2);
 
         // add revolute joint between base and first rigid body
-        sys.addConstraint<physics::HingeConstraint>(
-            sys.ecs(), 
-            m_rb1, 
+        sys.addHingeConstraint(m_rb1, 
             m_rb2, 
             physics::JointFrame::fromAxis(
                 Vector3r(0.0058, 0.0991, 0.0344), // World position of the joint
@@ -87,7 +85,9 @@ public:
         // sys.disableCollisionBetween(m_base, m_rb2);
     }
 
-    void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+        (void)engine;
+        (void)t;
         // nothing done here
     }
 

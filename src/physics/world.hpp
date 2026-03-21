@@ -32,13 +32,13 @@ namespace cardillo { namespace solver { class WarmstartProvider; } }
 namespace cardillo { namespace collision { class CollisionCoal; } }
 
 // forward-declare new constraint pattern types (defined in constraints.hpp)
-namespace cardillo { namespace physics { class ConstraintPattern; class LinearDistanceConstraint; } }
+namespace cardillo { namespace physics { class ConstraintPattern; class LinearDistanceConstraint; struct JointFrame; } }
 
 namespace cardillo {
 
 // A minimal, standard-C++ physics system for frictionless point masses
 // with translational DOFs only (no rotations).
-class PhysicsSystem {
+class World {
 public:
     static Quaternion4r alignQuaternionTo(const Quaternion4r& q_in, const Quaternion4r& q_ref) {
         Quaternion4r q = q_in;
@@ -75,15 +75,15 @@ public:
                    entt::entity refEntity,
                    entt::registry& reg) {
             if (refEntity != entt::null &&
-                reg.all_of<PhysicsSystem::C_Position3,
-                           PhysicsSystem::C_Orientation,
-                           PhysicsSystem::C_LinearVelocity3,
-                           PhysicsSystem::C_AngularVelocity3>(refEntity)) {
+                reg.all_of<World::C_Position3,
+                           World::C_Orientation,
+                           World::C_LinearVelocity3,
+                           World::C_AngularVelocity3>(refEntity)) {
 
-                const auto& r_ORef = reg.get<PhysicsSystem::C_Position3>(refEntity).value;      // origin of ref in world
-                const auto& q_Ref  = reg.get<PhysicsSystem::C_Orientation>(refEntity).value;     // ref orientation in world
-                const auto& v_Ref  = reg.get<PhysicsSystem::C_LinearVelocity3>(refEntity).value; // linear vel of ref in world
-                const auto& w_Ref  = reg.get<PhysicsSystem::C_AngularVelocity3>(refEntity).value;// angular vel of ref in world
+                const auto& r_ORef = reg.get<World::C_Position3>(refEntity).value;      // origin of ref in world
+                const auto& q_Ref  = reg.get<World::C_Orientation>(refEntity).value;     // ref orientation in world
+                const auto& v_Ref  = reg.get<World::C_LinearVelocity3>(refEntity).value; // linear vel of ref in world
+                const auto& w_Ref  = reg.get<World::C_AngularVelocity3>(refEntity).value;// angular vel of ref in world
 
                 const Matrix33r A_Ref = q_Ref.toRotationMatrix();
                 position    = r_ORef + A_Ref * p_local;
@@ -214,9 +214,6 @@ public:
         // Independent scales for each component
         Vector3r scaleKe{Vector3r::Ones()}; // [axial, shearY, shearZ]
         Vector3r scaleKf{Vector3r::Ones()}; // [torsion, bendY, bendZ]
-        // Rankine cracking model: maximum crack strain threshold for shear retention
-        real_t crackStrainMax{std::numeric_limits<real_t>::infinity()};
-        real_t tensileStrength{std::numeric_limits<real_t>::infinity()};
         // Optional direct per-segment stiffness overrides (units already [*/L])
         std::optional<Vector3r> Ke_direct;
         std::optional<Vector3r> Kf_direct;
@@ -266,9 +263,9 @@ public:
         }
     };
 
-    PhysicsSystem();
-    explicit PhysicsSystem(const config::Config& cfg);
-    ~PhysicsSystem();
+    World();
+    explicit World(const config::Config& cfg);
+    ~World();
     // Global config accessible across subsystems
     void setConfig(const config::Config& cfg) { m_cfg = cfg; setGravity(m_cfg.sim_gravity); }
     const config::Config& config() const { return m_cfg; }
@@ -333,18 +330,59 @@ public:
     std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() { return m_constraints_new; }
     const std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() const { return m_constraints_new; }
 
-    // Add a general constraint pattern (ownership transferred). Returns index.
-    size_t addConstraint(std::unique_ptr<cardillo::physics::ConstraintPattern> pattern);
-
-    // Convenience: construct and add a constraint pattern in-place.
-    // Usage: sys.addConstraint<physics::LinearDistanceConstraint>(reg, a, b, rA, rB, k, d);
-    template <typename Pattern, typename... Args>
-    size_t addConstraint(Args&&... args) {
-        static_assert(std::is_base_of<cardillo::physics::ConstraintPattern, Pattern>::value,
-                      "Pattern must derive from ConstraintPattern");
-        return addConstraint(std::unique_ptr<cardillo::physics::ConstraintPattern>(
-            new Pattern(std::forward<Args>(args)...)));
-    }
+    // Explicit constraint API (wrapper-free scene-facing methods)
+    size_t addLinearDistanceConstraint(entt::entity a,
+                                       entt::entity b,
+                                       const Vector3r& rA_local = Vector3r::Zero(),
+                                       const Vector3r& rB_local = Vector3r::Zero(),
+                                       real_t stiffness = std::numeric_limits<real_t>::infinity(),
+                                       real_t damping = (real_t)0);
+    size_t addRigidConstraint(entt::entity a, entt::entity b);
+    size_t addRigidConstraint(entt::entity a,
+                              entt::entity b,
+                              const Vector3r& rA_local,
+                              const std::optional<Vector3r>& rB_local,
+                              const Vector3r& K_rot,
+                              const Vector3r& D_rot,
+                              const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                              const Vector3r& D_trans = Vector3r::Zero());
+    size_t addTranslationRotationConstraint(entt::entity a,
+                                            entt::entity b,
+                                            const cardillo::physics::JointFrame& frame,
+                                            const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                            const Vector3r& D_trans = Vector3r::Zero(),
+                                            const Vector3r& K_rot = Vector3r::Zero(),
+                                            const Vector3r& D_rot = Vector3r::Zero());
+    size_t addTranslationalConstraint(entt::entity a,
+                                      entt::entity b,
+                                      const cardillo::physics::JointFrame& frame,
+                                      const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                      const Vector3r& D_trans = Vector3r::Zero());
+    size_t addRotationConstraint(entt::entity a,
+                                 entt::entity b,
+                                 const cardillo::physics::JointFrame& frame,
+                                 const Vector3r& K_rot = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                 const Vector3r& D_rot = Vector3r::Zero());
+    size_t addHingeConstraint(entt::entity a,
+                              entt::entity b,
+                              const cardillo::physics::JointFrame& frame,
+                              real_t K_axis = (real_t)0,
+                              real_t D_axis = (real_t)0,
+                              const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                              const Vector3r& D_trans = Vector3r::Zero());
+    size_t addHingeConstraint(entt::entity a,
+                              entt::entity b,
+                              const Vector3r& rA_local,
+                              const Vector3r& rB_local,
+                              const Vector3r& axis_world,
+                              real_t K_axis = (real_t)0,
+                              real_t D_axis = (real_t)0,
+                              const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                              const Vector3r& D_trans = Vector3r::Zero());
+    size_t addBeamConstraint(entt::entity a,
+                             entt::entity b,
+                             const BeamSpringParams& springs,
+                             const BeamCrossSection& section);
 
     // Public ECS component/tag types for queries
     struct C_Mass { real_t m; };

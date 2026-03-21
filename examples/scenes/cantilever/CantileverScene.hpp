@@ -15,7 +15,8 @@ public:
     CantileverScene() = default;
     ~CantileverScene() = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
 
@@ -31,11 +32,11 @@ public:
         const real_t rho = (real_t)1350.0;  // kg/m^3 (typical plastic)
 
         // Cross-section: circular (capsule body type uses circle properties via min(width,height))
-        // PhysicsSystem::BeamCrossSection section(d, d, PhysicsSystem::BeamBodyType::Capsule);
-        PhysicsSystem::BeamCrossSection section(d, d, PhysicsSystem::BeamBodyType::Cube);
+        // physics::BeamCrossSection section(d, d, physics::BeamBodyType::Capsule);
+        physics::BeamCrossSection section(d, d, physics::BeamBodyType::Cube);
 
         // Beam spring params from material (no extra damping by default).
-        auto springs = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
+        auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
 
         // Build a straight beam along +X of length L, elevated above ground
         const Vector3r p0(0, 0, 0);
@@ -46,10 +47,10 @@ public:
         const size_t segments = 20;
 
         // Default state: identity orientation; default density props
-        PhysicsSystem::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());
-        PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(rho);
+        physics::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());
+        physics::RigidProps props = physics::RigidProps::withDensity(rho);
 
-        auto beam_ends = cardillo::physics::BodyFactory::createBeam(sys, spline, section, springs, stateDefaults, props, segments);
+        auto beam_ends = engine.createBeam(spline, section, springs, stateDefaults, props, segments);
         m_beamLeftEnd = beam_ends.first;
         m_beamRightEnd = beam_ends.second;
         sys.makeStatic(m_beamLeftEnd);
@@ -59,13 +60,14 @@ public:
         m_segments = segments;
 
         // // sys.disableCollisionBetween(m_cube, cube2);
-        // auto view = sys.ecs().view<PhysicsSystem::C_Collidable>();
+        // auto view = sys.ecs().view<World::C_Collidable>();
         // for (auto e : view.each()) {
-        //     sys.ecs().remove<PhysicsSystem::C_PhysicsObject>(e);
+        //     sys.ecs().remove<World::C_PhysicsObject>(e);
         // }
     }
 
-    void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+        auto& sys = engine.world();
         if (m_beamRightEnd != entt::null) {
             real_t t1 = 5.0;
             if (t < t1) {

@@ -51,7 +51,7 @@
 
 using namespace cardillo;
 
-static PhysicsSystem sys(cardillo::config::Config{}); 
+static World sys(cardillo::config::Config{}); 
 
 void printTimingsAtExit(int sig) {
     sys.timings().printBreakdown(std::cout);
@@ -134,8 +134,9 @@ int main(int argc, char** argv) {
     }
     std::cout << "Selected scene: " << selected->sceneName() << std::endl;
     SceneBase& scene = *selected;
+    cardillo::physics::PhysicsEngine engine(sys);
     cfg.output_filename_prefix = scene.sceneName();
-    scene.populate(sys);
+    scene.populate(engine);
 
     // Setup solver based on config
     std::unique_ptr<cardillo::solver::SolverBase> solver;
@@ -182,7 +183,7 @@ int main(int argc, char** argv) {
     {
         auto totalScope = sys.timings().scope(cardillo::misc::TimingManager::TimerId::Total);
         for (int k = 0; k < steps; ++k) {
-            scene.updateScene(sys, t, dt);
+            scene.updateScene(engine, t, dt);
             solver->stepMidpoint(dt);
             if (worldRank == 0) {
                 sys.writeTrackedStateToCsv(t + dt);

@@ -34,7 +34,7 @@ struct Config {
     // Simulation settings
     real_t sim_T{(real_t)5.0};   // sim.T - total simulation time
     real_t sim_dt{(real_t)1e-3}; // sim.dt - time step
-    // Gravity vector (world frame) used by examples and PhysicsSystem
+    // Gravity vector (world frame) used by examples and World
     Vector3r sim_gravity{(real_t)0, (real_t)0, (real_t)-9.81}; // sim.gravity = gx gy gz
 
     // Output settings

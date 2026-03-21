@@ -40,7 +40,7 @@ static inline MatrixXXr buildWRowPoint(const Vector3r& n_world, real_t s) {
 } // anonymous namespace
 
 void DynamicsAssembler::updateContactsFromSystem() {
-    auto& mgr = const_cast<cardillo::PhysicsSystem&>(m_sys).collisionManager();
+    auto& mgr = const_cast<cardillo::World&>(m_sys).collisionManager();
     if (m_sys.consumeStructureDirty()) mgr.rebuild();
     mgr.applyTransforms();
     m_contacts = mgr.detectAll();
@@ -69,7 +69,7 @@ void DynamicsAssembler::rebuildMass_() {
     m_M_diag = VectorXr::Zero(totalV);
 
     const auto& reg = m_sys.ecs();
-    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    auto view = reg.view<World::C_BodyIndex, World::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b; if (b < 0 || b >= Nb) continue;
         // Get inverse mass diagonal directly
@@ -92,7 +92,7 @@ void DynamicsAssembler::rebuildForces_() {
     m_f_vec_gyroscopic = VectorXr::Zero(totalV);
     m_v_compat.assign((size_t)Nb, VectorXr());
     const auto& reg = m_sys.ecs();
-    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    auto view = reg.view<World::C_BodyIndex, World::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b; if (b >= 0 && b < Nb) {
             const VectorXr fb_ext = m_sys.getForceExternal(e);
@@ -109,10 +109,10 @@ void DynamicsAssembler::rebuildForces_() {
     }
     // One-shot: clear external force/torque components after assembling forces
     auto &reg_mut = const_cast<entt::registry&>(m_sys.ecs());
-    auto viewF = reg_mut.view<PhysicsSystem::C_ExternalForce>();
-    for (auto e : viewF) { reg_mut.get<PhysicsSystem::C_ExternalForce>(e).f.setZero(); }
-    auto viewT = reg_mut.view<PhysicsSystem::C_ExternalTorque>();
-    for (auto e : viewT) { reg_mut.get<PhysicsSystem::C_ExternalTorque>(e).tau.setZero(); }
+    auto viewF = reg_mut.view<World::C_ExternalForce>();
+    for (auto e : viewF) { reg_mut.get<World::C_ExternalForce>(e).f.setZero(); }
+    auto viewT = reg_mut.view<World::C_ExternalTorque>();
+    for (auto e : viewT) { reg_mut.get<World::C_ExternalTorque>(e).tau.setZero(); }
 }
 
 void DynamicsAssembler::loadStateFromSystem() {
@@ -123,7 +123,7 @@ void DynamicsAssembler::loadStateFromSystem() {
     m_v_vec = VectorXr::Zero(totalV);
     m_v_compat.assign((size_t)Nb, VectorXr()); // deprecated compatibility only
     const auto& reg = m_sys.ecs();
-    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    auto view = reg.view<World::C_BodyIndex, World::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b >= 0 && b < Nb) {
@@ -142,20 +142,20 @@ void DynamicsAssembler::loadStateFromSystem() {
 
 void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
     const auto& reg = m_sys.ecs();
-    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    auto view = reg.view<World::C_BodyIndex, World::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b >= 0 && b < (int)m_body_pos_offsets.size()-1) {
             const int offQ = m_body_pos_offsets[(size_t)b];
             const int nQ = m_body_pos_offsets[(size_t)b+1] - offQ;
             VectorXr qb = (nQ>0) ? q.segment(offQ, nQ) : VectorXr(0);
-            if (qb.size() >= 3 && reg.any_of<PhysicsSystem::C_Position3>(e)) {
-                const_cast<PhysicsSystem::C_Position3&>(reg.get<PhysicsSystem::C_Position3>(e)).value = qb.head<3>();
+            if (qb.size() >= 3 && reg.any_of<World::C_Position3>(e)) {
+                const_cast<World::C_Position3&>(reg.get<World::C_Position3>(e)).value = qb.head<3>();
             }
-            if (qb.size() >= 7 && reg.any_of<PhysicsSystem::C_Orientation>(e)) {
+            if (qb.size() >= 7 && reg.any_of<World::C_Orientation>(e)) {
                 Quaternion4r qn(qb.tail<4>());
-                const Quaternion4r q_ref = reg.get<PhysicsSystem::C_Orientation>(e).value;
-                const_cast<PhysicsSystem::C_Orientation&>(reg.get<PhysicsSystem::C_Orientation>(e)).value = PhysicsSystem::alignQuaternionTo(qn, q_ref);
+                const Quaternion4r q_ref = reg.get<World::C_Orientation>(e).value;
+                const_cast<World::C_Orientation&>(reg.get<World::C_Orientation>(e)).value = World::alignQuaternionTo(qn, q_ref);
             }
         }
     }
@@ -165,18 +165,18 @@ void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
 
 void DynamicsAssembler::writeVelocityToSystem(const VectorXr& v) {
     const auto& reg = m_sys.ecs();
-    auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    auto view = reg.view<World::C_BodyIndex, World::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b >= 0 && b < (int)m_body_vel_offsets.size()-1) {
             const int offV = m_body_vel_offsets[(size_t)b];
             const int nV = m_body_vel_offsets[(size_t)b+1] - offV;
             VectorXr vb = (nV>0) ? v.segment(offV, nV) : VectorXr(0);
-            if (vb.size() >= 3 && reg.any_of<PhysicsSystem::C_LinearVelocity3>(e)) {
-                const_cast<PhysicsSystem::C_LinearVelocity3&>(reg.get<PhysicsSystem::C_LinearVelocity3>(e)).value = vb.head<3>();
+            if (vb.size() >= 3 && reg.any_of<World::C_LinearVelocity3>(e)) {
+                const_cast<World::C_LinearVelocity3&>(reg.get<World::C_LinearVelocity3>(e)).value = vb.head<3>();
             }
-            if (vb.size() >= 6 && reg.any_of<PhysicsSystem::C_AngularVelocity3>(e)) {
-                const_cast<PhysicsSystem::C_AngularVelocity3&>(reg.get<PhysicsSystem::C_AngularVelocity3>(e)).value = vb.tail<3>();
+            if (vb.size() >= 6 && reg.any_of<World::C_AngularVelocity3>(e)) {
+                const_cast<World::C_AngularVelocity3&>(reg.get<World::C_AngularVelocity3>(e)).value = vb.tail<3>();
             }
         }
     }
@@ -194,10 +194,10 @@ void DynamicsAssembler::assignDofs() {
     // Assign consecutive body indices to dynamic entities and compute DOF sizes in one pass
     int nextBody = 0;
     m_numQ = 0; m_numV = 0;
-    auto view = reg.view<PhysicsSystem::C_PhysicsObject, PhysicsSystem::C_Position3, PhysicsSystem::C_LinearVelocity3>();
+    auto view = reg.view<World::C_PhysicsObject, World::C_Position3, World::C_LinearVelocity3>();
     for (auto e : view) {
         entt::entity ent = static_cast<entt::entity>(e);
-        reg.emplace_or_replace<PhysicsSystem::C_BodyIndex>(ent, PhysicsSystem::C_BodyIndex{nextBody});
+        reg.emplace_or_replace<World::C_BodyIndex>(ent, World::C_BodyIndex{nextBody});
         ++nextBody;
         m_numQ += (index_t)m_sys.getPosition(ent).size();
         m_numV += (index_t)m_sys.getVelocity(ent).size();
@@ -220,18 +220,18 @@ void DynamicsAssembler::rebuildW_() {
     int dynContactId = 0; // index into dynamic contacts (rows in W)
     for (int i = 0; i < C_all; ++i) {
         const auto& c = m_contacts[i];
-        const bool aDyn = reg.any_of<PhysicsSystem::C_BodyIndex>(c.a);
-        const bool bDyn = reg.any_of<PhysicsSystem::C_BodyIndex>(c.b);
+        const bool aDyn = reg.any_of<World::C_BodyIndex>(c.a);
+        const bool bDyn = reg.any_of<World::C_BodyIndex>(c.b);
         // Skip static-static contacts
         if (!aDyn && !bDyn) continue;
 
         auto emitDirForSide = [&](const Vector3r& dir_world, const Vector3r& r_body, const Vector3r& dir_body,
                                    entt::entity ent, bool dyn, real_t s, int rowId) {
             if (!dyn) return;
-            const int b = reg.get<PhysicsSystem::C_BodyIndex>(ent).b;
+            const int b = reg.get<World::C_BodyIndex>(ent).b;
             if (b < 0 || b >= Nb) return;
             const int col0 = m_body_vel_offsets[(size_t)b];
-            if (reg.any_of<PhysicsSystem::C_RigidBodyTag>(ent)) {
+            if (reg.any_of<World::C_RigidBodyTag>(ent)) {
                 MatrixXXr w = buildWRowRigid(dir_world, r_body, dir_body, s);
                 // 6-DoF block
                 for (int j = 0; j < w.cols(); ++j) {
@@ -305,8 +305,8 @@ void DynamicsAssembler::rebuildInteractionW_()
                           int rowIndex,
                           entt::entity ent,
                           const Eigen::Ref<const Eigen::Matrix<real_t, Eigen::Dynamic, 1>>& col){
-        if (!reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(ent)) return;
-        int b = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(ent).b;
+        if (!reg.any_of<cardillo::World::C_BodyIndex>(ent)) return;
+        int b = reg.get<cardillo::World::C_BodyIndex>(ent).b;
         if (b < 0 || b >= (int)m_body_vel_offsets.size()-1) return;
         int row0 = m_body_vel_offsets[(size_t)b];
         int nV = m_body_vel_offsets[(size_t)b+1] - row0;
@@ -404,16 +404,16 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
     // This adds -dt * G(omega_n) to each rigid body's rotational 3x3 block and breaks symmetry.
     if (includeGyroInMatrix) {
         const auto& reg = m_sys.ecs();
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+        auto view = reg.view<World::C_BodyIndex, World::C_PhysicsObject>();
         for (auto [e, bi] : view.each()) {
             const int b = bi.b;
             if (b < 0 || b + 1 >= (int)m_body_vel_offsets.size()) continue;
             const int off = m_body_vel_offsets[(size_t)b];
             const int nV = m_body_vel_offsets[(size_t)b + 1] - off;
             if (nV < 6) continue;
-            if (!reg.all_of<PhysicsSystem::C_RigidBodyTag, PhysicsSystem::C_AngularVelocity3>(e)) continue;
+            if (!reg.all_of<World::C_RigidBodyTag, World::C_AngularVelocity3>(e)) continue;
 
-            const Vector3r omega = reg.get<PhysicsSystem::C_AngularVelocity3>(e).value; // body-frame
+            const Vector3r omega = reg.get<World::C_AngularVelocity3>(e).value; // body-frame
             const Vector3r I = m_sys.getInertiaDiag(e);
             const Vector3r Iomega = I.cwiseProduct(omega);
             const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
@@ -526,7 +526,7 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
 
     // // Top-left: M - dt/2 * G(u) where G(u) contains gyroscopic skew term (-w_skew * I)
     // const auto &reg = m_sys.ecs();
-    // auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+    // auto view = reg.view<World::C_BodyIndex, World::C_PhysicsObject>();
     // for (auto [e, bi] : view.each()) {
     //     const int b = bi.b;
     //     if (b < 0 || b + 1 >= (int)m_body_vel_offsets.size()) continue;
@@ -534,19 +534,19 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
     //     const int nV = m_body_vel_offsets[(size_t)b + 1] - off;
 
     //     // Point mass: translational block only
-    //     if (reg.all_of<PhysicsSystem::C_PointMassTag, PhysicsSystem::C_Mass>(e)) {
-    //         const real_t m = reg.get<PhysicsSystem::C_Mass>(e).m;
+    //     if (reg.all_of<World::C_PointMassTag, World::C_Mass>(e)) {
+    //         const real_t m = reg.get<World::C_Mass>(e).m;
     //         for (int i = 0; i < nV; ++i) trips.emplace_back(off + i, off + i, m);
     //         continue;
     //     }
 
     //     // Rigid body: translational mass and rotational inertia plus gyro skew term
-    //     if (reg.all_of<PhysicsSystem::C_RigidBodyTag, PhysicsSystem::C_Mass, PhysicsSystem::C_InertiaDiag, PhysicsSystem::C_AngularVelocity3>(e)) {
-    //         const real_t m = reg.get<PhysicsSystem::C_Mass>(e).m;
+    //     if (reg.all_of<World::C_RigidBodyTag, World::C_Mass, World::C_InertiaDiag, World::C_AngularVelocity3>(e)) {
+    //         const real_t m = reg.get<World::C_Mass>(e).m;
     //         for (int i = 0; i < 3 && i < nV; ++i) trips.emplace_back(off + i, off + i, m);
 
     //         if (nV >= 6) {
-    //             const Vector3r w = reg.get<PhysicsSystem::C_AngularVelocity3>(e).value; // body-frame
+    //             const Vector3r w = reg.get<World::C_AngularVelocity3>(e).value; // body-frame
     //             const Vector3r I = m_sys.getInertiaDiag(e);
     //             Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
     //             const Vector3r Iw = I.cwiseProduct(w);
@@ -656,7 +656,7 @@ void DynamicsAssembler::refreshState() {
         // First gather sizes per body index
         std::vector<int> vSizes((size_t)Nb, 0), qSizes((size_t)Nb, 0);
         const auto& reg = m_sys.ecs();
-        auto view = reg.view<PhysicsSystem::C_BodyIndex, PhysicsSystem::C_PhysicsObject>();
+        auto view = reg.view<World::C_BodyIndex, World::C_PhysicsObject>();
         for (auto [e, bi] : view.each()) {
             const int b = bi.b; if (b < 0 || b >= Nb) continue;
             vSizes[(size_t)b] = (int)m_sys.getVelocity(e).size();

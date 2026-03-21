@@ -20,23 +20,24 @@ public:
     FabricScene() = default;
     ~FabricScene() = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
 
         sys.setGravity(Vector3r(0, 0, -9.81));
 
         // Plane
-        // cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), (real_t)8, (real_t)8),
-        //                   PhysicsSystem::RigidState(Vector3r(0, 0, 0)));
+        // engine.addStaticBody(physics::PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), (real_t)8, (real_t)8),
+        //                   physics::RigidState(Vector3r(0, 0, 0)));
 
         // Cone
-        // cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::ConeShape((real_t)0.01, (real_t)0.10),
-        //             PhysicsSystem::RigidState(Vector3r(0, 0, 0)));
+        // engine.addStaticBody(physics::ConeShape((real_t)0.01, (real_t)0.10),
+        //             physics::RigidState(Vector3r(0, 0, 0)));
 
         // Sphere
-        // cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::SphereShape((real_t)0.05),
-        //             PhysicsSystem::RigidState(Vector3r(0, 0, 0)));
+        // engine.addStaticBody(physics::SphereShape((real_t)0.05),
+        //             physics::RigidState(Vector3r(0, 0, 0)));
 
         // Load BCC splines
         const std::filesystem::path bccRel = "res/bcc/openwork_trellis_pattern.bcc";  //"res/bcc/openwork_trellis_pattern.bcc" "res/bcc/flame_ribbing_pattern.bcc"
@@ -108,12 +109,12 @@ public:
         const real_t E        = (real_t)5e6;    // Pa
         const real_t nu       = (real_t)0.40;
 
-        PhysicsSystem::BeamCrossSection section(diameter, diameter, PhysicsSystem::BeamBodyType::Capsule);
-        auto springs = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu, (real_t)1, (real_t)1, (real_t)0.05, (real_t)0.05, (real_t)0.05);
+        physics::BeamCrossSection section(diameter, diameter, physics::BeamBodyType::Capsule);
+        auto springs = physics::BeamSpringParams::fromMaterial(E, nu, (real_t)1, (real_t)1, (real_t)0.05, (real_t)0.05, (real_t)0.05);
         // springs.setDampingFromFactor((real_t)0.02);
 
-        PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(density);
-        PhysicsSystem::RigidState stateDefaults(offset, Vector3r(0, 0, 0));
+        physics::RigidProps props = physics::RigidProps::withDensity(density);
+        physics::RigidState stateDefaults(offset, Vector3r(0, 0, 0));
 
         const float totalLength = std::accumulate(splines.begin(), splines.end(), 0.0f,
                                               [](float sum, const std::shared_ptr<SplinePattern>& sp) {
@@ -128,14 +129,14 @@ public:
         for (const auto& sp : splines) {
             if (!sp) continue;
             int segments = sp.get()->totalLength() / (totalLength / (real_t)resampleSegments);
-            cardillo::physics::BodyFactory::createBeam(sys, *sp.get(), section, springs, stateDefaults, props, segments);
+            engine.createBeam(*sp.get(), section, springs, stateDefaults, props, segments);
             std::cout << "[FabricScene] Created beam from spline with " << segments << " segments." << std::endl;
         }
 
         // Close open loops manually by rigidly constraining ends to elements 6 steps inward for "res/bcc/openwork_trellis_pattern.bcc"
         if(bccRel == "res/bcc/openwork_trellis_pattern.bcc") {
             auto& reg = sys.ecs();
-            auto view = reg.view<PhysicsSystem::C_BeamElement>();
+            auto view = reg.view<World::C_BeamElement>();
             std::unordered_set<entt::entity> visited;
             const size_t offsetSteps = 6;
 
@@ -145,8 +146,8 @@ public:
                 entt::entity start = e;
                 bool isLoop = false;
                 std::unordered_set<entt::entity> backSeen;
-                while (reg.valid(start) && reg.any_of<PhysicsSystem::C_BeamElement>(start)) {
-                    const auto& be = reg.get<PhysicsSystem::C_BeamElement>(start);
+                while (reg.valid(start) && reg.any_of<World::C_BeamElement>(start)) {
+                    const auto& be = reg.get<World::C_BeamElement>(start);
                     if (!be.prev.has_value()) break;
                     if (be.prev.value() == start || backSeen.count(be.prev.value())) { isLoop = true; break; }
                     backSeen.insert(start);
@@ -161,11 +162,11 @@ public:
                 // Collect the chain
                 std::vector<entt::entity> chain;
                 entt::entity cur = start;
-                while (reg.valid(cur) && reg.any_of<PhysicsSystem::C_BeamElement>(cur)) {
+                while (reg.valid(cur) && reg.any_of<World::C_BeamElement>(cur)) {
                     if (visited.count(cur)) break;
                     visited.insert(cur);
                     chain.push_back(cur);
-                    const auto& be = reg.get<PhysicsSystem::C_BeamElement>(cur);
+                    const auto& be = reg.get<World::C_BeamElement>(cur);
                     if (!be.next.has_value()) break;
                     if (be.next.value() == cur) break;
                     cur = be.next.value();
@@ -181,11 +182,11 @@ public:
                 const entt::entity endPrev = chain[chain.size() - 1 - offsetSteps];
 
                 if (reg.valid(start) && reg.valid(endPrev)) {
-                    sys.addConstraint<physics::RigidConstraint>(sys.ecs(), start, endPrev);
+                    sys.addRigidConstraint(start, endPrev);
                     sys.disableCollisionBetween(start, endPrev);
                 }
                 if (reg.valid(end) && reg.valid(startNext)) {
-                    sys.addConstraint<physics::RigidConstraint>(sys.ecs(), end, startNext);
+                    sys.addRigidConstraint(end, startNext);
                     sys.disableCollisionBetween(end, startNext);
                 }
             }
@@ -206,18 +207,18 @@ public:
         const Vector3r leftCubePos(bbMinW.x() - cubeHalfExtents.x() - 0.0025, centerY, centerZ);
         const Vector3r rightCubePos(bbMaxW.x() + cubeHalfExtents.x() + 0.0075, centerY, centerZ);
 
-        m_leftCube = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CubeShape(cubeHalfExtents),
-                                      PhysicsSystem::RigidState(leftCubePos),
-                                      PhysicsSystem::RigidProps((real_t)1e10));
-        m_rightCube = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CubeShape(cubeHalfExtents),
-                                       PhysicsSystem::RigidState(rightCubePos),
-                                       PhysicsSystem::RigidProps((real_t)1e10));
+        m_leftCube = engine.addRigidBody(physics::CubeShape(cubeHalfExtents),
+                                      physics::RigidState(leftCubePos),
+                                      physics::RigidProps((real_t)1e10));
+        m_rightCube = engine.addRigidBody(physics::CubeShape(cubeHalfExtents),
+                                       physics::RigidState(rightCubePos),
+                                       physics::RigidProps((real_t)1e10));
 
         // Select 10 beam elements on each +/-X edge, closest to targets on the inner face
         struct Candidate { entt::entity e; Vector3r p; };
         std::vector<Candidate> allCandidates;
 
-        auto view = sys.ecs().view<PhysicsSystem::C_BeamElement, PhysicsSystem::C_Position3>();
+        auto view = sys.ecs().view<World::C_BeamElement, World::C_Position3>();
         real_t minX = std::numeric_limits<real_t>::infinity();
         real_t maxX = -std::numeric_limits<real_t>::infinity();
         for (auto [e, be, pos] : view.each()) {
@@ -264,11 +265,11 @@ public:
         auto rightAttach = pickClosestToTargets(maxX, attachCount);
 
         for (const auto& e : leftAttach) {
-            sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_leftCube, e);
+            sys.addRigidConstraint(m_leftCube, e);
             sys.disableCollisionBetween(m_leftCube, e);
         }
         for (const auto& e : rightAttach) {
-            sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_rightCube, e);
+            sys.addRigidConstraint(m_rightCube, e);
             sys.disableCollisionBetween(m_rightCube, e);
         }
 
@@ -280,11 +281,12 @@ public:
 
         // Print total number of beam elements created
         size_t beamCount = 0;
-        sys.ecs().view<PhysicsSystem::C_BeamElement>().each([&](auto&) { ++beamCount; });
+        sys.ecs().view<World::C_BeamElement>().each([&](auto&) { ++beamCount; });
         // std::cout << "[FabricScene] Created " << beamCount << " beam elements." << std::endl;
     }
 
-    void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         auto smoothstep = [](real_t x) {

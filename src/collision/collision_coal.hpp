@@ -14,8 +14,8 @@
 #include <coal/mesh_loader/loader.h>
 #include <coal/BVH/BVH_model.h>
 
-// Forward declare PhysicsSystem in the correct namespace
-namespace cardillo { class PhysicsSystem; }
+// Forward declare World in the correct namespace
+namespace cardillo { class World; }
 
 namespace cardillo::collision {
 
@@ -24,13 +24,13 @@ public:
     CollisionCoal() = default;
     ~CollisionCoal();
 
-    // Attach to a PhysicsSystem (not owned)
-    void registerSystem(const cardillo::PhysicsSystem* sys) { m_sys = sys; }
+    // Attach to a World (not owned)
+    void registerSystem(const cardillo::World* sys) { m_sys = sys; }
 
     // (Re)build the COAL scene from ECS collidables (creates geometries & objects and registers them in broadphase)
     void rebuild();
 
-    // Update per-object transforms from PhysicsSystem state and notify broadphase
+    // Update per-object transforms from World state and notify broadphase
     void applyTransforms();
 
     // Run broadphase + narrowphase and return contacts
@@ -58,7 +58,7 @@ private:
     coal::Transform3s makeTransformFromQ_(const VectorXr& q) const;
 
     // Backrefs
-    const cardillo::PhysicsSystem* m_sys = nullptr; // not owned
+    const cardillo::World* m_sys = nullptr; // not owned
 
     // COAL scene storage
     std::unique_ptr<coal::BroadPhaseCollisionManager> m_broadphase; // manager chosen from config

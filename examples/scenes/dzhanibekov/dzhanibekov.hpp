@@ -11,7 +11,8 @@ public:
     DzhanibekovScene() = default;
     ~DzhanibekovScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         const real_t mass = (real_t)1.0;
@@ -22,16 +23,16 @@ public:
         const real_t Omega = (real_t)10.0;
         const Vector3r position = Vector3r::Zero();
         const Quaternion4r orientation = Quaternion4r::Identity();
-    PhysicsSystem::CubeShape shape{Vector3r(a / 2, b / 2, c / 2)};
+    physics::CubeShape shape{Vector3r(a / 2, b / 2, c / 2)};
         const Vector3r linearVelocity = Vector3r::Zero();
         // const Vector3r angularVelocity(Omega, eps, eps);
         const Vector3r angularVelocity(eps, Omega, eps);
         // const Vector3r angularVelocity(eps, eps, Omega);
-    PhysicsSystem::RigidState state; state.position = position; state.orientation = orientation; state.linearVelocity = linearVelocity; state.angularVelocity = angularVelocity; PhysicsSystem::RigidProps props; props.mass = mass; cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
+    physics::RigidState state; state.position = position; state.orientation = orientation; state.linearVelocity = linearVelocity; state.angularVelocity = angularVelocity; physics::RigidProps props; props.mass = mass; engine.addRigidBody(shape, state, props);
 
         const auto& reg = sys.ecs();
         entt::entity rodEntity = entt::null;
-        for (auto entity : reg.view<cardillo::PhysicsSystem::C_RigidBodyTag>()) {
+        for (auto entity : reg.view<cardillo::World::C_RigidBodyTag>()) {
             rodEntity = entity; break;
         }
         if (rodEntity != entt::null) {

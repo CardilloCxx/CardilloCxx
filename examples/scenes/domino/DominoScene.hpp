@@ -13,13 +13,14 @@ public:
     DominoScene() = default;
     ~DominoScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
     // Create a ground plate (static cube via unified API)
-    PhysicsSystem::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
-    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5);
-    cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
+    physics::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
+    physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5);
+    engine.addStaticBody(groundShape, groundState);
 
         // Domino dims: x=length/2, y=thickness/2, z=height/2
         const Vector3r dominoHalf((real_t)0.024, (real_t)0.00375, (real_t)0.012); // length 9.6cm, thickness 1.5cm, height 4.8cm
@@ -41,7 +42,7 @@ private:
     }
 
     void spawnDominoTowerStructure(
-        PhysicsSystem& sys,
+        World& sys,
         int layers,
         int N,
         const Vector3r& half,
@@ -50,6 +51,7 @@ private:
         real_t gapLong = (real_t)0.002,
         real_t extraLayerGap = (real_t)0.0
     ) {
+        physics::PhysicsEngine engine(sys);
         if (layers <= 0) return;
         const real_t L = (real_t)2.0 * half.x(); // long edge (in-plane)
         const real_t W = (real_t)2.0 * half.y(); // thickness (in-plane)
@@ -70,7 +72,7 @@ private:
             c.y() += offsetY;
             const real_t z = baseCenter.z() + half.z() + (real_t)k * ( (real_t)2.0 * half.z() + extraLayerGap );
             c.z() = z;  
-            PhysicsSystem::CubeShape shape{half};
+            physics::CubeShape shape{half};
             Quaternion4r q = Quaternion4r::Identity();
             if (alongY) {
                 // rotate 90 deg about Z to align long axis along Y
@@ -85,9 +87,9 @@ private:
                 vel = Vector3r(4.0, 0.0, -1.0) * 2;
             }
 
-            PhysicsSystem::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = vel; state.angularVelocity = Vector3r::Zero();
-            PhysicsSystem::RigidProps props; props.mass = m;
-            cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
+            physics::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = vel; state.angularVelocity = Vector3r::Zero();
+            physics::RigidProps props; props.mass = m;
+            engine.addRigidBody(shape, state, props);
 
         };
 

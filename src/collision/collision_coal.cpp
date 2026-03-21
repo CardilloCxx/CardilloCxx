@@ -1,7 +1,7 @@
 // COAL-based collision manager implementation (persistent, broadphase-backed)
 #include "collision_coal.hpp"
 #include "types.hpp"
-#include "../physics/physics_system.hpp"
+#include "../physics/world.hpp"
 #include "../config/config.hpp"
 
 #include <coal/math/transform.h>
@@ -41,18 +41,18 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
     coal::Transform3s X; X.setIdentity();
     Vector3r x = Vector3r::Zero();
     Quaternion4r q = Quaternion4r::Identity();
-    if (reg.any_of<cardillo::PhysicsSystem::C_Position3>(e))
-        x = reg.get<cardillo::PhysicsSystem::C_Position3>(e).value;
-    if (reg.any_of<cardillo::PhysicsSystem::C_Orientation>(e))
-        q = reg.get<cardillo::PhysicsSystem::C_Orientation>(e).value;
-    if (reg.any_of<cardillo::PhysicsSystem::C_RB_Cube>(e)) {
-        const auto& cb = reg.get<cardillo::PhysicsSystem::C_RB_Cube>(e);
+    if (reg.any_of<cardillo::World::C_Position3>(e))
+        x = reg.get<cardillo::World::C_Position3>(e).value;
+    if (reg.any_of<cardillo::World::C_Orientation>(e))
+        q = reg.get<cardillo::World::C_Orientation>(e).value;
+    if (reg.any_of<cardillo::World::C_RB_Cube>(e)) {
+        const auto& cb = reg.get<cardillo::World::C_RB_Cube>(e);
         // Apply local cube orientation on top of body orientation
         q = q * cb.q;
         x += q * cb.center; // center expressed in cube-local frame
-    } else if (reg.any_of<cardillo::PhysicsSystem::C_Cube>(e)) {
+    } else if (reg.any_of<cardillo::World::C_Cube>(e)) {
         // If only visual cube exists, still honor its center/q
-        const auto& cb = reg.get<cardillo::PhysicsSystem::C_Cube>(e);
+        const auto& cb = reg.get<cardillo::World::C_Cube>(e);
         q = q * cb.q;
         x += q * cb.center;
     }
@@ -88,8 +88,8 @@ static inline void dedupeContactsForPair(ContactList& list, real_t minDist) {
 static inline real_t combineFrictionMu(const entt::registry& reg, entt::entity a, entt::entity b, const std::string& method)
 {
     auto getMu = [&](entt::entity e)->real_t{
-        if (reg.any_of<cardillo::PhysicsSystem::C_Friction>(e)) {
-            return std::max<real_t>((real_t)0, reg.get<cardillo::PhysicsSystem::C_Friction>(e).mu);
+        if (reg.any_of<cardillo::World::C_Friction>(e)) {
+            return std::max<real_t>((real_t)0, reg.get<cardillo::World::C_Friction>(e).mu);
         }
         return (real_t)0;
     };
@@ -110,8 +110,8 @@ inline Contact makeContact(const entt::registry& reg,
                            real_t depth,
                            const std::string& frictionCombine)
 {
-    Vector3r a_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(ea).value;
-    Vector3r b_pos = reg.get<cardillo::PhysicsSystem::C_Position3>(eb).value;
+    Vector3r a_pos = reg.get<cardillo::World::C_Position3>(ea).value;
+    Vector3r b_pos = reg.get<cardillo::World::C_Position3>(eb).value;
 
 
     Contact c{}; c.a = ea; c.b = eb;
@@ -241,14 +241,14 @@ void CollisionCoal::ensureBroadphaseFromConfig_() {
 
 CollisionCoal::ColliderKind CollisionCoal::inferKind_(entt::entity e) const {
     const auto& reg = m_sys->ecs();
-    if (reg.any_of<PhysicsSystem::C_RB_Cube>(e)) return ColliderKind::Box;
-    if (reg.any_of<PhysicsSystem::C_RB_Capsule>(e)) return ColliderKind::Capsule;
-    if (reg.any_of<PhysicsSystem::C_RB_Cylinder>(e)) return ColliderKind::Cylinder;
-    if (reg.any_of<PhysicsSystem::C_RB_Cone>(e)) return ColliderKind::Cone;
-    if (reg.any_of<PhysicsSystem::C_RB_Plane>(e)) return ColliderKind::Halfspace;
-    if ((reg.any_of<PhysicsSystem::C_PointMassTag>(e) || reg.any_of<PhysicsSystem::C_RB_Sphere>(e)) && reg.any_of<PhysicsSystem::C_Radius>(e)) return ColliderKind::Sphere;
-    if (reg.any_of<PhysicsSystem::C_RB_Mesh>(e) && reg.any_of<PhysicsSystem::C_Mesh>(e)) return ColliderKind::Mesh;
-    if (reg.any_of<PhysicsSystem::C_RB_HeightField>(e) && reg.any_of<PhysicsSystem::C_HeightField>(e)) return ColliderKind::HeightField;
+    if (reg.any_of<World::C_RB_Cube>(e)) return ColliderKind::Box;
+    if (reg.any_of<World::C_RB_Capsule>(e)) return ColliderKind::Capsule;
+    if (reg.any_of<World::C_RB_Cylinder>(e)) return ColliderKind::Cylinder;
+    if (reg.any_of<World::C_RB_Cone>(e)) return ColliderKind::Cone;
+    if (reg.any_of<World::C_RB_Plane>(e)) return ColliderKind::Halfspace;
+    if ((reg.any_of<World::C_PointMassTag>(e) || reg.any_of<World::C_RB_Sphere>(e)) && reg.any_of<World::C_Radius>(e)) return ColliderKind::Sphere;
+    if (reg.any_of<World::C_RB_Mesh>(e) && reg.any_of<World::C_Mesh>(e)) return ColliderKind::Mesh;
+    if (reg.any_of<World::C_RB_HeightField>(e) && reg.any_of<World::C_HeightField>(e)) return ColliderKind::HeightField;
     throw std::runtime_error("CollisionCoal: unsupported collider entity; add appropriate tag/geometry.");
 }
 
@@ -256,32 +256,32 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
     const auto& reg = m_sys->ecs();
     switch (kind) {
         case ColliderKind::Box: {
-            const auto& he = reg.get<PhysicsSystem::C_RB_Cube>(e).halfExtents;
+            const auto& he = reg.get<World::C_RB_Cube>(e).halfExtents;
             return std::make_shared<coal::Box>(he.x()*2.0, he.y()*2.0, he.z()*2.0);
         }
         case ColliderKind::Halfspace: {
-            const auto& plane = reg.get<PhysicsSystem::C_RB_Plane>(e);
+            const auto& plane = reg.get<World::C_RB_Plane>(e);
             Vector3r n = plane.normal.normalized();
-            const auto& x = reg.get<PhysicsSystem::C_Position3>(e).value;
+            const auto& x = reg.get<World::C_Position3>(e).value;
             real_t d = n.dot(x);
             return std::make_shared<coal::Halfspace>(toCoalVec3(n), (coal::CoalScalar)d);
         }
         case ColliderKind::Sphere: {
-            const auto r = reg.get<PhysicsSystem::C_Radius>(e).r;
+            const auto r = reg.get<World::C_Radius>(e).r;
             return std::make_shared<coal::Sphere>((coal::CoalScalar)r);
         }
         case ColliderKind::Capsule: {
-            const auto& cap = reg.get<PhysicsSystem::C_RB_Capsule>(e);
+            const auto& cap = reg.get<World::C_RB_Capsule>(e);
             return std::make_shared<coal::Capsule>((coal::CoalScalar)cap.radius,
                                                    (coal::CoalScalar)(cap.halfLength * 2));
         }
         case ColliderKind::Cylinder: {
-            const auto& cyl = reg.get<PhysicsSystem::C_RB_Cylinder>(e);
+            const auto& cyl = reg.get<World::C_RB_Cylinder>(e);
             return std::make_shared<coal::Cylinder>((coal::CoalScalar)cyl.radius,
                                                     (coal::CoalScalar)(cyl.halfLength * 2));
         }
         case ColliderKind::Cone: {
-            const auto& cone = reg.get<PhysicsSystem::C_RB_Cone>(e);
+            const auto& cone = reg.get<World::C_RB_Cone>(e);
             return std::make_shared<coal::Cone>((coal::CoalScalar)cone.radius,
                                                 (coal::CoalScalar)cone.height);
         }
@@ -310,7 +310,7 @@ void CollisionCoal::rebuild() {
     m_entities.clear();
     m_index_from_entity.clear();
     {
-        auto view = reg.view<PhysicsSystem::C_Collidable, PhysicsSystem::C_Position3>();
+        auto view = reg.view<World::C_Collidable, World::C_Position3>();
         m_entities.reserve(view.size_hint());
         for (auto e : view) {
             m_index_from_entity.emplace(entt::to_integral(e), m_entities.size());
@@ -359,7 +359,7 @@ void CollisionCoal::applyTransforms() {
     for (std::size_t i = 0; i < m_objects.size(); ++i) {
         entt::entity e = m_entities[i];
         auto* obj = m_objects[i].get();
-        const bool isDynamic = m_sys->ecs().any_of<cardillo::PhysicsSystem::C_PhysicsObject>(e);
+        const bool isDynamic = m_sys->ecs().any_of<cardillo::World::C_PhysicsObject>(e);
         if (!isDynamic) {
             // Static objects: transform was set at rebuild; no need to recompute each step
             continue;

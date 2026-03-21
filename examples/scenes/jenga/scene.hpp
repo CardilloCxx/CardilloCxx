@@ -10,13 +10,14 @@ public:
     JengaScene() = default;
     ~JengaScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
     // Ground (static cube via unified API)
-    PhysicsSystem::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
-    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5); groundState.orientation = Quaternion4r::Identity();
-    cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
+    physics::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
+    physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5); groundState.orientation = Quaternion4r::Identity();
+    engine.addStaticBody(groundShape, groundState);
 
         // Build a Jenga tower
         const Vector3r blockHalf((real_t)0.075, (real_t)0.0225, (real_t)0.0125); // example block half extents
@@ -46,10 +47,10 @@ public:
                 const real_t offset = firstOffset + (real_t)i * step;
                 if (alongX) c = Vector3r(baseCenter.x(), baseCenter.y() + offset, z);
                 else c = Vector3r(baseCenter.x() + offset, baseCenter.y(), z);
-                PhysicsSystem::CubeShape blkShape{blockHalf};
-                PhysicsSystem::RigidState blkState; blkState.position = c; blkState.orientation = q;
-                PhysicsSystem::RigidProps blkProps; blkProps.mass = std::max((real_t)0.05, density * (real_t)8.0 * blockHalf.x() * blockHalf.y() * blockHalf.z());
-                cardillo::physics::BodyFactory::addRigidBody(sys, blkShape, blkState, blkProps);
+                physics::CubeShape blkShape{blockHalf};
+                physics::RigidState blkState; blkState.position = c; blkState.orientation = q;
+                physics::RigidProps blkProps; blkProps.mass = std::max((real_t)0.05, density * (real_t)8.0 * blockHalf.x() * blockHalf.y() * blockHalf.z());
+                engine.addRigidBody(blkShape, blkState, blkProps);
             }
         }
     }

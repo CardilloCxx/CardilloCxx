@@ -14,7 +14,8 @@ public:
     LeaningTowerScene() = default;
     ~LeaningTowerScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         // Slender tower block half extents (x,y horizontal, z vertical)
@@ -27,7 +28,7 @@ public:
         // different epsilon in the scene config files.
         const real_t eps = (real_t)0.00001; // fine-tuned per config
 
-        PhysicsSystem::CubeShape blockShape{half};
+        physics::CubeShape blockShape{half};
 
         real_t x = 0;
 
@@ -35,10 +36,10 @@ public:
             const real_t z = half.z() + (real_t)1.999 * half.z() * (real_t)k;
             x += (half.x() / (nLevels - k) ) - eps;
 
-            auto state = PhysicsSystem::RigidState( Vector3r(x, 0.0, z) );
-            auto props = PhysicsSystem::RigidProps::withDensity(density);
+            auto state = physics::RigidState( Vector3r(x, 0.0, z) );
+            auto props = physics::RigidProps::withDensity(density);
 
-            auto entity = cardillo::physics::BodyFactory::addRigidBody(sys, blockShape, state, props);
+            auto entity = engine.addRigidBody(blockShape, state, props);
             if (k == 0) sys.makeStatic(entity);
         }
 
@@ -47,10 +48,10 @@ public:
             const real_t z = half.z() + (real_t)1.999 * half.z() * (real_t)k;
             x += (half.x() / (nLevels - k) ) + eps;
 
-            auto state = PhysicsSystem::RigidState( Vector3r(x, 0.0, z) );
-            auto props = PhysicsSystem::RigidProps::withDensity(density);
+            auto state = physics::RigidState( Vector3r(x, 0.0, z) );
+            auto props = physics::RigidProps::withDensity(density);
 
-            auto entity = cardillo::physics::BodyFactory::addRigidBody(sys, blockShape, state, props);
+            auto entity = engine.addRigidBody(blockShape, state, props);
             if (k == 0) sys.makeStatic(entity);
         }
     }

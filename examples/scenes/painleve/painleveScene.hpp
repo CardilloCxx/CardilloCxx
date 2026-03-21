@@ -11,14 +11,15 @@ public:
     PainleveScene() = default;
     ~PainleveScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         const real_t groundHalfThickness = (real_t)0.01;
         const real_t groundHalfSize = (real_t)6000.0;
-        PhysicsSystem::CubeShape groundShape{Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness)};
-        PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-groundHalfThickness); groundState.orientation = Quaternion4r::Identity();
-        cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
+        physics::CubeShape groundShape{Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness)};
+        physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-groundHalfThickness); groundState.orientation = Quaternion4r::Identity();
+        engine.addStaticBody(groundShape, groundState);
 
         const real_t phi = (real_t)(-31.0 * M_PI / 180.0);
         const real_t friction = (real_t)5 / 2;
@@ -30,14 +31,14 @@ public:
         // const real_t R = thickness * (real_t)0.5;
         // const real_t z_com = l * std::sin(-phi) + R; 
         // const Vector3r position(0.0, 0.0, z_com);
-        // PhysicsSystem::CapsuleShape rodShape{thickness * (real_t)0.5, l};
+        // physics::CapsuleShape rodShape{thickness * (real_t)0.5, l};
         // const Quaternion4r capsuleOrientation(Eigen::AngleAxis<real_t>(M_PI_2 -phi, Vector3r::UnitY()));
         // const real_t v0 = (real_t)30.0;
         // const Vector3r linearVelocity(v0, 0.0, 0.0);
-        // PhysicsSystem::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
-        // PhysicsSystem::RigidProps props; props.mass = mass; props.friction = friction;
-        // auto rod = cardillo::physics::BodyFactory::addRigidBody(sys, rodShape, state, props);
-        // sys.ecs().get<PhysicsSystem::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
+        // physics::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
+        // physics::RigidProps props; props.mass = mass; props.friction = friction;
+        // auto rod = engine.addRigidBody(rodShape, state, props);
+        // sys.ecs().get<World::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
         // sys.track(rod, "painleve_rod");
 
         // Parameter sweep over friction and initial angle phi
@@ -59,14 +60,14 @@ public:
                 const real_t R = thickness * (real_t)0.5;
                 const real_t z_com = l * std::sin(curr_phi) + R; 
                 const Vector3r position(x, y, z_com);
-                PhysicsSystem::CapsuleShape rodShape{thickness * (real_t)0.5, l};
+                physics::CapsuleShape rodShape{thickness * (real_t)0.5, l};
                 const Quaternion4r capsuleOrientation(Eigen::AngleAxis<real_t>(M_PI_2 -curr_phi, Vector3r::UnitY()));
                 const real_t v0 = (real_t)30.0;
                 const Vector3r linearVelocity(-v0, 0.0, 0.0);
-                PhysicsSystem::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
-                PhysicsSystem::RigidProps props; props.mass = mass; props.friction = curr_friction;
-                auto rod = cardillo::physics::BodyFactory::addRigidBody(sys, rodShape, state, props);
-                sys.ecs().get<PhysicsSystem::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
+                physics::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
+                physics::RigidProps props; props.mass = mass; props.friction = curr_friction;
+                auto rod = engine.addRigidBody(rodShape, state, props);
+                sys.ecs().get<World::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
                 sys.track(rod, "painleve_rod_fric_" + std::to_string(curr_friction) + "_phi_" + std::to_string(curr_phi));
             }
         }

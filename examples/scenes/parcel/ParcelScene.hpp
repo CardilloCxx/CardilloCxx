@@ -13,7 +13,8 @@ public:
     ParcelScene() = default;
     ~ParcelScene() = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         // Create a treadmill that moves with given velocity
@@ -22,10 +23,10 @@ public:
         Vector3r linearVelocity = m_linearVelocity;
         Vector3r angularVeloctiy = Vector3r::Zero();
     const real_t belt_halfLength = 5.0;
-    PhysicsSystem::CubeShape beltShape{Vector3r(belt_halfLength, 0.5, 0.1)};
-    PhysicsSystem::RigidState beltState; beltState.position = m_position; beltState.orientation = orientation; beltState.linearVelocity = linearVelocity; beltState.angularVelocity = angularVeloctiy;
-    PhysicsSystem::RigidProps beltProps; beltProps.mass = mass;
-    m_treatmill_entity = cardillo::physics::BodyFactory::addRigidBody(sys, beltShape, beltState, beltProps);
+    physics::CubeShape beltShape{Vector3r(belt_halfLength, 0.5, 0.1)};
+    physics::RigidState beltState; beltState.position = m_position; beltState.orientation = orientation; beltState.linearVelocity = linearVelocity; beltState.angularVelocity = angularVeloctiy;
+    physics::RigidProps beltProps; beltProps.mass = mass;
+    m_treatmill_entity = engine.addRigidBody(beltShape, beltState, beltProps);
 
         // Static walls along the conveyor (left/right)
     const real_t beltHalfX = beltShape.halfExtents.x();
@@ -34,12 +35,12 @@ public:
         const real_t wallHalfZ = (real_t)0.25; // ~0.5m tall walls
         const real_t wallYoff = beltHalfY + wallThick; // place just outside belt width
         {
-            PhysicsSystem::CubeShape wallShape{Vector3r(beltHalfX, wallThick, wallHalfZ)};
-            cardillo::physics::BodyFactory::addStaticBody(sys, wallShape, PhysicsSystem::RigidState(Vector3r(m_position.x(), -wallYoff, wallHalfZ)));
+            physics::CubeShape wallShape{Vector3r(beltHalfX, wallThick, wallHalfZ)};
+            engine.addStaticBody(wallShape, physics::RigidState(Vector3r(m_position.x(), -wallYoff, wallHalfZ)));
         }
         {
-            PhysicsSystem::CubeShape wallShape{Vector3r(beltHalfX, wallThick, wallHalfZ)};
-            cardillo::physics::BodyFactory::addStaticBody(sys, wallShape, PhysicsSystem::RigidState(Vector3r(m_position.x(), +wallYoff, wallHalfZ)));
+            physics::CubeShape wallShape{Vector3r(beltHalfX, wallThick, wallHalfZ)};
+            engine.addStaticBody(wallShape, physics::RigidState(Vector3r(m_position.x(), +wallYoff, wallHalfZ)));
         }
 
         // Drop box at the end of the conveyor
@@ -53,32 +54,33 @@ public:
         const Vector3r boxCenter(m_position.x() + boxOffsetX, 0.0, boxFloorZ);
         // Floor
         {
-            PhysicsSystem::CubeShape floorShape{Vector3r(boxHalfX, boxHalfY, boxFloorHalfZ)};
-            cardillo::physics::BodyFactory::addStaticBody(sys, floorShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y(), boxFloorZ)));
+            physics::CubeShape floorShape{Vector3r(boxHalfX, boxHalfY, boxFloorHalfZ)};
+            engine.addStaticBody(floorShape, physics::RigidState(Vector3r(boxCenter.x(), boxCenter.y(), boxFloorZ)));
         }
         // Back wall
         {
-            PhysicsSystem::CubeShape backShape{Vector3r(boxWallT, boxHalfY, 2 * boxWallHalfZ)};
-            cardillo::physics::BodyFactory::addStaticBody(sys, backShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x() + boxHalfX + boxWallT, boxCenter.y(), boxCenter.z() + 2 * boxWallHalfZ)));
+            physics::CubeShape backShape{Vector3r(boxWallT, boxHalfY, 2 * boxWallHalfZ)};
+            engine.addStaticBody(backShape, physics::RigidState(Vector3r(boxCenter.x() + boxHalfX + boxWallT, boxCenter.y(), boxCenter.z() + 2 * boxWallHalfZ)));
         }
         // Front wall
         {
-            PhysicsSystem::CubeShape frontShape{Vector3r(boxWallT, boxHalfY, boxWallHalfZ)};
-            cardillo::physics::BodyFactory::addStaticBody(sys, frontShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x() - (boxHalfX + boxWallT), boxCenter.y(), boxCenter.z() + boxWallHalfZ)));
+            physics::CubeShape frontShape{Vector3r(boxWallT, boxHalfY, boxWallHalfZ)};
+            engine.addStaticBody(frontShape, physics::RigidState(Vector3r(boxCenter.x() - (boxHalfX + boxWallT), boxCenter.y(), boxCenter.z() + boxWallHalfZ)));
         }
         // Side walls
         {
-            PhysicsSystem::CubeShape sideLShape{Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ)};
-            cardillo::physics::BodyFactory::addStaticBody(sys, sideLShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y() - (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
+            physics::CubeShape sideLShape{Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ)};
+            engine.addStaticBody(sideLShape, physics::RigidState(Vector3r(boxCenter.x(), boxCenter.y() - (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
         }
         {
-            PhysicsSystem::CubeShape sideRShape{Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ)};
-            cardillo::physics::BodyFactory::addStaticBody(sys, sideRShape, PhysicsSystem::RigidState(Vector3r(boxCenter.x(), boxCenter.y() + (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
+            physics::CubeShape sideRShape{Vector3r(boxHalfX + boxWallT, boxWallT, boxWallHalfZ)};
+            engine.addStaticBody(sideRShape, physics::RigidState(Vector3r(boxCenter.x(), boxCenter.y() + (boxHalfY + boxWallT), boxCenter.z() + boxWallHalfZ)));
         }
     }
 
-    void maybeSpawnParcel(cardillo::PhysicsSystem& sys, real_t t) {
+    void maybeSpawnParcel(cardillo::World& sys, real_t t) {
         using namespace cardillo;
+        physics::PhysicsEngine engine(sys);
 
         if (t > m_t0) {
             m_t0 += 0.5;
@@ -88,19 +90,20 @@ public:
             Quaternion4r orientation = Quaternion4r::UnitRandom();
             Vector3r linearVelocity = Vector3r::Zero();
             Vector3r angularVelocity = Vector3r::Zero();
-            PhysicsSystem::CubeShape parcelShape{0.1 * (Vector3r::Random() + Vector3r::Constant(1.2)) / 2.2};
-            PhysicsSystem::RigidState st; st.position = position; st.orientation = orientation; st.linearVelocity = linearVelocity; st.angularVelocity = angularVelocity; PhysicsSystem::RigidProps pr; pr.mass = mass; cardillo::physics::BodyFactory::addRigidBody(sys, parcelShape, st, pr);
+            physics::CubeShape parcelShape{0.1 * (Vector3r::Random() + Vector3r::Constant(1.2)) / 2.2};
+            physics::RigidState st; st.position = position; st.orientation = orientation; st.linearVelocity = linearVelocity; st.angularVelocity = angularVelocity; physics::RigidProps pr; pr.mass = mass; engine.addRigidBody(parcelShape, st, pr);
         }
     }
 
-    void resetPosition(cardillo::PhysicsSystem& sys) {
+    void resetPosition(cardillo::World& sys) {
         sys.setPosition(m_treatmill_entity, m_position);
         sys.setOrientation(m_treatmill_entity, Quaternion4r::Identity());
         sys.setLinearVelocity(m_treatmill_entity, m_linearVelocity);
         sys.setAngularVelocity(m_treatmill_entity, Vector3r::Zero());
     }
 
-    void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+        auto& sys = engine.world();
         maybeSpawnParcel(sys, t);
         if (m_treatmill_entity != entt::null) {
             resetPosition(sys);

@@ -12,7 +12,8 @@ public:
     NetScene() = default;
     ~NetScene() = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
 
@@ -26,8 +27,8 @@ public:
         const real_t nu = 0.3;
 
         misc::CircleSpline ring(Vector3r::Zero(), radius, Vector3r::UnitX(), Vector3r::UnitZ());
-        PhysicsSystem::BeamCrossSection sec_ring(thickness, thickness, PhysicsSystem::BeamBodyType::Capsule); 
-        auto springs_ring = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
+        physics::BeamCrossSection sec_ring(thickness, thickness, physics::BeamBodyType::Capsule); 
+        auto springs_ring = physics::BeamSpringParams::fromMaterial(E, nu);
 
         const int n = 12;
         const int m = 18;
@@ -46,25 +47,27 @@ public:
                 Vector3r center = offset + Vector3r(0, a * 2 * i + ((j % 2 == 0) ? 0 : a), b * j);
                 const real_t angle = (j % 2 == 0) ? -pitch : pitch;
                 Quaternion4r rotation = Quaternion4r(Eigen::AngleAxis<real_t>(angle, Vector3r::UnitY()));
-                PhysicsSystem::RigidProps props;
+                physics::RigidProps props;
 
-                if ((i > 0 || j % 2 == 1) && (i < n-1 || j % 2 == 0) && (j > 0 && j < m-1)) props = PhysicsSystem::RigidProps::withDensity(density);
-                else props = PhysicsSystem::RigidProps(0); // static boundary rings
+                if ((i > 0 || j % 2 == 1) && (i < n-1 || j % 2 == 0) && (j > 0 && j < m-1)) props = physics::RigidProps::withDensity(density);
+                else props = physics::RigidProps(0); // static boundary rings
 
-                cardillo::physics::BodyFactory::createBeam(sys, ring, sec_ring, springs_ring, PhysicsSystem::RigidState{center, rotation}, props, segments);
+                engine.createBeam(ring, sec_ring, springs_ring, physics::RigidState{center, rotation}, props, segments);
             }
         }
 
         // Boulder
-        auto boulder = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::MeshShape("res/meshes/rock.obj", Vector3r(0.75,0.75,0.75)),
-                         PhysicsSystem::RigidState(Vector3r(-3,0,0) + netCenter, Vector3r(30.0, 0.0, 0.0), Vector3r(10,20,50)),
-                         PhysicsSystem::RigidProps::withDensity(2500));
+        auto boulder = engine.addRigidBody(physics::MeshShape("res/meshes/rock.obj", Vector3r(0.75,0.75,0.75)),
+                         physics::RigidState(Vector3r(-3,0,0) + netCenter, Vector3r(30.0, 0.0, 0.0), Vector3r(10,20,50)),
+                         physics::RigidProps::withDensity(2500));
 
         std::cout << "Boulder mass: " << sys.getMass(boulder).col(0).row(0) << " kg" << std::endl;
         std::cout << "Boulder KE: " << sys.getKineticEnergy(boulder) << " J" << std::endl;
     }
 
-    void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t /*dt*/) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+        (void)engine;
+        (void)t;
 //         // Apply a twisting moment at the rod end
 //         real_t torque_magnitude = 0.05;
 //         sys.applyForce(m_rodEnd, Vector3r::Zero(), Vector3r(0, -torque_magnitude, 0));

@@ -12,25 +12,26 @@ public:
     RailScene() = default;
     ~RailScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         // Ground plane (thin cube)
     const real_t groundHalfThickness = (real_t)0.01;
     const real_t groundHalfSize = (real_t)50.0;
-    PhysicsSystem::CubeShape groundShape{Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness)};
-    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -groundHalfThickness); groundState.orientation = Quaternion4r::Identity();
-    cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
+    physics::CubeShape groundShape{Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness)};
+    physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -groundHalfThickness); groundState.orientation = Quaternion4r::Identity();
+    engine.addStaticBody(groundShape, groundState);
 
         // Rail mesh as a static obstacle (long rail)
-    cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::MeshShape("res/meshes/rail.obj"), PhysicsSystem::RigidState(Vector3r(0,0,0))); // static
+    engine.addStaticBody(physics::MeshShape("res/meshes/rail.obj"), physics::RigidState(Vector3r(0,0,0))); // static
 
         // Wheel mesh as a dynamic rigid body
         const Vector3r linearVel(0.0, -1.0, 0.0);
         const real_t wheelRadius = (real_t)0.5;
         const real_t trackRadius = (real_t)10.0;
         const Vector3r angularVel(-linearVel.y() / wheelRadius, 0.0,  -linearVel.y() / trackRadius);
-    PhysicsSystem::RigidState s(Vector3r(-0.075, 0.0, 0.575), linearVel, Quaternion4r::Identity(), angularVel);
-    cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::MeshShape("res/meshes/train_wheel.obj"), s, PhysicsSystem::RigidProps((real_t)5.0));
+    physics::RigidState s(Vector3r(-0.075, 0.0, 0.575), linearVel, Quaternion4r::Identity(), angularVel);
+    engine.addRigidBody(physics::MeshShape("res/meshes/train_wheel.obj"), s, physics::RigidProps((real_t)5.0));
     }
 };

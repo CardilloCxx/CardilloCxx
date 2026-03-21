@@ -15,7 +15,8 @@ public:
     HangbrideScene() = default;
     ~HangbrideScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::physics;
         const auto& cfg = sys.config();
@@ -33,12 +34,12 @@ public:
         const real_t rightX =  (gap * (real_t)0.5 + cliffThickness * (real_t)0.5);
 
         // Create cliff blocks as static obstacle cubes
-        PhysicsSystem::CubeShape leftCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
-        PhysicsSystem::RigidState leftCliffState; leftCliffState.position = Vector3r(leftX, 0.0, cliffCenterZ); leftCliffState.orientation = Quaternion4r::Identity();
-        PhysicsSystem::RigidProps leftCliffProps; entt::entity eLeft = cardillo::physics::BodyFactory::addRigidBody(sys, leftCliffShape, leftCliffState, leftCliffProps);
-        PhysicsSystem::CubeShape rightCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
-        PhysicsSystem::RigidState rightCliffState; rightCliffState.position = Vector3r(rightX, 0.0, cliffCenterZ); rightCliffState.orientation = Quaternion4r::Identity();
-        PhysicsSystem::RigidProps rightCliffProps; entt::entity eRight = cardillo::physics::BodyFactory::addRigidBody(sys, rightCliffShape, rightCliffState, rightCliffProps);
+        physics::CubeShape leftCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
+        physics::RigidState leftCliffState; leftCliffState.position = Vector3r(leftX, 0.0, cliffCenterZ); leftCliffState.orientation = Quaternion4r::Identity();
+        physics::RigidProps leftCliffProps; entt::entity eLeft = engine.addRigidBody(leftCliffShape, leftCliffState, leftCliffProps);
+        physics::CubeShape rightCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
+        physics::RigidState rightCliffState; rightCliffState.position = Vector3r(rightX, 0.0, cliffCenterZ); rightCliffState.orientation = Quaternion4r::Identity();
+        physics::RigidProps rightCliffProps; entt::entity eRight = engine.addRigidBody(rightCliffShape, rightCliffState, rightCliffProps);
         (void)eLeft; (void)eRight; // not needed further
 
         // Tripod parameters
@@ -66,15 +67,15 @@ public:
             auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){
                 auto& reg = sys.ecs();
                 auto e = reg.create();
-                reg.emplace<PhysicsSystem::C_PhysicsObject>(e);
-                reg.emplace<PhysicsSystem::C_PointMassTag>(e);
-                reg.emplace<PhysicsSystem::C_Collidable>(e);
-                reg.emplace<PhysicsSystem::C_VisualObject>(e);
-                reg.emplace<PhysicsSystem::C_PointVisualTag>(e);
-                reg.emplace<PhysicsSystem::C_Mass>(e, PhysicsSystem::C_Mass{mass});
-                reg.emplace<PhysicsSystem::C_Position3>(e, PhysicsSystem::C_Position3{p});
-                reg.emplace<PhysicsSystem::C_LinearVelocity3>(e, PhysicsSystem::C_LinearVelocity3{Vector3r::Zero()});
-                reg.emplace<PhysicsSystem::C_Radius>(e, PhysicsSystem::C_Radius{radius});
+                reg.emplace<World::C_PhysicsObject>(e);
+                reg.emplace<World::C_PointMassTag>(e);
+                reg.emplace<World::C_Collidable>(e);
+                reg.emplace<World::C_VisualObject>(e);
+                reg.emplace<World::C_PointVisualTag>(e);
+                reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
+                reg.emplace<World::C_Position3>(e, World::C_Position3{p});
+                reg.emplace<World::C_LinearVelocity3>(e, World::C_LinearVelocity3{Vector3r::Zero()});
+                reg.emplace<World::C_Radius>(e, World::C_Radius{radius});
                 // Friction component optional; omit to avoid registry version differences
                 sys.markStructureDirty();
                 return e;
@@ -84,7 +85,7 @@ public:
 
             // Helper to add a 3D translational spring between apex point mass and obstacle cliff at local attachment point
             auto addLegSpring = [&](entt::entity apexEntity, entt::entity cliffEntity, const Vector3r& cliffLocal){
-                sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), apexEntity, cliffEntity, Vector3r::Zero(), cliffLocal, legK, legD);
+                sys.addLinearDistanceConstraint(apexEntity, cliffEntity, Vector3r::Zero(), cliffLocal, legK, legD);
             };
 
             // Choose the relevant cliff and its local frame (identity rotation)
@@ -134,7 +135,7 @@ public:
             for (int i = 0; i < segments; ++i) {
                 real_t t = (segments == 1) ? (real_t)0.5 : (real_t)i / (real_t)(segments - 1);
                 Vector3r p = (real_t)1.0 * ((real_t)1.0 - t) * pA + t * pB;
-                (void)cardillo::physics::BodyFactory::addPointMass(sys, nodeMass, p, Vector3r::Zero(), (real_t)0.03); // sphere radius
+                (void)engine.addPointMass(nodeMass, p, Vector3r::Zero(), (real_t)0.03); // sphere radius
                 // Retrieve the last created entity (point mass). addPointMass returns an index_t, not entity, so we can't directly get it here.
                 // Instead, find the last physics object without C_BodyIndex yet would be brittle; better to create entities manually.
             }
@@ -144,15 +145,15 @@ public:
         auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){
             auto& reg = sys.ecs();
             auto e = reg.create();
-            reg.emplace<PhysicsSystem::C_PhysicsObject>(e);
-            reg.emplace<PhysicsSystem::C_PointMassTag>(e);
-            reg.emplace<PhysicsSystem::C_Collidable>(e);
-            reg.emplace<PhysicsSystem::C_VisualObject>(e);
-            reg.emplace<PhysicsSystem::C_PointVisualTag>(e);
-            reg.emplace<PhysicsSystem::C_Mass>(e, PhysicsSystem::C_Mass{mass});
-            reg.emplace<PhysicsSystem::C_Position3>(e, PhysicsSystem::C_Position3{p});
-            reg.emplace<PhysicsSystem::C_LinearVelocity3>(e, PhysicsSystem::C_LinearVelocity3{Vector3r::Zero()});
-            reg.emplace<PhysicsSystem::C_Radius>(e, PhysicsSystem::C_Radius{radius});
+            reg.emplace<World::C_PhysicsObject>(e);
+            reg.emplace<World::C_PointMassTag>(e);
+            reg.emplace<World::C_Collidable>(e);
+            reg.emplace<World::C_VisualObject>(e);
+            reg.emplace<World::C_PointVisualTag>(e);
+            reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
+            reg.emplace<World::C_Position3>(e, World::C_Position3{p});
+            reg.emplace<World::C_LinearVelocity3>(e, World::C_LinearVelocity3{Vector3r::Zero()});
+            reg.emplace<World::C_Radius>(e, World::C_Radius{radius});
             // Friction component optional; omit to avoid registry version differences
             sys.markStructureDirty();
             return e;
@@ -168,7 +169,7 @@ public:
             }
             // Spring helper between two entities (point masses or anchor obstacles)
             auto addSpring = [&](entt::entity A, entt::entity B, const Vector3r& rA, const Vector3r& rB, real_t kmul){
-                sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), A, B, rA, rB, k * kmul, d);
+                sys.addLinearDistanceConstraint(A, B, rA, rB, k * kmul, d);
             };
             // Attach ends
             addSpring(nodes.front(), eA, Vector3r::Zero(), Vector3r::Zero(), (real_t)1.0);
@@ -193,7 +194,7 @@ public:
 
         // Helper to add a 3D translational spring
         auto add3DSpring = [&](entt::entity A, entt::entity B, const Vector3r& rA, const Vector3r& rB, real_t k, real_t d){
-            sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), A, B, rA, rB, k, d);
+            sys.addLinearDistanceConstraint(A, B, rA, rB, k, d);
         };
 
     // Add floor boards (planks) hanging from the two ropes
@@ -246,9 +247,9 @@ public:
             center.z() = (cliffTopZ - plankHalf.z()) + liftZ;
 
             // Create plank as a rigid body cube (identity orientation)
-            PhysicsSystem::CubeShape plankShape{plankHalf};
-            PhysicsSystem::RigidState plankState; plankState.position = center; plankState.orientation = Quaternion4r::Identity();
-            PhysicsSystem::RigidProps plankProps; plankProps.mass = plankMass; entt::entity plank = cardillo::physics::BodyFactory::addRigidBody(sys, plankShape, plankState, plankProps);
+            physics::CubeShape plankShape{plankHalf};
+            physics::RigidState plankState; plankState.position = center; plankState.orientation = Quaternion4r::Identity();
+            physics::RigidProps plankProps; plankProps.mass = plankMass; entt::entity plank = engine.addRigidBody(plankShape, plankState, plankProps);
             planks.push_back(plank);
 
             // Attach plank to rope nodes at its top-left and top-right surfaces
@@ -267,9 +268,9 @@ public:
             auto& reg = sys.ecs();
             Vector3r posA = Vector3r::Zero();
             Vector3r posB = Vector3r::Zero();
-            if (auto pa = reg.try_get<PhysicsSystem::C_Position3>(A)) posA = pa->value + rA;
+            if (auto pa = reg.try_get<World::C_Position3>(A)) posA = pa->value + rA;
             else posA = rA;
-            if (auto pb = reg.try_get<PhysicsSystem::C_Position3>(B)) posB = pb->value + rB;
+            if (auto pb = reg.try_get<World::C_Position3>(B)) posB = pb->value + rB;
             else posB = rB;
 
             // Create rope nodes (point masses) between posA and posB
@@ -282,7 +283,7 @@ public:
 
             // helper to add translational springs between two entities
             auto addLink = [&](entt::entity X, entt::entity Y, const Vector3r& rx, const Vector3r& ry){
-                sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), X, Y, rx, ry, kRope, dRope);
+                sys.addLinearDistanceConstraint(X, Y, rx, ry, kRope, dRope);
             };
 
             // Attach ends

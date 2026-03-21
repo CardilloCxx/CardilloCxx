@@ -188,8 +188,8 @@ static inline PJIterContext build_context(
 		int ba = -1, bb = -1;
 		if (origIdx >= 0 && origIdx < (int)contactsAll.size()) {
 			const auto& c = contactsAll[(size_t)origIdx];
-			if (reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(c.a)) ba = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(c.a).b;
-			if (reg.any_of<cardillo::PhysicsSystem::C_BodyIndex>(c.b)) bb = reg.get<cardillo::PhysicsSystem::C_BodyIndex>(c.b).b;
+			if (reg.any_of<cardillo::World::C_BodyIndex>(c.a)) ba = reg.get<cardillo::World::C_BodyIndex>(c.a).b;
+			if (reg.any_of<cardillo::World::C_BodyIndex>(c.b)) bb = reg.get<cardillo::World::C_BodyIndex>(c.b).b;
 		}
 		partEdges[(size_t)i].bodyA = ba;
 		partEdges[(size_t)i].bodyB = bb;

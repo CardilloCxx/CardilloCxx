@@ -5,7 +5,7 @@
 #include <cmath>
 #include <limits>
 #include "../misc/types.hpp"
-#include "physics_system.hpp"
+#include "world.hpp"
 #include <iostream>
 
 namespace cardillo {
@@ -77,8 +77,8 @@ struct JointProperties {
         Matrix33r A_Ref;
 
         if (jf.ref.has_value()) {
-            r_ORef = reg.get<cardillo::PhysicsSystem::C_Position3>(*jf.ref).value;
-            A_Ref  = reg.get<cardillo::PhysicsSystem::C_Orientation>(*jf.ref).value.toRotationMatrix();
+            r_ORef = reg.get<cardillo::World::C_Position3>(*jf.ref).value;
+            A_Ref  = reg.get<cardillo::World::C_Orientation>(*jf.ref).value.toRotationMatrix();
         } else {
             r_ORef = Vector3r::Zero();
             A_Ref  = Matrix33r::Identity();
@@ -86,12 +86,12 @@ struct JointProperties {
 
         Vector3r r_OJ_world = r_ORef + A_Ref * jf.r_refJ;
 
-        const auto& r_OA = reg.get<cardillo::PhysicsSystem::C_Position3>(A).value;
-        const auto& A_A  = reg.get<cardillo::PhysicsSystem::C_Orientation>(A).value.toRotationMatrix();
+        const auto& r_OA = reg.get<cardillo::World::C_Position3>(A).value;
+        const auto& A_A  = reg.get<cardillo::World::C_Orientation>(A).value.toRotationMatrix();
         K1_r_S1J = A_A.transpose() * (r_OJ_world - r_OA);
 
-        const auto& r_OB = reg.get<cardillo::PhysicsSystem::C_Position3>(B).value;
-        const auto& A_B  = reg.get<cardillo::PhysicsSystem::C_Orientation>(B).value.toRotationMatrix();
+        const auto& r_OB = reg.get<cardillo::World::C_Position3>(B).value;
+        const auto& A_B  = reg.get<cardillo::World::C_Orientation>(B).value.toRotationMatrix();
         K2_r_S2J = A_B.transpose() * (r_OJ_world - r_OB);
 
         const auto& A_IJ = A_Ref * jf.A_refJ;
@@ -218,75 +218,6 @@ protected:
     void buildJointJacobian(const WorldAttachments& wa, MatrixXXr& WgA, MatrixXXr& WgB) const;
 };
 
-// Fully rigid joint: all 6 DOFs locked (very stiff translational and rotational)
-class RigidConstraint : public TranslationRotationConstraint {
-public:
-    RigidConstraint(entt::registry& reg,
-                    entt::entity a,
-                    entt::entity b)
-        : TranslationRotationConstraint(reg,
-                                        a,
-                                        b,
-                                        JointFrame(reg.get<cardillo::PhysicsSystem::C_Position3>(a).value),
-                                        Vector3r::Constant(std::numeric_limits<real_t>::infinity()), // K_trans
-                                        Vector3r::Zero(),                                            // D_trans
-                                        Vector3r::Constant(std::numeric_limits<real_t>::infinity()), // K_rot
-                                        Vector3r::Zero()) {}                                         // D_rot
-};
-
-// Purely translational joint: configure translational stiffness; rotations free by default
-class TranslationalConstraint : public TranslationRotationConstraint {
-public:
-    TranslationalConstraint(entt::registry& reg,
-                            entt::entity a,
-                            entt::entity b,
-                            const JointFrame& frame,
-                            const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                            const Vector3r& D_trans = Vector3r::Zero())
-        : TranslationRotationConstraint(reg, a, b, frame, K_trans, D_trans,
-                                        /*K_rot*/ Vector3r::Zero(),
-                                        /*D_rot*/ Vector3r::Zero()) {}
-};
-
-// Purely translational joint: configure translational stiffness; rotations free by default
-class RotationConstraint : public TranslationRotationConstraint {
-public:
-    RotationConstraint(entt::registry& reg,
-                       entt::entity a,
-                       entt::entity b,
-                       const JointFrame& frame,
-                            const Vector3r& K_rot = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                            const Vector3r& D_rot = Vector3r::Zero())
-        : TranslationRotationConstraint(reg, a, b, frame, Vector3r::Zero(), Vector3r::Zero(),
-                                        /*K_rot*/ K_rot,
-                                        /*D_rot*/ D_rot) {}
-};
-
-// Hinge joint: 3 translations locked, 2 rotations locked, 1 rotation free
-class HingeConstraint : public TranslationRotationConstraint {
-public:
-    HingeConstraint(entt::registry& reg,
-                    entt::entity a,
-                    entt::entity b,
-                    const JointFrame& frame,
-                    real_t K_axis = (real_t)0,
-                    real_t D_axis = (real_t)0,
-                    const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                    const Vector3r& D_trans = Vector3r::Zero())
-        : TranslationRotationConstraint(reg, a, b, frame,
-                                        K_trans, D_trans,
-                                        /*K_rot*/ Vector3r(K_axis, std::numeric_limits<real_t>::infinity(), std::numeric_limits<real_t>::infinity()),
-                                        /*D_rot*/ Vector3r(D_axis,0, 0))
-        , m_K_axis(K_axis)
-        , m_D_axis(D_axis) {}
-
-private:
-    real_t   m_K_axis{0};
-    real_t   m_D_axis{0};
-};
-
-
-
 // Beam constraint (6 scalar rows): stretch/shear (x,y,z) and torsion/bend (x,y,z)
 // Ke: [E1, E2, E3] stiffnesses for generalized stretch/shear
 // Kf: [F1, F2, F3] stiffnesses for torsion/bending
@@ -295,25 +226,18 @@ public:
     BeamConstraint(entt::registry& reg,
                    entt::entity a,
                    entt::entity b,
-                   const cardillo::PhysicsSystem::BeamSpringParams& springs,
-                   const cardillo::PhysicsSystem::BeamCrossSection& section);
-
-    // Stiffness and damping now derived from springs+section per segment
-    void setCrackStrainMax(real_t v) { m_crackStrainMax = v; }
+                   const cardillo::World::BeamSpringParams& springs,
+                   const cardillo::World::BeamCrossSection& section);
 
     // Fill W and compliance vectors for 6 beam rows
     ConstraintResult getConstraint() const override;
 
 private:
-    cardillo::PhysicsSystem::BeamSpringParams m_springs{};
-    cardillo::PhysicsSystem::BeamCrossSection m_section{};
+    cardillo::World::BeamSpringParams m_springs{};
+    cardillo::World::BeamCrossSection m_section{};
     Vector3r m_delta0{Vector3r::Zero()};
     Vector3r m_kappa0{Vector3r::Zero()};
     real_t   l_0{ 0 };
-    mutable bool m_broken{false};
-    real_t   m_crackStrainMax{std::numeric_limits<real_t>::infinity()};
-    mutable real_t m_crackStrainPeak{(real_t)0};
-    mutable bool m_crackReported{false};
 };
 
 } // namespace physics

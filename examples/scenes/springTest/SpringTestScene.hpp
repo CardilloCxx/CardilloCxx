@@ -3,7 +3,6 @@
 #include "../SceneBase.hpp"
 #include <Eigen/Geometry>
 #include <cmath>
-#include "physics/constraints.hpp"
 
 using namespace cardillo;
 
@@ -13,29 +12,30 @@ public:
     SpringTestScene() = default;
     ~SpringTestScene() override = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
         using namespace cardillo;
+        cardillo::World& sys = engine.world();
 
     // ground (static obstacle cube via unified API)
-    PhysicsSystem::CubeShape groundShape{Vector3r(5.0, 5.0, 0.5)};
-    PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-0.5); groundState.orientation = Quaternion4r::Identity();
-    entt::entity eGround = cardillo::physics::BodyFactory::addStaticBody(sys, groundShape, groundState);
+    physics::CubeShape groundShape{Vector3r(5.0, 5.0, 0.5)};
+    physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-0.5); groundState.orientation = Quaternion4r::Identity();
+    entt::entity eGround = engine.addStaticBody(groundShape, groundState);
 
         // Flat cube that acts as a "foot" (dynamic)
-    PhysicsSystem::CubeShape footShape{Vector3r(0.2, 0.2, 0.02)}; // wide and flat
+    physics::CubeShape footShape{Vector3r(0.2, 0.2, 0.02)}; // wide and flat
     real_t footMass = (real_t)0.5;
-    PhysicsSystem::RigidState footState; footState.position = Vector3r(0.0,0.0,0.3); footState.orientation = Quaternion4r::Identity();
-    PhysicsSystem::RigidProps footProps; footProps.mass = footMass;
-    entt::entity eFoot = cardillo::physics::BodyFactory::addRigidBody(sys, footShape, footState, footProps);
+    physics::RigidState footState; footState.position = Vector3r(0.0,0.0,0.3); footState.orientation = Quaternion4r::Identity();
+    physics::RigidProps footProps; footProps.mass = footMass;
+    entt::entity eFoot = engine.addRigidBody(footShape, footState, footProps);
 
         // Rigid sphere above the foot that will be connected by four corner springs
         real_t sphereRadius = (real_t)0.06;
         Vector3r spherePos = Vector3r(0.0, 0.0, 0.7); // dropped from above
         real_t sphereMass = (real_t)1.0;
-        PhysicsSystem::SphereShape sphereShape{sphereRadius};
-        PhysicsSystem::RigidState sphereState; sphereState.position = spherePos; sphereState.orientation = Quaternion4r::Identity();
-        PhysicsSystem::RigidProps sphereProps; sphereProps.mass = sphereMass;
-        entt::entity eSphere = cardillo::physics::BodyFactory::addRigidBody(sys, sphereShape, sphereState, sphereProps);
+        physics::SphereShape sphereShape{sphereRadius};
+        physics::RigidState sphereState; sphereState.position = spherePos; sphereState.orientation = Quaternion4r::Identity();
+        physics::RigidProps sphereProps; sphereProps.mass = sphereMass;
+        entt::entity eSphere = engine.addRigidBody(sphereShape, sphereState, sphereProps);
 
         // Create four springs from the top corners of the foot to the sphere center
         const real_t k_corner = (real_t)5e2;
@@ -50,47 +50,47 @@ public:
         };
         for (const auto& rA_loc : corners) {
             // attach to sphere center (local offset zero)
-            sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), eFoot, eSphere, rA_loc, Vector3r::Zero(), k_corner, d_corner);
+            engine.addLinearDistanceConstraint(eFoot, eSphere, rA_loc, Vector3r::Zero(), k_corner, d_corner);
         }
 
         // Double pendulum: One obstacle sphere in the air, two dynamic spheres besides it with infinite stiffness springs
         Vector3r obstaclePos = Vector3r(0.5, 0.0, 1.5);
         real_t obstacleRadius = (real_t)0.05;
-    PhysicsSystem::CubeShape cubeShape{Vector3r(obstacleRadius, obstacleRadius, obstacleRadius)};
-    PhysicsSystem::RigidState cubeState; cubeState.position = obstaclePos; cubeState.orientation = Quaternion4r::Identity();
-    PhysicsSystem::RigidProps cubeProps; // static
-    entt::entity eObs = cardillo::physics::BodyFactory::addRigidBody(sys, cubeShape, cubeState, cubeProps);
+    physics::CubeShape cubeShape{Vector3r(obstacleRadius, obstacleRadius, obstacleRadius)};
+    physics::RigidState cubeState; cubeState.position = obstaclePos; cubeState.orientation = Quaternion4r::Identity();
+    physics::RigidProps cubeProps; // static
+    entt::entity eObs = engine.addRigidBody(cubeShape, cubeState, cubeProps);
 
         // First dynamic sphere
         Vector3r dyn1Pos = obstaclePos + Vector3r(0.0, -0.4, 0.0);
         real_t dyn1Mass = (real_t)0.3;
-        PhysicsSystem::SphereShape dyn1Shape{obstacleRadius * (real_t)0.8};
-        PhysicsSystem::RigidState dyn1State; dyn1State.position = dyn1Pos; dyn1State.orientation = Quaternion4r::Identity(); dyn1State.linearVelocity = Vector3r(0.0,0.0,0.1);
-        PhysicsSystem::RigidProps dyn1Props; dyn1Props.mass = dyn1Mass; entt::entity eDyn1 = cardillo::physics::BodyFactory::addRigidBody(sys, dyn1Shape, dyn1State, dyn1Props);
+        physics::SphereShape dyn1Shape{obstacleRadius * (real_t)0.8};
+        physics::RigidState dyn1State; dyn1State.position = dyn1Pos; dyn1State.orientation = Quaternion4r::Identity(); dyn1State.linearVelocity = Vector3r(0.0,0.0,0.1);
+        physics::RigidProps dyn1Props; dyn1Props.mass = dyn1Mass; entt::entity eDyn1 = engine.addRigidBody(dyn1Shape, dyn1State, dyn1Props);
 
         // Second dynamic sphere
         Vector3r dyn2Pos = dyn1Pos + Vector3r(0.0, -0.4, 0.0);
         real_t dyn2Mass = (real_t)0.3;
-        PhysicsSystem::SphereShape dyn2Shape{obstacleRadius * (real_t)0.8};
-        PhysicsSystem::RigidState dyn2State; dyn2State.position = dyn2Pos; dyn2State.orientation = Quaternion4r::Identity(); dyn2State.linearVelocity = Vector3r(0.0,0.0,1.0);
-        PhysicsSystem::RigidProps dyn2Props; dyn2Props.mass = dyn2Mass; entt::entity eDyn2 = cardillo::physics::BodyFactory::addRigidBody(sys, dyn2Shape, dyn2State, dyn2Props);
+        physics::SphereShape dyn2Shape{obstacleRadius * (real_t)0.8};
+        physics::RigidState dyn2State; dyn2State.position = dyn2Pos; dyn2State.orientation = Quaternion4r::Identity(); dyn2State.linearVelocity = Vector3r(0.0,0.0,1.0);
+        physics::RigidProps dyn2Props; dyn2Props.mass = dyn2Mass; entt::entity eDyn2 = engine.addRigidBody(dyn2Shape, dyn2State, dyn2Props);
 
     // Create very stiff springs to connect them (use large finite value to avoid zero-compliance drop)
     const real_t k_inf = (real_t)1e9;
         // obs to dyn1
-    sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), eObs, eDyn1, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
+    engine.addLinearDistanceConstraint(eObs, eDyn1, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
         // dyn1 to dyn2
-    sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), eDyn1, eDyn2, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
+    engine.addLinearDistanceConstraint(eDyn1, eDyn2, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
 
         // rope between second anker point and lower dynamic sphere
         // anker point
     Vector3r ankerPos = obstaclePos + Vector3r(0.0, -1.2, 0.0);
-    PhysicsSystem::CubeShape ankerShape{Vector3r(0.001, 0.001, 0.001)};
-    PhysicsSystem::RigidState ankerState; ankerState.position = ankerPos; ankerState.orientation = Quaternion4r::Identity();
-    PhysicsSystem::RigidProps ankerProps; // static
-    entt::entity eAnker = cardillo::physics::BodyFactory::addRigidBody(sys, ankerShape, ankerState, ankerProps);
+    physics::CubeShape ankerShape{Vector3r(0.001, 0.001, 0.001)};
+    physics::RigidState ankerState; ankerState.position = ankerPos; ankerState.orientation = Quaternion4r::Identity();
+    physics::RigidProps ankerProps; // static
+    entt::entity eAnker = engine.addRigidBody(ankerShape, ankerState, ankerProps);
         // create rope
-        createRope(sys, eAnker, eDyn2, 50, (real_t)8.0, (real_t)0.001, Vector3r::Zero(), Vector3r( 0.0, 0.0, -obstacleRadius * 0.8));
+        createRope(engine, eAnker, eDyn2, 50, (real_t)8.0, (real_t)0.001, Vector3r::Zero(), Vector3r( 0.0, 0.0, -obstacleRadius * 0.8));
     }
 
 private:
@@ -100,12 +100,13 @@ private:
     // - segmentMass: mass for each intermediate segment body.
     // This implementation creates small spherical segments and connects consecutive bodies with
     // very large stiffness translational springs (approximate infinite stiffness).
-    void createRope(cardillo::PhysicsSystem& sys, entt::entity eA, entt::entity eB,
+    void createRope(cardillo::physics::PhysicsEngine& engine, entt::entity eA, entt::entity eB,
                     int numSegments, real_t slack = (real_t)0.0, real_t segmentMass = (real_t)0.05,
                     const Vector3r& attachA_local = Vector3r::Zero(),
                     const Vector3r& attachB_local = Vector3r::Zero()) {
         using namespace cardillo;
         using namespace cardillo::physics;
+        World& sys = engine.system();
         if (numSegments <= 0) return;
 
         entt::registry& reg = sys.ecs();
@@ -115,18 +116,18 @@ private:
         Vector3r centerB = Vector3r::Zero();
         Quaternion4r qA = Quaternion4r::Identity();
         Quaternion4r qB = Quaternion4r::Identity();
-        if (reg.all_of<cardillo::PhysicsSystem::C_Position3>(eA)) centerA = reg.get<cardillo::PhysicsSystem::C_Position3>(eA).value;
-        if (reg.all_of<cardillo::PhysicsSystem::C_Position3>(eB)) centerB = reg.get<cardillo::PhysicsSystem::C_Position3>(eB).value;
-        if (reg.all_of<cardillo::PhysicsSystem::C_Orientation>(eA)) qA = reg.get<cardillo::PhysicsSystem::C_Orientation>(eA).value;
-        if (reg.all_of<cardillo::PhysicsSystem::C_Orientation>(eB)) qB = reg.get<cardillo::PhysicsSystem::C_Orientation>(eB).value;
+        if (reg.all_of<cardillo::World::C_Position3>(eA)) centerA = reg.get<cardillo::World::C_Position3>(eA).value;
+        if (reg.all_of<cardillo::World::C_Position3>(eB)) centerB = reg.get<cardillo::World::C_Position3>(eB).value;
+        if (reg.all_of<cardillo::World::C_Orientation>(eA)) qA = reg.get<cardillo::World::C_Orientation>(eA).value;
+        if (reg.all_of<cardillo::World::C_Orientation>(eB)) qB = reg.get<cardillo::World::C_Orientation>(eB).value;
 
         // Determine local attachment offsets. For spheres, ensure attachment lies on surface.
         Vector3r rA_local = attachA_local;
         Vector3r rB_local = attachB_local;
         const real_t eps = (real_t)1e-9;
         // If attachment not provided and A is a sphere, point toward B; if provided and A is sphere, project to surface
-        if (reg.all_of<cardillo::PhysicsSystem::C_RB_Sphere>(eA) && reg.all_of<cardillo::PhysicsSystem::C_Radius>(eA)) {
-            real_t radiusA = reg.get<cardillo::PhysicsSystem::C_Radius>(eA).r;
+        if (reg.all_of<cardillo::World::C_RB_Sphere>(eA) && reg.all_of<cardillo::World::C_Radius>(eA)) {
+            real_t radiusA = reg.get<cardillo::World::C_Radius>(eA).r;
             if (rA_local.squaredNorm() < eps) {
                 // default: direction from center to other body center in world frame
                 Vector3r worldDir = (centerB - centerA);
@@ -139,8 +140,8 @@ private:
             }
         }
         // Same for B
-        if (reg.all_of<cardillo::PhysicsSystem::C_RB_Sphere>(eB) && reg.all_of<cardillo::PhysicsSystem::C_Radius>(eB)) {
-            real_t radiusB = reg.get<cardillo::PhysicsSystem::C_Radius>(eB).r;
+        if (reg.all_of<cardillo::World::C_RB_Sphere>(eB) && reg.all_of<cardillo::World::C_Radius>(eB)) {
+            real_t radiusB = reg.get<cardillo::World::C_Radius>(eB).r;
             if (rB_local.squaredNorm() < eps) {
                 Vector3r worldDir = (centerA - centerB);
                 if (worldDir.norm() < eps) worldDir = Vector3r::UnitZ(); else worldDir.normalize();
@@ -234,7 +235,7 @@ private:
         for (size_t i = 1; i + 1 < nodes.size(); ++i) {
             const Vector3r& p = nodes[i];
             // add small point-mass segment (visual + collidable radius provided)
-            index_t seg_id = cardillo::physics::BodyFactory::addPointMass(sys, segmentMass, p, Vector3r::Zero(), nodeRadius);
+            index_t seg_id = engine.addPointMass(segmentMass, p, Vector3r::Zero(), nodeRadius);
             entt::entity seg = entt::entity(static_cast<uint32_t>(seg_id));
             bodies.push_back(seg);
         }
@@ -258,7 +259,7 @@ private:
                 rB = rB_local;
             }
             // Distance spring between nodes approximates a link
-            sys.addConstraint<cardillo::physics::LinearDistanceConstraint>(sys.ecs(), a, b, rA, rB, k_inf, 0);
+            engine.addLinearDistanceConstraint(a, b, rA, rB, k_inf, 0);
         }
     }
 };

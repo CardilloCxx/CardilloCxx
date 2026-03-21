@@ -64,7 +64,8 @@ public:
         {"i",     {"gcki",   "hi"   }},
     };
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         const real_t slopeDeg = (real_t)3.0;
         const real_t slopeRad = slopeDeg * (real_t)M_PI / (real_t)180.0;
         // Tilt gravity instead of the ground plane: downhill +x
@@ -80,10 +81,10 @@ public:
         const Vector3r xAxis = Vector3r::UnitX();
         const int nLegPairs = 8;
         // Ground cube with top surface at z=0 (replaces plane)
-        PhysicsSystem::CubeShape groundShape{Vector3r((real_t)20.0, (real_t)20.0, (real_t)1.0)}; // half extents; 2m tall block
-        PhysicsSystem::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, (real_t)-1.0); // top face at z=0
-        PhysicsSystem::RigidProps groundProps; groundProps.visual = true; groundProps.collidable = true; groundProps.mass = std::nullopt;
-        cardillo::physics::BodyFactory::addRigidBody(sys, groundShape, groundState, groundProps);
+        physics::CubeShape groundShape{Vector3r((real_t)20.0, (real_t)20.0, (real_t)1.0)}; // half extents; 2m tall block
+        physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, (real_t)-1.0); // top face at z=0
+        physics::RigidProps groundProps; groundProps.visual = true; groundProps.collidable = true; groundProps.mass = std::nullopt;
+        engine.addRigidBody(groundShape, groundState, groundProps);
 
         const real_t layerWidth = (real_t)0.12; // spacing between leg pair slices
         entt::entity middleAxle = buildWalker(sys, params, L, baseAlphaDeg, nLegPairs, p2_world, planeNormal, xAxis, layerWidth);
@@ -195,7 +196,7 @@ private:
     }
 
     // Build entire leg from precomputed geometry, optionally reusing a shared m beam.
-    LegBuildResult buildLeg(cardillo::PhysicsSystem& sys,
+    LegBuildResult buildLeg(cardillo::World& sys,
                   LegGeom3D leg3d,
                   entt::entity frameBar,
                   entt::entity sharedM = entt::null,
@@ -243,7 +244,7 @@ private:
                 auto ej = segEnt[bars[i + 1]];
                 if (ei == entt::null || ej == entt::null) continue;
                 physics::JointFrame jf = physics::JointFrame::fromAxis(leg3d.nodes.at(node), n);
-                sys.addConstraint<physics::TranslationRotationConstraint>(sys.ecs(), ei, ej, jf,
+                sys.addTranslationRotationConstraint(ei, ej, jf,
                     K_TRANS, D_TRANS, R_ROT, D_ROT);
             }
         };
@@ -266,7 +267,7 @@ private:
     }
 
     // Build two mirrored legs sharing p2, mirrored across plane by flipping xAxis.
-    std::pair<LegBuildResult, LegBuildResult> buildLegPair(cardillo::PhysicsSystem& sys,
+    std::pair<LegBuildResult, LegBuildResult> buildLegPair(cardillo::World& sys,
                   const LegParams& params,
                   const Lengths& L,
                   real_t alpha_deg,
@@ -292,7 +293,7 @@ private:
     }
 
     // Build walker with phased leg pairs, weld all m-beams together.
-    entt::entity buildWalker(cardillo::PhysicsSystem& sys,
+    entt::entity buildWalker(cardillo::World& sys,
                   const LegParams& params,
                   const Lengths& L,
                   real_t baseAlphaDeg,
@@ -400,7 +401,7 @@ private:
             for (size_t i = 0; i < frames.size(); ++i) {
                 if (frames[i] == entt::null) continue;
                 physics::JointFrame jf = physics::JointFrame::fromAxis(axlePos, n);
-                sys.addConstraint<physics::TranslationRotationConstraint>(sys.ecs(), axle, frames[i], jf,
+                sys.addTranslationRotationConstraint(axle, frames[i], jf,
                     K_TRANS, D_TRANS, R_ROT, D_ROT);
             }
         };
@@ -425,19 +426,20 @@ private:
         if (middleAxle != entt::null) {
             for (size_t i = 0; i < mBeams.size() && i < p2Points.size(); ++i) {
                 if (mBeams[i] == entt::null) continue;
-                sys.addConstraint<physics::RigidConstraint>(sys.ecs(), middleAxle, mBeams[i]);
+                sys.addRigidConstraint(middleAxle, mBeams[i]);
             }
         }
 
         return middleAxle;
     }
 
-    static entt::entity addBar(cardillo::PhysicsSystem& sys,
+    static entt::entity addBar(cardillo::World& sys,
                                const Vector3r& a,
                                const Vector3r& b,
                                real_t thickness,
                                real_t density,
                                bool collidable = true) {
+        physics::PhysicsEngine engine(sys);
         Vector3r d = b - a;
         real_t len = d.norm();
         if (len < (real_t)1e-6) return entt::null;
@@ -445,27 +447,28 @@ private:
         Quaternion4r q = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), d.normalized());
         real_t radius = thickness * (real_t)0.5;
         real_t halfLen = len * (real_t)0.5; // extend beyond nodes so the capsule envelopes them
-        PhysicsSystem::CapsuleShape shape{radius, halfLen};
-        PhysicsSystem::RigidState state; state.position = mid; state.orientation = q;
-        PhysicsSystem::RigidProps props;
+        physics::CapsuleShape shape{radius, halfLen};
+        physics::RigidState state; state.position = mid; state.orientation = q;
+        physics::RigidProps props;
         props.visual = true;
         props.collidable = collidable;
         if (density > 0) props.density = density; else props.mass = std::nullopt;
-        return cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
+        return engine.addRigidBody(shape, state, props);
     }
 
-    static entt::entity addFrameCube(cardillo::PhysicsSystem& sys,
+    static entt::entity addFrameCube(cardillo::World& sys,
                                      const Vector3r& center,
                                      const Vector3r& halfExtents,
                                      const Quaternion4r& orientation,
                                      real_t density) {
-        PhysicsSystem::CubeShape shape{halfExtents};
-        PhysicsSystem::RigidState state; state.position = center; state.orientation = orientation;
-        PhysicsSystem::RigidProps props;
+        physics::PhysicsEngine engine(sys);
+        physics::CubeShape shape{halfExtents};
+        physics::RigidState state; state.position = center; state.orientation = orientation;
+        physics::RigidProps props;
         props.visual = true;
         props.collidable = false;
         if (density > 0) props.density = density; else props.mass = std::nullopt;
-        return cardillo::physics::BodyFactory::addRigidBody(sys, shape, state, props);
+        return engine.addRigidBody(shape, state, props);
     }
 
     std::optional<LegGeom3D> last_leg_world_;

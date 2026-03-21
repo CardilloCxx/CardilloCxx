@@ -5,7 +5,7 @@
 #include <Eigen/SparseCore>
 
 #include "../misc/types.hpp"
-#include "physics_system.hpp"
+#include "world.hpp"
 #include "../collision/types.hpp"
 
 namespace cardillo::physics {
@@ -18,7 +18,7 @@ namespace cardillo::physics {
 // - Rebuilds lazily on demand.
 class DynamicsAssembler {
 public:
-    explicit DynamicsAssembler(PhysicsSystem& sys) : m_sys(sys) {}
+    explicit DynamicsAssembler(World& sys) : m_sys(sys) {}
 
     // Legacy one-shot assembly helpers removed; use cached getters instead.
 
@@ -43,7 +43,7 @@ public:
     // Map dynamic-only contact index (used in W/G) back to original contact index in m_contacts
     const std::vector<int>& dynamicContactToOriginalAll() const { return m_contact_index_orig; }
     // Access underlying system (for debug / diagnostics)
-    const PhysicsSystem& system() const { return m_sys; }
+    const World& system() const { return m_sys; }
     // Expose current contacts (includes penetration and points) for biasing, debug, etc.
     const std::vector<collision::Contact>& contacts() const { return m_contacts; }
 
@@ -69,7 +69,7 @@ public:
 
 
 private:
-    PhysicsSystem& m_sys;
+    World& m_sys;
 
     // Cached data
     // Concatenated state

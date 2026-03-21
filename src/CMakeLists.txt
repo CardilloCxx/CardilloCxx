@@ -1,9 +1,12 @@
 add_library(${PROJECT_NAME} STATIC
     cardillo.cpp
-    physics/physics_system.cpp
+    physics/physics_types.cpp
+    physics/world.cpp
     physics/body_factory.cpp
     physics/assets.cpp
     physics/constraints.cpp
+    physics/entity_state_updater.cpp
+    physics/beam_element_updater.cpp
     io/vtk_writer_binary.cpp
     io/vtk_sphere_util.cpp
     io/heightmap_loader.cpp

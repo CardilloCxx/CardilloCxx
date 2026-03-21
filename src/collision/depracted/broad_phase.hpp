@@ -3,7 +3,7 @@
 #include <vector>
 #include <utility>
 #include "types.hpp"
-#include "../physics/physics_system.hpp"
+#include "../physics/world.hpp"
 
 namespace cardillo::collision {
 
@@ -30,7 +30,7 @@ struct Pair { int i, j; }; // indices into proxies vector
 class BroadPhase {
 public:
     // Collect colliders from ECS into typed arrays
-    BroadPhaseData collect(const PhysicsSystem& sys) const;
+    BroadPhaseData collect(const World& sys) const;
 
     // Build proxies from data (one per collider), converting all to AABBs
     std::vector<AabbProxy> buildProxies(const BroadPhaseData& data) const;

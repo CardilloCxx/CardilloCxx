@@ -2,7 +2,7 @@
 
 namespace cardillo::collision {
 
-std::vector<Contact> CollisionManager::detectAll(const PhysicsSystem& sys) const {
+std::vector<Contact> CollisionManager::detectAll(const World& sys) const {
     auto data = m_broad.collect(sys);
     auto proxies = m_broad.buildProxies(data);
     auto pairs = m_broad.makePairs(proxies);

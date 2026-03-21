@@ -13,7 +13,8 @@ public:
     SlinkyScene() = default;
     ~SlinkyScene() = default;
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
         // Build staircase as static cubes
@@ -30,8 +31,8 @@ public:
             real_t x = stairOrigin.x() + (real_t)i * run;
             Vector3r halfExtents(run * (real_t)0.5, width * (real_t)0.5, thickness * (real_t)0.5);
             Vector3r pos(x + halfExtents.x(), 0, z - thickness * (real_t)0.5);
-            top_step = cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::CubeShape(halfExtents), PhysicsSystem::RigidState(pos));
-            cardillo::physics::BodyFactory::addStaticBody(sys, PhysicsSystem::SphereShape(thickness * (real_t)0.9), PhysicsSystem::RigidState(pos + Vector3r(0, 0, halfExtents.z())));
+            top_step = engine.addStaticBody(physics::CubeShape(halfExtents), physics::RigidState(pos));
+            engine.addStaticBody(physics::SphereShape(thickness * (real_t)0.9), physics::RigidState(pos + Vector3r(0, 0, halfExtents.z())));
         }
 
         // Slinky parameters (plastic-like)
@@ -43,8 +44,8 @@ public:
         const real_t density = (real_t)700;   // plastic density kg/m^3
         const real_t E = (real_t)1e9;         // lower Young's modulus for plastic 1e9, 5e9 for metal
         const real_t nu = (real_t)0.35;
-        PhysicsSystem::BeamCrossSection section(pitch*2, pitch*0.99, PhysicsSystem::BeamBodyType::Cube); // (pitch*0.99, pitch*0.99, PhysicsSystem::BeamBodyType::Capsule); for metal pitch*2, pitch*0.99, PhysicsSystem::BeamBodyType::Cube for plastic-like
-        auto springs = PhysicsSystem::BeamSpringParams::fromMaterial(E, nu);
+        physics::BeamCrossSection section(pitch*2, pitch*0.99, physics::BeamBodyType::Cube); // (pitch*0.99, pitch*0.99, physics::BeamBodyType::Capsule); for metal pitch*2, pitch*0.99, physics::BeamBodyType::Cube for plastic-like
+        auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
         springs.setDampingFromFactor(0.00);
 
         // Place the spring centered over the top step tread and build a helix
@@ -57,23 +58,25 @@ public:
         misc::HelixSpline helix(Vector3r::Zero(), Vector3r::UnitZ(), radius, pitch, (real_t)turns, Vector3r::UnitX());
 
         std::cout << "Creating slinky with " << segments << " segments, " << turns << " turns, pitch " << pitch << ", radius " << radius << "\n";
-        PhysicsSystem::RigidState stateDefaults(Vector3r(0.0,0.0,thickness * 0.5 + pitch * 0.5), Vector3r::Zero(),  Quaternion4r::Identity(), Vector3r(0.0,0.0,0.0), top_step, sys.ecs());
-        PhysicsSystem::RigidProps props = PhysicsSystem::RigidProps::withDensity(density);
-        auto ends = cardillo::physics::BodyFactory::createBeam(sys, helix, section, springs, stateDefaults, props, segments);
+        physics::RigidState stateDefaults(Vector3r(0.0,0.0,thickness * 0.5 + pitch * 0.5), Vector3r::Zero(),  Quaternion4r::Identity(), Vector3r(0.0,0.0,0.0), top_step, sys.ecs());
+        physics::RigidProps props = physics::RigidProps::withDensity(density);
+        auto ends = engine.createBeam(helix, section, springs, stateDefaults, props, segments);
         m_slinky_end_entity = ends.second;
     
-        // m_guide_entity = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::SphereShape(radius * (real_t)0.001), 
-        //                                   PhysicsSystem::RigidState(ends.second), 
-        //                                   PhysicsSystem::RigidProps(1e10));
+        // m_guide_entity = engine.addRigidBody(physics::SphereShape(radius * (real_t)0.001), 
+        //                                   physics::RigidState(ends.second), 
+        //                                   physics::RigidProps(1e10));
 
         // sys.setLinearVelocity(ends.second, Vector3r((real_t)-5.0, (real_t)0.0, (real_t)5.0));
-        // sys.addConstraint<physics::RigidConstraint>(sys.ecs(), m_guide_entity,  ends.second);
+        // sys.addRigidConstraint(m_guide_entity,  ends.second);
         // sys.disableCollisionBetween(m_guide_entity, ends.first);
     
     }
 
-    void updateScene(cardillo::PhysicsSystem& sys, real_t t, real_t dt) override {
-        auto A_IK = sys.ecs().get<cardillo::PhysicsSystem::C_Orientation>(m_slinky_end_entity).value.toRotationMatrix();
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t dt) override {
+        auto& sys = engine.world();
+        (void)dt;
+        auto A_IK = sys.ecs().get<cardillo::World::C_Orientation>(m_slinky_end_entity).value.toRotationMatrix();
         
         if (t < 0.28) sys.applyForce(m_slinky_end_entity, Vector3r(0.00, 0.0, 0.0), A_IK.transpose()* Vector3r(0.0, -0.015, 0.0));
 //         sys.setAngularVelocity(m_guide_entity, Vector3r(0.0, -0.1, 0.0));

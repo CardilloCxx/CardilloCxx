@@ -17,7 +17,8 @@ class UnilateralScene : public SceneBase {
 public:
     const char* sceneName() const override { return "unilateral"; }
 
-    void populate(cardillo::PhysicsSystem& sys) override {
+    void populate(cardillo::physics::PhysicsEngine& engine) override {
+        auto& sys = engine.world();
         using namespace cardillo;
 
         const auto formatAForName = [](real_t aVal) {
@@ -61,13 +62,11 @@ public:
             const real_t supportRadius = supportRadius0;
             const real_t supportHalfLength = supportHalfLength0;
             const real_t H = supportZ0;
-            cardillo::physics::BodyFactory::addStaticBody(sys, 
-                PhysicsSystem::CapsuleShape(supportRadius, supportHalfLength),
-                PhysicsSystem::RigidState(Vector3r(-a, (real_t)0.0, H) + offset, qSupport)
+            engine.addStaticBody(                physics::CapsuleShape(supportRadius, supportHalfLength),
+                physics::RigidState(Vector3r(-a, (real_t)0.0, H) + offset, qSupport)
             );
-            cardillo::physics::BodyFactory::addStaticBody(sys, 
-                PhysicsSystem::CapsuleShape(supportRadius, supportHalfLength),
-                PhysicsSystem::RigidState(Vector3r(+a, (real_t)0.0, H) + offset, qSupport)
+            engine.addStaticBody(                physics::CapsuleShape(supportRadius, supportHalfLength),
+                physics::RigidState(Vector3r(+a, (real_t)0.0, H) + offset, qSupport)
             );
 
             // 2) Dynamic rocking rod: capsule-shaped, mass m.
@@ -82,16 +81,16 @@ public:
             const real_t z0 = z_contact + a * std::tan(phi);
             const Vector3r xcm0(x0, (real_t)0.0, z0);
 
-            PhysicsSystem::RigidState rodState;
+            physics::RigidState rodState;
             rodState.position = xcm0 + offset;
             rodState.orientation = qRod;
             rodState.linearVelocity = Vector3r::Zero();
             rodState.angularVelocity = Vector3r::Zero();
 
-            PhysicsSystem::RigidProps rodProps;
+            physics::RigidProps rodProps;
             rodProps.mass = m;
 
-            auto rod = cardillo::physics::BodyFactory::addRigidBody(sys, PhysicsSystem::CapsuleShape(rodRadius, rodHalfLength), rodState, rodProps);
+            auto rod = engine.addRigidBody(physics::CapsuleShape(rodRadius, rodHalfLength), rodState, rodProps);
             const std::string aTag = formatAForName(a);
             sys.track(rod, "unilateral_rod_a" + aTag);
 

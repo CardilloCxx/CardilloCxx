@@ -3,7 +3,7 @@
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 #include "../misc/types.hpp"
-#include "../physics/physics_system.hpp"
+#include "../physics/world.hpp"
 #include "../solver/projected_jacobi.hpp"
 #include "warmstart.hpp"
 #include "../config/config.hpp"
@@ -14,10 +14,10 @@ namespace cardillo::solver {
 
 class MoreauSolver : public SolverBase {
 public:
-		explicit MoreauSolver(cardillo::PhysicsSystem& sys)
+		explicit MoreauSolver(cardillo::World& sys)
 			: MoreauSolver(sys, sys.config().moreau_theta) {}
 
-		explicit MoreauSolver(cardillo::PhysicsSystem& sys, real_t theta)
+		explicit MoreauSolver(cardillo::World& sys, real_t theta)
 			: m_sys(sys), m_dyn(sys), m_theta(theta),
 			  m_pj(m_dyn, sys.config(), sys.config().pj_warmstart ? sys.warmstartProvider() : nullptr) {
 		// Build initial DOF layout, offsets, and load state
@@ -32,9 +32,9 @@ public:
 	cardillo::physics::DynamicsAssembler& dynamics() { return m_dyn; }
 
 private:
-	cardillo::PhysicsSystem& m_sys;
+	cardillo::World& m_sys;
 	cardillo::physics::DynamicsAssembler m_dyn;
-	// warmstart provider is owned by the PhysicsSystem; no local member here
+	// warmstart provider is owned by the World; no local member here
 	cardillo::solver::ProjectedJacobiSolver m_pj;
 	// Constraint-space Lagrange multipliers for generalized springs (size = C_dyn)
 	VectorXr m_Lambda_g;
