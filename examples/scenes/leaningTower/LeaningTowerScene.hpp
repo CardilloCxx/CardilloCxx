@@ -15,7 +15,6 @@ public:
     ~LeaningTowerScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         // Slender tower block half extents (x,y horizontal, z vertical)
@@ -40,7 +39,7 @@ public:
             auto props = physics::RigidProps::withDensity(density);
 
             auto entity = engine.addRigidBody(blockShape, state, props);
-            if (k == 0) sys.makeStatic(entity);
+            if (k == 0) engine.makeStatic(entity);
         }
 
         x = 0.5;
@@ -52,7 +51,7 @@ public:
             auto props = physics::RigidProps::withDensity(density);
 
             auto entity = engine.addRigidBody(blockShape, state, props);
-            if (k == 0) sys.makeStatic(entity);
+            if (k == 0) engine.makeStatic(entity);
         }
     }
 };

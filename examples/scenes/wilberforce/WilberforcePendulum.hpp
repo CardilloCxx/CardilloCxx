@@ -19,7 +19,6 @@ public:
     ~WilberforcePendulumScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
 
@@ -39,7 +38,7 @@ public:
         const real_t nu = 0.2638;                    // Poisson ratio (G ~ 81.5 GPa)
         const real_t G = E / (2.0 * (1.0 + nu));     // Shear modulus
 
-        sys.setGravity(Vector3r(0, 0, -9.81)); // no gravity
+        engine.setGravity(Vector3r(0, 0, -9.81)); // no gravity
 
         // real_t custom_mass = 0.5240569245269475;
         // // real_t Ixx = 0.00013237;
@@ -72,37 +71,37 @@ public:
         // std::vector<const misc::SplinePattern*> parts{&helix, &linear};
         std::vector<const misc::SplinePattern*> parts{&helix};
         auto endpoints = engine.createBeams(parts, sec, springs, physics::RigidState{}, physics::RigidProps::withDensity(density), segments);
-        m_top = endpoints.first; sys.makeStatic(m_top);
+        m_top = endpoints.first; engine.makeStatic(m_top);
         m_bottom = endpoints.second;
     
         // // NEW: Modify mass and inertia of the bottom node
-        // sys.ecs().get<World::C_Mass>(m_bottom).m *= 0.5;
-        // sys.ecs().get<World::C_InertiaDiag>(m_bottom).I *= 0.5;
+        // engine.ecs().get<World::C_Mass>(m_bottom).m *= 0.5;
+        // engine.ecs().get<World::C_InertiaDiag>(m_bottom).I *= 0.5;
     
         // // NEW: Modify mass and inertia of the bottom node
-        // sys.ecs().get<World::C_Mass>(m_bottom).m = custom_mass;
+        // engine.ecs().get<World::C_Mass>(m_bottom).m = custom_mass;
         
         // // Set custom diagonal inertia for anisotropic behavior
-        // sys.ecs().get<World::C_InertiaDiag>(m_bottom).I = Vector3r(Ixx, Iyy, Izz);
+        // engine.ecs().get<World::C_InertiaDiag>(m_bottom).I = Vector3r(Ixx, Iyy, Izz);
 
-        // sys.ecs().remove<World::C_Capsule>(m_bottom);
-        // sys.ecs().remove<World::C_CapsuleVisualTag>(m_bottom);
+        // engine.ecs().remove<World::C_Capsule>(m_bottom);
+        // engine.ecs().remove<World::C_CapsuleVisualTag>(m_bottom);
 
-        // sys.ecs().emplace<World::C_CubeVisualTag>(m_bottom);
+        // engine.ecs().emplace<World::C_CubeVisualTag>(m_bottom);
         // Vector3r halfExtents(sizeX/2.0, sizeY/2.0, sizeZ/2.0);
         // Quaternion4r orientation = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 2, Vector3r::UnitY()));
-        // // sys.ecs().emplace<World::C_Cube>(m_bottom, World::C_Cube{Vector3r(0, 0, -freeLength -sizeX/2), halfExtents, orientation});
-        // sys.ecs().emplace<World::C_Cube>(m_bottom, World::C_Cube{Vector3r(0, 0, 0), halfExtents, orientation});
+        // // engine.ecs().emplace<World::C_Cube>(m_bottom, World::C_Cube{Vector3r(0, 0, -freeLength -sizeX/2), halfExtents, orientation});
+        // engine.ecs().emplace<World::C_Cube>(m_bottom, World::C_Cube{Vector3r(0, 0, 0), halfExtents, orientation});
 
         // // // Add cube visual tag and component with appropriate dimensions
         // // // (adjust halfExtents to match your beam's cross-section)
         // // Vector3r halfExtents(beamLength/2.0, beamWidth/2.0, beamHeight/2.0);
-        // // sys.ecs().emplace<C_CubeVisualTag>(bottomBeamEntity);
-        // // sys.ecs().emplace<C_Cube>(bottomBeamEntity, 
+        // // engine.ecs().emplace<C_CubeVisualTag>(bottomBeamEntity);
+        // // engine.ecs().emplace<C_Cube>(bottomBeamEntity, 
         // //     C_Cube{Vector3r::Zero(), halfExtents, Quaternion4r::Identity()});
 
         // // track bob trajectory in csv file
-        // sys.ecs().emplace<World::C_TrackTag>(m_bottom, World::C_TrackTag{});
+        // engine.ecs().emplace<World::C_TrackTag>(m_bottom, World::C_TrackTag{});
 
         // // we want K / m = lambda / Iz
         // const real_t d = wireDiameter;      // wire diameter
@@ -135,60 +134,59 @@ public:
 
         // std::cout << "Tuning info: K = " << K << " N/m, lambda = " << lambda << " Nm/rad, m = " << tunedMass
         //           << " kg, Iz = " << Iz << " kg m^2, cube size = " << tunedSize << " m" << "Expected frequencies: f_z = " << std::sqrt(K / tunedMass) / (2 * M_PI) << " Hz"
-        //           << " f_theta = " << std::sqrt(lambda / Iz) / (2 * M_PI) << " Hz, Spring mass: " << sys.getMass(m_bottom).col(0).row(0) * segments << " kg" << std::endl;
+        //           << " f_theta = " << std::sqrt(lambda / Iz) / (2 * M_PI) << " Hz, Spring mass: " << engine.getMass(m_bottom).col(0).row(0) * segments << " kg" << std::endl;
 
         std::cout << "sizeX: " << sizeX << ", sizeY: " << sizeY << ", sizeZ: " << sizeZ << std::endl;
 
         // m_bob = engine.addRigidBody(physics::CubeShape(Vector3r(tunedSize,tunedSize,tunedSize)),
         // m_bob = engine.addRigidBody(physics::CubeShape(Vector3r(sizeX/2, sizeY/2, sizeZ/2)),
         m_bob = engine.addRigidBody(physics::MeshShape("res/meshes/bob2.obj"),
-            // physics::RigidState(Vector3r(0,0,-tunedSize) + sys.getPosition(m_bottom).head<3>()),
-            // physics::RigidState(Vector3r(0,0,-sizeZ) + sys.getPosition(m_bottom).head<3>()),
+            // physics::RigidState(Vector3r(0,0,-tunedSize) + engine.getPosition(m_bottom).head<3>()),
+            // physics::RigidState(Vector3r(0,0,-sizeZ) + engine.getPosition(m_bottom).head<3>()),
             physics::RigidState(Vector3r(0,0,-0.025 - static_cast<real_t>(turns) * pitch - wireDiameter), Vector3r(0, 0, 0)),
             physics::RigidProps(tunedMass));
 
         
 
         // Set inertia to match target Iz for cube
-        sys.ecs().get<World::C_InertiaDiag>(m_bob).I *= 0.75;
+        engine.ecs().get<World::C_InertiaDiag>(m_bob).I *= 0.75;
 
         // track bob trajectory in csv file
-        sys.track(m_bob, "bob");
+        engine.track(m_bob, "bob");
         // Print Inertia for verification
-        auto Idiag = sys.ecs().get<World::C_InertiaDiag>(m_bob).I;
+        auto Idiag = engine.ecs().get<World::C_InertiaDiag>(m_bob).I;
         std::cout << "Bob inertia diag: Ixx = " << Idiag.x() << ", Iyy = " << Idiag.y() << ", Izz = " << Idiag.z() << std::endl;
 
-        auto RotMat = sys.ecs().get<World::C_Orientation>(m_bob).value.toRotationMatrix();
+        auto RotMat = engine.ecs().get<World::C_Orientation>(m_bob).value.toRotationMatrix();
         std::cout << "Bob inertia world frame:\n" << RotMat * Idiag.asDiagonal() * RotMat.transpose() << std::endl;
-        std::cout << "Bob mass: " << sys.getMass(m_bob).col(0).row(0) << " kg" << std::endl;
+        std::cout << "Bob mass: " << engine.getMass(m_bob).col(0).row(0) << " kg" << std::endl;
 
 
         // Constraint the bob to only allow vertical and torsional motion
         // const real_t inf = std::numeric_limits<real_t>::infinity();
-        // sys.addTranslationRotationConstraint(m_bob, m_top, physics::JointFrame{},
+        // engine.addTranslationRotationConstraint(m_bob, m_top, physics::JointFrame{},
         //     Vector3r(inf, inf, 0), Vector3r::Zero(),
         //     Vector3r(inf, inf, 0), Vector3r::Zero());
         
  
         // Pin bottom endpoint to bob using a rigid constraint
-        // sys.addRigidConstraint(m_bottom, m_bob, Vector3r::Zero(), Vector3r(0,0,tunedSize));
-        sys.addRigidConstraint(m_bottom, m_bob);
+        // engine.addRigidConstraint(m_bottom, m_bob, Vector3r::Zero(), Vector3r(0,0,tunedSize));
+        engine.addRigidConstraint(m_bottom, m_bob);
         
         // const real_t vz0 = 0.0; // m/s downward
         // const real_t wz0 = 0.0;  // rad/s small spin around Z to couple torsion & vertical modes
 
-        // sys.setLinearVelocity(m_bob, Vector3r(0,0,vz0));
-        // sys.setAngularVelocity(m_bob, Vector3r(0,0,wz0));
+        // engine.setLinearVelocity(m_bob, Vector3r(0,0,vz0));
+        // engine.setAngularVelocity(m_bob, Vector3r(0,0,wz0));
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override 
     {
-        auto& sys = engine.world();
         // Pull bob downward slowly to start vertical oscillation
         const real_t vz0 = -0.5;
         const real_t t0 = 0.3;
         if (t < t0) {
-            sys.setVelocityByForce(m_bob, Vector3r(0,0,vz0 * t / t0), Vector3r(0,0,0));
+            engine.setVelocityByForce(m_bob, Vector3r(0,0,vz0 * t / t0), Vector3r(0,0,0));
         }
 
     }

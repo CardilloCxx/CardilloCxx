@@ -13,7 +13,6 @@ public:
     ~ChainScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         // Mesh path (relative to repository root). Adjust if your runtime cwd differs.
@@ -52,16 +51,15 @@ public:
             auto link = engine.addRigidBody(shape, state, props);
 
             if (i == 0) {
-                  sys.addLinearDistanceConstraint(m_spool, link, Vector3r(0.0, 0.0, -spool_radius), Vector3r(linkHeight / 2,  0.0, 0.0));
+                  engine.addLinearDistanceConstraint(m_spool, link, Vector3r(0.0, 0.0, -spool_radius), Vector3r(linkHeight / 2,  0.0, 0.0));
             }
         }
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        auto& sys = engine.world();
-        sys.setAngularVelocity(m_spool, Vector3r(1.5, 0.0, 0.0)); 
-        sys.setLinearVelocity (m_spool, Vector3r::Zero());
-        sys.applyForce        (m_spool, 1e10 * Vector3r(0,0,9.81), Vector3r::Zero());  // counteract gravity
+        engine.setAngularVelocity(m_spool, Vector3r(1.5, 0.0, 0.0)); 
+        engine.setLinearVelocity (m_spool, Vector3r::Zero());
+        engine.applyForce        (m_spool, 1e10 * Vector3r(0,0,9.81), Vector3r::Zero());  // counteract gravity
     }
 
 private:

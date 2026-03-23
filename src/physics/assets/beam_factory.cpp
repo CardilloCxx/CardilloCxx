@@ -132,7 +132,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
         sys.ecs().emplace<TopologyComponents::BeamElement>(cur, be_cur);
 
         if (prev != entt::null) {
-            sys.addBeamConstraint(prev, cur, springs, section);
+            ConstraintFactory::addBeamConstraint(sys, prev, cur, springs, section);
             sys.disableCollisionBetween(prev, cur);
         }
 
@@ -142,7 +142,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
     }
 
     if (loop && root != entt::null && end != entt::null && end != root) {
-        sys.addBeamConstraint(end, root, springs, section);
+        ConstraintFactory::addBeamConstraint(sys, end, root, springs, section);
         sys.disableCollisionBetween(end, root);
         if (sys.ecs().any_of<TopologyComponents::BeamElement>(end)) {
             sys.ecs().get<TopologyComponents::BeamElement>(end).next = root;
@@ -246,7 +246,7 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(
                 const auto& qPrev = system.ecs().get<MotionComponents::Orientation>(prevEnd).value;
                 qNext = World::alignQuaternionTo(qNext, qPrev);
             }
-            system.addRigidConstraint(prevEnd, pair.first);
+            ConstraintFactory::addRigidConstraint(system, prevEnd, pair.first);
             system.disableCollisionBetween(prevEnd, pair.first);
         }
         prevEnd = pair.second;

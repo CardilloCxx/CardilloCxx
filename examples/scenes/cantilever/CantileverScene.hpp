@@ -16,11 +16,10 @@ public:
     ~CantileverScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
 
-        sys.setGravity(Vector3r(0, 0, 0)); // no gravity for this scene
+        engine.setGravity(Vector3r(0, 0, 0)); // no gravity for this scene
 
         // Material and geometry for spaghetti
         const real_t L  = (real_t)0.31415; // 31 cm
@@ -53,34 +52,33 @@ public:
         auto beam_ends = engine.createBeam(spline, section, springs, stateDefaults, props, segments);
         m_beamLeftEnd = beam_ends.first;
         m_beamRightEnd = beam_ends.second;
-        sys.makeStatic(m_beamLeftEnd);
+        engine.makeStatic(m_beamLeftEnd);
 
         m_Kf = springs.Kf(L / segments, section);
         m_L = L;
         m_segments = segments;
 
-        // // sys.disableCollisionBetween(m_cube, cube2);
-        // auto view = sys.ecs().view<World::C_Collidable>();
+        // // engine.disableCollisionBetween(m_cube, cube2);
+        // auto view = engine.ecs().view<World::C_Collidable>();
         // for (auto e : view.each()) {
-        //     sys.ecs().remove<World::C_PhysicsObject>(e);
+        //     engine.ecs().remove<World::C_PhysicsObject>(e);
         // }
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        auto& sys = engine.world();
         if (m_beamRightEnd != entt::null) {
             real_t t1 = 5.0;
             if (t < t1) {
-                // sys.applyForce(m_beamRightEnd, Vector3r(-0.5 * std::max(t1, t), -0.5 * std::max(t1, t), 1.5 * std::max(t1, t)), Vector3r::Zero());
+                // engine.applyForce(m_beamRightEnd, Vector3r(-0.5 * std::max(t1, t), -0.5 * std::max(t1, t), 1.5 * std::max(t1, t)), Vector3r::Zero());
                 Vector3r force(0.0, -0.1 * t / t1, 0.0);
                 Vector3r moment(0.0, -2 * M_PI * m_Kf(1) * m_L / m_segments / m_L * t / t1 / 2, 0.0);
-                sys.applyForce(m_beamRightEnd, force, moment);
-                // sys.applyForce(m_beamRightEnd, Vector3r(0, -0.5 * std::max(t1, t), 0), Vector3r(0, -1.0 * std::max(t1, t), 0));
-                // sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(-1.0 * std::max(t1, t), 0, 0));
-                // sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, -1.0 * std::max(t1, t), 0));
-                // sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, 0, -1.0 * std::max(t1, t)));
+                engine.applyForce(m_beamRightEnd, force, moment);
+                // engine.applyForce(m_beamRightEnd, Vector3r(0, -0.5 * std::max(t1, t), 0), Vector3r(0, -1.0 * std::max(t1, t), 0));
+                // engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(-1.0 * std::max(t1, t), 0, 0));
+                // engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, -1.0 * std::max(t1, t), 0));
+                // engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, 0, -1.0 * std::max(t1, t)));
             } else
-                sys.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r::Zero());
+                engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r::Zero());
         }
     }
 

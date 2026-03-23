@@ -14,7 +14,6 @@ public:
     ~ParcelScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         // Create a treadmill that moves with given velocity
@@ -78,9 +77,8 @@ public:
         }
     }
 
-    void maybeSpawnParcel(cardillo::World& sys, real_t t) {
+    void maybeSpawnParcel(physics::PhysicsEngine& engine, real_t t) {
         using namespace cardillo;
-        physics::PhysicsEngine engine(sys);
 
         if (t > m_t0) {
             m_t0 += 0.5;
@@ -95,18 +93,17 @@ public:
         }
     }
 
-    void resetPosition(cardillo::World& sys) {
-        sys.setPosition(m_treatmill_entity, m_position);
-        sys.setOrientation(m_treatmill_entity, Quaternion4r::Identity());
-        sys.setLinearVelocity(m_treatmill_entity, m_linearVelocity);
-        sys.setAngularVelocity(m_treatmill_entity, Vector3r::Zero());
+    void resetPosition(physics::PhysicsEngine& engine) {
+        engine.setPosition(m_treatmill_entity, m_position);
+        engine.setOrientation(m_treatmill_entity, Quaternion4r::Identity());
+        engine.setLinearVelocity(m_treatmill_entity, m_linearVelocity);
+        engine.setAngularVelocity(m_treatmill_entity, Vector3r::Zero());
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        auto& sys = engine.world();
-        maybeSpawnParcel(sys, t);
+        maybeSpawnParcel(engine, t);
         if (m_treatmill_entity != entt::null) {
-            resetPosition(sys);
+            resetPosition(engine);
         }
     }
 private:

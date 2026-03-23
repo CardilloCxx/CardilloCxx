@@ -136,13 +136,13 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys,
         const real_t segLen = s.segLen;
         World::RigidShape shape;
         if (section.type == World::BeamBodyType::Cube) {
-            shape = World::CubeShape(Vector3r(segLen * (real_t)0.5, section.width * (real_t)0.5, section.height * (real_t)0.5));
+            shape = CubeShape(Vector3r(segLen * (real_t)0.5, section.width * (real_t)0.5, section.height * (real_t)0.5));
         } else if (section.type == World::BeamBodyType::Cylinder) {
             real_t r = std::min(section.width, section.height) * (real_t)0.5;
-            shape = World::CylinderShape(r, segLen * (real_t)0.5);
+            shape = CylinderShape(r, segLen * (real_t)0.5);
         } else {
             real_t r = std::min(section.width, section.height) * (real_t)0.5;
-            shape = World::CapsuleShape(r, segLen * (real_t)0.5);
+            shape = CapsuleShape(r, segLen * (real_t)0.5);
         }
 
         World::RigidProps segProps = propsDefaults;
@@ -227,8 +227,8 @@ entt::entity BodyFactory::addRigidBody(World& sys,
     reg.emplace<World::C_LinearVelocity3>(e, World::C_LinearVelocity3{state.linearVelocity});
     reg.emplace<World::C_AngularVelocity3>(e, World::C_AngularVelocity3{state.angularVelocity});
 
-    bool wantsColliderVisual = std::holds_alternative<World::MeshShape>(shape)
-        && std::get<World::MeshShape>(shape).show_collider;
+    bool wantsColliderVisual = std::holds_alternative<MeshShape>(shape)
+        && std::get<MeshShape>(shape).show_collider;
     if (props.visual || wantsColliderVisual) reg.emplace<World::C_VisualObject>(e);
     if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_Collidable>(e);
 
@@ -244,13 +244,13 @@ entt::entity BodyFactory::addRigidBody(World& sys,
     if (!massOpt.has_value() && props.density.has_value()) {
         std::visit([&](auto&& s) {
             using T = std::decay_t<decltype(s)>;
-            if constexpr (std::is_same_v<T, World::CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents);
-            else if constexpr (std::is_same_v<T, World::CapsuleShape>) computedMass = densityUsed * computeVolumeCapsule(s.radius, s.halfLength);
-            else if constexpr (std::is_same_v<T, World::CylinderShape>) computedMass = densityUsed * computeVolumeCylinder(s.radius, s.halfLength);
-            else if constexpr (std::is_same_v<T, World::SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius);
-            else if constexpr (std::is_same_v<T, World::ConeShape>) computedMass = densityUsed * computeVolumeCone(s.radius, s.height);
-            else if constexpr (std::is_same_v<T, World::PlaneShape>) computedMass = 0;
-            else if constexpr (std::is_same_v<T, World::MeshShape>) {
+            if constexpr (std::is_same_v<T, CubeShape>) computedMass = densityUsed * computeVolumeCube(s.halfExtents);
+            else if constexpr (std::is_same_v<T, CapsuleShape>) computedMass = densityUsed * computeVolumeCapsule(s.radius, s.halfLength);
+            else if constexpr (std::is_same_v<T, CylinderShape>) computedMass = densityUsed * computeVolumeCylinder(s.radius, s.halfLength);
+            else if constexpr (std::is_same_v<T, SphereShape>) computedMass = densityUsed * computeVolumeSphere(s.radius);
+            else if constexpr (std::is_same_v<T, ConeShape>) computedMass = densityUsed * computeVolumeCone(s.radius, s.height);
+            else if constexpr (std::is_same_v<T, PlaneShape>) computedMass = 0;
+            else if constexpr (std::is_same_v<T, MeshShape>) {
                 const ::cardillo::MeshAsset& ma = sys.assets().getMesh(s.path, s.scale, true);
                 if (ma.volume > (real_t)0) computedMass = densityUsed * ma.volume;
             }
@@ -263,9 +263,9 @@ entt::entity BodyFactory::addRigidBody(World& sys,
     real_t mu = (props.friction >= (real_t)0) ? props.friction : sys.config().friction_default_mu;
     reg.emplace<World::C_Friction>(e, World::C_Friction{mu});
 
-    std::visit([&](auto&& s) {
-        using T = std::decay_t<decltype(s)>;
-        if constexpr (std::is_same_v<T, World::CubeShape>) {
+        std::visit([&](auto&& s) {
+            using T = std::decay_t<decltype(s)>;
+        if constexpr (std::is_same_v<T, CubeShape>) {
             if (props.visual) reg.emplace<World::C_CubeVisualTag>(e);
             if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Cube>(e, World::C_RB_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
             reg.emplace<World::C_Cube>(e, World::C_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
@@ -275,7 +275,7 @@ entt::entity BodyFactory::addRigidBody(World& sys,
                 reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
                 reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{boxInertiaDiag(mass, s.halfExtents)});
             }
-        } else if constexpr (std::is_same_v<T, World::SphereShape>) {
+        } else if constexpr (std::is_same_v<T, SphereShape>) {
             if (props.visual) reg.emplace<World::C_PointVisualTag>(e);
             if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Sphere>(e);
             reg.emplace<World::C_Radius>(e, World::C_Radius{s.radius});
@@ -285,7 +285,7 @@ entt::entity BodyFactory::addRigidBody(World& sys,
                 reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
                 reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{sphereInertiaDiag(mass, s.radius)});
             }
-        } else if constexpr (std::is_same_v<T, World::ConeShape>) {
+        } else if constexpr (std::is_same_v<T, ConeShape>) {
             if (props.visual) reg.emplace<World::C_ConeVisualTag>(e);
             if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Cone>(e, World::C_RB_Cone{s.radius, s.height});
             reg.emplace<World::C_Cone>(e, World::C_Cone{s.radius, s.height});
@@ -295,7 +295,7 @@ entt::entity BodyFactory::addRigidBody(World& sys,
                 reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
                 reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{coneInertiaDiag(mass, s.radius, s.height)});
             }
-        } else if constexpr (std::is_same_v<T, World::CapsuleShape>) {
+        } else if constexpr (std::is_same_v<T, CapsuleShape>) {
             if (props.visual) reg.emplace<World::C_CapsuleVisualTag>(e);
             if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Capsule>(e, World::C_RB_Capsule{s.radius, s.halfLength});
             reg.emplace<World::C_Capsule>(e, World::C_Capsule{s.radius, s.halfLength});
@@ -305,7 +305,7 @@ entt::entity BodyFactory::addRigidBody(World& sys,
                 reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
                 reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{capsuleInertiaDiag(mass, s.radius, s.halfLength)});
             }
-        } else if constexpr (std::is_same_v<T, World::CylinderShape>) {
+        } else if constexpr (std::is_same_v<T, CylinderShape>) {
             if (props.visual) reg.emplace<World::C_CylinderVisualTag>(e);
             if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Cylinder>(e, World::C_RB_Cylinder{s.radius, s.halfLength});
             reg.emplace<World::C_Cylinder>(e, World::C_Cylinder{s.radius, s.halfLength});
@@ -315,11 +315,11 @@ entt::entity BodyFactory::addRigidBody(World& sys,
                 reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
                 reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{cylinderInertiaDiag(mass, s.radius, s.halfLength)});
             }
-        } else if constexpr (std::is_same_v<T, World::PlaneShape>) {
+        } else if constexpr (std::is_same_v<T, PlaneShape>) {
             if (props.visual) reg.emplace<World::C_PlaneVisualTag>(e);
             if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Plane>(e, World::C_RB_Plane{s.normal, s.up, s.sizeX, s.sizeY});
             reg.emplace<World::C_Plane>(e, World::C_Plane{s.normal, s.up, s.sizeX, s.sizeY});
-        } else if constexpr (std::is_same_v<T, World::MeshShape>) {
+        } else if constexpr (std::is_same_v<T, MeshShape>) {
             if (props.visual) reg.emplace<World::C_MeshVisualTag>(e);
             reg.emplace<World::C_Mesh>(e, World::C_Mesh{s.path, s.scale});
 
@@ -449,13 +449,13 @@ std::vector<entt::entity> BodyFactory::addSoftBody(World& sys,
         nodes.push_back(entt::entity(static_cast<uint32_t>(id)));
     }
 
-    for (const auto& e : sb.edges) {
+            for (const auto& e : sb.edges) {
         int i = e.first;
         int j = e.second;
         if (i >= 0 && j >= 0 && (size_t)i < nodes.size() && (size_t)j < nodes.size()) {
             entt::entity A = nodes[(size_t)i];
             entt::entity B = nodes[(size_t)j];
-            sys.addLinearDistanceConstraint(A, B, Vector3r::Zero(), Vector3r::Zero(), stiffness, damping);
+            ConstraintFactory::addLinearDistanceConstraint(sys, A, B, Vector3r::Zero(), Vector3r::Zero(), stiffness, damping);
         }
     }
 

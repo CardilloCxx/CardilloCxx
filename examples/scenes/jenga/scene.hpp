@@ -11,7 +11,6 @@ public:
     ~JengaScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
     // Ground (static cube via unified API)

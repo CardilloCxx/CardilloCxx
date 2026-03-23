@@ -13,7 +13,6 @@ public:
     ~NetScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
 
@@ -61,8 +60,8 @@ public:
                          physics::RigidState(Vector3r(-3,0,0) + netCenter, Vector3r(30.0, 0.0, 0.0), Vector3r(10,20,50)),
                          physics::RigidProps::withDensity(2500));
 
-        std::cout << "Boulder mass: " << sys.getMass(boulder).col(0).row(0) << " kg" << std::endl;
-        std::cout << "Boulder KE: " << sys.getKineticEnergy(boulder) << " J" << std::endl;
+        std::cout << "Boulder mass: " << engine.getMass(boulder).col(0).row(0) << " kg" << std::endl;
+        std::cout << "Boulder KE: " << engine.getKineticEnergy(boulder) << " J" << std::endl;
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
@@ -70,17 +69,17 @@ public:
         (void)t;
 //         // Apply a twisting moment at the rod end
 //         real_t torque_magnitude = 0.05;
-//         sys.applyForce(m_rodEnd, Vector3r::Zero(), Vector3r(0, -torque_magnitude, 0));
-//         // sys.applyForce(m_ropeEnd, Vector3r::Zero(), Vector3r(0.1, 0, 0));
+//         engine.applyForce(m_rodEnd, Vector3r::Zero(), Vector3r(0, -torque_magnitude, 0));
+//         // engine.applyForce(m_ropeEnd, Vector3r::Zero(), Vector3r(0.1, 0, 0));
 // 
 //         if (t < 0.05) {
-//             sys.setLinearVelocity(m_endCube, Vector3r(0, -1, 0));
-//             sys.setAngularVelocity(m_endCube, Vector3r::Zero());
+//             engine.setLinearVelocity(m_endCube, Vector3r(0, -1, 0));
+//             engine.setAngularVelocity(m_endCube, Vector3r::Zero());
 //         }else {
-//             sys.setLinearVelocity(m_endCube, Vector3r::Zero());
-//             sys.setAngularVelocity(m_endCube, Vector3r(0, 2, 0));
+//             engine.setLinearVelocity(m_endCube, Vector3r::Zero());
+//             engine.setAngularVelocity(m_endCube, Vector3r(0, 2, 0));
 //         }
-//         sys.applyForce(m_endCube, -sys.gravity() * sys.getMass(m_endCube).diagonal(), Vector3r::Zero());
+//         engine.applyForce(m_endCube, -engine.gravity() * engine.getMass(m_endCube).diagonal(), Vector3r::Zero());
     }
 
     private:

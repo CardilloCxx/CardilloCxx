@@ -18,7 +18,6 @@ public:
     ~CardhouseScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         // Ground plane

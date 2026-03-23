@@ -13,7 +13,6 @@ public:
     const char* sceneName() const override { return "rotating_ball"; }
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         // Ground plane for visual + collision
@@ -34,7 +33,7 @@ public:
         const Vector3r angularVelocity2((real_t)0.0, (real_t)10.0, (real_t)0.0);
         entt::entity lowSpin = engine.addRigidBody(physics::SphereShape(radius), physics::RigidState(position2, Vector3r::Zero(), angularVelocity2), physics::RigidProps(mass));
 
-        sys.track(highSpin, "rot_ball_high");
-        sys.track(lowSpin, "rot_ball_low");
+        engine.track(highSpin, "rot_ball_high");
+        engine.track(lowSpin, "rot_ball_low");
     }
 };

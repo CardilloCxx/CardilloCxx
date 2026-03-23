@@ -12,6 +12,7 @@
 #include <entt/entt.hpp>
 #include <petscsys.h>
 #include "../misc/types.hpp"
+#include "api/physics_types.hpp"
 #include "../misc/spline.hpp"
 #include "assets/assets.hpp"
 #include "../misc/dofs.hpp"
@@ -47,221 +48,13 @@ public:
         if (q_ref.dot(q) < (real_t)0) q.coeffs() = -q.coeffs();
         return q;
     }
-
-    // Unified rigid-body creation API --------------------------------------------------
-    struct RigidState {
-        Vector3r     position       = Vector3r::Zero();
-        Quaternion4r orientation    = Quaternion4r::Identity();
-        Vector3r     linearVelocity = Vector3r::Zero();
-        Vector3r     angularVelocity= Vector3r::Zero();
-        RigidState() = default;
-        explicit RigidState(const Vector3r& p) : position(p) {}
-        RigidState(const Vector3r& p, const Vector3r& v) : position(p), linearVelocity(v) {}
-        RigidState(const Vector3r& p, const Quaternion4r& q) : position(p), orientation(q) {}
-        RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q)
-            : position(p), orientation(q), linearVelocity(v) {}
-        RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q, const Vector3r& w)
-            : position(p), orientation(q), linearVelocity(v), angularVelocity(w) {}
-        // Convenience when no rotation is desired but angular velocity is provided
-        RigidState(const Vector3r& p, const Vector3r& v, const Vector3r& w)
-            : position(p), linearVelocity(v), angularVelocity(w) {}
-        // Convenience: full state specified in a moving reference frame.
-        // p_local, v_local, q_local, w_local are expressed in the reference frame.
-        // They are transformed into world coordinates using the reference's pose and velocities.
-        RigidState(const Vector3r& p_local,
-                   const Vector3r& v_local,
-                   const Quaternion4r& q_local,
-                   const Vector3r& w_local,
-                   entt::entity refEntity,
-                   entt::registry& reg) {
-            if (refEntity != entt::null &&
-                reg.all_of<World::C_Position3,
-                           World::C_Orientation,
-                           World::C_LinearVelocity3,
-                           World::C_AngularVelocity3>(refEntity)) {
-
-                const auto& r_ORef = reg.get<World::C_Position3>(refEntity).value;      // origin of ref in world
-                const auto& q_Ref  = reg.get<World::C_Orientation>(refEntity).value;     // ref orientation in world
-                const auto& v_Ref  = reg.get<World::C_LinearVelocity3>(refEntity).value; // linear vel of ref in world
-                const auto& w_Ref  = reg.get<World::C_AngularVelocity3>(refEntity).value;// angular vel of ref in world
-
-                const Matrix33r A_Ref = q_Ref.toRotationMatrix();
-                position    = r_ORef + A_Ref * p_local;
-                orientation = q_Ref * q_local;
-
-                const Vector3r r_rel_world = A_Ref * p_local;
-                linearVelocity  = v_Ref + w_Ref.cross(r_rel_world) + A_Ref * v_local;
-                angularVelocity = w_Ref + A_Ref * w_local;
-            } else {
-                position        = p_local;
-                orientation     = q_local;
-                linearVelocity  = v_local;
-                angularVelocity = w_local;
-            }
-        }
-
-         RigidState(const Vector3r& p_local,
-                   entt::entity refEntity,
-                   entt::registry& reg) : RigidState(p_local, Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
-        
-        RigidState(entt::entity refEntity,
-                   entt::registry& reg) : RigidState(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
-    };
-    struct CubeShape    { 
-        Vector3r halfExtents{Vector3r::Zero()};
-        CubeShape() = default;
-        explicit CubeShape(const Vector3r& he) : halfExtents(he) {}
-    };
-    struct PlaneShape   { 
-        Vector3r normal{Vector3r(0,0,1)}; Vector3r up{Vector3r(0,1,0)}; real_t sizeX{5}; real_t sizeY{5};
-        PlaneShape() = default;
-        PlaneShape(const Vector3r& n, const Vector3r& u, real_t sx, real_t sy) : normal(n), up(u), sizeX(sx), sizeY(sy) {}
-    };
-    struct CapsuleShape { 
-        real_t radius{0}; real_t halfLength{0};
-        CapsuleShape() = default;
-        CapsuleShape(real_t r, real_t h) : radius(r), halfLength(h) {}
-    };
-    struct CylinderShape {
-        real_t radius{0}; real_t halfLength{0};
-        CylinderShape() = default;
-        CylinderShape(real_t r, real_t h) : radius(r), halfLength(h) {}
-    };
-    struct ConeShape {
-        real_t radius{0};
-        real_t height{0};
-        ConeShape() = default;
-        ConeShape(real_t r, real_t h) : radius(r), height(h) {}
-    };
-    struct SphereShape  { 
-        real_t radius{0};
-        SphereShape() = default;
-        explicit SphereShape(real_t r) : radius(r) {}
-    };
-    struct MeshShape    { 
-        std::string path; Vector3r scale{1,1,1}; bool use_bbox_collider{false}; bool show_collider{false};
-        MeshShape() = default;
-        explicit MeshShape(const std::string& p, bool bbox=false, bool showCol=false) : path(p), use_bbox_collider(bbox), show_collider(showCol) {}
-        MeshShape(const std::string& p, const Vector3r& s, bool bbox=false, bool showCol=false) : path(p), scale(s), use_bbox_collider(bbox), show_collider(showCol) {}
-    };
-    using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape>;
-    struct RigidProps {
-        // If neither mass nor density set => static (no physics object)
-        std::optional<real_t> mass;     
-        std::optional<real_t> density; 
-        real_t friction = -1; // <0 => use default from config
-        bool   collidable = true;
-        bool   visual     = true;
-        RigidProps() = default;
-        explicit RigidProps(real_t m) : mass(m) {}
-        RigidProps(real_t m, real_t fric, bool vis=true, bool coll=true) : mass(m), friction(fric), collidable(coll), visual(vis) {}
-        static RigidProps withDensity(real_t rho) { RigidProps p; p.density = rho; return p; }
-    };
-
-    // Beam cross-section and spring params --------------------------------------------------
-    enum class BeamBodyType { Cube, Capsule, Cylinder };
-    struct BeamCrossSection {
-        real_t width{0};
-        real_t height{0};
-        BeamBodyType type{BeamBodyType::Cube};
-        BeamCrossSection() = default;
-        BeamCrossSection(real_t w, real_t h, BeamBodyType t=BeamBodyType::Cube) : width(w), height(h), type(t) {}
-        // Area
-        real_t area() const {
-            if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-                real_t r = (std::min(width, height)) * (real_t)0.5;
-                return (real_t)M_PI * r * r;
-            }
-            return width * height;
-        }
-        // Second moments of area about local Y and Z
-        real_t Iy() const {
-            if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-                real_t r = (std::min(width, height)) * (real_t)0.5;
-                return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0; // circle
-            }
-            return width * std::pow(height, (real_t)3) / (real_t)12.0;
-        }
-        real_t Iz() const {
-            if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-                real_t r = (std::min(width, height)) * (real_t)0.5;
-                return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0; // circle
-            }
-            return std::pow(width, (real_t)3) * height / (real_t)12.0;
-        }
-        real_t Jp() const { return Iy() + Iz(); } // polar approx
-
-        real_t sectionModulus() const {
-        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-            // Circle: c = R, Iy = Iz = I. W = I/R = (pi*R^4/4) / R = pi*R^3/4
-            real_t r = (std::min(width, height)) * (real_t)0.5;
-            if (r == (real_t)0.0) return (real_t)0.0;
-            return (real_t)M_PI * std::pow(r, 3) / (real_t)4.0;
-        } else { // Cube/Rectangle
-            // W_y = Iy / (height/2) 
-            real_t Wy = Iy() / ((real_t)0.5 * height);
-            // W_z = Iz / (width/2)
-            real_t Wz = Iz() / ((real_t)0.5 * width);
-            return std::min(Wy, Wz);
-        }
-    }
-    };
-
-    struct BeamSpringParams {
-        // Material properties for derived stiffness
-        real_t E{0};
-        real_t nu{0};
-        // Independent scales for each component
-        Vector3r scaleKe{Vector3r::Ones()}; // [axial, shearY, shearZ]
-        Vector3r scaleKf{Vector3r::Ones()}; // [torsion, bendY, bendZ]
-        // Optional direct per-segment stiffness overrides (units already [*/L])
-        std::optional<Vector3r> Ke_direct;
-        std::optional<Vector3r> Kf_direct;
-        // Damping compliances
-        real_t dampingFactor = 0.0;
-
-        BeamSpringParams() = default;
-        // Direct constructor for per-segment stiffness vectors
-        BeamSpringParams(const Vector3r& Ke_in, const Vector3r& Kf_in,
-                         real_t dampingFactor_in = 0.0)
-            : Ke_direct(Ke_in), Kf_direct(Kf_in), dampingFactor(dampingFactor_in) {}
-
-        // Accessors to per-segment stiffness vectors given section and segment length
-        Vector3r Ke(real_t segLen, const BeamCrossSection& sec) const {
-            if (Ke_direct.has_value()) return *Ke_direct;
-            const real_t G = E / ((real_t)2.0 * ((real_t)1.0 + nu));
-            const real_t A = sec.area();
-            Vector3r base(E * A / segLen, G * A / segLen, G * A / segLen);
-            return base.cwiseProduct(scaleKe);
-        }
-        Vector3r Kf(real_t segLen, const BeamCrossSection& sec) const {
-            if (Kf_direct.has_value()) return *Kf_direct;
-            const real_t G = E / ((real_t)2.0 * ((real_t)1.0 + nu));
-            Vector3r base(G * sec.Jp() / segLen, E * sec.Iy() / segLen, E * sec.Iz() / segLen);
-            return base.cwiseProduct(scaleKf);
-        }
-
-        void setDampingFromFactor(real_t d) {
-            dampingFactor = d;
-        }
-
-        // Factory for material-based parameters without needing section at construction
-        static BeamSpringParams fromMaterial(real_t E_in, real_t nu_in,
-                                             real_t axialScale=(real_t)1,
-                                             real_t shearScale=(real_t)1,
-                                             real_t torsionScale=(real_t)1,
-                                             real_t bendYScale=(real_t)1,
-                                             real_t bendZScale=(real_t)1,
-                                             real_t dampingFactor_in=(real_t)0)
-        {
-            BeamSpringParams p;
-            p.E = E_in; p.nu = nu_in;
-            p.scaleKe = Vector3r(axialScale, shearScale, shearScale);
-            p.scaleKf = Vector3r(torsionScale, bendYScale, bendZScale);
-            p.dampingFactor = dampingFactor_in;
-            return p;
-        }
-    };
+    // Use the public physics API types here to avoid duplication and conversions.
+    using RigidState = cardillo::physics::RigidState;
+    using RigidShape = cardillo::physics::RigidShape;
+    using RigidProps = cardillo::physics::RigidProps;
+    using BeamCrossSection = cardillo::physics::BeamCrossSection;
+    using BeamSpringParams = cardillo::physics::BeamSpringParams;
+    using BeamBodyType = cardillo::physics::BeamBodyType;
 
     World();
     explicit World(const config::Config& cfg);
@@ -330,59 +123,7 @@ public:
     std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() { return m_constraints_new; }
     const std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() const { return m_constraints_new; }
 
-    // Explicit constraint API (wrapper-free scene-facing methods)
-    size_t addLinearDistanceConstraint(entt::entity a,
-                                       entt::entity b,
-                                       const Vector3r& rA_local = Vector3r::Zero(),
-                                       const Vector3r& rB_local = Vector3r::Zero(),
-                                       real_t stiffness = std::numeric_limits<real_t>::infinity(),
-                                       real_t damping = (real_t)0);
-    size_t addRigidConstraint(entt::entity a, entt::entity b);
-    size_t addRigidConstraint(entt::entity a,
-                              entt::entity b,
-                              const Vector3r& rA_local,
-                              const std::optional<Vector3r>& rB_local,
-                              const Vector3r& K_rot,
-                              const Vector3r& D_rot,
-                              const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                              const Vector3r& D_trans = Vector3r::Zero());
-    size_t addTranslationRotationConstraint(entt::entity a,
-                                            entt::entity b,
-                                            const cardillo::physics::JointFrame& frame,
-                                            const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                                            const Vector3r& D_trans = Vector3r::Zero(),
-                                            const Vector3r& K_rot = Vector3r::Zero(),
-                                            const Vector3r& D_rot = Vector3r::Zero());
-    size_t addTranslationalConstraint(entt::entity a,
-                                      entt::entity b,
-                                      const cardillo::physics::JointFrame& frame,
-                                      const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                                      const Vector3r& D_trans = Vector3r::Zero());
-    size_t addRotationConstraint(entt::entity a,
-                                 entt::entity b,
-                                 const cardillo::physics::JointFrame& frame,
-                                 const Vector3r& K_rot = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                                 const Vector3r& D_rot = Vector3r::Zero());
-    size_t addHingeConstraint(entt::entity a,
-                              entt::entity b,
-                              const cardillo::physics::JointFrame& frame,
-                              real_t K_axis = (real_t)0,
-                              real_t D_axis = (real_t)0,
-                              const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                              const Vector3r& D_trans = Vector3r::Zero());
-    size_t addHingeConstraint(entt::entity a,
-                              entt::entity b,
-                              const Vector3r& rA_local,
-                              const Vector3r& rB_local,
-                              const Vector3r& axis_world,
-                              real_t K_axis = (real_t)0,
-                              real_t D_axis = (real_t)0,
-                              const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                              const Vector3r& D_trans = Vector3r::Zero());
-    size_t addBeamConstraint(entt::entity a,
-                             entt::entity b,
-                             const BeamSpringParams& springs,
-                             const BeamCrossSection& section);
+    // Explicit constraint API moved to `ConstraintFactory`/`physics_engine`.
 
     // Public ECS component/tag types for queries
     struct C_Mass { real_t m; };

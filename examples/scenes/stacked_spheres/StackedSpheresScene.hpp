@@ -8,7 +8,6 @@ public:
     StackedSpheresScene() = default;
     ~StackedSpheresScene() override = default;
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         // Tube dimensions
         size_t nSpheres = 20;
         double sphereRadius = 0.05;
@@ -53,11 +52,10 @@ public:
         }
     }
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        auto& sys = engine.world();
         double v = amplitude * std::sin(2 * M_PI * frequency * t);
-        sys.applyForce(bottomSphere, {0, 0, 9.81 * bottomMass}, {0, 0, 0});
-        sys.setLinearVelocity(bottomSphere, {0, 0, v});
-        sys.setAngularVelocity(bottomSphere, {0, 0, 0});
+        engine.applyForce(bottomSphere, {0, 0, 9.81 * bottomMass}, {0, 0, 0});
+        engine.setLinearVelocity(bottomSphere, {0, 0, v});
+        engine.setAngularVelocity(bottomSphere, {0, 0, 0});
     }
 private:
     double amplitude = 0.5;

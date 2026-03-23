@@ -12,7 +12,6 @@ public:
     ~PainleveScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         const real_t groundHalfThickness = (real_t)0.01;
@@ -38,8 +37,8 @@ public:
         // physics::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
         // physics::RigidProps props; props.mass = mass; props.friction = friction;
         // auto rod = engine.addRigidBody(rodShape, state, props);
-        // sys.ecs().get<World::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
-        // sys.track(rod, "painleve_rod");
+        // engine.ecs().get<World::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
+        // engine.track(rod, "painleve_rod");
 
         // Parameter sweep over friction and initial angle phi
         const size_t num_friction_steps = 100;
@@ -67,8 +66,8 @@ public:
                 physics::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
                 physics::RigidProps props; props.mass = mass; props.friction = curr_friction;
                 auto rod = engine.addRigidBody(rodShape, state, props);
-                sys.ecs().get<World::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
-                sys.track(rod, "painleve_rod_fric_" + std::to_string(curr_friction) + "_phi_" + std::to_string(curr_phi));
+                engine.ecs().get<World::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
+                engine.track(rod, "painleve_rod_fric_" + std::to_string(curr_friction) + "_phi_" + std::to_string(curr_phi));
             }
         }
     }

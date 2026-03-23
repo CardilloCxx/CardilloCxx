@@ -18,7 +18,6 @@ public:
     const char* sceneName() const override { return "unilateral"; }
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         const auto formatAForName = [](real_t aVal) {
@@ -92,7 +91,7 @@ public:
 
             auto rod = engine.addRigidBody(physics::CapsuleShape(rodRadius, rodHalfLength), rodState, rodProps);
             const std::string aTag = formatAForName(a);
-            sys.track(rod, "unilateral_rod_a" + aTag);
+            engine.track(rod, "unilateral_rod_a" + aTag);
 
             std::cout << "[Unilateral] a=" << a << ", m=" << m
                       << ", phi=" << phiDeg << " deg, track=unilateral_rod_a" << aTag

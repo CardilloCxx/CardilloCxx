@@ -14,7 +14,6 @@ public:
     ~SlinkyScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
         // Build staircase as static cubes
@@ -58,7 +57,7 @@ public:
         misc::HelixSpline helix(Vector3r::Zero(), Vector3r::UnitZ(), radius, pitch, (real_t)turns, Vector3r::UnitX());
 
         std::cout << "Creating slinky with " << segments << " segments, " << turns << " turns, pitch " << pitch << ", radius " << radius << "\n";
-        physics::RigidState stateDefaults(Vector3r(0.0,0.0,thickness * 0.5 + pitch * 0.5), Vector3r::Zero(),  Quaternion4r::Identity(), Vector3r(0.0,0.0,0.0), top_step, sys.ecs());
+        physics::RigidState stateDefaults(Vector3r(0.0,0.0,thickness * 0.5 + pitch * 0.5), Vector3r::Zero(),  Quaternion4r::Identity(), Vector3r(0.0,0.0,0.0), top_step, engine.ecs());
         physics::RigidProps props = physics::RigidProps::withDensity(density);
         auto ends = engine.createBeam(helix, section, springs, stateDefaults, props, segments);
         m_slinky_end_entity = ends.second;
@@ -67,20 +66,19 @@ public:
         //                                   physics::RigidState(ends.second), 
         //                                   physics::RigidProps(1e10));
 
-        // sys.setLinearVelocity(ends.second, Vector3r((real_t)-5.0, (real_t)0.0, (real_t)5.0));
-        // sys.addRigidConstraint(m_guide_entity,  ends.second);
-        // sys.disableCollisionBetween(m_guide_entity, ends.first);
+        // engine.setLinearVelocity(ends.second, Vector3r((real_t)-5.0, (real_t)0.0, (real_t)5.0));
+        // engine.addRigidConstraint(m_guide_entity,  ends.second);
+        // engine.disableCollisionBetween(m_guide_entity, ends.first);
     
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t dt) override {
-        auto& sys = engine.world();
         (void)dt;
-        auto A_IK = sys.ecs().get<cardillo::World::C_Orientation>(m_slinky_end_entity).value.toRotationMatrix();
+        auto A_IK = engine.ecs().get<cardillo::World::C_Orientation>(m_slinky_end_entity).value.toRotationMatrix();
         
-        if (t < 0.28) sys.applyForce(m_slinky_end_entity, Vector3r(0.00, 0.0, 0.0), A_IK.transpose()* Vector3r(0.0, -0.015, 0.0));
-//         sys.setAngularVelocity(m_guide_entity, Vector3r(0.0, -0.1, 0.0));
-//         sys.applyForce(m_guide_entity, -sys.gravity() * sys.getMass(m_guide_entity).diagonal(), Vector3r::Zero());
+        if (t < 0.28) engine.applyForce(m_slinky_end_entity, Vector3r(0.00, 0.0, 0.0), A_IK.transpose()* Vector3r(0.0, -0.015, 0.0));
+//         engine.setAngularVelocity(m_guide_entity, Vector3r(0.0, -0.1, 0.0));
+//         engine.applyForce(m_guide_entity, -engine.gravity() * engine.getMass(m_guide_entity).diagonal(), Vector3r::Zero());
     }
 
 private: 

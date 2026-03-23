@@ -21,7 +21,6 @@ public:
     ~RodAssemblyScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         // Mesh paths
@@ -49,8 +48,7 @@ public:
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override {
-        auto& sys = engine.world();
-        sys.applyForce(m_upperRod, Vector3r(50.0, 0.0, 0), Vector3r::Zero());
+        engine.applyForce(m_upperRod, Vector3r(50.0, 0.0, 0), Vector3r::Zero());
     }
 
 private: 

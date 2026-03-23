@@ -14,7 +14,6 @@ public:
     ~DoublePendulumScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
         using namespace cardillo::physics;
@@ -44,10 +43,10 @@ public:
         );
 
         // no collision between base and first rigid body
-        sys.disableCollisionBetween(m_base, m_rb1);
+        engine.disableCollisionBetween(m_base, m_rb1);
 
         // add revolute joint between base and first rigid body
-        sys.addHingeConstraint(m_base, 
+        engine.addHingeConstraint(m_base, 
             m_rb1, 
             physics::JointFrame::fromAxis(
                 Vector3r(0.02, 0.0002, 0.0349), // World position of the joint
@@ -68,10 +67,10 @@ public:
         );
 
         // no collision between first and second rigid body
-        sys.disableCollisionBetween(m_rb1, m_rb2);
+        engine.disableCollisionBetween(m_rb1, m_rb2);
 
         // add revolute joint between base and first rigid body
-        sys.addHingeConstraint(m_rb1, 
+        engine.addHingeConstraint(m_rb1, 
             m_rb2, 
             physics::JointFrame::fromAxis(
                 Vector3r(0.0058, 0.0991, 0.0344), // World position of the joint
@@ -82,7 +81,7 @@ public:
         );
 
         // // optionally disable collision between second rigid body and base
-        // sys.disableCollisionBetween(m_base, m_rb2);
+        // engine.disableCollisionBetween(m_base, m_rb2);
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {

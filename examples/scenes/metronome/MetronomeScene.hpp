@@ -19,7 +19,6 @@ public:
     ~MetronomeScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         // Static ground
@@ -51,16 +50,16 @@ public:
         m_sheet = engine.addRigidBody(            physics::CubeShape(sheetHalfExt),
             physics::RigidState(Vector3r(0, 0, sheetCenterZ)),
             physics::RigidProps::withDensity(styrofoamRho));
-        sys.track(m_sheet, "sheet");    
+        engine.track(m_sheet, "sheet");    
 
-        sys.addRotationConstraint(m_sheet,
+        engine.addRotationConstraint(m_sheet,
             floor,
             physics::JointFrame(m_sheet),
             Vector3r::Constant(std::numeric_limits<real_t>::infinity())
         );
 
         
-        sys.addTranslationalConstraint(m_sheet,
+        engine.addTranslationalConstraint(m_sheet,
             floor,
             physics::JointFrame(m_sheet),
             Vector3r::Constant(0),
@@ -95,9 +94,9 @@ public:
 
                 const Vector3r hingeWorld = pos + hingeLocal; // offset from bottom-center in world frame
                 physics::JointFrame jf = physics::JointFrame::fromAxis(hingeWorld, Vector3r::UnitX());
-                sys.addHingeConstraint(body, lever, jf, hingeK, hingeD);
-                sys.disableCollisionBetween(body, lever);
-                sys.track(lever, "lever_" + std::to_string(ix) + "_" + std::to_string(iy));
+                engine.addHingeConstraint(body, lever, jf, hingeK, hingeD);
+                engine.disableCollisionBetween(body, lever);
+                engine.track(lever, "lever_" + std::to_string(ix) + "_" + std::to_string(iy));
 
                 m_levers.push_back(lever);
             }
@@ -111,7 +110,6 @@ public:
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t dt) override {
-        auto& sys = engine.world();
         const real_t kickStart = (real_t)0.25;
         const real_t kickEnd = (real_t) 0.5;
         const real_t kickInterval = (kickEnd - kickStart) / (real_t)m_levers.size();
@@ -121,10 +119,10 @@ public:
             const int idx = m_order[(size_t)m_nextKick];
             if (idx >= 0 && idx < (int)m_levers.size()) {
                 entt::entity lever = m_levers[(size_t)idx];
-                real_t kickForce = kickVelocity * sys.getMass(lever)(0, 0) / dt;
-                if (sys.ecs().valid(lever)) {
-                    sys.applyForce(lever, Vector3r((real_t)0.0, kickForce, (real_t)0.0), Vector3r::Zero());
-                    sys.applyForce(m_sheet, Vector3r((real_t)0.0, -kickForce, (real_t)0.0), Vector3r::Zero()); // reaction on sheet
+                real_t kickForce = kickVelocity * engine.getMass(lever)(0, 0) / dt;
+                if (engine.ecs().valid(lever)) {
+                    engine.applyForce(lever, Vector3r((real_t)0.0, kickForce, (real_t)0.0), Vector3r::Zero());
+                    engine.applyForce(m_sheet, Vector3r((real_t)0.0, -kickForce, (real_t)0.0), Vector3r::Zero()); // reaction on sheet
                     std::printf("[Metronome] Kick lever %d at t=%.3f with Fy=%.3f N\n", idx, (double)t, (double)kickForce);
                 }
             }

@@ -16,12 +16,11 @@ public:
     ~SpaghettiScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
 
         // Gravity on (spaghetti should hang, z is up).
-        sys.setGravity(Vector3r(0, 0, -9.81));
+        engine.setGravity(Vector3r(0, 0, -9.81));
 
         // Add a bowl built from 5 flat cubes (floor + 4 walls) aligned with z-up.
         {

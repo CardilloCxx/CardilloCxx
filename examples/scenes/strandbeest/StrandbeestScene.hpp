@@ -65,11 +65,10 @@ public:
     };
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         const real_t slopeDeg = (real_t)3.0;
         const real_t slopeRad = slopeDeg * (real_t)M_PI / (real_t)180.0;
         // Tilt gravity instead of the ground plane: downhill +x
-        sys.setGravity(Vector3r(-9.81 * std::sin(slopeRad), 0.0, -9.81 * std::cos(slopeRad)));
+        engine.setGravity(Vector3r(-9.81 * std::sin(slopeRad), 0.0, -9.81 * std::cos(slopeRad)));
 
         // Configurable params
         LegParams params;
@@ -87,7 +86,7 @@ public:
         engine.addRigidBody(groundShape, groundState, groundProps);
 
         const real_t layerWidth = (real_t)0.12; // spacing between leg pair slices
-        entt::entity middleAxle = buildWalker(sys, params, L, baseAlphaDeg, nLegPairs, p2_world, planeNormal, xAxis, layerWidth);
+            entt::entity middleAxle = buildWalker(engine, params, L, baseAlphaDeg, nLegPairs, p2_world, planeNormal, xAxis, layerWidth);
         (void)middleAxle; // currently unused in populate
     }
 
@@ -196,7 +195,7 @@ private:
     }
 
     // Build entire leg from precomputed geometry, optionally reusing a shared m beam.
-    LegBuildResult buildLeg(cardillo::World& sys,
+    LegBuildResult buildLeg(physics::PhysicsEngine& engine,
                   LegGeom3D leg3d,
                   entt::entity frameBar,
                   entt::entity sharedM = entt::null,
@@ -224,10 +223,10 @@ private:
             }
             if (name == "m") {
                 if (sharedM != entt::null) segEnt[name] = sharedM;
-                else if (createMBeam) segEnt[name] = addBar(sys, leg3d.nodes.at(a), leg3d.nodes.at(b), defaultThickness, defaultDensity, /*collidable*/ true);
+                else if (createMBeam) segEnt[name] = addBar(engine, leg3d.nodes.at(a), leg3d.nodes.at(b), defaultThickness, defaultDensity, /*collidable*/ true);
                 else segEnt[name] = entt::null;
             } else {
-                segEnt[name] = addBar(sys, leg3d.nodes.at(a), leg3d.nodes.at(b), defaultThickness, defaultDensity, /*collidable*/ true);
+                segEnt[name] = addBar(engine, leg3d.nodes.at(a), leg3d.nodes.at(b), defaultThickness, defaultDensity, /*collidable*/ true);
             }
             if (segEnt[name] != entt::null) addedEntities.push_back(segEnt[name]);
         }
@@ -244,7 +243,7 @@ private:
                 auto ej = segEnt[bars[i + 1]];
                 if (ei == entt::null || ej == entt::null) continue;
                 physics::JointFrame jf = physics::JointFrame::fromAxis(leg3d.nodes.at(node), n);
-                sys.addTranslationRotationConstraint(ei, ej, jf,
+                engine.addTranslationRotationConstraint(ei, ej, jf,
                     K_TRANS, D_TRANS, R_ROT, D_ROT);
             }
         };
@@ -267,7 +266,7 @@ private:
     }
 
     // Build two mirrored legs sharing p2, mirrored across plane by flipping xAxis.
-    std::pair<LegBuildResult, LegBuildResult> buildLegPair(cardillo::World& sys,
+    std::pair<LegBuildResult, LegBuildResult> buildLegPair(physics::PhysicsEngine& engine,
                   const LegParams& params,
                   const Lengths& L,
                   real_t alpha_deg,
@@ -282,10 +281,10 @@ private:
         // First leg builds the shared m (p2->mjk); second leg reuses the same beam but keeps its own geometry
         entt::entity sharedM = entt::null;
 
-        auto a = buildLeg(sys, legA, frameBar, sharedM, mjkShared, /*createMBeam*/ true);
+        auto a = buildLeg(engine, legA, frameBar, sharedM, mjkShared, /*createMBeam*/ true);
         sharedM = a.mBeam; // capture created m beam from first leg
 
-        auto b = buildLeg(sys, legB, frameBar, sharedM, std::nullopt, /*createMBeam*/ false);
+        auto b = buildLeg(engine, legB, frameBar, sharedM, std::nullopt, /*createMBeam*/ false);
 
         a.mBeam = sharedM;
         b.mBeam = sharedM;
@@ -293,7 +292,7 @@ private:
     }
 
     // Build walker with phased leg pairs, weld all m-beams together.
-    entt::entity buildWalker(cardillo::World& sys,
+    entt::entity buildWalker(physics::PhysicsEngine& engine,
                   const LegParams& params,
                   const Lengths& L,
                   real_t baseAlphaDeg,
@@ -362,7 +361,7 @@ private:
             Quaternion4r q; {
                 Eigen::Matrix<real_t,3,3> R; R.col(0) = u; R.col(1) = n; R.col(2) = v; q = Quaternion4r(R);
             }
-            entt::entity frameBar = addFrameCube(sys, center, halfExtents, q, /*density*/ 500.0);
+            entt::entity frameBar = addFrameCube(engine, center, halfExtents, q, /*density*/ 500.0);
             frames.push_back(frameBar);
             frameCenters.push_back(center);
             pushEntity(frameBar);
@@ -375,7 +374,7 @@ private:
             size_t fidx = (frames.empty()) ? 0 : std::min<size_t>(i, frames.size() - 1);
             entt::entity frameForPair = frames.empty() ? entt::null : frames[fidx];
             real_t phaseAlpha = baseAlphaDeg + (360.0 / nPairs) * i + 180.0 * i;
-            auto pair = buildLegPair(sys, params, L, phaseAlpha, p2Offset, planeNormal, xAxis, frameForPair);
+            auto pair = buildLegPair(engine, params, L, phaseAlpha, p2Offset, planeNormal, xAxis, frameForPair);
             for (auto e : pair.first.addedEntities) pushEntity(e);
             for (auto e : pair.second.addedEntities) pushEntity(e);
             if (pair.first.mBeam != entt::null) mBeams.push_back(pair.first.mBeam);
@@ -388,7 +387,7 @@ private:
             if (pts.size() < 2) return entt::null;
             Vector3r start = pts.front();
             Vector3r end   = pts.back();
-            return addBar(sys, start, end, (real_t)0.01, (real_t)800.0, /*collidable*/ false);
+            return addBar(engine, start, end, (real_t)0.01, (real_t)800.0, /*collidable*/ false);
         };
 
         entt::entity leftAxle = addSingleAxle(p1LeftPoints); Vector3r leftPos = p1LeftPoints.front() + (p1LeftPoints.back() - p1LeftPoints.front()) * (real_t)0.5;
@@ -401,7 +400,7 @@ private:
             for (size_t i = 0; i < frames.size(); ++i) {
                 if (frames[i] == entt::null) continue;
                 physics::JointFrame jf = physics::JointFrame::fromAxis(axlePos, n);
-                sys.addTranslationRotationConstraint(axle, frames[i], jf,
+                engine.addTranslationRotationConstraint(axle, frames[i], jf,
                     K_TRANS, D_TRANS, R_ROT, D_ROT);
             }
         };
@@ -418,7 +417,7 @@ private:
         // Disable collisions between all added entities (axles, frames, bars, m-beams)
         for (size_t i = 0; i < addedEntities.size(); ++i) {
             for (size_t j = i + 1; j < addedEntities.size(); ++j) {
-                sys.disableCollisionBetween(addedEntities[i], addedEntities[j]);
+                engine.disableCollisionBetween(addedEntities[i], addedEntities[j]);
             }
         }
 
@@ -426,20 +425,20 @@ private:
         if (middleAxle != entt::null) {
             for (size_t i = 0; i < mBeams.size() && i < p2Points.size(); ++i) {
                 if (mBeams[i] == entt::null) continue;
-                sys.addRigidConstraint(middleAxle, mBeams[i]);
+                engine.addRigidConstraint(middleAxle, mBeams[i]);
             }
         }
 
         return middleAxle;
     }
 
-    static entt::entity addBar(cardillo::World& sys,
+    static entt::entity addBar(physics::PhysicsEngine& engine,
                                const Vector3r& a,
                                const Vector3r& b,
                                real_t thickness,
                                real_t density,
                                bool collidable = true) {
-        physics::PhysicsEngine engine(sys);
+        (void)thickness; (void)density; (void)collidable;
         Vector3r d = b - a;
         real_t len = d.norm();
         if (len < (real_t)1e-6) return entt::null;
@@ -456,12 +455,12 @@ private:
         return engine.addRigidBody(shape, state, props);
     }
 
-    static entt::entity addFrameCube(cardillo::World& sys,
+    static entt::entity addFrameCube(physics::PhysicsEngine& engine,
                                      const Vector3r& center,
                                      const Vector3r& halfExtents,
                                      const Quaternion4r& orientation,
                                      real_t density) {
-        physics::PhysicsEngine engine(sys);
+        (void)density;
         physics::CubeShape shape{halfExtents};
         physics::RigidState state; state.position = center; state.orientation = orientation;
         physics::RigidProps props;

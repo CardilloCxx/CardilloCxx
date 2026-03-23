@@ -14,7 +14,6 @@ public:
     ~DominoScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
     // Create a ground plate (static cube via unified API)
@@ -31,7 +30,7 @@ public:
         const real_t gapLong = (real_t)0.004; // small longitudinal spacing
         const real_t extraLayerGap = (real_t)-0.0001;
 
-        spawnDominoTowerStructure(sys, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap);
+        spawnDominoTowerStructure(engine, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap);
     }
 
 private:
@@ -42,7 +41,7 @@ private:
     }
 
     void spawnDominoTowerStructure(
-        World& sys,
+        physics::PhysicsEngine& engine,
         int layers,
         int N,
         const Vector3r& half,
@@ -51,7 +50,7 @@ private:
         real_t gapLong = (real_t)0.002,
         real_t extraLayerGap = (real_t)0.0
     ) {
-        physics::PhysicsEngine engine(sys);
+        (void)gapLong; (void)extraLayerGap; // parameters kept for compatibility with older callers
         if (layers <= 0) return;
         const real_t L = (real_t)2.0 * half.x(); // long edge (in-plane)
         const real_t W = (real_t)2.0 * half.y(); // thickness (in-plane)

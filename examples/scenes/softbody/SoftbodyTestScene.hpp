@@ -12,7 +12,6 @@ public:
     ~SoftbodyTestScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
     physics::PlaneShape groundShape{Vector3r(0,0,1), Vector3r(0,1,0), (real_t)15.0, (real_t)15.0};

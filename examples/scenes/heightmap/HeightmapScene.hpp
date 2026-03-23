@@ -10,7 +10,6 @@ public:
     ~HeightmapScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         const std::string exrPath = "./res/heightmaps/mountain_height.exr";
         const real_t x_dim = (real_t)50.0;

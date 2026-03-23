@@ -14,7 +14,6 @@ public:
     ~WoodpeckerScene() override = default; 
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         std::cout << "Populating Woodpecker scene..." << std::endl;
 
         // Toggle: keep the original compliant joint constraint instead of the helical spring.
@@ -51,7 +50,7 @@ public:
         if (keepOldConstraint) {
             physics::JointFrame jf = physics::JointFrame(hingeCenter, Matrix33r::Identity(), std::nullopt);
 
-            sys.addTranslationRotationConstraint(ring, pecker, jf,
+            engine.addTranslationRotationConstraint(ring, pecker, jf,
                                                /*K_trans*/ Vector3r(3000, std::numeric_limits<real_t>::infinity(), std::numeric_limits<real_t>::infinity()),
                                                /*D_trans*/ Vector3r::Zero(),
                                                /*K_rot*/   Vector3r(0.05, 0.5, 0.05),
@@ -103,18 +102,18 @@ public:
                                              segments);
 
             const Vector3r inf3 = Vector3r::Constant(std::numeric_limits<real_t>::infinity());
-            sys.addTranslationRotationConstraint(endpoints.first, ring,
+            engine.addTranslationRotationConstraint(endpoints.first, ring,
                 physics::JointFrame(pA, Matrix33r::Identity(), std::nullopt),
                 /*K_trans*/ inf3, /*D_trans*/ Vector3r::Zero(),
                 /*K_rot*/   inf3, /*D_rot*/   Vector3r::Zero());
-            sys.addTranslationRotationConstraint(endpoints.second, pecker,
+            engine.addTranslationRotationConstraint(endpoints.second, pecker,
                 physics::JointFrame(pB, Matrix33r::Identity(), std::nullopt),
                 /*K_trans*/ inf3, /*D_trans*/ Vector3r::Zero(),
                 /*K_rot*/   inf3, /*D_rot*/   Vector3r::Zero());
         }
 
         // 5) Track entities for output
-        sys.track(pecker, "woodpecker_body");
-        sys.track(ring, "woodpecker_ring");
+        engine.track(pecker, "woodpecker_body");
+        engine.track(ring, "woodpecker_ring");
     }
 };

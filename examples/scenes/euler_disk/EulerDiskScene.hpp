@@ -16,7 +16,6 @@ public:
     const char* sceneName() const override { return "euler_disk"; }
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         // Ground plane
@@ -39,6 +38,6 @@ public:
         state.angularVelocity = q.toRotationMatrix().transpose() * Vector3r((real_t)0.00, (real_t)0.0, (real_t)50.0);
         physics::RigidProps props(mass);
         entt::entity e = engine.addRigidBody(physics::CylinderShape(radius, halfLength), state, props);
-        sys.track(e, "euler_disk_cylinder");
+        engine.track(e, "euler_disk_cylinder");
     }
 };

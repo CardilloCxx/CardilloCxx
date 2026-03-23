@@ -16,10 +16,8 @@ public:
     ~HangbrideScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::physics;
-        const auto& cfg = sys.config();
 
         // Basic scales
         const real_t cliffHeight = (real_t)0.6;
@@ -65,7 +63,7 @@ public:
         auto buildTripod = [&](const Vector3r& apex, bool leftSide){
             // Create apex point mass (no rigid cube at top)
             auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){
-                auto& reg = sys.ecs();
+                auto& reg = engine.ecs();
                 auto e = reg.create();
                 reg.emplace<World::C_PhysicsObject>(e);
                 reg.emplace<World::C_PointMassTag>(e);
@@ -77,7 +75,7 @@ public:
                 reg.emplace<World::C_LinearVelocity3>(e, World::C_LinearVelocity3{Vector3r::Zero()});
                 reg.emplace<World::C_Radius>(e, World::C_Radius{radius});
                 // Friction component optional; omit to avoid registry version differences
-                sys.markStructureDirty();
+                engine.markStructureDirty();
                 return e;
             };
 
@@ -85,7 +83,7 @@ public:
 
             // Helper to add a 3D translational spring between apex point mass and obstacle cliff at local attachment point
             auto addLegSpring = [&](entt::entity apexEntity, entt::entity cliffEntity, const Vector3r& cliffLocal){
-                sys.addLinearDistanceConstraint(apexEntity, cliffEntity, Vector3r::Zero(), cliffLocal, legK, legD);
+                engine.addLinearDistanceConstraint(apexEntity, cliffEntity, Vector3r::Zero(), cliffLocal, legK, legD);
             };
 
             // Choose the relevant cliff and its local frame (identity rotation)
@@ -143,7 +141,7 @@ public:
 
         // Since addPointMass returns index_t, create nodes explicitly to keep entity handles
         auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){
-            auto& reg = sys.ecs();
+            auto& reg = engine.ecs();
             auto e = reg.create();
             reg.emplace<World::C_PhysicsObject>(e);
             reg.emplace<World::C_PointMassTag>(e);
@@ -155,7 +153,7 @@ public:
             reg.emplace<World::C_LinearVelocity3>(e, World::C_LinearVelocity3{Vector3r::Zero()});
             reg.emplace<World::C_Radius>(e, World::C_Radius{radius});
             // Friction component optional; omit to avoid registry version differences
-            sys.markStructureDirty();
+            engine.markStructureDirty();
             return e;
         };
 
@@ -169,7 +167,7 @@ public:
             }
             // Spring helper between two entities (point masses or anchor obstacles)
             auto addSpring = [&](entt::entity A, entt::entity B, const Vector3r& rA, const Vector3r& rB, real_t kmul){
-                sys.addLinearDistanceConstraint(A, B, rA, rB, k * kmul, d);
+                engine.addLinearDistanceConstraint(A, B, rA, rB, k * kmul, d);
             };
             // Attach ends
             addSpring(nodes.front(), eA, Vector3r::Zero(), Vector3r::Zero(), (real_t)1.0);
@@ -194,7 +192,7 @@ public:
 
         // Helper to add a 3D translational spring
         auto add3DSpring = [&](entt::entity A, entt::entity B, const Vector3r& rA, const Vector3r& rB, real_t k, real_t d){
-            sys.addLinearDistanceConstraint(A, B, rA, rB, k, d);
+            engine.addLinearDistanceConstraint(A, B, rA, rB, k, d);
         };
 
     // Add floor boards (planks) hanging from the two ropes
@@ -265,7 +263,7 @@ public:
                                        int segmentsRope, real_t kRope, real_t dRope) {
             // Compute approximate world positions for A and B attachment points.
             // Use position component if available; if not, fall back to origin.
-            auto& reg = sys.ecs();
+            auto& reg = engine.ecs();
             Vector3r posA = Vector3r::Zero();
             Vector3r posB = Vector3r::Zero();
             if (auto pa = reg.try_get<World::C_Position3>(A)) posA = pa->value + rA;
@@ -283,7 +281,7 @@ public:
 
             // helper to add translational springs between two entities
             auto addLink = [&](entt::entity X, entt::entity Y, const Vector3r& rx, const Vector3r& ry){
-                sys.addLinearDistanceConstraint(X, Y, rx, ry, kRope, dRope);
+                engine.addLinearDistanceConstraint(X, Y, rx, ry, kRope, dRope);
             };
 
             // Attach ends

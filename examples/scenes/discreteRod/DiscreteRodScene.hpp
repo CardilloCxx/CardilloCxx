@@ -16,7 +16,6 @@ public:
     ~DiscreteRodScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
         // Simple ground
@@ -49,37 +48,36 @@ public:
         const real_t thetaSpan = (real_t)M_PI;
         CircleSpline arc(Vector3r::Zero(), radius, Vector3r::UnitZ(), Vector3r::UnitX(), (real_t)(0.5*M_PI), thetaSpan);
 
-        auto arcRightEnds = engine.createBeam(arc, section, springs, physics::RigidState(Vector3r(-halfExtents.x(), 0, 0), m_leftRod, sys.ecs()),  physics::RigidProps::withDensity(density), seg_arc);
-        auto arcLeftEnds  = engine.createBeam(arc, section, springs, physics::RigidState(Vector3r(-halfExtents.x(), 0, 0), m_rightRod, sys.ecs()), physics::RigidProps::withDensity(density), seg_arc);
+        auto arcRightEnds = engine.createBeam(arc, section, springs, physics::RigidState(Vector3r(-halfExtents.x(), 0, 0), m_leftRod, engine.ecs()),  physics::RigidProps::withDensity(density), seg_arc);
+        auto arcLeftEnds  = engine.createBeam(arc, section, springs, physics::RigidState(Vector3r(-halfExtents.x(), 0, 0), m_rightRod, engine.ecs()), physics::RigidProps::withDensity(density), seg_arc);
 
         // Attach semicircle endpoints to corresponding rods to form two Ds
-        sys.addRigidConstraint(m_leftRod,  arcRightEnds.first);
-        sys.disableCollisionBetween(m_leftRod,  arcRightEnds.first);
-        sys.addRigidConstraint(m_leftRod,  arcRightEnds.second);
-        sys.disableCollisionBetween(m_leftRod,  arcRightEnds.second);
+        engine.addRigidConstraint(m_leftRod,  arcRightEnds.first);
+        engine.disableCollisionBetween(m_leftRod,  arcRightEnds.first);
+        engine.addRigidConstraint(m_leftRod,  arcRightEnds.second);
+        engine.disableCollisionBetween(m_leftRod,  arcRightEnds.second);
 
-        sys.addRigidConstraint(m_rightRod, arcLeftEnds.first);
-        sys.disableCollisionBetween(m_rightRod, arcLeftEnds.first);
-        sys.addRigidConstraint(m_rightRod, arcLeftEnds.second);
-        sys.disableCollisionBetween(m_rightRod, arcLeftEnds.second);
+        engine.addRigidConstraint(m_rightRod, arcLeftEnds.first);
+        engine.disableCollisionBetween(m_rightRod, arcLeftEnds.first);
+        engine.addRigidConstraint(m_rightRod, arcLeftEnds.second);
+        engine.disableCollisionBetween(m_rightRod, arcLeftEnds.second);
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        auto& sys = engine.world();
         (void)t;
         // Cancel gravity and prescribe motion for the two rods
         const real_t v_sep = (real_t)0.5;    // move apart along ±X
         const real_t omega = (real_t)1.0;    // twist around local Y
 
         if (m_leftRod != entt::null) {
-            sys.applyForce(m_leftRod, -sys.gravity() * sys.getMass(m_leftRod).diagonal(), Vector3r::Zero());
-            sys.setLinearVelocity(m_leftRod, Vector3r(-(v_sep), 0, 0));
-            sys.setAngularVelocity(m_leftRod, Vector3r(omega, 0, 0));
+            engine.applyForce(m_leftRod, -engine.gravity() * engine.getMass(m_leftRod).diagonal(), Vector3r::Zero());
+            engine.setLinearVelocity(m_leftRod, Vector3r(-(v_sep), 0, 0));
+            engine.setAngularVelocity(m_leftRod, Vector3r(omega, 0, 0));
         }
         if (m_rightRod != entt::null) {
-            sys.applyForce(m_rightRod, -sys.gravity() * sys.getMass(m_rightRod).diagonal(), Vector3r::Zero());
-            sys.setLinearVelocity(m_rightRod, Vector3r(+(v_sep), 0, 0));
-            sys.setAngularVelocity(m_rightRod, Vector3r(omega, 0, 0));
+            engine.applyForce(m_rightRod, -engine.gravity() * engine.getMass(m_rightRod).diagonal(), Vector3r::Zero());
+            engine.setLinearVelocity(m_rightRod, Vector3r(+(v_sep), 0, 0));
+            engine.setAngularVelocity(m_rightRod, Vector3r(omega, 0, 0));
         }
     }
 

@@ -7,6 +7,7 @@
 #include <limits>
 
 #include "physics_types.hpp"
+#include "../world.hpp"
 
 namespace cardillo { class World; }
 namespace cardillo { namespace misc { struct SplinePattern; } }
@@ -112,32 +113,32 @@ public:
                              const BeamCrossSection& section);
 
     // Compatibility forwarders (public API)
-    entt::registry& ecs();
-    const entt::registry& ecs() const;
+    entt::registry& ecs() { return m_world.ecs(); }
+    const entt::registry& ecs() const { return m_world.ecs(); }
 
-    void disableCollisionBetween(entt::entity a, entt::entity b);
-    void makeStatic(entt::entity e);
+    void disableCollisionBetween(entt::entity a, entt::entity b) { m_world.disableCollisionBetween(a,b); }
+    void makeStatic(entt::entity e) { m_world.makeStatic(e); }
 
-    MatrixXXr getMass(entt::entity e) const;
-    Vector3r getInertiaDiag(entt::entity e) const;
-    VectorXr getPosition(entt::entity e) const;
-    real_t getKineticEnergy(entt::entity e) const;
+    MatrixXXr getMass(entt::entity e) const { return m_world.getMass(e); }
+    Vector3r getInertiaDiag(entt::entity e) const { return m_world.getInertiaDiag(e); }
+    VectorXr getPosition(entt::entity e) const { return m_world.getPosition(e); }
+    real_t getKineticEnergy(entt::entity e) const { return m_world.getKineticEnergy(e); }
 
-    void applyForce(entt::entity e, const Vector3r& f, const Vector3r& tau);
-    void applyInertialTorque(entt::entity e, const Vector3r& tau);
+    void applyForce(entt::entity e, const Vector3r& f, const Vector3r& tau) { m_world.applyForce(e, f, tau); }
+    void applyInertialTorque(entt::entity e, const Vector3r& tau) { m_world.applyInertialTorque(e, tau); }
 
-    void setPosition(entt::entity e, const Vector3r& p);
-    void setOrientation(entt::entity e, const Quaternion4r& q);
-    void setLinearVelocity(entt::entity e, const Vector3r& v);
-    void setAngularVelocity(entt::entity e, const Vector3r& w);
-    void setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w);
+    void setPosition(entt::entity e, const Vector3r& p) { m_world.setPosition(e, p); }
+    void setOrientation(entt::entity e, const Quaternion4r& q) { m_world.setOrientation(e, q); }
+    void setLinearVelocity(entt::entity e, const Vector3r& v) { m_world.setLinearVelocity(e, v); }
+    void setAngularVelocity(entt::entity e, const Vector3r& w) { m_world.setAngularVelocity(e, w); }
+    void setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w) { m_world.setVelocityByForce(e, v, w); }
 
-    void setGravity(const Vector3r& g);
-    const Vector3r& gravity() const;
+    void setGravity(const Vector3r& g) { m_world.setGravity(g); }
+    const Vector3r& gravity() const { return m_world.gravity(); }
 
-    void markStructureDirty();
-    void track(entt::entity e, const std::string& name);
-    void writeTrackedStateToCsv(real_t t);
+    void markStructureDirty() { m_world.markStructureDirty(); }
+    void track(entt::entity e, const std::string& name) { m_world.track(e, name); }
+    void writeTrackedStateToCsv(real_t t) { m_world.writeTrackedStateToCsv(t); }
 
 private:
     cardillo::World& m_world;

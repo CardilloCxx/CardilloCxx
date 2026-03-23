@@ -12,7 +12,6 @@ public:
     ~DzhanibekovScene() override = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         const real_t mass = (real_t)1.0;
@@ -30,13 +29,13 @@ public:
         // const Vector3r angularVelocity(eps, eps, Omega);
     physics::RigidState state; state.position = position; state.orientation = orientation; state.linearVelocity = linearVelocity; state.angularVelocity = angularVelocity; physics::RigidProps props; props.mass = mass; engine.addRigidBody(shape, state, props);
 
-        const auto& reg = sys.ecs();
+        const auto& reg = engine.ecs();
         entt::entity rodEntity = entt::null;
         for (auto entity : reg.view<cardillo::World::C_RigidBodyTag>()) {
             rodEntity = entity; break;
         }
         if (rodEntity != entt::null) {
-            sys.track(rodEntity, "dzhanibekov_rod");
+            engine.track(rodEntity, "dzhanibekov_rod");
         }
 
     }

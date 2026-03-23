@@ -21,11 +21,10 @@ public:
     ~FabricScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
         using namespace cardillo;
         using namespace cardillo::misc;
 
-        sys.setGravity(Vector3r(0, 0, -9.81));
+        engine.setGravity(Vector3r(0, 0, -9.81));
 
         // Plane
         // engine.addStaticBody(physics::PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), (real_t)8, (real_t)8),
@@ -135,7 +134,7 @@ public:
 
         // Close open loops manually by rigidly constraining ends to elements 6 steps inward for "res/bcc/openwork_trellis_pattern.bcc"
         if(bccRel == "res/bcc/openwork_trellis_pattern.bcc") {
-            auto& reg = sys.ecs();
+            auto& reg = engine.ecs();
             auto view = reg.view<World::C_BeamElement>();
             std::unordered_set<entt::entity> visited;
             const size_t offsetSteps = 6;
@@ -182,12 +181,12 @@ public:
                 const entt::entity endPrev = chain[chain.size() - 1 - offsetSteps];
 
                 if (reg.valid(start) && reg.valid(endPrev)) {
-                    sys.addRigidConstraint(start, endPrev);
-                    sys.disableCollisionBetween(start, endPrev);
+                    engine.addRigidConstraint(start, endPrev);
+                    engine.disableCollisionBetween(start, endPrev);
                 }
                 if (reg.valid(end) && reg.valid(startNext)) {
-                    sys.addRigidConstraint(end, startNext);
-                    sys.disableCollisionBetween(end, startNext);
+                    engine.addRigidConstraint(end, startNext);
+                    engine.disableCollisionBetween(end, startNext);
                 }
             }
         }
@@ -218,7 +217,7 @@ public:
         struct Candidate { entt::entity e; Vector3r p; };
         std::vector<Candidate> allCandidates;
 
-        auto view = sys.ecs().view<World::C_BeamElement, World::C_Position3>();
+        auto view = engine.ecs().view<World::C_BeamElement, World::C_Position3>();
         real_t minX = std::numeric_limits<real_t>::infinity();
         real_t maxX = -std::numeric_limits<real_t>::infinity();
         for (auto [e, be, pos] : view.each()) {
@@ -265,12 +264,12 @@ public:
         auto rightAttach = pickClosestToTargets(maxX, attachCount);
 
         for (const auto& e : leftAttach) {
-            sys.addRigidConstraint(m_leftCube, e);
-            sys.disableCollisionBetween(m_leftCube, e);
+            engine.addRigidConstraint(m_leftCube, e);
+            engine.disableCollisionBetween(m_leftCube, e);
         }
         for (const auto& e : rightAttach) {
-            sys.addRigidConstraint(m_rightCube, e);
-            sys.disableCollisionBetween(m_rightCube, e);
+            engine.addRigidConstraint(m_rightCube, e);
+            engine.disableCollisionBetween(m_rightCube, e);
         }
 
         // Motion parameters based on AABB size
@@ -281,12 +280,11 @@ public:
 
         // Print total number of beam elements created
         size_t beamCount = 0;
-        sys.ecs().view<World::C_BeamElement>().each([&](auto&) { ++beamCount; });
+        engine.ecs().view<World::C_BeamElement>().each([&](auto&) { ++beamCount; });
         // std::cout << "[FabricScene] Created " << beamCount << " beam elements." << std::endl;
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        auto& sys = engine.world();
         using namespace cardillo;
 
         auto smoothstep = [](real_t x) {
@@ -298,27 +296,27 @@ public:
         if (!haveCubes) return;
 
         // Cancel gravity
-        sys.applyForce(m_leftCube,  -sys.gravity() * sys.getMass(m_leftCube).diagonal(), Vector3r::Zero());
-        sys.applyForce(m_rightCube, -sys.gravity() * sys.getMass(m_rightCube).diagonal(), Vector3r::Zero());
+        engine.applyForce(m_leftCube,  -engine.gravity() * engine.getMass(m_leftCube).diagonal(), Vector3r::Zero());
+        engine.applyForce(m_rightCube, -engine.gravity() * engine.getMass(m_rightCube).diagonal(), Vector3r::Zero());
 
         // First phase: move toward each other for 0.5 s with smooth accel/decel
         if (t <= m_moveDuration) {
             const real_t s = t / m_moveDuration;
             const real_t v = m_moveSpeed * std::sin((real_t)M_PI * s);
-            sys.setLinearVelocity(m_leftCube,  Vector3r(+v, 0, 0));
-            sys.setLinearVelocity(m_rightCube, Vector3r(-v, 0, 0));
-            sys.setAngularVelocity(m_leftCube,  Vector3r::Zero());
-            sys.setAngularVelocity(m_rightCube, Vector3r::Zero());
+            engine.setLinearVelocity(m_leftCube,  Vector3r(+v, 0, 0));
+            engine.setLinearVelocity(m_rightCube, Vector3r(-v, 0, 0));
+            engine.setAngularVelocity(m_leftCube,  Vector3r::Zero());
+            engine.setAngularVelocity(m_rightCube, Vector3r::Zero());
             return;
         }
 
         // Second phase: twist around Z in opposite directions, ramped up smoothly
         const real_t sTwist = (t - m_moveDuration) / std::max((real_t)1e-6, m_twistRamp);
         const real_t omega = m_twistOmega * smoothstep(sTwist);
-        sys.setLinearVelocity(m_leftCube,  Vector3r::Zero());
-        sys.setLinearVelocity(m_rightCube, Vector3r::Zero());
-        sys.setAngularVelocity(m_leftCube,  Vector3r(0, +omega, 0));
-        sys.setAngularVelocity(m_rightCube, Vector3r(0, -omega, 0));
+        engine.setLinearVelocity(m_leftCube,  Vector3r::Zero());
+        engine.setLinearVelocity(m_rightCube, Vector3r::Zero());
+        engine.setAngularVelocity(m_leftCube,  Vector3r(0, +omega, 0));
+        engine.setAngularVelocity(m_rightCube, Vector3r(0, -omega, 0));
     }
 
 private:
