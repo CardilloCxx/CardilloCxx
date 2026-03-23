@@ -14,7 +14,7 @@ public:
     ~PendulumScene() = default;
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
-        auto& sys = engine.world();
+        (void)engine;
         using namespace cardillo;
         using namespace cardillo::misc;
 
@@ -60,16 +60,16 @@ public:
         auto capsule2 = engine.addRigidBody(shape2, state2, props2);
 
         // disable collisions
-        // sys.disableCollisionBetween(floor, capsule1);
-        // sys.disableCollisionBetween(floor, capsule2);
-        sys.disableCollisionBetween(capsule1, capsule2);
+        // engine.disableCollisionBetween(floor, capsule1);
+        // engine.disableCollisionBetween(floor, capsule2);
+        engine.disableCollisionBetween(capsule1, capsule2);
 
         // hinge origin <> capsule1
         // sys.addRigidConstraint(floor, capsule1, Vector3r::Zero());
         Vector3r k_axis1 = Vector3r::Constant(std::numeric_limits<real_t>::max());
         k_axis1(2) = 1e-1; // small stiffness on y-axis
         Vector3r d_axis1 = Vector3r::Zero(); // no damping
-        sys.addRigidConstraint(floor, capsule1, Vector3r::Zero(), std::nullopt, k_axis1, d_axis1);
+        engine.addRigidConstraint(floor, capsule1, Vector3r::Zero(), std::nullopt, k_axis1, d_axis1);
 
         // hinge capsule1 <> capsule2
         // sys.addRigidConstraint(capsule1, capsule2, Vector3r(2 * l1,0,0));
@@ -77,7 +77,7 @@ public:
         k_axis2(2) = 1e2; // moderate stiffness on y-axis
         Vector3r d_axis2 = Vector3r::Zero();
         // d_axis2(2) = 1e-3; // small stiffness on y-axis
-        sys.addRigidConstraint(capsule1, capsule2, Vector3r(2 * l1,0,0), std::nullopt, k_axis2, d_axis2);
+        engine.addRigidConstraint(capsule1, capsule2, Vector3r(2 * l1,0,0), std::nullopt, k_axis2, d_axis2);
     }
 
     // void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {

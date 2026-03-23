@@ -11,11 +11,10 @@ target_include_directories(matrix_bench PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
-# Link Eigen and MPI for fair comparison and reuse types
+# Link Eigen for fair comparison and reuse types
 
 target_link_libraries(matrix_bench PRIVATE
     Eigen3::Eigen
-    MPI::MPI_CXX
 )
 
 # Try to find BLAS (CBLAS)

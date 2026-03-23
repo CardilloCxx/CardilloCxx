@@ -1,7 +1,7 @@
 
 #include "dynamics_assembler.hpp"
-#include "constraints.hpp"
-#include "../collision/collision_coal.hpp"
+#include "../constraints/constraints.hpp"
+#include "../../collision/collision_coal.hpp"
 #include <Eigen/Cholesky>
 #include <cmath>
 #include <iostream>

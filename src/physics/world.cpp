@@ -1,10 +1,10 @@
 #include <optional>
 #include "world.hpp"
-#include "assets.hpp"
-#include "constraints.hpp"
-#include "constraint_factory.hpp"
-#include "entity_state_updater.hpp"
-#include "beam_element_updater.hpp"
+#include "assets/assets.hpp"
+#include "constraints/constraints.hpp"
+#include "constraints/constraint_factory.hpp"
+#include "integration/position_integrator.hpp"
+#include "synchronization/derived_entity_sync.hpp"
 #include "../collision/collision_coal.hpp"
 #include "../solver/warmstart.hpp"
 #include "../io/csv_writer.hpp"
@@ -525,19 +525,19 @@ const ::cardillo::HeightFieldAsset& World::getHeightFieldAsset(entt::entity e) c
 }
 
 void World::explicitPositionUpdate(real_t h) {
-    physics::EntityStateUpdater::explicitPositionUpdate(*this, h);
+    physics::PositionIntegrator::explicitPositionUpdate(*this, h);
 }
 
 void World::linearImplicitPositionUpdate(real_t h) {
-    physics::EntityStateUpdater::linearImplicitPositionUpdate(*this, h);
+    physics::PositionIntegrator::linearImplicitPositionUpdate(*this, h);
 }
 
 void World::updateBeamElementEntity(entt::entity e) {
-    physics::BeamElementUpdater::updateBeamElementEntity(*this, e);
+    physics::DerivedEntitySync::updateBeamElementEntity(*this, e);
 }
 
 void World::updateEntities() {
-    physics::BeamElementUpdater::updateEntities(*this);
+    physics::DerivedEntitySync::updateEntities(*this);
 }
 
 } // namespace cardillo::

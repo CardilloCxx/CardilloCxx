@@ -1,6 +1,6 @@
 #include "physics_types.hpp"
 
-#include "world.hpp"
+#include "../world.hpp"
 
 namespace cardillo::physics {
 

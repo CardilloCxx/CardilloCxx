@@ -1,6 +1,6 @@
 #include "beam_factory.hpp"
 
-#include "constraints.hpp"
+#include "../constraints/constraints.hpp"
 
 #include <cmath>
 
@@ -35,10 +35,10 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
     World& sys,
     const std::vector<BeamSample>& samples,
     bool loop,
-    const World::BeamCrossSection& section,
-    const World::BeamSpringParams& springs,
-    const World::RigidState& stateDefaults,
-    const World::RigidProps& propsDefaults,
+    const BeamCrossSection& section,
+    const BeamSpringParams& springs,
+    const RigidState& stateDefaults,
+    const RigidProps& propsDefaults,
     const Vector3r& splineCOMWorld) {
     if (samples.empty()) return {entt::null, entt::null};
 
@@ -47,8 +47,8 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
     if (totalLen <= (real_t)0) totalLen = (real_t)1;
 
     Matrix33r Rshape = Matrix33r::Identity();
-    if (section.type == World::BeamBodyType::Capsule ||
-        section.type == World::BeamBodyType::Cylinder) {
+    if (section.type == BeamBodyType::Capsule ||
+        section.type == BeamBodyType::Cylinder) {
         Rshape = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), Vector3r::UnitX()).toRotationMatrix();
     }
 
@@ -66,19 +66,19 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
     for (const auto& s : samples) {
         const real_t segLen = s.segLen;
 
-        World::RigidShape shape;
-        if (section.type == World::BeamBodyType::Cube) {
-            shape = World::CubeShape(
+        RigidShape shape;
+        if (section.type == BeamBodyType::Cube) {
+            shape = CubeShape(
                 Vector3r(segLen * (real_t)0.5, section.width * (real_t)0.5, section.height * (real_t)0.5));
-        } else if (section.type == World::BeamBodyType::Cylinder) {
+        } else if (section.type == BeamBodyType::Cylinder) {
             const real_t r = std::min(section.width, section.height) * (real_t)0.5;
-            shape = World::CylinderShape(r, segLen * (real_t)0.5);
+            shape = CylinderShape(r, segLen * (real_t)0.5);
         } else {
             const real_t r = std::min(section.width, section.height) * (real_t)0.5;
-            shape = World::CapsuleShape(r, segLen * (real_t)0.5);
+            shape = CapsuleShape(r, segLen * (real_t)0.5);
         }
 
-        World::RigidProps segProps = propsDefaults;
+        RigidProps segProps = propsDefaults;
         real_t massPerSegment = (real_t)0;
         if (propsDefaults.mass.has_value()) {
             massPerSegment = *propsDefaults.mass * (segLen / totalLen);
@@ -106,7 +106,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
         const Vector3r worldPos = splineCOMWorld + stateDefaults.position + Rbody * (s.position - splineCOMWorld);
         const Vector3r v_world = v_body_world + w_body_world.cross(worldPos - worldCOM);
 
-        World::RigidState segState;
+        RigidState segState;
         segState.position = worldPos;
         segState.orientation = qworld;
         segState.linearVelocity = v_world;
@@ -160,10 +160,10 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
 std::pair<entt::entity, entt::entity> BeamFactory::createBeam(
     World& system,
     const misc::SplinePattern& spline,
-    const World::BeamCrossSection& section,
-    const World::BeamSpringParams& springs,
-    const World::RigidState& stateDefaults,
-    const World::RigidProps& propsDefaults,
+    const BeamCrossSection& section,
+    const BeamSpringParams& springs,
+    const RigidState& stateDefaults,
+    const RigidProps& propsDefaults,
     size_t segments) {
     const real_t totalLen = spline.totalLength();
     const real_t segLen = totalLen / (real_t)segments;
@@ -214,10 +214,10 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeam(
 std::pair<entt::entity, entt::entity> BeamFactory::createBeams(
     World& system,
     const std::vector<const misc::SplinePattern*>& splines,
-    const World::BeamCrossSection& section,
-    const World::BeamSpringParams& springs,
-    const World::RigidState& stateDefaults,
-    const World::RigidProps& propsDefaults,
+    const BeamCrossSection& section,
+    const BeamSpringParams& springs,
+    const RigidState& stateDefaults,
+    const RigidProps& propsDefaults,
     size_t segments) {
     real_t totalLen = (real_t)0;
     for (const auto* sp : splines) {

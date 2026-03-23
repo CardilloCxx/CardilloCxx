@@ -1,12 +1,13 @@
 add_library(${PROJECT_NAME} STATIC
     cardillo.cpp
-    physics/physics_types.cpp
+    physics/api/physics_types.cpp
+    physics/api/physics_engine.cpp
     physics/world.cpp
-    physics/body_factory.cpp
-    physics/assets.cpp
-    physics/constraints.cpp
-    physics/entity_state_updater.cpp
-    physics/beam_element_updater.cpp
+    physics/assets/body_factory.cpp
+    physics/assets/assets.cpp
+    physics/constraints/constraints.cpp
+    physics/integration/position_integrator.cpp
+    physics/synchronization/derived_entity_sync.cpp
     io/vtk_writer_binary.cpp
     io/vtk_sphere_util.cpp
     io/heightmap_loader.cpp
@@ -15,10 +16,8 @@ add_library(${PROJECT_NAME} STATIC
     solver/dual_stoermer_verlet.cpp
     solver/projected_jacobi.cpp
     misc/spline.cpp
-    physics/dynamics_assembler.cpp
+    physics/assembly/dynamics_assembler.cpp
     collision/collision_coal.cpp
-    partitioning/naive_partitioner.cpp
-    comm/communication.cpp
     config/config.cpp
 )
 
@@ -32,7 +31,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Eigen3::Eigen
         PkgConfig::PETSC
-        MPI::MPI_CXX
+    MPI::MPI_CXX
 )
 
 # # COAL collision library is required

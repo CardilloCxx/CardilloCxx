@@ -1,9 +1,9 @@
-#include "entity_state_updater.hpp"
+#include "position_integrator.hpp"
 
 namespace cardillo {
 namespace physics {
 
-void EntityStateUpdater::explicitPositionUpdate(World& world, real_t h) {
+void PositionIntegrator::explicitPositionUpdate(World& world, real_t h) {
     auto _sc = world.timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
     auto& reg = world.ecs();
 
@@ -27,10 +27,9 @@ void EntityStateUpdater::explicitPositionUpdate(World& world, real_t h) {
         orientation.value = World::alignQuaternionTo(orientation.value, q_prev);
     }
 
-    BeamElementUpdater::updateEntities(world);
 }
 
-void EntityStateUpdater::linearImplicitPositionUpdate(World& world, real_t h) {
+void PositionIntegrator::linearImplicitPositionUpdate(World& world, real_t h) {
     auto _sc = world.timings().scope(cardillo::misc::TimingManager::TimerId::Integration);
     auto& reg = world.ecs();
 
@@ -59,7 +58,6 @@ void EntityStateUpdater::linearImplicitPositionUpdate(World& world, real_t h) {
         orientation.value = World::alignQuaternionTo(orientation.value, q_prev);
     }
 
-    BeamElementUpdater::updateEntities(world);
 }
 
 } // namespace physics

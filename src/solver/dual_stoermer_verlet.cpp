@@ -18,6 +18,7 @@ void DualStoermerVerletSolver::stepMidpoint(real_t dt)
 
     // 2) Inplace midpoint position update
     m_sys.linearImplicitPositionUpdate(0.5 * dt);
+    m_sys.updateEntities();
 
     // TODO: Why does this break the solver?
     //       This function rebuilds the collusion mangager, so it should be called after the position update?
@@ -80,6 +81,7 @@ void DualStoermerVerletSolver::stepMidpoint(real_t dt)
 
     // 7) Inplace final position update
     m_sys.explicitPositionUpdate(0.5 * dt);
+    m_sys.updateEntities();
 }
 
 }

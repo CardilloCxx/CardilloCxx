@@ -1,6 +1,5 @@
 #include "projected_jacobi.hpp"
 #include <iostream>
-#include <mpi.h>
 #include <algorithm>
 #include <limits>
 #include <cmath>
@@ -8,8 +7,6 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
-#include "../partitioning/naive_partitioner.hpp"
-#include "../comm/communication.hpp"
 
 namespace cardillo::solver {
 
@@ -18,13 +15,12 @@ namespace cardillo::solver {
 static inline VectorXr precompute_Rdiag_sparse(
 	const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W,
 	const VectorXr& MinvDiag,
-	const std::vector<int>& relevantContacts,
 	real_t alpha)
 {
 	const int C = (int)W.rows();
 	VectorXr R = VectorXr::Zero(C);
 
-	for (int cid : relevantContacts) {
+	for (int cid = 0; cid < C; ++cid) {
 		if (cid < 0 || cid >= C) continue;
 		real_t Dii = 0;
 		for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
@@ -39,7 +35,6 @@ static inline VectorXr precompute_Rdiag_sparse(
 
 static inline VectorXr precompute_Rdiag_true_delassus(
 	const cardillo::physics::DynamicsAssembler& dyn,
-	const std::vector<int>& relevantContacts,
 	real_t alpha)
 {
 	const auto& W = dyn.W();
@@ -51,7 +46,7 @@ static inline VectorXr precompute_Rdiag_true_delassus(
 	const int extV = totalV + nSprings + nDampers;
 	VectorXr rhs_ext = VectorXr::Zero(extV);
 
-	for (int cid : relevantContacts) {
+	for (int cid = 0; cid < C; ++cid) {
 		if (cid < 0 || cid >= C) continue;
 		rhs_ext.setZero();
 		for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
@@ -75,7 +70,6 @@ struct PJIterContext {
 	const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W;
 	cardillo::physics::DynamicsAssembler* dyn; // pointer to assembler (for S-solve etc.)
 	std::vector<int> bodyOffsets;
-	partitioning::PartitionerResult res;
 	VectorXr Rdiag;
 	// Grouping of contact rows by original contact index (for friction cone projection)
 	std::vector<std::vector<int>> contactRowGroups; // each group has 1 (normal only) or 3 rows (n,t1,t2) sorted by row id
@@ -91,7 +85,6 @@ struct PJIterContext {
 	int nD{0};  // damper dofs (gamma rows)
 
 	// Controls and diagnostics for the loop
-	int worldRank{0};
 	int maxIterations{1000000};
 	real_t tol{(real_t)1e-5};
 	real_t relax{(real_t)1};
@@ -105,8 +98,8 @@ struct PJIterContext {
 
 class ConvergenceCsvWriter {
 public:
-	ConvergenceCsvWriter(const std::string& dir, int worldRank)
-		: m_enabled(!dir.empty() && worldRank == 0), m_dir(dir) {
+	ConvergenceCsvWriter(const std::string& dir)
+		: m_enabled(!dir.empty()), m_dir(dir) {
 		if (m_enabled) {
 			std::error_code ec;
 			std::filesystem::create_directories(m_dir, ec);
@@ -174,37 +167,15 @@ static inline PJIterContext build_context(
 	real_t alpha,
 	bool useTrueDelassus)
 {
-    auto& sys = dyn.system();
 	const auto& W = dyn.W();
-	const auto& bodyOffsets = dyn.bodyVelOffsets();
 	const int C = (int)W.rows();
 
-	std::vector<partitioning::ContactEdge> partEdges(C);
-	const auto& dynToOrig = dyn.dynamicContactToOriginalAll();
-	const auto& reg = dyn.system().ecs();
-	const auto& contactsAll = dyn.contacts();
-	for (int i = 0; i < C; ++i) {
-		int origIdx = (i >= 0 && i < (int)dynToOrig.size()) ? dynToOrig[(size_t)i] : -1;
-		int ba = -1, bb = -1;
-		if (origIdx >= 0 && origIdx < (int)contactsAll.size()) {
-			const auto& c = contactsAll[(size_t)origIdx];
-			if (reg.any_of<cardillo::World::C_BodyIndex>(c.a)) ba = reg.get<cardillo::World::C_BodyIndex>(c.a).b;
-			if (reg.any_of<cardillo::World::C_BodyIndex>(c.b)) bb = reg.get<cardillo::World::C_BodyIndex>(c.b).b;
-		}
-		partEdges[(size_t)i].bodyA = ba;
-		partEdges[(size_t)i].bodyB = bb;
-	}
-
-	partitioning::NaivePartitioner part;
-	int Nb = (int)bodyOffsets.size() - 1;
-	auto res = part.build(Nb, partEdges, false);
-
-	PJIterContext ctx{dyn.W(), &dyn, std::vector<int>{}, std::move(res), VectorXr()};
+	PJIterContext ctx{dyn.W(), &dyn, std::vector<int>{}, VectorXr()};
 	ctx.bodyOffsets = dyn.bodyVelOffsets();
 	// Use Minv diagonal from DynamicsAssembler when computing diagonal of G = W * Minv * W^T
 	ctx.Rdiag = useTrueDelassus
-		? precompute_Rdiag_true_delassus(dyn, ctx.res.allContacts, alpha)
-		: precompute_Rdiag_sparse(W, dyn.MinvDiag(), ctx.res.allContacts, alpha);
+		? precompute_Rdiag_true_delassus(dyn, alpha)
+		: precompute_Rdiag_sparse(W, dyn.MinvDiag(), alpha);
 	// Populate dimension helpers: velocity dofs, percussion (contact) rows, and spring dofs
 	const int dofConcat = (ctx.bodyOffsets.empty() ? 0 : ctx.bodyOffsets.back());
 	ctx.nV = dofConcat;
@@ -224,10 +195,10 @@ static inline PJIterContext build_context(
 // Compute provisional gradient step z = p_in - R * (W * u_in)
 static inline VectorXr provisional_step(PJIterContext& ctx, const VectorXr& u_in, const VectorXr& p_in)
 {
-	const auto& W = ctx.W; const auto& Rdiag = ctx.Rdiag; const auto& res = ctx.res;
+	const auto& W = ctx.W; const auto& Rdiag = ctx.Rdiag;
 	ctx.y_contact.noalias() = W * u_in;
 	VectorXr z = VectorXr::Zero(p_in.size());
-	for (int cid : res.allContacts) {
+	for (int cid = 0; cid < p_in.size(); ++cid) {
 		z[cid] = p_in[cid] - Rdiag[cid] * ctx.y_contact[cid];
 	}
 	return z;
@@ -265,16 +236,13 @@ static inline void project_groups(const PJIterContext& ctx, const VectorXr& z, c
 static inline void relax_exchange_update(PJIterContext& ctx, const VectorXr& x_old, 
 										 const VectorXr& p_old, VectorXr& x_new, VectorXr& p_new)
 {
-	const auto& W = ctx.W; cardillo::physics::DynamicsAssembler* dyn = ctx.dyn; const auto& bodyOffsets = ctx.bodyOffsets; const auto& res = ctx.res;
-	// cardillo::comm::Communication::exchangePercussionsOwnerPush(p_new, res);
+	const auto& W = ctx.W; cardillo::physics::DynamicsAssembler* dyn = ctx.dyn;
 
 	// Use effective-mass solve (S^{-1}) to update u
 	// Build extended RHS [tmp_concat; 0; 0] and solve full S * delta_x = rhs_ext, then apply only velocity part
 	VectorXr rhs_ext = VectorXr::Zero(ctx.nV + ctx.nS + ctx.nD);
 	rhs_ext.segment(0,  ctx.nV) = W.transpose() * (p_new - p_old);
 	x_new = x_old + dyn->solveS(rhs_ext);
-
-	// cardillo::comm::Communication::exchangeBodyVelocitiesOwnerPushConcat(u_new, res, bodyOffsets);
 }
 
 // One Projected-Jacobi sweep: update p with current u, then compute new u
@@ -289,9 +257,9 @@ static inline void pj_sweep(PJIterContext& ctx, const VectorXr& x_in,
 
 // Compute global L2 norm of difference across local body segments
 static inline real_t global_segment_norm(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b, real_t eps_abs) {
-	const auto& bo = ctx.bodyOffsets; const auto& res = ctx.res;
+	const auto& bo = ctx.bodyOffsets;
 	double loc_sum = 0.0;
-	for (int br = res.bodyStart; br < res.bodyEnd; ++br) {
+	for (int br = 0; br + 1 < (int)bo.size(); ++br) {
 		int off = bo[(size_t)br]; int n = bo[(size_t)br+1] - off;
 		if (n > 0) {
 			Eigen::Map<const VectorXr> va(a.data()+off, n), vb(b.data()+off, n);
@@ -306,30 +274,29 @@ static inline real_t global_segment_norm(const PJIterContext& ctx, const VectorX
 			}
 		}
 	}
-	double gsum = 0.0; MPI_Allreduce(&loc_sum, &gsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-	if (std::isnan(gsum)) {
+	if (std::isnan(loc_sum)) {
 		std::cerr << "[ProjectedJacobi] Warning: NaN detected in global_segment_norm" << std::endl;
 	}
 
 	const real_t denom = (ctx.nV > 0) ? (real_t)std::sqrt((double)ctx.nV) : (real_t)1;
-	return (real_t)std::sqrt(gsum) / denom;
+	return (real_t)std::sqrt(loc_sum) / denom;
 }
 
 static inline real_t global_contact_norm(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b) {
+	(void)ctx;
 	double loc_sum = 0.0;
-	for (int cid : ctx.res.allContacts) {
+	for (int cid = 0; cid < a.size(); ++cid) {
 		real_t diff = a[cid] - b[cid];
 		loc_sum += static_cast<double>(diff) * static_cast<double>(diff);
 	}
-	double gsum = 0.0; MPI_Allreduce(&loc_sum, &gsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	return (real_t)std::sqrt(gsum);
+	return (real_t)std::sqrt(loc_sum);
 }
 
 static inline real_t global_velocity_l2_norm(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b) {
-	const auto& bo = ctx.bodyOffsets; const auto& res = ctx.res;
+	const auto& bo = ctx.bodyOffsets;
 	double loc_sum = 0.0;
-	for (int br = res.bodyStart; br < res.bodyEnd; ++br) {
+	for (int br = 0; br + 1 < (int)bo.size(); ++br) {
 		int off = bo[(size_t)br]; int n = bo[(size_t)br+1] - off;
 		if (n > 0) {
 			Eigen::Map<const VectorXr> va(a.data()+off, n), vb(b.data()+off, n);
@@ -337,21 +304,20 @@ static inline real_t global_velocity_l2_norm(const PJIterContext& ctx, const Vec
 			loc_sum += diff.squaredNorm();
 		}
 	}
-	double gsum = 0.0; MPI_Allreduce(&loc_sum, &gsum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	return (real_t)std::sqrt(gsum);
+	return (real_t)std::sqrt(loc_sum);
 }
 
 static inline double global_segment_dot(const PJIterContext& ctx, const VectorXr& a, const VectorXr& b) {
-	const auto& bo = ctx.bodyOffsets; const auto& res = ctx.res;
+	const auto& bo = ctx.bodyOffsets;
 	double loc = 0.0;
-	for (int br = res.bodyStart; br < res.bodyEnd; ++br) {
+	for (int br = 0; br + 1 < (int)bo.size(); ++br) {
 		int off = bo[(size_t)br]; int n = bo[(size_t)br+1] - off;
 		if (n > 0) {
 			Eigen::Map<const VectorXr> va(a.data()+off, n), vb(b.data()+off, n);
 			loc += va.dot(vb);
 		}
 	}
-	double g = 0.0; MPI_Allreduce(&loc, &g, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); return g;
+	return loc;
 }
 
 namespace {
@@ -374,7 +340,7 @@ static inline void standard_loop(PJIterContext& ctx,
 		}
 		++ctx.iteration;
 		if (ctx.err_global <= (real_t)1) break;
-		if (ctx.debug && ctx.worldRank == 0 && (ctx.iteration % 1000 == 0)) {
+		if (ctx.debug && (ctx.iteration % 1000 == 0)) {
 			std::cout << "[ProjectedJacobi] Iteration " << ctx.iteration << ", error = " << ctx.err_global << std::endl;
 		}
 		u_prev = u;
@@ -447,7 +413,7 @@ static inline void nesterov_loop(PJIterContext& ctx,
 		}
 		err_prev = ctx.err_global;
 
-		if (ctx.debug && ctx.worldRank == 0 && (ctx.iteration % 1000 == 0)) {
+		if (ctx.debug && (ctx.iteration % 1000 == 0)) {
 			std::cout << "[ProjectedJacobi+Nesterov] Iter " << ctx.iteration << ", error = " << ctx.err_global
 					  << ", beta = " << betak1 << std::endl;
 		}
@@ -467,12 +433,8 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	const int C = (int)Wref.rows();
 	const int Nv = (Wref.cols() > 0) ? Wref.cols() : 0;
 
-	int worldRank = 0;
-	MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
-
 	// Build iteration context and precomputations
 	PJIterContext ctx = build_context(m_dyn, alpha(), m_useTrueDelassus);
-	const auto& bodyOffsets = ctx.bodyOffsets;
 
 	// Initialize impulses
 	VectorXr p = VectorXr::Zero(C);
@@ -504,33 +466,26 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	}
 
 	// Configure iteration context
-	ctx.worldRank = worldRank;
 	ctx.maxIterations = m_maxIterations;
 	ctx.tol = tol;
 	ctx.relax = m_relax;
 	ctx.debug = m_debug;
 	ctx.eps_rel = m_epsRel;
 
-	ConvergenceCsvWriter csvWriter(m_convCsvDir, worldRank);
-	ConvergenceCsvWriter* logger = (!m_convCsvDir.empty() && worldRank == 0) ? &csvWriter : nullptr;
+	ConvergenceCsvWriter csvWriter(m_convCsvDir);
+	ConvergenceCsvWriter* logger = (!m_convCsvDir.empty()) ? &csvWriter : nullptr;
 	if (logger) {
 		csvWriter.startTimestep(g_pj_convergence_counter++);
 	}
 
-	// Initial ghost exchanges to ensure consistent data across ranks before first sweep
-	// cardillo::comm::Communication::exchangeBodyVelocitiesOwnerPushConcat(u, ctx.res, ctx.bodyOffsets);
-	// if (m_warmStart) {
-	// 	cardillo::comm::Communication::exchangePercussionsOwnerPush(p, ctx.res);
-	// }
-
 	if (!m_useNesterov) {
 		standard_loop(ctx, x, p, logger);
-		if (m_debug && worldRank == 0) {
+		if (m_debug) {
 			std::cout << "[ProjectedJacobi] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
 	} else {
 		nesterov_loop(ctx, x, p, m_nest_beta_threshold, m_nest_restart_limit, logger);
-		if (m_debug && worldRank == 0) {
+		if (m_debug) {
 			std::cout << "[ProjectedJacobi+Nesterov] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
 	}
@@ -556,9 +511,6 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 		}
 		m_wsProvider->store(contactsAll, lastImp);
 	}
-
-	// Final synchronization: replicate all body velocities to every rank
-	// cardillo::comm::Communication::replicateAllBodyVelocitiesConcat(u, ctx.res, ctx.bodyOffsets);
 
 	return x;
 }

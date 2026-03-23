@@ -7,11 +7,11 @@
 #include <coal/shape/geometric_shapes.h>
 
 #include "assets.hpp"
-#include "constraints.hpp"
-#include "constraint_factory.hpp"
-#include "../io/csv_writer.hpp"
-#include "../io/heightmap_loader.hpp"
-#include "../io/softbody_loader.hpp"
+#include "../constraints/constraints.hpp"
+#include "../constraints/constraint_factory.hpp"
+#include "../../io/csv_writer.hpp"
+#include "../../io/heightmap_loader.hpp"
+#include "../../io/softbody_loader.hpp"
 
 namespace cardillo {
 namespace physics {

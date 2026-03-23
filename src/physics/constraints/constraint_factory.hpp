@@ -5,7 +5,7 @@
 #include <entt/entt.hpp>
 
 #include "constraints.hpp"
-#include "world.hpp"
+#include "../world.hpp"
 
 namespace cardillo {
 namespace physics {

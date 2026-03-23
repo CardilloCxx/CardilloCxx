@@ -1,5 +1,5 @@
 #include "assets.hpp"
-#include "../io/heightmap_loader.hpp"
+#include "../../io/heightmap_loader.hpp"
 #include <sstream>
 #include <iomanip>
 #include <fstream>

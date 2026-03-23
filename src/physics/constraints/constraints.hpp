@@ -4,8 +4,8 @@
 #include <optional>
 #include <cmath>
 #include <limits>
-#include "../misc/types.hpp"
-#include "world.hpp"
+#include "../../misc/types.hpp"
+#include "../world.hpp"
 #include <iostream>
 
 namespace cardillo {

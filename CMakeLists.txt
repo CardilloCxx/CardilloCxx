@@ -84,7 +84,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(EnTT)
 
-# MPI
+# MPI (required by PETSc headers)
 find_package(MPI REQUIRED)
 
 # PETSc via pkg-config (optional)

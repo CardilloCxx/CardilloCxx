@@ -3,7 +3,7 @@
 #include "../SceneBase.hpp"
 #include <Eigen/Geometry>
 #include <vector>
-#include "physics/constraints.hpp"
+#include "physics/constraints/constraints.hpp"
 
 using namespace cardillo;
 

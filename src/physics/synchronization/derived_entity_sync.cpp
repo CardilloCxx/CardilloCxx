@@ -1,4 +1,4 @@
-#include "beam_element_updater.hpp"
+#include "derived_entity_sync.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -7,7 +7,7 @@
 namespace cardillo {
 namespace physics {
 
-void BeamElementUpdater::updateBeamElementEntity(World& world, entt::entity e) {
+void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
     auto& reg = world.ecs();
 
     if (!reg.valid(e) || !reg.any_of<World::C_BeamElement, World::C_Position3>(e)) return;
@@ -113,7 +113,7 @@ void BeamElementUpdater::updateBeamElementEntity(World& world, entt::entity e) {
     }
 }
 
-void BeamElementUpdater::updateEntities(World& world) {
+void DerivedEntitySync::updateEntities(World& world) {
     auto& reg = world.ecs();
     auto view = reg.view<World::C_BeamElement, const World::C_Position3>();
     for (auto [e, be, pos] : view.each()) {

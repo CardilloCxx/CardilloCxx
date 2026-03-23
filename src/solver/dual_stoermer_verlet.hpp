@@ -7,7 +7,7 @@
 #include "../solver/projected_jacobi.hpp"
 #include "warmstart.hpp"
 #include "../config/config.hpp"
-#include "../physics/dynamics_assembler.hpp"
+#include "../physics/assembly/dynamics_assembler.hpp"
 #include "solver_base.hpp"
 
 namespace cardillo::solver {

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "beam_element_updater.hpp"
+#include "../synchronization/derived_entity_sync.hpp"
 
 namespace cardillo {
 namespace physics {
 
-class EntityStateUpdater {
+class PositionIntegrator {
 public:
     static void explicitPositionUpdate(World& world, real_t h);
     static void linearImplicitPositionUpdate(World& world, real_t h);

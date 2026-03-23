@@ -14,7 +14,6 @@ public:
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        cardillo::World& sys = engine.world();
 
     // ground (static obstacle cube via unified API)
     physics::CubeShape groundShape{Vector3r(5.0, 5.0, 0.5)};
@@ -106,10 +105,9 @@ private:
                     const Vector3r& attachB_local = Vector3r::Zero()) {
         using namespace cardillo;
         using namespace cardillo::physics;
-        World& sys = engine.system();
         if (numSegments <= 0) return;
 
-        entt::registry& reg = sys.ecs();
+        entt::registry& reg = engine.ecs();
 
         // Read endpoint body centers and orientations (fall back to origin/identity if not present)
         Vector3r centerA = Vector3r::Zero();

@@ -7,7 +7,7 @@
 #include <Eigen/Dense>
 #include <coal/BVH/BVH_model.h>
 #include <coal/hfield.h>
-#include "../misc/types.hpp"
+#include "../../misc/types.hpp"
 
 namespace cardillo {
 

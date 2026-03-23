@@ -4,9 +4,9 @@
 #include <vector>
 #include <Eigen/SparseCore>
 
-#include "../misc/types.hpp"
-#include "world.hpp"
-#include "../collision/types.hpp"
+#include "../../misc/types.hpp"
+#include "../world.hpp"
+#include "../../collision/types.hpp"
 
 namespace cardillo::physics {
 

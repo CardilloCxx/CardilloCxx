@@ -22,6 +22,7 @@ void MoreauSolver::stepMidpoint(real_t dt)
 
     // 2) Inplace midpoint position update
     m_sys.explicitPositionUpdate((1.0 - m_theta) * dt);
+    m_sys.updateEntities();
 
     // 3) Evaluate contacts at midpoint positions
     m_dyn.refreshCollisionsAndSprings(dt, m_theta, implicitGyro, lambdaTheta);
@@ -67,6 +68,7 @@ void MoreauSolver::stepMidpoint(real_t dt)
 
     // 7) Inplace final position update
     m_sys.explicitPositionUpdate(m_theta * dt);
+    m_sys.updateEntities();
 }
 
 }

@@ -3,7 +3,6 @@
 #include "solver/solver_base.hpp"
 #include "solver/moreau.hpp"
 #include "solver/dual_stoermer_verlet.hpp"
-#include <mpi.h>
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Geometry>
@@ -60,9 +59,7 @@ void printTimingsAtExit(int sig) {
 
 int main(int argc, char** argv) {
     PetscInitialize(&argc, &argv, nullptr, nullptr);
-    int worldRank = 0, worldSize = 1;
-    MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
-    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+    const int worldRank = 0;
 
     std::signal(SIGINT, printTimingsAtExit);
     Eigen::setNbThreads(1);

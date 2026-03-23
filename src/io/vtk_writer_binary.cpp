@@ -2,16 +2,14 @@
 #include "../collision/collision_coal.hpp"
 #include "vtk_sphere_util.hpp"
 #include "../solver/warmstart.hpp"
-#include "../physics/constraints.hpp"
+#include "../physics/constraints/constraints.hpp"
 #include <cmath>
 #include <coal/hfield.h>
-#include <mpi.h>
 #include <filesystem>
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
-#include "../partitioning/naive_partitioner.hpp"
 
 namespace fs = std::filesystem;
 
@@ -66,17 +64,9 @@ static inline float f32(real_t v) { return static_cast<float>(v); }
 
 // Partition helper (same heuristic as ASCII writer)
 static inline float partitionFromBodyIndex_(const cardillo::World& sys, const entt::registry& reg, entt::entity e) {
+    (void)sys;
     if (reg.any_of<cardillo::World::C_BodyIndex>(e)) {
-        int b = reg.get<cardillo::World::C_BodyIndex>(e).b;
-        int worldRank = 0, worldSize = 1;
-        MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
-        MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
-        int Nb = sys.numBodies();
-        if (Nb <= 0 || worldSize <= 0) {
-            return -1.f; // no valid partition when no bodies or invalid world size
-        }
-        int bodiesPerRank = std::max(1, (Nb + worldSize - 1) / worldSize);
-        return (float)cardillo::partitioning::NaivePartitioner::ownerOf(b, worldSize, bodiesPerRank);
+        return 0.0f;
     }
     return -1.f;
 }

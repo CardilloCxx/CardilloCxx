@@ -13,7 +13,7 @@
 #include <petscsys.h>
 #include "../misc/types.hpp"
 #include "../misc/spline.hpp"
-#include "assets.hpp"
+#include "assets/assets.hpp"
 #include "../misc/dofs.hpp"
 #include "../config/config.hpp"
 #include "../misc/timings/TimingManager.hpp"
