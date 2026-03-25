@@ -77,8 +77,8 @@ struct JointProperties {
         Matrix33r A_Ref;
 
         if (jf.ref.has_value()) {
-            r_ORef = reg.get<cardillo::World::C_Position3>(*jf.ref).value;
-            A_Ref  = reg.get<cardillo::World::C_Orientation>(*jf.ref).value.toRotationMatrix();
+            r_ORef = reg.get<cardillo::C_Position3>(*jf.ref).value;
+            A_Ref  = reg.get<cardillo::C_Orientation>(*jf.ref).value.toRotationMatrix();
         } else {
             r_ORef = Vector3r::Zero();
             A_Ref  = Matrix33r::Identity();
@@ -86,12 +86,12 @@ struct JointProperties {
 
         Vector3r r_OJ_world = r_ORef + A_Ref * jf.r_refJ;
 
-        const auto& r_OA = reg.get<cardillo::World::C_Position3>(A).value;
-        const auto& A_A  = reg.get<cardillo::World::C_Orientation>(A).value.toRotationMatrix();
+        const auto& r_OA = reg.get<cardillo::C_Position3>(A).value;
+        const auto& A_A  = reg.get<cardillo::C_Orientation>(A).value.toRotationMatrix();
         K1_r_S1J = A_A.transpose() * (r_OJ_world - r_OA);
 
-        const auto& r_OB = reg.get<cardillo::World::C_Position3>(B).value;
-        const auto& A_B  = reg.get<cardillo::World::C_Orientation>(B).value.toRotationMatrix();
+        const auto& r_OB = reg.get<cardillo::C_Position3>(B).value;
+        const auto& A_B  = reg.get<cardillo::C_Orientation>(B).value.toRotationMatrix();
         K2_r_S2J = A_B.transpose() * (r_OJ_world - r_OB);
 
         const auto& A_IJ = A_Ref * jf.A_refJ;

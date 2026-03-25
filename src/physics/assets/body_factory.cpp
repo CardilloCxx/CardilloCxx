@@ -177,22 +177,22 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys,
 
         entt::entity cur = BodyFactory::addRigidBody(sys, shape, segState, segProps);
 
-        World::C_BeamElement be_cur;
+        cardillo::C_BeamElement be_cur;
         be_cur.l0 = segLen;
         be_cur.l = segLen;
         if (prev != entt::null) {
             be_cur.prev = prev;
-            if (!sys.ecs().any_of<World::C_BeamElement>(prev)) {
-                World::C_BeamElement be_prev;
+            if (!sys.ecs().any_of<cardillo::C_BeamElement>(prev)) {
+                cardillo::C_BeamElement be_prev;
                 be_prev.l0 = segLen;
                 be_prev.l = segLen;
                 be_prev.next = cur;
-                sys.ecs().emplace<World::C_BeamElement>(prev, be_prev);
+                sys.ecs().emplace<cardillo::C_BeamElement>(prev, be_prev);
             } else {
-                sys.ecs().get<World::C_BeamElement>(prev).next = cur;
+                sys.ecs().get<cardillo::C_BeamElement>(prev).next = cur;
             }
         }
-        sys.ecs().emplace<World::C_BeamElement>(cur, be_cur);
+        sys.ecs().emplace<cardillo::C_BeamElement>(cur, be_cur);
 
         if (prev != entt::null) {
             ConstraintFactory::addBeamConstraint(sys, prev, cur, springs, section);
@@ -203,11 +203,11 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys,
         end = cur;
     }
 
-    if (loop && root != entt::null && end != entt::null && end != root) {
+        if (loop && root != entt::null && end != entt::null && end != root) {
         ConstraintFactory::addBeamConstraint(sys, end, root, springs, section);
         sys.disableCollisionBetween(end, root);
-        if (sys.ecs().any_of<World::C_BeamElement>(end)) sys.ecs().get<World::C_BeamElement>(end).next = root;
-        if (sys.ecs().any_of<World::C_BeamElement>(root)) sys.ecs().get<World::C_BeamElement>(root).prev = end;
+        if (sys.ecs().any_of<cardillo::C_BeamElement>(end)) sys.ecs().get<cardillo::C_BeamElement>(end).next = root;
+        if (sys.ecs().any_of<cardillo::C_BeamElement>(root)) sys.ecs().get<cardillo::C_BeamElement>(root).prev = end;
     }
 
     return {root, end};
@@ -222,15 +222,15 @@ entt::entity BodyFactory::addRigidBody(World& sys,
     auto& reg = sys.ecs();
     auto e = reg.create();
 
-    reg.emplace<World::C_Position3>(e, World::C_Position3{state.position});
-    reg.emplace<World::C_Orientation>(e, World::C_Orientation{Quaternion4r(state.orientation).normalized()});
-    reg.emplace<World::C_LinearVelocity3>(e, World::C_LinearVelocity3{state.linearVelocity});
-    reg.emplace<World::C_AngularVelocity3>(e, World::C_AngularVelocity3{state.angularVelocity});
+    reg.emplace<cardillo::C_Position3>(e, cardillo::C_Position3{state.position});
+    reg.emplace<cardillo::C_Orientation>(e, cardillo::C_Orientation{Quaternion4r(state.orientation).normalized()});
+    reg.emplace<cardillo::C_LinearVelocity3>(e, cardillo::C_LinearVelocity3{state.linearVelocity});
+    reg.emplace<cardillo::C_AngularVelocity3>(e, cardillo::C_AngularVelocity3{state.angularVelocity});
 
     bool wantsColliderVisual = std::holds_alternative<MeshShape>(shape)
         && std::get<MeshShape>(shape).show_collider;
-    if (props.visual || wantsColliderVisual) reg.emplace<World::C_VisualObject>(e);
-    if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_Collidable>(e);
+    if (props.visual || wantsColliderVisual) reg.emplace<cardillo::C_VisualObject>(e);
+    if (props.collidable && !sys.config().collision_disable_all) reg.emplace<cardillo::C_Collidable>(e);
 
     std::optional<real_t> massOpt = props.mass;
     real_t computedMass = (real_t)0;
@@ -261,67 +261,67 @@ entt::entity BodyFactory::addRigidBody(World& sys,
     const real_t mass = std::max((real_t)0, massOpt.value_or((real_t)0));
 
     real_t mu = (props.friction >= (real_t)0) ? props.friction : sys.config().friction_default_mu;
-    reg.emplace<World::C_Friction>(e, World::C_Friction{mu});
+    reg.emplace<cardillo::C_Friction>(e, cardillo::C_Friction{mu});
 
         std::visit([&](auto&& s) {
             using T = std::decay_t<decltype(s)>;
         if constexpr (std::is_same_v<T, CubeShape>) {
-            if (props.visual) reg.emplace<World::C_CubeVisualTag>(e);
-            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Cube>(e, World::C_RB_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
-            reg.emplace<World::C_Cube>(e, World::C_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
+            if (props.visual) reg.emplace<cardillo::C_CubeVisualTag>(e);
+            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<cardillo::C_RB_Cube>(e, cardillo::C_RB_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
+            reg.emplace<cardillo::C_Cube>(e, cardillo::C_Cube{Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity()});
             if (mass > 0) {
-                reg.emplace<World::C_PhysicsObject>(e);
-                reg.emplace<World::C_RigidBodyTag>(e);
-                reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
-                reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{boxInertiaDiag(mass, s.halfExtents)});
+                reg.emplace<cardillo::C_PhysicsObject>(e);
+                reg.emplace<cardillo::C_RigidBodyTag>(e);
+                reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
+                reg.emplace<cardillo::C_InertiaDiag>(e, cardillo::C_InertiaDiag{boxInertiaDiag(mass, s.halfExtents)});
             }
         } else if constexpr (std::is_same_v<T, SphereShape>) {
-            if (props.visual) reg.emplace<World::C_PointVisualTag>(e);
-            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Sphere>(e);
-            reg.emplace<World::C_Radius>(e, World::C_Radius{s.radius});
+            if (props.visual) reg.emplace<cardillo::C_PointVisualTag>(e);
+            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<cardillo::C_RB_Sphere>(e);
+            reg.emplace<cardillo::C_Radius>(e, cardillo::C_Radius{s.radius});
             if (mass > 0) {
-                reg.emplace<World::C_PhysicsObject>(e);
-                reg.emplace<World::C_RigidBodyTag>(e);
-                reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
-                reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{sphereInertiaDiag(mass, s.radius)});
+                reg.emplace<cardillo::C_PhysicsObject>(e);
+                reg.emplace<cardillo::C_RigidBodyTag>(e);
+                reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
+                reg.emplace<cardillo::C_InertiaDiag>(e, cardillo::C_InertiaDiag{sphereInertiaDiag(mass, s.radius)});
             }
         } else if constexpr (std::is_same_v<T, ConeShape>) {
-            if (props.visual) reg.emplace<World::C_ConeVisualTag>(e);
-            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Cone>(e, World::C_RB_Cone{s.radius, s.height});
-            reg.emplace<World::C_Cone>(e, World::C_Cone{s.radius, s.height});
+            if (props.visual) reg.emplace<cardillo::C_ConeVisualTag>(e);
+            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<cardillo::C_RB_Cone>(e, cardillo::C_RB_Cone{s.radius, s.height});
+            reg.emplace<cardillo::C_Cone>(e, cardillo::C_Cone{s.radius, s.height});
             if (mass > 0) {
-                reg.emplace<World::C_PhysicsObject>(e);
-                reg.emplace<World::C_RigidBodyTag>(e);
-                reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
-                reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{coneInertiaDiag(mass, s.radius, s.height)});
+                reg.emplace<cardillo::C_PhysicsObject>(e);
+                reg.emplace<cardillo::C_RigidBodyTag>(e);
+                reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
+                reg.emplace<cardillo::C_InertiaDiag>(e, cardillo::C_InertiaDiag{coneInertiaDiag(mass, s.radius, s.height)});
             }
         } else if constexpr (std::is_same_v<T, CapsuleShape>) {
-            if (props.visual) reg.emplace<World::C_CapsuleVisualTag>(e);
-            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Capsule>(e, World::C_RB_Capsule{s.radius, s.halfLength});
-            reg.emplace<World::C_Capsule>(e, World::C_Capsule{s.radius, s.halfLength});
+            if (props.visual) reg.emplace<cardillo::C_CapsuleVisualTag>(e);
+            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<cardillo::C_RB_Capsule>(e, cardillo::C_RB_Capsule{s.radius, s.halfLength});
+            reg.emplace<cardillo::C_Capsule>(e, cardillo::C_Capsule{s.radius, s.halfLength});
             if (mass > 0) {
-                reg.emplace<World::C_PhysicsObject>(e);
-                reg.emplace<World::C_RigidBodyTag>(e);
-                reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
-                reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{capsuleInertiaDiag(mass, s.radius, s.halfLength)});
+                reg.emplace<cardillo::C_PhysicsObject>(e);
+                reg.emplace<cardillo::C_RigidBodyTag>(e);
+                reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
+                reg.emplace<cardillo::C_InertiaDiag>(e, cardillo::C_InertiaDiag{capsuleInertiaDiag(mass, s.radius, s.halfLength)});
             }
         } else if constexpr (std::is_same_v<T, CylinderShape>) {
-            if (props.visual) reg.emplace<World::C_CylinderVisualTag>(e);
-            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Cylinder>(e, World::C_RB_Cylinder{s.radius, s.halfLength});
-            reg.emplace<World::C_Cylinder>(e, World::C_Cylinder{s.radius, s.halfLength});
+            if (props.visual) reg.emplace<cardillo::C_CylinderVisualTag>(e);
+            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<cardillo::C_RB_Cylinder>(e, cardillo::C_RB_Cylinder{s.radius, s.halfLength});
+            reg.emplace<cardillo::C_Cylinder>(e, cardillo::C_Cylinder{s.radius, s.halfLength});
             if (mass > 0) {
-                reg.emplace<World::C_PhysicsObject>(e);
-                reg.emplace<World::C_RigidBodyTag>(e);
-                reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
-                reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{cylinderInertiaDiag(mass, s.radius, s.halfLength)});
+                reg.emplace<cardillo::C_PhysicsObject>(e);
+                reg.emplace<cardillo::C_RigidBodyTag>(e);
+                reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
+                reg.emplace<cardillo::C_InertiaDiag>(e, cardillo::C_InertiaDiag{cylinderInertiaDiag(mass, s.radius, s.halfLength)});
             }
         } else if constexpr (std::is_same_v<T, PlaneShape>) {
-            if (props.visual) reg.emplace<World::C_PlaneVisualTag>(e);
-            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<World::C_RB_Plane>(e, World::C_RB_Plane{s.normal, s.up, s.sizeX, s.sizeY});
-            reg.emplace<World::C_Plane>(e, World::C_Plane{s.normal, s.up, s.sizeX, s.sizeY});
+            if (props.visual) reg.emplace<cardillo::C_PlaneVisualTag>(e);
+            if (props.collidable && !sys.config().collision_disable_all) reg.emplace<cardillo::C_RB_Plane>(e, cardillo::C_RB_Plane{s.normal, s.up, s.sizeX, s.sizeY});
+            reg.emplace<cardillo::C_Plane>(e, cardillo::C_Plane{s.normal, s.up, s.sizeX, s.sizeY});
         } else if constexpr (std::is_same_v<T, MeshShape>) {
-            if (props.visual) reg.emplace<World::C_MeshVisualTag>(e);
-            reg.emplace<World::C_Mesh>(e, World::C_Mesh{s.path, s.scale});
+            if (props.visual) reg.emplace<cardillo::C_MeshVisualTag>(e);
+            reg.emplace<cardillo::C_Mesh>(e, cardillo::C_Mesh{s.path, s.scale});
 
             const bool dynamic = mass > 0;
             const ::cardillo::MeshAsset& asset = sys.assets().getMesh(s.path, s.scale, dynamic);
@@ -331,13 +331,13 @@ entt::entity BodyFactory::addRigidBody(World& sys,
                     Vector3r he = Vector3r((real_t)0.05, (real_t)0.05, (real_t)0.05);
                     meshAabbFromAsset(asset, center, he);
                     Quaternion4r q_local(asset.Rpa.transpose());
-                    reg.emplace<World::C_RB_Cube>(e, World::C_RB_Cube{center, he, q_local});
+                    reg.emplace<cardillo::C_RB_Cube>(e, cardillo::C_RB_Cube{center, he, q_local});
                     if (s.show_collider) {
-                        reg.emplace<World::C_Cube>(e, World::C_Cube{center, he, q_local});
-                        reg.emplace<World::C_CubeVisualTag>(e);
+                        reg.emplace<cardillo::C_Cube>(e, cardillo::C_Cube{center, he, q_local});
+                        reg.emplace<cardillo::C_CubeVisualTag>(e);
                     }
                 } else {
-                    reg.emplace<World::C_RB_Mesh>(e);
+                    reg.emplace<cardillo::C_RB_Mesh>(e);
                 }
             }
 
@@ -345,15 +345,15 @@ entt::entity BodyFactory::addRigidBody(World& sys,
                 Quaternion4r q_rpa(asset.Rpa);
                 Quaternion4r q_new = state.orientation * q_rpa;
                 Vector3r pos_new = state.position + (state.orientation * asset.com);
-                reg.get<World::C_Position3>(e).value = pos_new;
-                reg.get<World::C_Orientation>(e).value = Quaternion4r(q_new).normalized();
-                reg.emplace<World::C_PhysicsObject>(e);
-                reg.emplace<World::C_RigidBodyTag>(e);
-                reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
+                reg.get<cardillo::C_Position3>(e).value = pos_new;
+                reg.get<cardillo::C_Orientation>(e).value = Quaternion4r(q_new).normalized();
+                reg.emplace<cardillo::C_PhysicsObject>(e);
+                reg.emplace<cardillo::C_RigidBodyTag>(e);
+                reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
                 if (asset.volume > (real_t)0) {
                     const real_t rho = mass / asset.volume;
                     Vector3r Idiag = rho * asset.inertia_diag_unit.cwiseMax(Vector3r::Zero());
-                    reg.emplace<World::C_InertiaDiag>(e, World::C_InertiaDiag{Idiag});
+                    reg.emplace<cardillo::C_InertiaDiag>(e, cardillo::C_InertiaDiag{Idiag});
                 }
             }
         }
@@ -377,17 +377,17 @@ index_t BodyFactory::addPointMass(World& sys,
                                   real_t radius) {
     auto& reg = sys.ecs();
     auto e = reg.create();
-    reg.emplace<World::C_PhysicsObject>(e);
-    reg.emplace<World::C_PointMassTag>(e);
-    if (!sys.config().collision_disable_all) reg.emplace<World::C_Collidable>(e);
-    reg.emplace<World::C_VisualObject>(e);
-    reg.emplace<World::C_PointVisualTag>(e);
-    reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
-    reg.emplace<World::C_Position3>(e, World::C_Position3{x0});
-    reg.emplace<World::C_LinearVelocity3>(e, World::C_LinearVelocity3{v0});
-    reg.emplace<World::C_Radius>(e, World::C_Radius{radius});
-    if (!reg.any_of<World::C_Friction>(e)) {
-        reg.emplace<World::C_Friction>(e, World::C_Friction{sys.config().friction_default_mu});
+    reg.emplace<cardillo::C_PhysicsObject>(e);
+    reg.emplace<cardillo::C_PointMassTag>(e);
+    if (!sys.config().collision_disable_all) reg.emplace<cardillo::C_Collidable>(e);
+    reg.emplace<cardillo::C_VisualObject>(e);
+    reg.emplace<cardillo::C_PointVisualTag>(e);
+    reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
+    reg.emplace<cardillo::C_Position3>(e, cardillo::C_Position3{x0});
+    reg.emplace<cardillo::C_LinearVelocity3>(e, cardillo::C_LinearVelocity3{v0});
+    reg.emplace<cardillo::C_Radius>(e, cardillo::C_Radius{radius});
+    if (!reg.any_of<cardillo::C_Friction>(e)) {
+        reg.emplace<cardillo::C_Friction>(e, cardillo::C_Friction{sys.config().friction_default_mu});
     }
     sys.markStructureDirty();
     return static_cast<index_t>(entt::to_integral(e));
@@ -403,15 +403,15 @@ index_t BodyFactory::addObstacleHeightField(World& sys,
                                             real_t min_height) {
     auto& reg = sys.ecs();
     auto e = reg.create();
-    if (!sys.config().collision_disable_all) reg.emplace<World::C_Collidable>(e);
-    reg.emplace<World::C_VisualObject>(e);
-    reg.emplace<World::C_Position3>(e, World::C_Position3{position});
-    reg.emplace<World::C_Orientation>(e, World::C_Orientation{orientation});
-    reg.emplace<World::C_HeightFieldVisualTag>(e);
-    reg.emplace<World::C_HeightField>(e, World::C_HeightField{exrPath, x_dim, y_dim, z_scale, min_height});
-    if (!sys.config().collision_disable_all) reg.emplace<World::C_RB_HeightField>(e);
-    if (!reg.any_of<World::C_Friction>(e)) {
-        reg.emplace<World::C_Friction>(e, World::C_Friction{sys.config().friction_default_mu});
+    if (!sys.config().collision_disable_all) reg.emplace<cardillo::C_Collidable>(e);
+    reg.emplace<cardillo::C_VisualObject>(e);
+    reg.emplace<cardillo::C_Position3>(e, cardillo::C_Position3{position});
+    reg.emplace<cardillo::C_Orientation>(e, cardillo::C_Orientation{orientation});
+    reg.emplace<cardillo::C_HeightFieldVisualTag>(e);
+    reg.emplace<cardillo::C_HeightField>(e, cardillo::C_HeightField{exrPath, x_dim, y_dim, z_scale, min_height});
+    if (!sys.config().collision_disable_all) reg.emplace<cardillo::C_RB_HeightField>(e);
+    if (!reg.any_of<cardillo::C_Friction>(e)) {
+        reg.emplace<cardillo::C_Friction>(e, cardillo::C_Friction{sys.config().friction_default_mu});
     }
     sys.markStructureDirty();
     (void)sys.getHeightFieldAsset(e);
@@ -461,12 +461,12 @@ std::vector<entt::entity> BodyFactory::addSoftBody(World& sys,
 
     if (!sb.triangles.empty()) {
         entt::entity surf = sys.ecs().create();
-        sys.ecs().emplace<World::C_VisualObject>(surf);
-        sys.ecs().emplace<World::C_SoftBodyVisualTag>(surf);
-        World::C_SoftBodySurface surfComp;
+        sys.ecs().emplace<cardillo::C_VisualObject>(surf);
+        sys.ecs().emplace<cardillo::C_SoftBodyVisualTag>(surf);
+        cardillo::C_SoftBodySurface surfComp;
         surfComp.triangles = sb.triangles;
         surfComp.nodes = nodes;
-        sys.ecs().emplace<World::C_SoftBodySurface>(surf, std::move(surfComp));
+        sys.ecs().emplace<cardillo::C_SoftBodySurface>(surf, std::move(surfComp));
     }
 
     sys.markStructureDirty();
@@ -542,9 +542,9 @@ std::pair<entt::entity, entt::entity> BodyFactory::createBeams(World& sys,
                                (size_t)(segmentsPerSpline * (splines[i]->totalLength() / totalLen)));
         if (first == entt::null) first = pair.first;
         if (prevEnd != entt::null && pair.first != entt::null) {
-            if (sys.ecs().any_of<World::C_Orientation>(prevEnd) && sys.ecs().any_of<World::C_Orientation>(pair.first)) {
-                auto& qNext = sys.ecs().get<World::C_Orientation>(pair.first).value;
-                const auto& qPrev = sys.ecs().get<World::C_Orientation>(prevEnd).value;
+            if (sys.ecs().any_of<cardillo::C_Orientation>(prevEnd) && sys.ecs().any_of<cardillo::C_Orientation>(pair.first)) {
+                auto& qNext = sys.ecs().get<cardillo::C_Orientation>(pair.first).value;
+                const auto& qPrev = sys.ecs().get<cardillo::C_Orientation>(prevEnd).value;
                 qNext = World::alignQuaternionTo(qNext, qPrev);
             }
             ConstraintFactory::addRigidConstraint(sys, prevEnd, pair.first);

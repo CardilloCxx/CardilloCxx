@@ -1,5 +1,7 @@
 #include "beam_factory.hpp"
 
+#include "../assets/body_factory.hpp"
+#include "../constraints/constraint_factory.hpp"
 #include "../constraints/constraints.hpp"
 
 #include <cmath>
@@ -112,24 +114,24 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
         segState.linearVelocity = v_world;
         segState.angularVelocity = Rlocal.transpose() * stateDefaults.angularVelocity;
 
-        const entt::entity cur = sys.addRigidBody(shape, segState, segProps);
+        const entt::entity cur = BodyFactory::addRigidBody(sys, shape, segState, segProps);
 
-        TopologyComponents::BeamElement be_cur;
+        cardillo::C_BeamElement be_cur;
         be_cur.l0 = segLen;
         be_cur.l = segLen;
         if (prev != entt::null) {
             be_cur.prev = prev;
-            if (!sys.ecs().any_of<TopologyComponents::BeamElement>(prev)) {
-                TopologyComponents::BeamElement be_prev;
+            if (!sys.ecs().any_of<cardillo::C_BeamElement>(prev)) {
+                cardillo::C_BeamElement be_prev;
                 be_prev.l0 = segLen;
                 be_prev.l = segLen;
                 be_prev.next = cur;
-                sys.ecs().emplace<TopologyComponents::BeamElement>(prev, be_prev);
+                sys.ecs().emplace<cardillo::C_BeamElement>(prev, be_prev);
             } else {
-                sys.ecs().get<TopologyComponents::BeamElement>(prev).next = cur;
+                sys.ecs().get<cardillo::C_BeamElement>(prev).next = cur;
             }
         }
-        sys.ecs().emplace<TopologyComponents::BeamElement>(cur, be_cur);
+        sys.ecs().emplace<cardillo::C_BeamElement>(cur, be_cur);
 
         if (prev != entt::null) {
             ConstraintFactory::addBeamConstraint(sys, prev, cur, springs, section);
@@ -141,14 +143,14 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
         end = cur;
     }
 
-    if (loop && root != entt::null && end != entt::null && end != root) {
+        if (loop && root != entt::null && end != entt::null && end != root) {
         ConstraintFactory::addBeamConstraint(sys, end, root, springs, section);
         sys.disableCollisionBetween(end, root);
-        if (sys.ecs().any_of<TopologyComponents::BeamElement>(end)) {
-            sys.ecs().get<TopologyComponents::BeamElement>(end).next = root;
+        if (sys.ecs().any_of<cardillo::C_BeamElement>(end)) {
+            sys.ecs().get<cardillo::C_BeamElement>(end).next = root;
         }
-        if (sys.ecs().any_of<TopologyComponents::BeamElement>(root)) {
-            sys.ecs().get<TopologyComponents::BeamElement>(root).prev = end;
+        if (sys.ecs().any_of<cardillo::C_BeamElement>(root)) {
+            sys.ecs().get<cardillo::C_BeamElement>(root).prev = end;
         }
     }
 
@@ -240,10 +242,10 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(
 
         if (first == entt::null) first = pair.first;
         if (prevEnd != entt::null && pair.first != entt::null) {
-            if (system.ecs().any_of<MotionComponents::Orientation>(prevEnd) &&
-                system.ecs().any_of<MotionComponents::Orientation>(pair.first)) {
-                auto& qNext = system.ecs().get<MotionComponents::Orientation>(pair.first).value;
-                const auto& qPrev = system.ecs().get<MotionComponents::Orientation>(prevEnd).value;
+            if (system.ecs().any_of<cardillo::C_Orientation>(prevEnd) &&
+                system.ecs().any_of<cardillo::C_Orientation>(pair.first)) {
+                auto& qNext = system.ecs().get<cardillo::C_Orientation>(pair.first).value;
+                const auto& qPrev = system.ecs().get<cardillo::C_Orientation>(prevEnd).value;
                 qNext = World::alignQuaternionTo(qNext, qPrev);
             }
             ConstraintFactory::addRigidConstraint(system, prevEnd, pair.first);

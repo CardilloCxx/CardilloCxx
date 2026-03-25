@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 #include <cmath>
 
 namespace cardillo { namespace collision {

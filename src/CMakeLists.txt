@@ -1,25 +1,8 @@
-add_library(${PROJECT_NAME} STATIC
-    cardillo.cpp
-    physics/api/physics_types.cpp
-    physics/api/physics_engine.cpp
-    physics/world.cpp
-    physics/assets/body_factory.cpp
-    physics/assets/assets.cpp
-    physics/constraints/constraints.cpp
-    physics/integration/position_integrator.cpp
-    physics/synchronization/derived_entity_sync.cpp
-    io/vtk_writer_binary.cpp
-    io/vtk_sphere_util.cpp
-    io/heightmap_loader.cpp
-    io/softbody_loader.cpp
-    solver/moreau.cpp
-    solver/dual_stoermer_verlet.cpp
-    solver/projected_jacobi.cpp
-    misc/spline.cpp
-    physics/assembly/dynamics_assembler.cpp
-    collision/collision_coal.cpp
-    config/config.cpp
+file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
+
+add_library(${PROJECT_NAME} STATIC ${CARDILLO_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

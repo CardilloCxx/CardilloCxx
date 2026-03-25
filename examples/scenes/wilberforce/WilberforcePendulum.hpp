@@ -149,15 +149,15 @@ public:
         
 
         // Set inertia to match target Iz for cube
-        engine.ecs().get<World::C_InertiaDiag>(m_bob).I *= 0.75;
+        engine.ecs().get<cardillo::C_InertiaDiag>(m_bob).I *= 0.75;
 
         // track bob trajectory in csv file
         engine.track(m_bob, "bob");
         // Print Inertia for verification
-        auto Idiag = engine.ecs().get<World::C_InertiaDiag>(m_bob).I;
+        auto Idiag = engine.ecs().get<cardillo::C_InertiaDiag>(m_bob).I;
         std::cout << "Bob inertia diag: Ixx = " << Idiag.x() << ", Iyy = " << Idiag.y() << ", Izz = " << Idiag.z() << std::endl;
 
-        auto RotMat = engine.ecs().get<World::C_Orientation>(m_bob).value.toRotationMatrix();
+        auto RotMat = engine.ecs().get<cardillo::C_Orientation>(m_bob).value.toRotationMatrix();
         std::cout << "Bob inertia world frame:\n" << RotMat * Idiag.asDiagonal() * RotMat.transpose() << std::endl;
         std::cout << "Bob mass: " << engine.getMass(m_bob).col(0).row(0) << " kg" << std::endl;
 

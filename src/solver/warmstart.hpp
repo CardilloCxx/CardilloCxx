@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <optional>
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 #include "../collision/types.hpp"
 
 namespace cardillo::solver {

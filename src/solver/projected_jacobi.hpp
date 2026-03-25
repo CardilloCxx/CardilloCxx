@@ -4,7 +4,7 @@
 #include <Eigen/Dense>
 #include <optional>
 #include <algorithm>
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 #include "../physics/assembly/dynamics_assembler.hpp"
 #include "warmstart.hpp"
 #include "../config/config.hpp"

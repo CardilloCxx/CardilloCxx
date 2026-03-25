@@ -8,6 +8,8 @@
 
 #include "physics_types.hpp"
 #include "../world.hpp"
+#include "../assets/body_factory.hpp"
+#include "../constraints/constraint_factory.hpp"
 
 namespace cardillo { class World; }
 namespace cardillo { namespace misc { struct SplinePattern; } }
@@ -21,96 +23,119 @@ public:
     explicit PhysicsEngine(cardillo::World& world) : m_world(world) {}
 
     // Public API
-    cardillo::World& world() { return m_world; }
-    const cardillo::World& world() const { return m_world; }
 
-    cardillo::World& system() { return m_world; }
-    const cardillo::World& system() const { return m_world; }
+    inline entt::entity addRigidBody(const RigidShape& shape,
+                                     const RigidState& state,
+                                     const RigidProps& props) {
+        return BodyFactory::addRigidBody(m_world, shape, state, props);
+    }
 
-    entt::entity addRigidBody(const RigidShape& shape,
-                              const RigidState& state,
-                              const RigidProps& props);
+    inline entt::entity addStaticBody(const RigidShape& shape,
+                                      const RigidState& state) {
+        return BodyFactory::addStaticBody(m_world, shape, state);
+    }
 
-    entt::entity addStaticBody(const RigidShape& shape,
-                               const RigidState& state);
+    inline index_t addPointMass(real_t mass,
+                                const Vector3r& x0,
+                                const Vector3r& v0,
+                                real_t radius = (real_t)0.05) {
+        return BodyFactory::addPointMass(m_world, mass, x0, v0, radius);
+    }
 
-    index_t addPointMass(real_t mass,
-                         const Vector3r& x0,
-                         const Vector3r& v0,
-                         real_t radius = (real_t)0.05);
+    inline index_t addObstacleHeightField(const Vector3r& position,
+                                          const Quaternion4r& orientation,
+                                          const std::string& exrPath,
+                                          real_t x_dim,
+                                          real_t y_dim,
+                                          real_t z_scale = (real_t)1.0,
+                                          real_t min_height = (real_t)0.0) {
+        return BodyFactory::addObstacleHeightField(m_world, position, orientation, exrPath, x_dim, y_dim, z_scale, min_height);
+    }
 
-    index_t addObstacleHeightField(const Vector3r& position,
-                                   const Quaternion4r& orientation,
-                                   const std::string& exrPath,
-                                   real_t x_dim,
-                                   real_t y_dim,
-                                   real_t z_scale = (real_t)1.0,
-                                   real_t min_height = (real_t)0.0);
+    inline std::vector<entt::entity> addSoftBody(const std::string& objPath,
+                                                 real_t stiffness,
+                                                 real_t damping,
+                                                 const Vector3r& position = Vector3r::Zero(),
+                                                 const Quaternion4r& orientation = Quaternion4r::Identity(),
+                                                 const Vector3r& linearVelocity = Vector3r::Zero(),
+                                                 const Vector3r& angularVelocity = Vector3r::Zero(),
+                                                 real_t totalMass = (real_t)0.0) {
+        return BodyFactory::addSoftBody(m_world, objPath, stiffness, damping, position, orientation, linearVelocity, angularVelocity, totalMass);
+    }
 
-    std::vector<entt::entity> addSoftBody(const std::string& objPath,
-                                          real_t stiffness,
-                                          real_t damping,
-                                          const Vector3r& position = Vector3r::Zero(),
-                                          const Quaternion4r& orientation = Quaternion4r::Identity(),
-                                          const Vector3r& linearVelocity = Vector3r::Zero(),
-                                          const Vector3r& angularVelocity = Vector3r::Zero(),
-                                          real_t totalMass = (real_t)0.0);
+    inline std::pair<entt::entity, entt::entity> createBeam(const cardillo::misc::SplinePattern& spline,
+                                                           const BeamCrossSection& section,
+                                                           const BeamSpringParams& springs,
+                                                           const RigidState& stateDefaults,
+                                                           const RigidProps& propsDefaults,
+                                                           size_t segments) {
+        return BodyFactory::createBeam(m_world, spline, section, springs, stateDefaults, propsDefaults, segments);
+    }
 
-    std::pair<entt::entity, entt::entity> createBeam(const cardillo::misc::SplinePattern& spline,
-                                                      const BeamCrossSection& section,
-                                                      const BeamSpringParams& springs,
-                                                      const RigidState& stateDefaults,
-                                                      const RigidProps& propsDefaults,
-                                                      size_t segments);
+    inline std::pair<entt::entity, entt::entity> createBeams(const std::vector<const cardillo::misc::SplinePattern*>& splines,
+                                                            const BeamCrossSection& section,
+                                                            const BeamSpringParams& springs,
+                                                            const RigidState& stateDefaults,
+                                                            const RigidProps& propsDefaults,
+                                                            size_t segmentsPerSpline) {
+        return BodyFactory::createBeams(m_world, splines, section, springs, stateDefaults, propsDefaults, segmentsPerSpline);
+    }
 
-    std::pair<entt::entity, entt::entity> createBeams(const std::vector<const cardillo::misc::SplinePattern*>& splines,
-                                                       const BeamCrossSection& section,
-                                                       const BeamSpringParams& springs,
-                                                       const RigidState& stateDefaults,
-                                                       const RigidProps& propsDefaults,
-                                                       size_t segmentsPerSpline);
+    inline size_t addLinearDistanceConstraint(entt::entity a,
+                                              entt::entity b,
+                                              const Vector3r& rA_local = Vector3r::Zero(),
+                                              const Vector3r& rB_local = Vector3r::Zero(),
+                                              real_t stiffness = std::numeric_limits<real_t>::infinity(),
+                                              real_t damping = (real_t)0) {
+        return ConstraintFactory::addLinearDistanceConstraint(m_world, a, b, rA_local, rB_local, stiffness, damping);
+    }
 
-    size_t addLinearDistanceConstraint(entt::entity a,
-                                       entt::entity b,
-                                       const Vector3r& rA_local = Vector3r::Zero(),
-                                       const Vector3r& rB_local = Vector3r::Zero(),
-                                       real_t stiffness = std::numeric_limits<real_t>::infinity(),
-                                       real_t damping = (real_t)0);
+    inline size_t addRigidConstraint(entt::entity a, entt::entity b) {
+        return ConstraintFactory::addRigidConstraint(m_world, a, b);
+    }
 
-    size_t addRigidConstraint(entt::entity a, entt::entity b);
+    inline size_t addTranslationRotationConstraint(entt::entity a,
+                                                  entt::entity b,
+                                                  const JointFrame& frame,
+                                                  const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                                  const Vector3r& D_trans = Vector3r::Zero(),
+                                                  const Vector3r& K_rot = Vector3r::Zero(),
+                                                  const Vector3r& D_rot = Vector3r::Zero()) {
+        return ConstraintFactory::addTranslationRotationConstraint(m_world, a, b, frame, K_trans, D_trans, K_rot, D_rot);
+    }
 
-    size_t addTranslationRotationConstraint(entt::entity a,
-                                            entt::entity b,
-                                            const JointFrame& frame,
-                                            const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                                            const Vector3r& D_trans = Vector3r::Zero(),
-                                            const Vector3r& K_rot = Vector3r::Zero(),
-                                            const Vector3r& D_rot = Vector3r::Zero());
+    inline size_t addTranslationalConstraint(entt::entity a,
+                                             entt::entity b,
+                                             const JointFrame& frame,
+                                             const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                             const Vector3r& D_trans = Vector3r::Zero()) {
+        return ConstraintFactory::addTranslationalConstraint(m_world, a, b, frame, K_trans, D_trans);
+    }
 
-    size_t addTranslationalConstraint(entt::entity a,
-                                      entt::entity b,
-                                      const JointFrame& frame,
-                                      const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                                      const Vector3r& D_trans = Vector3r::Zero());
+    inline size_t addRotationConstraint(entt::entity a,
+                                        entt::entity b,
+                                        const JointFrame& frame,
+                                        const Vector3r& K_rot = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                        const Vector3r& D_rot = Vector3r::Zero()) {
+        return ConstraintFactory::addRotationConstraint(m_world, a, b, frame, K_rot, D_rot);
+    }
 
-    size_t addRotationConstraint(entt::entity a,
-                                 entt::entity b,
-                                 const JointFrame& frame,
-                                 const Vector3r& K_rot = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                                 const Vector3r& D_rot = Vector3r::Zero());
+    inline size_t addHingeConstraint(entt::entity a,
+                                     entt::entity b,
+                                     const JointFrame& frame,
+                                     real_t K_axis = (real_t)0,
+                                     real_t D_axis = (real_t)0,
+                                     const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                     const Vector3r& D_trans = Vector3r::Zero()) {
+        return ConstraintFactory::addHingeConstraint(m_world, a, b, frame, K_axis, D_axis, K_trans, D_trans);
+    }
 
-    size_t addHingeConstraint(entt::entity a,
-                              entt::entity b,
-                              const JointFrame& frame,
-                              real_t K_axis = (real_t)0,
-                              real_t D_axis = (real_t)0,
-                              const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                              const Vector3r& D_trans = Vector3r::Zero());
-
-    size_t addBeamConstraint(entt::entity a,
-                             entt::entity b,
-                             const BeamSpringParams& springs,
-                             const BeamCrossSection& section);
+    inline size_t addBeamConstraint(entt::entity a,
+                                    entt::entity b,
+                                    const BeamSpringParams& springs,
+                                    const BeamCrossSection& section) {
+        return ConstraintFactory::addBeamConstraint(m_world, a, b, springs, section);
+    }
 
     // Compatibility forwarders (public API)
     entt::registry& ecs() { return m_world.ecs(); }
@@ -142,6 +167,15 @@ public:
 
 private:
     cardillo::World& m_world;
+    
+    // cardillo::physics::DynamicsAssembler m_dyn;
+    // cardillo::integration::IntegrationBase m_integrator; owns cardillo::solver::SolverBase m_solver;
+    
+    // config::Config m_cfg{}; // global config
+    // std::unique_ptr<collision::CollisionCoal> m_collision_mgr; // created on first use
+    // std::unique_ptr<cardillo::misc::TimingManager> m_timings;  // created on first use
+    // std::unique_ptr<cardillo::solver::WarmstartProvider> m_warmstart_provider;
+
 };
 
 } // namespace physics

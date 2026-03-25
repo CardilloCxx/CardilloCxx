@@ -3,7 +3,7 @@
 #include <vector>
 #include <unordered_map>
 #include <entt/entt.hpp>
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 #include "../physics/world.hpp"
 
 namespace cardillo::collision {

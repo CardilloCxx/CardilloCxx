@@ -1,8 +1,8 @@
 #include "cardillo.hpp"
 #include "io/vtk_writer_binary.hpp"
-#include "solver/solver_base.hpp"
-#include "solver/moreau.hpp"
-#include "solver/dual_stoermer_verlet.hpp"
+#include "physics/integration/integration_base.hpp"
+#include "physics/integration/moreau.hpp"
+#include "physics/integration/dual_stoermer_verlet.hpp"
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Geometry>
@@ -136,14 +136,14 @@ int main(int argc, char** argv) {
     scene.populate(engine);
 
     // Setup solver based on config
-    std::unique_ptr<cardillo::solver::SolverBase> solver;
+    std::unique_ptr<cardillo::integration::IntegrationBase> solver;
     if (cfg.solver == cardillo::config::SolverType::StoermerVerlet) {
         if (worldRank == 0) {
             std::cout << "[Warning] Dual Stoermer-Verlet is deprecated; prefer Moreau (solver.name=moreau).\n";
         }
-        solver = std::make_unique<cardillo::solver::DualStoermerVerletSolver>(sys);
+        solver = std::make_unique<cardillo::integration::DualStoermerVerletSolver>(sys);
     } else {
-        solver = std::make_unique<cardillo::solver::MoreauSolver>(sys, cfg.moreau_theta);
+        solver = std::make_unique<cardillo::integration::MoreauSolver>(sys, cfg.moreau_theta);
     }
 
     std::cout << "[Info] Selected solver: " 
@@ -181,7 +181,7 @@ int main(int argc, char** argv) {
         auto totalScope = sys.timings().scope(cardillo::misc::TimingManager::TimerId::Total);
         for (int k = 0; k < steps; ++k) {
             scene.updateScene(engine, t, dt);
-            solver->stepMidpoint(dt);
+            solver->step(dt);
             if (worldRank == 0) {
                 sys.writeTrackedStateToCsv(t + dt);
             }

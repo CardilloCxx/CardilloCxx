@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <utility>
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 #include <Eigen/Core>
 
 namespace cardillo::io {

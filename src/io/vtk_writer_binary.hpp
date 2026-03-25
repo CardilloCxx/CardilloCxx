@@ -4,7 +4,7 @@
 #include <vector>
 #include <filesystem>
 #include <fstream>
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 #include "../physics/world.hpp"
 #include "vtk_sphere_util.hpp"
 

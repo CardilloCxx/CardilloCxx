@@ -11,34 +11,24 @@
 #include <type_traits>
 #include <entt/entt.hpp>
 #include <petscsys.h>
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 #include "api/physics_types.hpp"
+#include "ecs_types.hpp"
 #include "../misc/spline.hpp"
 #include "assets/assets.hpp"
 #include "../misc/dofs.hpp"
 #include "../config/config.hpp"
 #include "../misc/timings/TimingManager.hpp"
-// COAL types for mesh assets
-// match installed COAL include layout (lowercase paths)
 #include <coal/BVH/BVH_model.h>
 #include <coal/collision_object.h>
 #include <coal/broadphase/broadphase.h>
-// HeightField collider
 #include <coal/hfield.h>
 
-// forward-declare warmstart provider interface to avoid include cycles
 namespace cardillo { namespace solver { class WarmstartProvider; } }
-
-// fwd
 namespace cardillo { namespace collision { class CollisionCoal; } }
-
-// forward-declare new constraint pattern types (defined in constraints.hpp)
 namespace cardillo { namespace physics { class ConstraintPattern; class LinearDistanceConstraint; struct JointFrame; } }
 
 namespace cardillo {
-
-// A minimal, standard-C++ physics system for frictionless point masses
-// with translational DOFs only (no rotations).
 class World {
 public:
     static Quaternion4r alignQuaternionTo(const Quaternion4r& q_in, const Quaternion4r& q_ref) {
@@ -48,7 +38,7 @@ public:
         if (q_ref.dot(q) < (real_t)0) q.coeffs() = -q.coeffs();
         return q;
     }
-    // Use the public physics API types here to avoid duplication and conversions.
+
     using RigidState = cardillo::physics::RigidState;
     using RigidShape = cardillo::physics::RigidShape;
     using RigidProps = cardillo::physics::RigidProps;
@@ -69,7 +59,6 @@ public:
     // Timings access
     cardillo::misc::TimingManager& timings();
     const cardillo::misc::TimingManager& timings() const;
-
 
     void setGravity(const Vector3r& g);
     const Vector3r& gravity() const { return m_gravity; }
@@ -125,69 +114,8 @@ public:
 
     // Explicit constraint API moved to `ConstraintFactory`/`physics_engine`.
 
-    // Public ECS component/tag types for queries
-    struct C_Mass { real_t m; };
-    struct C_Position3 { Vector3r value; };
-    struct C_LinearVelocity3 { Vector3r value; };
-    struct C_AngularVelocity3 { Vector3r value; };
-    struct C_Orientation { Quaternion4r value; };
-    struct C_DirectorTriad { Matrix33r value; };
-    struct C_PhysicsObject {};
-    struct C_PointMassTag {};
-    struct C_RigidBodyTag {};
-    struct C_RigidBodyDirectorTag {};
-    struct C_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
-    struct C_Cube { Vector3r center{Vector3r::Zero()}; Vector3r halfExtents; Quaternion4r q{Quaternion4r::Identity()}; };
-    struct C_Capsule { real_t radius; real_t halfLength; };
-    struct C_Cylinder { real_t radius; real_t halfLength; };
-    struct C_Cone { real_t radius; real_t height; };
-    struct C_Friction { real_t mu; }; // optional friction coefficient per entity (>=0), absent => 0
-    struct C_VisualObject {};
-    struct C_PointVisualTag {};
-    struct C_PlaneVisualTag {};
-    struct C_CubeVisualTag {};
-    struct C_CapsuleVisualTag {};
-    struct C_CylinderVisualTag {};
-    struct C_ConeVisualTag {};
-    struct C_Collidable {};
-    struct C_Radius { real_t r; };
-    // Softbody visual surface: stores mesh topology (triangles) and the node entities driving vertices
-    struct C_SoftBodyVisualTag {};
-    struct C_SoftBodySurface {
-        std::vector<Eigen::Vector3i> triangles;    // topology (indices into nodes)
-        std::vector<entt::entity> nodes;           // one node per original OBJ vertex
-    };
-    // Beam element component
-    struct C_BeamElement {
-        std::optional<entt::entity> prev;
-        std::optional<entt::entity> next;
-        real_t l0{(real_t)0};
-        real_t l{(real_t)0};
-    };
-    // Mesh components
-    struct C_Mesh { std::string path; Vector3r scale{1,1,1}; };
-    struct C_MeshVisualTag {};
-    // HeightField components (static terrain)
-    struct C_HeightField { std::string path; real_t x_dim{1}, y_dim{1}; real_t z_scale{1}; real_t min_height{0}; };
-    struct C_HeightFieldVisualTag {};
-    struct C_RB_HeightField { };
-    // Rigid-body type components (exactly one per rigid body kind)
-    struct C_RB_Cube { Vector3r center{Vector3r::Zero()}; Vector3r halfExtents; Quaternion4r q{Quaternion4r::Identity()}; };
-    struct C_RB_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
-    struct C_RB_Mesh { };
-    struct C_RB_Sphere { };
-    struct C_RB_Capsule { real_t radius; real_t halfLength; };
-    struct C_RB_Cylinder { real_t radius; real_t halfLength; };
-    struct C_RB_Cone { real_t radius; real_t height; };
-
-    // One-shot external wrench components (cleared every force rebuild)
-    struct C_ExternalForce { Vector3r f; };
-    struct C_ExternalTorque { Vector3r tau; };
-
-    struct C_TrackTag {std::string name;};
-
-    // Body index assigned by the assembler (stable across rebuilds unless structure changes)
-    struct C_BodyIndex { int b; };
+    // Public ECS component/tag types are declared in ecs_types.hpp so they can
+    // be used directly as cardillo::C_* across the codebase.
 
     // No numQ/numV or DOF accessors here; DynamicsAssembler owns DOF scans
     // Helper: number of dynamic bodies (with a body index)
@@ -222,9 +150,6 @@ public:
     void setLinearVelocity(entt::entity e, const Vector3r& v);
     void setAngularVelocity(entt::entity e, const Vector3r& w);
     void setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w);
-
-    void explicitPositionUpdate(real_t dt);
-    void linearImplicitPositionUpdate(real_t dt);
 
     void track(entt::entity e, const std::string& name);
     void writeTrackedStateToCsv(real_t t);

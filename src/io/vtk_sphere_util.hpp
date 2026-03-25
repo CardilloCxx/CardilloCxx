@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 
 namespace cardillo::io {
 

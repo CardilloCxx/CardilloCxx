@@ -2,7 +2,7 @@
 #pragma once
 
 #include <string>
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 
 namespace cardillo::config {
 

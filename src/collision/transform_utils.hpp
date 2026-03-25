@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../misc/types.hpp"
+#include "misc/types.hpp"
 #include "../physics/world.hpp"
 #include <entt/entt.hpp>
 
@@ -14,10 +14,10 @@ struct BodyXform {
     // Build from ECS components if available
     static BodyXform fromEcs(const entt::registry& reg, entt::entity e) {
         BodyXform X;
-        if (reg.any_of<cardillo::World::C_Position3>(e))
-            X.center = reg.get<cardillo::World::C_Position3>(e).value;
-        if (reg.any_of<cardillo::World::C_Orientation>(e))
-            X.R = reg.get<cardillo::World::C_Orientation>(e).value.toRotationMatrix();
+        if (reg.any_of<cardillo::C_Position3>(e))
+            X.center = reg.get<cardillo::C_Position3>(e).value;
+        if (reg.any_of<cardillo::C_Orientation>(e))
+            X.R = reg.get<cardillo::C_Orientation>(e).value.toRotationMatrix();
         return X;
     }
 

@@ -62,18 +62,18 @@ public:
         // Returns apex point-mass entity for rope attachment
         auto buildTripod = [&](const Vector3r& apex, bool leftSide){
             // Create apex point mass (no rigid cube at top)
-            auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){
+                auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){
                 auto& reg = engine.ecs();
                 auto e = reg.create();
-                reg.emplace<World::C_PhysicsObject>(e);
-                reg.emplace<World::C_PointMassTag>(e);
-                reg.emplace<World::C_Collidable>(e);
-                reg.emplace<World::C_VisualObject>(e);
-                reg.emplace<World::C_PointVisualTag>(e);
-                reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
-                reg.emplace<World::C_Position3>(e, World::C_Position3{p});
-                reg.emplace<World::C_LinearVelocity3>(e, World::C_LinearVelocity3{Vector3r::Zero()});
-                reg.emplace<World::C_Radius>(e, World::C_Radius{radius});
+                reg.emplace<cardillo::C_PhysicsObject>(e);
+                reg.emplace<cardillo::C_PointMassTag>(e);
+                reg.emplace<cardillo::C_Collidable>(e);
+                reg.emplace<cardillo::C_VisualObject>(e);
+                reg.emplace<cardillo::C_PointVisualTag>(e);
+                reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
+                reg.emplace<cardillo::C_Position3>(e, cardillo::C_Position3{p});
+                reg.emplace<cardillo::C_LinearVelocity3>(e, cardillo::C_LinearVelocity3{Vector3r::Zero()});
+                reg.emplace<cardillo::C_Radius>(e, cardillo::C_Radius{radius});
                 // Friction component optional; omit to avoid registry version differences
                 engine.markStructureDirty();
                 return e;
@@ -143,15 +143,15 @@ public:
         auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){
             auto& reg = engine.ecs();
             auto e = reg.create();
-            reg.emplace<World::C_PhysicsObject>(e);
-            reg.emplace<World::C_PointMassTag>(e);
-            reg.emplace<World::C_Collidable>(e);
-            reg.emplace<World::C_VisualObject>(e);
-            reg.emplace<World::C_PointVisualTag>(e);
-            reg.emplace<World::C_Mass>(e, World::C_Mass{mass});
-            reg.emplace<World::C_Position3>(e, World::C_Position3{p});
-            reg.emplace<World::C_LinearVelocity3>(e, World::C_LinearVelocity3{Vector3r::Zero()});
-            reg.emplace<World::C_Radius>(e, World::C_Radius{radius});
+            reg.emplace<cardillo::C_PhysicsObject>(e);
+            reg.emplace<cardillo::C_PointMassTag>(e);
+            reg.emplace<cardillo::C_Collidable>(e);
+            reg.emplace<cardillo::C_VisualObject>(e);
+            reg.emplace<cardillo::C_PointVisualTag>(e);
+            reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
+            reg.emplace<cardillo::C_Position3>(e, cardillo::C_Position3{p});
+            reg.emplace<cardillo::C_LinearVelocity3>(e, cardillo::C_LinearVelocity3{Vector3r::Zero()});
+            reg.emplace<cardillo::C_Radius>(e, cardillo::C_Radius{radius});
             // Friction component optional; omit to avoid registry version differences
             engine.markStructureDirty();
             return e;
@@ -266,9 +266,9 @@ public:
             auto& reg = engine.ecs();
             Vector3r posA = Vector3r::Zero();
             Vector3r posB = Vector3r::Zero();
-            if (auto pa = reg.try_get<World::C_Position3>(A)) posA = pa->value + rA;
+            if (auto pa = reg.try_get<cardillo::C_Position3>(A)) posA = pa->value + rA;
             else posA = rA;
-            if (auto pb = reg.try_get<World::C_Position3>(B)) posB = pb->value + rB;
+            if (auto pb = reg.try_get<cardillo::C_Position3>(B)) posB = pb->value + rB;
             else posB = rB;
 
             // Create rope nodes (point masses) between posA and posB

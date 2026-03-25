@@ -114,18 +114,18 @@ private:
         Vector3r centerB = Vector3r::Zero();
         Quaternion4r qA = Quaternion4r::Identity();
         Quaternion4r qB = Quaternion4r::Identity();
-        if (reg.all_of<cardillo::World::C_Position3>(eA)) centerA = reg.get<cardillo::World::C_Position3>(eA).value;
-        if (reg.all_of<cardillo::World::C_Position3>(eB)) centerB = reg.get<cardillo::World::C_Position3>(eB).value;
-        if (reg.all_of<cardillo::World::C_Orientation>(eA)) qA = reg.get<cardillo::World::C_Orientation>(eA).value;
-        if (reg.all_of<cardillo::World::C_Orientation>(eB)) qB = reg.get<cardillo::World::C_Orientation>(eB).value;
+        if (reg.all_of<cardillo::C_Position3>(eA)) centerA = reg.get<cardillo::C_Position3>(eA).value;
+        if (reg.all_of<cardillo::C_Position3>(eB)) centerB = reg.get<cardillo::C_Position3>(eB).value;
+        if (reg.all_of<cardillo::C_Orientation>(eA)) qA = reg.get<cardillo::C_Orientation>(eA).value;
+        if (reg.all_of<cardillo::C_Orientation>(eB)) qB = reg.get<cardillo::C_Orientation>(eB).value;
 
         // Determine local attachment offsets. For spheres, ensure attachment lies on surface.
         Vector3r rA_local = attachA_local;
         Vector3r rB_local = attachB_local;
         const real_t eps = (real_t)1e-9;
         // If attachment not provided and A is a sphere, point toward B; if provided and A is sphere, project to surface
-        if (reg.all_of<cardillo::World::C_RB_Sphere>(eA) && reg.all_of<cardillo::World::C_Radius>(eA)) {
-            real_t radiusA = reg.get<cardillo::World::C_Radius>(eA).r;
+        if (reg.all_of<cardillo::C_RB_Sphere>(eA) && reg.all_of<cardillo::C_Radius>(eA)) {
+            real_t radiusA = reg.get<cardillo::C_Radius>(eA).r;
             if (rA_local.squaredNorm() < eps) {
                 // default: direction from center to other body center in world frame
                 Vector3r worldDir = (centerB - centerA);
@@ -138,8 +138,8 @@ private:
             }
         }
         // Same for B
-        if (reg.all_of<cardillo::World::C_RB_Sphere>(eB) && reg.all_of<cardillo::World::C_Radius>(eB)) {
-            real_t radiusB = reg.get<cardillo::World::C_Radius>(eB).r;
+        if (reg.all_of<cardillo::C_RB_Sphere>(eB) && reg.all_of<cardillo::C_Radius>(eB)) {
+            real_t radiusB = reg.get<cardillo::C_Radius>(eB).r;
             if (rB_local.squaredNorm() < eps) {
                 Vector3r worldDir = (centerA - centerB);
                 if (worldDir.norm() < eps) worldDir = Vector3r::UnitZ(); else worldDir.normalize();

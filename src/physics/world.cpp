@@ -3,7 +3,6 @@
 #include "assets/assets.hpp"
 #include "constraints/constraints.hpp"
 #include "constraints/constraint_factory.hpp"
-#include "integration/position_integrator.hpp"
 #include "synchronization/derived_entity_sync.hpp"
 #include "../collision/collision_coal.hpp"
 #include "../solver/warmstart.hpp"
@@ -18,10 +17,10 @@ namespace {
 
 Vector3r worldPointFromLocal(const entt::registry& reg, entt::entity e, const Vector3r& r_local) {
     Vector3r p = r_local;
-    if (reg.valid(e) && reg.all_of<World::C_Position3>(e)) {
-        p = reg.get<World::C_Position3>(e).value;
-        if (reg.all_of<World::C_Orientation>(e)) {
-            p += reg.get<World::C_Orientation>(e).value.toRotationMatrix() * r_local;
+    if (reg.valid(e) && reg.all_of<C_Position3>(e)) {
+        p = reg.get<C_Position3>(e).value;
+        if (reg.all_of<C_Orientation>(e)) {
+            p += reg.get<C_Orientation>(e).value.toRotationMatrix() * r_local;
         } else {
             p += r_local;
         }
@@ -436,14 +435,6 @@ const ::cardillo::HeightFieldAsset& World::getHeightFieldAsset(entt::entity e) c
     if (!m_reg.any_of<C_HeightField>(e)) throw std::runtime_error("getHeightFieldAsset(entity): entity has no C_HeightField");
     const auto& ch = m_reg.get<C_HeightField>(e);
     return assets().getHeightField(ch.path, ch.x_dim, ch.y_dim, ch.z_scale, ch.min_height);
-}
-
-void World::explicitPositionUpdate(real_t h) {
-    physics::PositionIntegrator::explicitPositionUpdate(*this, h);
-}
-
-void World::linearImplicitPositionUpdate(real_t h) {
-    physics::PositionIntegrator::linearImplicitPositionUpdate(*this, h);
 }
 
 void World::updateBeamElementEntity(entt::entity e) {
