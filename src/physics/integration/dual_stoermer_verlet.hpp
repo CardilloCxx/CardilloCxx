@@ -14,10 +14,10 @@ namespace cardillo::integration {
 
 class DualStoermerVerletSolver : public IntegrationBase {
 public:
-	explicit DualStoermerVerletSolver(cardillo::World& world)
-		: IntegrationBase(world) {
-		m_dyn.refreshState();
-	}
+    explicit DualStoermerVerletSolver(cardillo::World& world, cardillo::physics::DynamicsAssembler& dyn, cardillo::solver::WarmstartProvider* warmstart)
+        : IntegrationBase(world, dyn, warmstart) {
+        m_dyn.refreshState();
+    }
 
 	void step(real_t dt) override;
 

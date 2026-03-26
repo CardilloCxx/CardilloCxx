@@ -52,7 +52,8 @@ public:
                                                              const World::BeamSpringParams& springs,
                                                              const World::RigidState& stateDefaults,
                                                              const World::RigidProps& propsDefaults,
-                                                             size_t segments);
+                                                             size_t segments,
+                                                             cardillo::collision::CollisionCoal* collision_mgr = nullptr);
 
     static std::pair<entt::entity, entt::entity> createBeams(World& sys,
                                                               const std::vector<const misc::SplinePattern*>& splines,
@@ -60,7 +61,8 @@ public:
                                                               const World::BeamSpringParams& springs,
                                                               const World::RigidState& stateDefaults,
                                                               const World::RigidProps& propsDefaults,
-                                                              size_t segmentsPerSpline);
+                                                              size_t segmentsPerSpline,
+                                                              cardillo::collision::CollisionCoal* collision_mgr = nullptr);
 };
 
 } // namespace physics

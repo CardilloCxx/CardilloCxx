@@ -16,6 +16,7 @@
 
 // Forward declare World in the correct namespace
 namespace cardillo { class World; }
+namespace cardillo { namespace misc { class TimingManager; } }
 
 namespace cardillo::collision {
 
@@ -59,6 +60,11 @@ private:
 
     // Backrefs
     const cardillo::World* m_sys = nullptr; // not owned
+    cardillo::misc::TimingManager* m_timings = nullptr; // optional timings pointer (not owned)
+
+public:
+    // Optional: set external timings manager so collision code can record scopes
+    void setTimings(cardillo::misc::TimingManager* t) { m_timings = t; }
 
     // COAL scene storage
     std::unique_ptr<coal::BroadPhaseCollisionManager> m_broadphase; // manager chosen from config

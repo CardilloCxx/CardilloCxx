@@ -26,8 +26,14 @@ public:
     void setFrequency(int freq);
     void setHeightFieldStride(int s) { m_hfStride = s > 0 ? s : 1; }
 
-    void maybeWrite(int step, real_t time, const cardillo::World& sys);
-    void write(int step, real_t time, const cardillo::World& sys);
+    void maybeWrite(int step, real_t time, const cardillo::World& sys,
+                    cardillo::collision::CollisionCoal* collision_mgr,
+                    cardillo::solver::WarmstartProvider* warmstart_provider,
+                    cardillo::misc::TimingManager* timings);
+    void write(int step, real_t time, const cardillo::World& sys,
+               cardillo::collision::CollisionCoal* collision_mgr,
+               cardillo::solver::WarmstartProvider* warmstart_provider,
+               cardillo::misc::TimingManager* timings);
 
     // Optional contacts output
     void enableContactsOutput(bool enable, const std::string& baseName) { m_writeContacts = enable; m_contactsBase = baseName; }

@@ -27,12 +27,18 @@ void VtkWriterBinary::setOutputDir(const std::string& dir) {
 void VtkWriterBinary::setBaseName(const std::string& name) { m_baseName = name; }
 void VtkWriterBinary::setFrequency(int freq) { m_frequency = std::max(1, freq); }
 
-void VtkWriterBinary::maybeWrite(int step, real_t time, const cardillo::World& sys) {
-    if (step % m_frequency == 0) write(step, time, sys);
+void VtkWriterBinary::maybeWrite(int step, real_t time, const cardillo::World& sys,
+                                 cardillo::collision::CollisionCoal* collision_mgr,
+                                 cardillo::solver::WarmstartProvider* warmstart_provider,
+                                 cardillo::misc::TimingManager* timings) {
+    if (step % m_frequency == 0) write(step, time, sys, collision_mgr, warmstart_provider, timings);
 }
 
-void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sys) {
-    auto sc = sys.timings().scope(cardillo::misc::TimingManager::TimerId::OutputWrite);
+void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sys,
+                            cardillo::collision::CollisionCoal* collision_mgr,
+                            cardillo::solver::WarmstartProvider* warmstart_provider,
+                            cardillo::misc::TimingManager* timings) {
+    auto sc = timings->scope(cardillo::misc::TimingManager::TimerId::OutputWrite);
     Collected data = collect(sys);
     writePointsOnly(step, 0, data);
     // Write static geometry once or when structure changed
@@ -45,14 +51,11 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
     // Always write dynamic geometry per step
     writeDynamicGeometry(step, data);
     if (m_writeContacts) {
-        try {
-            auto& mgr = const_cast<cardillo::World&>(sys).collisionManager();
-            if (sys.consumeStructureDirty()) mgr.rebuild();
-            const auto& contacts = mgr.lastFlattenedContacts();
+        if (collision_mgr) {
+            if (sys.consumeStructureDirty()) collision_mgr->rebuild();
+            const auto& contacts = collision_mgr->lastFlattenedContacts();
             const bool writeBody = sys.config().output_contacts_body_vectors;
-            writeContacts(step, contacts, writeBody, sys.warmstartProvider());
-        } catch (...) {
-            // skip if collision manager not available
+            writeContacts(step, contacts, writeBody, warmstart_provider);
         }
     }
     if (m_writeSprings) {

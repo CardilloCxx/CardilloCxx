@@ -17,8 +17,8 @@ void DualStoermerVerletSolver::step(real_t dt)
     const auto& fn_gyro = m_dyn.fVecGyroscopic(); // gyroscopic forces from current state
 
     // 2) Inplace midpoint position update
-        linearImplicitPositionUpdate(m_world, 0.5 * dt);
-        m_world.updateEntities();
+    linearImplicitPositionUpdate(m_world, 0.5 * dt);
+    m_world.updateEntities();
 
     // TODO: Why does this break the solver?
     //       This function rebuilds the collusion mangager, so it should be called after the position update?
@@ -80,7 +80,7 @@ void DualStoermerVerletSolver::step(real_t dt)
     m_dyn.writeVelocityToSystem(vnp1);
 
     // 7) Inplace final position update
-    explicitPositionUpdate(m_world, 0.5 * dt);
+    explicitPositionUpdate(m_world, 0.5 * dt, m_dyn.timings());
     m_world.updateEntities();
 }
 

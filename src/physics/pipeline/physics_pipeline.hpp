@@ -9,6 +9,7 @@
 namespace cardillo { namespace physics { class DynamicsAssembler; } }
 namespace cardillo { namespace integration { class IntegrationBase; } }
 namespace cardillo { namespace io { class VtkWriterBinary; } }
+namespace cardillo { namespace misc { class ProgressBar; } }
 
 namespace cardillo {
 namespace physics {
@@ -30,9 +31,11 @@ public:
     bool isFinished() const { return m_finished; }
 
     // Getters for owned components
-    DynamicsAssembler& dynamicsAssembler() { return *m_dyn; }
-    IntegrationBase& integrator() { return *m_integrator; }
-    VtkWriterBinary* vtkWriter() { return m_vtk_writer.get(); }
+    cardillo::physics::DynamicsAssembler& dynamicsAssembler() { return *m_dyn; }
+    cardillo::integration::IntegrationBase& integrator() { return *m_integrator; }
+    cardillo::io::VtkWriterBinary* vtkWriter() { return m_vtk_writer.get(); }
+
+    ~PhysicsPipeline();
 
 private:
     World& m_world;

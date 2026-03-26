@@ -40,10 +40,10 @@ static inline MatrixXXr buildWRowPoint(const Vector3r& n_world, real_t s) {
 } // anonymous namespace
 
 void DynamicsAssembler::updateContactsFromSystem() {
-    auto& mgr = const_cast<cardillo::World&>(m_sys).collisionManager();
-    if (m_sys.consumeStructureDirty()) mgr.rebuild();
-    mgr.applyTransforms();
-    m_contacts = mgr.detectAll();
+    if (!m_collision_mgr) throw std::runtime_error("DynamicsAssembler::updateContactsFromSystem: no CollisionCoal provided");
+    if (m_sys.consumeStructureDirty()) m_collision_mgr->rebuild();
+    m_collision_mgr->applyTransforms();
+    m_contacts = m_collision_mgr->detectAll();
 }
 
 void DynamicsAssembler::setLambda_g(const VectorXr& lam) {
@@ -282,7 +282,7 @@ void DynamicsAssembler::rebuildW_() {
 // Rebuild auxiliary block matrices derived from W and current contacts/state.
 void DynamicsAssembler::rebuildInteractionW_()
 {
-    auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::RebuildConstraintJacobians);
+    if (m_timings) { auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::RebuildConstraintJacobians); (void)sc; }
     // Build m_Wg/m_Wgamma and diagonals from new constraint patterns first, then legacy springs
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     const auto &reg = m_sys.ecs();
@@ -372,7 +372,7 @@ void DynamicsAssembler::rebuildInteractionW_()
 
 bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyroInMatrix, bool lambdaTheta)
 {
-    auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS);
+    if (m_timings) { auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS); (void)sc; }
     // Ensure current blocks are built
     rebuildInteractionW_();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
@@ -504,7 +504,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
 // Build and factor S using effective mass with gyroscopic term for Stormer-Verlet
 bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
 {
-    auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS);
+    if (m_timings) { auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS); (void)sc; }
     rebuildInteractionW_();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     const int nSprings = (int)m_Wg.rows();
@@ -643,7 +643,7 @@ VectorXr DynamicsAssembler::solveS(const VectorXr& rhs_ext) const
 }
 
 void DynamicsAssembler::refreshState() {
-    auto sc = m_sys.timings().scope(cardillo::misc::TimingManager::TimerId::DynamicsAssembler_RefreshState);
+    auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::DynamicsAssembler_RefreshState);
     bool structureChanged = false;
     if (m_sys.consumeStructureDirty()) {
         structureChanged = true;
@@ -674,7 +674,7 @@ void DynamicsAssembler::refreshState() {
         m_body_pos_offsets[(size_t)Nb] = offQ;
         m_numV = offV; m_numQ = offQ;
         rebuildMass_();
-        m_sys.collisionManager().rebuild();
+        m_collision_mgr->rebuild();
     }
 
     if (m_sys.consumeStateDirty() || structureChanged) {

@@ -301,7 +301,8 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
 
 void CollisionCoal::rebuild() {
     if (!m_sys) return;
-    auto sc = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
+    std::optional<cardillo::misc::TimingManager::Scope> sc_opt;
+    if (m_timings) sc_opt.emplace(*m_timings, cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
     clear();
     ensureBroadphaseFromConfig_();
     const auto& reg = m_sys->ecs();
@@ -349,7 +350,8 @@ void CollisionCoal::rebuild() {
 
 void CollisionCoal::applyTransforms() {
     if (!m_sys) return;
-    auto sc = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
+    std::optional<cardillo::misc::TimingManager::Scope> sc_opt;
+    if (m_timings) sc_opt.emplace(*m_timings, cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
     // Lazily build scene on first use or after clear
     if (!m_broadphase || m_objects.empty()) {
         rebuild();
@@ -388,8 +390,9 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     const auto& reg = m_sys->ecs();
 
     std::vector<coal::CollisionCallBackCollect::CollisionPair> pairs;
-    {   
-        auto sc = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
+    {
+        std::optional<cardillo::misc::TimingManager::Scope> sc_opt;
+        if (m_timings) sc_opt.emplace(*m_timings, cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
         const std::size_t nObj = m_objects.size();
         const std::size_t cbReserve = std::max<std::size_t>(nObj * 16, 256);
         coal::CollisionCallBackCollect collect_cb(/*max_size*/ cbReserve);
@@ -426,7 +429,8 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     const std::string frictionCombine = m_sys->config().friction_combine;
 
     for (const auto& pr : pairs) {
-        auto sc_n = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionNarrowphase);
+    std::optional<cardillo::misc::TimingManager::Scope> sc_n_opt;
+    if (m_timings) sc_n_opt.emplace(*m_timings, cardillo::misc::TimingManager::TimerId::CollisionNarrowphase);
         auto* o1 = pr.first;
         auto* o2 = pr.second;
         if (!o1 || !o2) continue;
@@ -434,7 +438,8 @@ std::vector<Contact> CollisionCoal::detectAll() const {
         // Run narrowphase for this pair
         entt::entity ea, eb;
         {
-            auto sc_c = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionNarrowphaseCollide);
+            std::optional<cardillo::misc::TimingManager::Scope> sc_c_opt;
+            if (m_timings) sc_c_opt.emplace(*m_timings, cardillo::misc::TimingManager::TimerId::CollisionNarrowphaseCollide);
             
             // Identify indices/entities back from user data
             auto idx1p = reinterpret_cast<std::uintptr_t>(o1->getUserData());
@@ -458,14 +463,16 @@ std::vector<Contact> CollisionCoal::detectAll() const {
 
         // Compute contact patches for this pair
         {
-            auto sc_prep = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionMakeContactPatch);
+            std::optional<cardillo::misc::TimingManager::Scope> sc_prep_opt;
+            if (m_timings) sc_prep_opt.emplace(*m_timings, cardillo::misc::TimingManager::TimerId::CollisionMakeContactPatch);
             patch_res.clear();
             coal::computeContactPatch(o1, o2, cres, patch_req, patch_res);
         }
 
         // Append contacts from this pair
         {
-            auto sc_p = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionMakeContact);
+            std::optional<cardillo::misc::TimingManager::Scope> sc_p_opt;
+            if (m_timings) sc_p_opt.emplace(*m_timings, cardillo::misc::TimingManager::TimerId::CollisionMakeContact);
             appendContactsFromPair(reg, ea, eb, cres, patch_res, mapCurr, frictionCombine, usePatchVertices);
         }
     }
@@ -484,7 +491,8 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     std::size_t totalContacts = 0;
     std::size_t totalMatched = 0;
     for (auto& kv : mapCurr) {
-        auto sc_match = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::CollisionMatching);
+        std::optional<cardillo::misc::TimingManager::Scope> sc_match_opt;
+        if (m_timings) sc_match_opt.emplace(*m_timings, cardillo::misc::TimingManager::TimerId::CollisionMatching);
         auto itPrev = m_prevContactMap.find(kv.first);
         if (itPrev != m_prevContactMap.end()) {
             matchContactsForPair(itPrev->second, kv.second, maxMatchDist);
@@ -539,7 +547,8 @@ void CollisionCoal::enablePair(entt::entity a, entt::entity b) {
 }
 
 bool CollisionCoal::isPairDisabled(entt::entity a, entt::entity b) const {
-    auto sc = m_sys->timings().scope(cardillo::misc::TimingManager::TimerId::DisableCollisionPairs);
+    std::optional<cardillo::misc::TimingManager::Scope> sc_opt;
+    if (m_timings) sc_opt.emplace(*m_timings, cardillo::misc::TimingManager::TimerId::DisableCollisionPairs);
     return m_disabledPairs.find(ContactPairKey::make(a, b)) != m_disabledPairs.end();
 }
 

@@ -11,11 +11,12 @@ namespace cardillo::integration {
 
 class IntegrationBase {
 public:
-    explicit IntegrationBase(cardillo::World& world)
-        : m_world(world), m_dyn(world) {
+    explicit IntegrationBase(cardillo::World& world, cardillo::physics::DynamicsAssembler& dyn,
+                             cardillo::solver::WarmstartProvider* warmstart)
+        : m_world(world), m_dyn(dyn) {
         // Create default numeric solver based on config (currently ProjectedJacobi)
         m_solver = std::make_unique<cardillo::solver::ProjectedJacobiSolver>(m_dyn, world.config(),
-                                                                             world.config().pj_warmstart ? world.warmstartProvider() : nullptr);
+                                                                             warmstart);
     }
 
     virtual ~IntegrationBase() = default;
@@ -25,12 +26,12 @@ public:
     cardillo::solver::SolverBase* solver() { return m_solver.get(); }
     const cardillo::solver::SolverBase* solver() const { return m_solver.get(); }
 
-    static void explicitPositionUpdate(cardillo::World& world, real_t h);
-    static void linearImplicitPositionUpdate(cardillo::World& world, real_t h);
+    static void explicitPositionUpdate(cardillo::World& world, real_t h, cardillo::misc::TimingManager* timings = nullptr);
+    static void linearImplicitPositionUpdate(cardillo::World& world, real_t h, cardillo::misc::TimingManager* timings = nullptr);
 
 protected:
     cardillo::World& m_world;
-    cardillo::physics::DynamicsAssembler m_dyn;
+    cardillo::physics::DynamicsAssembler& m_dyn;
     std::unique_ptr<cardillo::solver::SolverBase> m_solver;
 };
 

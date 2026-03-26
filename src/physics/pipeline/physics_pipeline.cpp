@@ -12,6 +12,8 @@ namespace cardillo {
 namespace physics {
 namespace pipeline {
 
+PhysicsPipeline::~PhysicsPipeline() = default;
+
 PhysicsPipeline::PhysicsPipeline(World& world,
                                  const config::Config& cfg,
                                  cardillo::collision::CollisionCoal* collision_mgr,
@@ -19,14 +21,14 @@ PhysicsPipeline::PhysicsPipeline(World& world,
                                  cardillo::solver::WarmstartProvider* warmstart_provider)
     : m_world(world), m_cfg(cfg), m_collision_mgr(collision_mgr), m_timings(timings), m_warmstart_provider(warmstart_provider) {
     // Create owned components
-    m_dyn = std::make_unique<cardillo::physics::DynamicsAssembler>(m_world);
+    m_dyn = std::make_unique<cardillo::physics::DynamicsAssembler>(m_world, m_collision_mgr, m_timings, m_warmstart_provider);
 
     // Choose integrator based on config
     using namespace cardillo::integration;
     if (cfg.solver == cardillo::config::SolverType::Moreau) {
-        m_integrator = std::make_unique<MoreauSolver>(m_world, cfg.moreau_theta);
+        m_integrator = std::make_unique<MoreauSolver>(m_world, *m_dyn, m_warmstart_provider);
     } else {
-        m_integrator = std::make_unique<DualStoermerVerletSolver>(m_world);
+        m_integrator = std::make_unique<DualStoermerVerletSolver>(m_world, *m_dyn, m_warmstart_provider);
     }
 
     // Create VTK writer if output is enabled
@@ -60,7 +62,8 @@ void PhysicsPipeline::step(real_t dt) {
 
     // Output VTK if present
     if (m_vtk_writer) {
-        m_vtk_writer->maybeWrite(m_current_step, m_current_time, m_world);
+        m_vtk_writer->maybeWrite(m_current_step, m_current_time, m_world,
+                                 m_collision_mgr, m_warmstart_provider, m_timings);
     }
 
     // Update progress bar if present

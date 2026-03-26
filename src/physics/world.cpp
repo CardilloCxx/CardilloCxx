@@ -34,8 +34,6 @@ Vector3r worldPointFromLocal(const entt::registry& reg, entt::entity e, const Ve
 World::World() 
 {
     m_gravity = Vector3r(0, 0, -9.81);
-    // Default warmstart provider: simple global-index cache
-    m_warmstart_provider = std::make_unique<cardillo::solver::WarmstartCache>();
 }
 
 World::~World() = default;
@@ -387,43 +385,11 @@ void World::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r
     m_forces_dirty = true;
 }
 
-// ---------- Subsystems ----------
+// (Removed) World no longer exposes collision/timings/warmstart accessors;
+// these subsystems are owned by the PhysicsEngine and should be passed
+// into pipeline/assemblers/solvers as needed.
 
-cardillo::collision::CollisionCoal& World::collisionManager() {
-    if (m_collision_mgr_external) return *m_collision_mgr_external;
-    if (!m_collision_mgr) {
-        m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
-        m_collision_mgr->registerSystem(this);
-    }
-    return *m_collision_mgr;
-}
-
-const cardillo::collision::CollisionCoal& World::collisionManager() const {
-    // const-correct lazy init: cast away const for creation then return const ref
-    if (!m_collision_mgr) {
-        auto* self = const_cast<World*>(this);
-        self->m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
-        self->m_collision_mgr->registerSystem(self);
-    }
-    return *m_collision_mgr;
-}
-
-cardillo::misc::TimingManager& World::timings() {
-    if (m_timings_external) return *m_timings_external;
-    if (!m_timings) m_timings = std::make_unique<cardillo::misc::TimingManager>();
-    return *m_timings;
-}
-const cardillo::misc::TimingManager& World::timings() const {
-    auto* self = const_cast<World*>(this);
-    if (!self->m_timings) self->m_timings = std::make_unique<cardillo::misc::TimingManager>();
-    return *self->m_timings;
-}
-
-// ---------- Collision pair control ----------
-
-void World::disableCollisionBetween(entt::entity a, entt::entity b) {
-    collisionManager().disablePair(a, b);
-}
+// (Removed) collision pair control moved to engine-owned CollisionCoal
 
 // ---------- Mesh / HeightField asset access ----------
 
@@ -450,14 +416,4 @@ void World::updateEntities() {
 } // namespace cardillo::
 
 // Set external non-owning subsystem pointers
-void World::setCollisionManager(cardillo::collision::CollisionCoal* mgr) {
-    m_collision_mgr_external = mgr;
-}
-
-void World::setTimings(cardillo::misc::TimingManager* timings) {
-    m_timings_external = timings;
-}
-
-void World::setWarmstartProvider(cardillo::solver::WarmstartProvider* provider) {
-    m_warmstart_provider_external = provider;
-}
+// (Removed) setters for external subsystems — PhysicsEngine manages these.

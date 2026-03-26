@@ -14,13 +14,13 @@ namespace cardillo::integration {
 
 class MoreauSolver : public IntegrationBase {
 public:
-	explicit MoreauSolver(cardillo::World& world)
-		: MoreauSolver(world, world.config().moreau_theta) {}
+    explicit MoreauSolver(cardillo::World& world, cardillo::physics::DynamicsAssembler& dyn, cardillo::solver::WarmstartProvider* warmstart)
+        : MoreauSolver(world, dyn, world.config().moreau_theta, warmstart) {}
 
-	explicit MoreauSolver(cardillo::World& world, real_t theta)
-		: IntegrationBase(world), m_theta(theta) {
-		m_dyn.refreshState();
-	}
+    explicit MoreauSolver(cardillo::World& world, cardillo::physics::DynamicsAssembler& dyn, real_t /*theta*/, cardillo::solver::WarmstartProvider* warmstart)
+        : IntegrationBase(world, dyn, warmstart), m_theta(world.config().moreau_theta) {
+        m_dyn.refreshState();
+    }
 
 	// Midpoint rule for unconstrained translation-only point masses
 	void step(real_t dt) override;

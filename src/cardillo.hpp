@@ -1,14 +1,10 @@
+// Lightweight project umbrella header restored to satisfy examples and external
+// translation units. This header re-exports a small set of commonly used public
+// headers. It intentionally keeps content minimal to avoid heavy transitive
+// includes in large builds.
 #pragma once
 
-#include <petscsys.h>
-#include <Eigen/Dense>
-#include "misc/types.hpp"
-#include "misc/dofs.hpp"
-#include "physics/api/physics.hpp"
-
-// A simple wrapper function
-namespace cardillo {
-    inline void say_hello(const Eigen::VectorXd& v) {
-        PetscPrintf(PETSC_COMM_WORLD, "Hello from PETSc + Eigen! Vector size = %d\n", (int)v.size());
-    }
-}
+#include "physics/api/physics_engine.hpp"
+#include "io/vtk_writer_binary.hpp"
+#include "misc/progress/ProgressBar.hpp"
+#include "config/config.hpp"

@@ -53,12 +53,7 @@ public:
     void setConfig(const config::Config& cfg) { m_cfg = cfg; setGravity(m_cfg.sim_gravity); }
     const config::Config& config() const { return m_cfg; }
 
-    // Persistent collision manager (COAL) storage and access
-    collision::CollisionCoal& collisionManager();
-    const collision::CollisionCoal& collisionManager() const;
-    // Timings access
-    cardillo::misc::TimingManager& timings();
-    const cardillo::misc::TimingManager& timings() const;
+    // (Removed) collision/timings access — owned by PhysicsEngine now
 
     void setGravity(const Vector3r& g);
     const Vector3r& gravity() const { return m_gravity; }
@@ -101,11 +96,8 @@ public:
     // Mutable ECS access when external systems need to emplace components
     entt::registry& ecs() { return m_reg; }
 
-    // Access to warmstart provider owned by the system (may be nullptr)
-    cardillo::solver::WarmstartProvider* warmstartProvider() const { return m_warmstart_provider.get(); }
 
-    // Disable collision between two entities (order-independent). This persists until enabled again.
-    void disableCollisionBetween(entt::entity a, entt::entity b);
+    // (Removed) disableCollisionBetween: collision pair control now owned by PhysicsEngine
 
     // New constraint-pattern API -------------------------------------------
     // Access all constraint patterns (mutable and const)
@@ -164,33 +156,22 @@ private:
 
     // assignDofs_ moved to DynamicsAssembler
 
-    // Persistent subsystems
+    // Persistent subsystems (owned externally — World holds non-owning pointers)
     config::Config m_cfg{}; // global config
-    std::unique_ptr<collision::CollisionCoal> m_collision_mgr; // created on first use
-    std::unique_ptr<cardillo::misc::TimingManager> m_timings;  // created on first use
-
-    // Warmstart provider (strategy owned by system). Default implementation is WarmstartCache.
-    std::unique_ptr<cardillo::solver::WarmstartProvider> m_warmstart_provider;
     // New constraint-pattern storage (owned by the system)
     std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>> m_constraints_new;
 
     // Asset manager (new abstraction)
     std::shared_ptr<class PhysicsAssets> m_assets;
 
-    // Non-owning external pointers (set when an external manager owns the subsystems)
-    collision::CollisionCoal* m_collision_mgr_external{nullptr};
-    cardillo::misc::TimingManager* m_timings_external{nullptr};
-    cardillo::solver::WarmstartProvider* m_warmstart_provider_external{nullptr};
+    // (Removed) external subsystem pointers — subsystems are owned by PhysicsEngine
 
 public:
     void setAssets(std::shared_ptr<class PhysicsAssets> assets) { m_assets = std::move(assets); }
     class PhysicsAssets& assets();
     const class PhysicsAssets& assets() const;
 
-    // Set non-owning pointers to subsystems owned by an external lifecycle manager (e.g., PhysicsEngine)
-    void setCollisionManager(collision::CollisionCoal* mgr);
-    void setTimings(cardillo::misc::TimingManager* timings);
-    void setWarmstartProvider(cardillo::solver::WarmstartProvider* provider);
+    // (Removed) setters for external subsystem pointers — PhysicsEngine manages subsystems
 };
 
 } // namespace cardillo

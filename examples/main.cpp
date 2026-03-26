@@ -59,7 +59,6 @@ void printTimingsAtExit(int sig) {
 
 int main(int argc, char** argv) {
     PetscInitialize(&argc, &argv, nullptr, nullptr);
-    const int worldRank = 0;
 
     std::signal(SIGINT, printTimingsAtExit);
     Eigen::setNbThreads(1);
@@ -69,9 +68,9 @@ int main(int argc, char** argv) {
         ? cardillo::config::ConfigReader::fromFile(argv[1])
         : cardillo::config::Config{}; // defaults from header
     
-    if (argc <= 1 && worldRank == 0) std::cout << "No config file provided, using defaults." << std::endl;
+    if (argc <= 1) std::cout << "No config file provided, using defaults." << std::endl;
     
-    // Construct engine from config (engine will create and own subsystems)
+    // Construct engine from config
     cardillo::physics::PhysicsEngine engine(cfg);
     g_engine = &engine;
 
@@ -118,35 +117,32 @@ int main(int argc, char** argv) {
         }
     }
     if (!selected) {
-        if (worldRank == 0) 
-        {
-            if (cfg.scene_name == "none-specified") {
-                std::cerr << "No scene_name specified in config. Available scenes are:" << std::endl;
-                for (auto& s : scenes) {
-                    std::cerr << "  - " << s->sceneName() << std::endl;
-                }
+        if (cfg.scene_name == "none-specified") {
+            std::cerr << "No scene_name specified in config. Available scenes are:" << std::endl;
+            for (auto& s : scenes) {
+                std::cerr << "  - " << s->sceneName() << std::endl;
             }
-            std::cerr << "Unknown scene_name '" << cfg.scene_name << "'" << std::endl;
         }
+        std::cerr << "Unknown scene_name '" << cfg.scene_name << "'" << std::endl;
+
         PetscFinalize();
         return EXIT_FAILURE;
     }
+    
     std::cout << "Selected scene: " << selected->sceneName() << std::endl;
     SceneBase& scene = *selected;
     cfg.output_filename_prefix = scene.sceneName();
     scene.populate(engine);
 
-    // Simulation loop: let PhysicsEngine own the pipeline, integrator and writer
     real_t t = 0.0;
     const real_t dt = cfg.sim_dt;
     while (!engine.isFinished()) {
         scene.updateScene(engine, t, dt);
         engine.step(dt);
-        if (worldRank == 0) engine.writeTrackedStateToCsv(t + dt);
+        engine.writeTrackedStateToCsv(t + dt);
         t += dt;
     }
-    // print timings
-    if (worldRank == 0) engine.timings().printBreakdown(std::cout);
+    engine.timings().printBreakdown(std::cout);
 
     PetscFinalize();
     return 0;

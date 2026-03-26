@@ -18,7 +18,10 @@ namespace cardillo::physics {
 // - Rebuilds lazily on demand.
 class DynamicsAssembler {
 public:
-    explicit DynamicsAssembler(World& sys) : m_sys(sys) {}
+    explicit DynamicsAssembler(World& sys, cardillo::collision::CollisionCoal* collision_mgr = nullptr,
+                               cardillo::misc::TimingManager* timings = nullptr,
+                               cardillo::solver::WarmstartProvider* warmstart = nullptr)
+        : m_sys(sys), m_collision_mgr(collision_mgr), m_timings(timings), m_warmstart_provider(warmstart) {}
 
     // Legacy one-shot assembly helpers removed; use cached getters instead.
 
@@ -67,9 +70,16 @@ public:
     void refreshCollisionsAndSprings(real_t dt, real_t theta, bool includeGyroInMatrix = false, bool lambdaTheta = false);
     void refreshCollisionsAndSpringsStormerVerlet(real_t dt);
 
+     cardillo::misc::TimingManager* timings() const { return m_timings; }
+     cardillo::collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
+     cardillo::solver::WarmstartProvider* warmstartProvider() const { return m_warmstart_provider; }
 
 private:
     World& m_sys;
+    // Non-owning pointers to external subsystems (moved out of World)
+    cardillo::collision::CollisionCoal* m_collision_mgr{nullptr};
+    cardillo::misc::TimingManager* m_timings{nullptr};
+    cardillo::solver::WarmstartProvider* m_warmstart_provider{nullptr};
 
     // Cached data
     // Concatenated state

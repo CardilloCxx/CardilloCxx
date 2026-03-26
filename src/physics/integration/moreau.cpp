@@ -21,7 +21,7 @@ void MoreauSolver::step(real_t dt)
     const bool lambdaTheta = m_world.config().moreau_lambda_theta;
 
     // 2) Inplace midpoint position update
-    explicitPositionUpdate(m_world, (1.0 - m_theta) * dt);
+    explicitPositionUpdate(m_world, (1.0 - m_theta) * dt, m_dyn.timings());
     m_world.updateEntities();
 
     // 3) Evaluate contacts at midpoint positions
@@ -67,7 +67,7 @@ void MoreauSolver::step(real_t dt)
     m_dyn.writeVelocityToSystem(vnp1);
 
     // 7) Inplace final position update
-    explicitPositionUpdate(m_world, m_theta * dt);
+    explicitPositionUpdate(m_world, m_theta * dt, m_dyn.timings());
     m_world.updateEntities();
 }
 

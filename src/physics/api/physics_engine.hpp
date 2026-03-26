@@ -26,6 +26,7 @@ class PhysicsEngine {
 public:
     // === Construction / Lifecycle ===
     PhysicsEngine();
+    ~PhysicsEngine();
     explicit PhysicsEngine(const config::Config& cfg);
     void initFromConfig(const config::Config& cfg);
 
@@ -75,7 +76,7 @@ public:
                                                            const RigidState& stateDefaults,
                                                            const RigidProps& propsDefaults,
                                                            size_t segments) {
-        return BodyFactory::createBeam(*m_world, spline, section, springs, stateDefaults, propsDefaults, segments);
+        return BodyFactory::createBeam(*m_world, spline, section, springs, stateDefaults, propsDefaults, segments, m_collision_mgr.get());
     }
 
     inline std::pair<entt::entity, entt::entity> createBeams(const std::vector<const cardillo::misc::SplinePattern*>& splines,
@@ -84,8 +85,11 @@ public:
                                                             const RigidState& stateDefaults,
                                                             const RigidProps& propsDefaults,
                                                             size_t segmentsPerSpline) {
-        return BodyFactory::createBeams(*m_world, splines, section, springs, stateDefaults, propsDefaults, segmentsPerSpline);
+        return BodyFactory::createBeams(*m_world, splines, section, springs, stateDefaults, propsDefaults, segmentsPerSpline, m_collision_mgr.get());
     }
+
+    // Convenience step() overload that uses configured sim_dt when available
+    void step();
 
     inline size_t addLinearDistanceConstraint(entt::entity a,
                                               entt::entity b,
@@ -146,7 +150,7 @@ public:
     entt::registry& ecs() { return m_world->ecs(); }
     const entt::registry& ecs() const { return m_world->ecs(); }
 
-    void disableCollisionBetween(entt::entity a, entt::entity b) { m_world->disableCollisionBetween(a,b); }
+    void disableCollisionBetween(entt::entity a, entt::entity b);
     void makeStatic(entt::entity e) { m_world->makeStatic(e); }
 
     MatrixXXr getMass(entt::entity e) const { return m_world->getMass(e); }

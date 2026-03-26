@@ -18,7 +18,8 @@ public:
         const BeamSpringParams& springs,
         const RigidState& stateDefaults,
         const RigidProps& propsDefaults,
-        size_t segments);
+        size_t segments,
+        cardillo::collision::CollisionCoal* collision_mgr = nullptr);
 
     static std::pair<entt::entity, entt::entity> createBeams(
         World& system,
@@ -27,7 +28,8 @@ public:
         const BeamSpringParams& springs,
         const RigidState& stateDefaults,
         const RigidProps& propsDefaults,
-        size_t segments);
+        size_t segments,
+        cardillo::collision::CollisionCoal* collision_mgr = nullptr);
 };
 
 } // namespace cardillo::physics

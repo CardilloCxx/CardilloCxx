@@ -4,6 +4,8 @@
 #include <limits>
 #include <optional>
 
+#include "../../collision/collision_coal.hpp"
+
 #include <coal/shape/geometric_shapes.h>
 
 #include "assets.hpp"
@@ -109,7 +111,8 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys,
                                                             const World::BeamSpringParams& springs,
                                                             const World::RigidState& stateDefaults,
                                                             const World::RigidProps& propsDefaults,
-                                                            const Vector3r& splineCOMWorld) {
+                                                            const Vector3r& splineCOMWorld,
+                                                            cardillo::collision::CollisionCoal* collision_mgr) {
     if (samples.empty()) return {entt::null, entt::null};
 
     real_t totalLen = (real_t)0;
@@ -196,7 +199,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys,
 
         if (prev != entt::null) {
             ConstraintFactory::addBeamConstraint(sys, prev, cur, springs, section);
-            sys.disableCollisionBetween(prev, cur);
+            if (collision_mgr) collision_mgr->disablePair(prev, cur);
         }
         if (root == entt::null) root = cur;
         prev = cur;
@@ -205,7 +208,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys,
 
         if (loop && root != entt::null && end != entt::null && end != root) {
         ConstraintFactory::addBeamConstraint(sys, end, root, springs, section);
-        sys.disableCollisionBetween(end, root);
+        if (collision_mgr) collision_mgr->disablePair(end, root);
         if (sys.ecs().any_of<cardillo::C_BeamElement>(end)) sys.ecs().get<cardillo::C_BeamElement>(end).next = root;
         if (sys.ecs().any_of<cardillo::C_BeamElement>(root)) sys.ecs().get<cardillo::C_BeamElement>(root).prev = end;
     }
@@ -479,7 +482,8 @@ std::pair<entt::entity, entt::entity> BodyFactory::createBeam(World& sys,
                                                                const World::BeamSpringParams& springs,
                                                                const World::RigidState& stateDefaults,
                                                                const World::RigidProps& propsDefaults,
-                                                               size_t segments) {
+                                                               size_t segments,
+                                                               cardillo::collision::CollisionCoal* collision_mgr) {
     const real_t totalLen = spline.totalLength();
     const real_t segLen = totalLen / (real_t)segments;
     const bool endsOnSpline = true;
@@ -514,16 +518,17 @@ std::pair<entt::entity, entt::entity> BodyFactory::createBeam(World& sys,
     }
 
     Vector3r splineCOMWorld = spline.centerOfMass();
-    return buildBeamFromSamples(sys, samples, spline.isLoop(), section, springs, stateDefaults, propsDefaults, splineCOMWorld);
+    return buildBeamFromSamples(sys, samples, spline.isLoop(), section, springs, stateDefaults, propsDefaults, splineCOMWorld, collision_mgr);
 }
 
 std::pair<entt::entity, entt::entity> BodyFactory::createBeams(World& sys,
-                                                                const std::vector<const misc::SplinePattern*>& splines,
-                                                                const World::BeamCrossSection& section,
-                                                                const World::BeamSpringParams& springs,
-                                                                const World::RigidState& stateDefaults,
-                                                                const World::RigidProps& propsDefaults,
-                                                                size_t segmentsPerSpline) {
+                                                               const std::vector<const misc::SplinePattern*>& splines,
+                                                               const World::BeamCrossSection& section,
+                                                               const World::BeamSpringParams& springs,
+                                                               const World::RigidState& stateDefaults,
+                                                               const World::RigidProps& propsDefaults,
+                                                               size_t segmentsPerSpline,
+                                                               cardillo::collision::CollisionCoal* collision_mgr) {
     real_t totalLen = 0;
     for (const auto* sp : splines) {
         if (sp) totalLen += sp->totalLength();
@@ -534,12 +539,13 @@ std::pair<entt::entity, entt::entity> BodyFactory::createBeams(World& sys,
     entt::entity prevEnd = entt::null;
     for (size_t i = 0; i < splines.size(); ++i) {
         auto pair = createBeam(sys,
-                               *splines[i],
-                               section,
-                               springs,
-                               stateDefaults,
-                               propsDefaults,
-                               (size_t)(segmentsPerSpline * (splines[i]->totalLength() / totalLen)));
+                       *splines[i],
+                       section,
+                       springs,
+                       stateDefaults,
+                       propsDefaults,
+                       (size_t)(segmentsPerSpline * (splines[i]->totalLength() / totalLen)),
+                       collision_mgr);
         if (first == entt::null) first = pair.first;
         if (prevEnd != entt::null && pair.first != entt::null) {
             if (sys.ecs().any_of<cardillo::C_Orientation>(prevEnd) && sys.ecs().any_of<cardillo::C_Orientation>(pair.first)) {
@@ -548,7 +554,7 @@ std::pair<entt::entity, entt::entity> BodyFactory::createBeams(World& sys,
                 qNext = World::alignQuaternionTo(qNext, qPrev);
             }
             ConstraintFactory::addRigidConstraint(sys, prevEnd, pair.first);
-            sys.disableCollisionBetween(prevEnd, pair.first);
+            if (collision_mgr) collision_mgr->disablePair(prevEnd, pair.first);
         }
         prevEnd = pair.second;
     }
