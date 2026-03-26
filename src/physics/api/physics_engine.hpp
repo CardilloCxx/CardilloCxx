@@ -88,7 +88,6 @@ public:
         return BodyFactory::createBeams(*m_world, splines, section, springs, stateDefaults, propsDefaults, segmentsPerSpline, m_collision_mgr.get());
     }
 
-    // Convenience step() overload that uses configured sim_dt when available
     void step();
 
     inline size_t addLinearDistanceConstraint(entt::entity a,

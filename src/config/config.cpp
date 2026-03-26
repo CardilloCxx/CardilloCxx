@@ -89,9 +89,9 @@ Config ConfigReader::fromFile(const std::string& path) {
         }
         else if (key == "solver.name") {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
-            if (v == "moreau" || v == "first_order" || v == "theta") cfg.solver = SolverType::Moreau;
-            else if (v == "stoermverlet" || v == "stoermerverlet" || v == "sv") cfg.solver = SolverType::StoermerVerlet;
-            else cfg.solver = SolverType::StoermerVerlet;
+            if (v == "moreau" || v == "first_order" || v == "theta") cfg.integrator = IntegratorType::Moreau;
+            else if (v == "stoermverlet" || v == "stoermerverlet" || v == "sv") cfg.integrator = IntegratorType::StoermerVerlet;
+            else cfg.integrator = IntegratorType::StoermerVerlet;
         }
         else if (key == "moreau.theta" || key == "solver.theta") {
             try { cfg.moreau_theta = static_cast<real_t>(std::stod(val)); } catch (...) {}

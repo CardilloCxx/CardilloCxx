@@ -24,9 +24,8 @@ void IntegrationBase::explicitPositionUpdate(World& world, real_t h) {
         P(3) -= h * 0.5 * P.head<3>().dot(omega);
         P.head<3>() += h * 0.5 * (w * omega + P.head<3>().cross(omega));
 
-        orientation.value = World::alignQuaternionTo(orientation.value, q_prev);
+        orientation.value = MathHelper::alignQuaternionTo(orientation.value, q_prev);
     }
-
 }
 
 void IntegrationBase::linearImplicitPositionUpdate(World& world, real_t h) {
@@ -55,7 +54,7 @@ void IntegrationBase::linearImplicitPositionUpdate(World& world, real_t h) {
         Vector4r& P = orientation.value.coeffs();
         P = A.inverse() * P;
 
-        orientation.value = World::alignQuaternionTo(orientation.value, q_prev);
+        orientation.value = MathHelper::alignQuaternionTo(orientation.value, q_prev);
     }
 
 }

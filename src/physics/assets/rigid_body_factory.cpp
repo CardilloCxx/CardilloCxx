@@ -83,9 +83,9 @@ inline Vector3r coneInertiaDiag(real_t m, real_t radius, real_t height) {
 } // namespace
 
 entt::entity RigidBodyFactory::create(World& system,
-                                      const World::RigidShape& shape,
-                                      const World::RigidState& state,
-                                      const World::RigidProps& props) {
+                                      const physics::RigidShape& shape,
+                                      const physics::RigidState& state,
+                                      const physics::RigidProps& props) {
     auto& reg = system.ecs();
     const auto& cfg = system.config();
 
@@ -260,6 +260,7 @@ entt::entity RigidBodyFactory::create(World& system,
         shape);
 
     system.markStructureDirty();
+
     return e;
 }
 

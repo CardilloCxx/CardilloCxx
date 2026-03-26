@@ -175,8 +175,8 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
 BeamConstraint::BeamConstraint( entt::registry& reg,
                                 entt::entity a,
                                 entt::entity b,
-                                const cardillo::World::BeamSpringParams& springs,
-                                const cardillo::World::BeamCrossSection& section)
+                                const cardillo::physics::BeamSpringParams& springs,
+                                const cardillo::physics::BeamCrossSection& section)
         : ConstraintPattern(reg, a, b, Vector3r::Zero(), Vector3r::Zero()),
             m_springs(springs), m_section(section)
 {

@@ -24,6 +24,7 @@ public:
                                    const cardillo::config::Config& cfg,
                                    WarmstartProvider* cache)
         : m_dyn(dyn)
+        , m_cfg(cfg)
         , m_alpha(cfg.pj_alpha)
         
         , m_relax(std::clamp<real_t>(cfg.pj_relaxation, 0, 1))
@@ -51,6 +52,8 @@ public:
 
 private:
     cardillo::physics::DynamicsAssembler& m_dyn;
+    cardillo::config::Config m_cfg;
+    
     real_t m_alpha{(real_t)1};
     // No internal row-vector warmstart fallback; only via external cache when enabled
     real_t m_relax{(real_t)1};

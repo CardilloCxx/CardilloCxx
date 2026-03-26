@@ -6,30 +6,10 @@
 
 namespace cardillo::config {
 
-enum class SolverType { Moreau, StoermerVerlet };
+enum class IntegratorType { Moreau, StoermerVerlet };
+enum class SolverType { ProjectedJacobi };
 
 struct Config {
-
-    // PROJECTED_JACOBI scoped settings
-    int    pj_max_iterations{200000};   // pj.max_iterations
-    real_t pj_tol_abs{(real_t)1e-4};    // pj.tol_abs
-    real_t pj_tol_rel{(real_t)0};       // pj.tol_rel
-    real_t pj_relaxation{(real_t)0.9};  // pj.relaxation
-    real_t pj_alpha{(real_t)0.3};       // pj.alpha
-    bool   pj_nesterov{false};          // pj.nesterov (enable Nesterov acceleration)
-    real_t pj_nesterov_beta_threshold{(real_t)0.995}; // pj.nesterov_beta_threshold
-    int    pj_nesterov_restart_limit{4};              // pj.nesterov_restart_limit
-    bool   pj_warmstart{true};                        // pj.warmstart (enable warmstart & cache)
-    bool   pj_rdiag_true_delassus{false};             // pj.rdiag_true_delassus
-    std::string pj_convergence_csv_dir{""};          // pj.convergence_csv_dir (empty to disable)
-
-    // Presence flags for precedence handling (e.g., pj.alpha overrides alpha if both set)
-    bool has_pj_alpha{false};
-    bool has_pj_max_iterations{false};
-    bool has_pj_tol_abs{false};
-    bool has_pj_tol_rel{false};
-    bool has_pj_relaxation{false};
-    
 
     // Simulation settings
     real_t sim_T{(real_t)5.0};   // sim.T - total simulation time
@@ -75,8 +55,30 @@ struct Config {
     bool debug_pj{false};   // debug.pj  - enable ProjectedJacobi iteration logging
     bool debug_mesh{false}; // debug.mesh - print mesh normalization info (volume, COM, inertia)
 
+
     // Solver selection
-    SolverType solver{SolverType::Moreau};
+    SolverType solver{SolverType::ProjectedJacobi};
+    int    pj_max_iterations{200000};   // pj.max_iterations
+    real_t pj_tol_abs{(real_t)1e-4};    // pj.tol_abs
+    real_t pj_tol_rel{(real_t)0};       // pj.tol_rel
+    real_t pj_relaxation{(real_t)0.9};  // pj.relaxation
+    real_t pj_alpha{(real_t)0.3};       // pj.alpha
+    bool   pj_nesterov{false};          // pj.nesterov (enable Nesterov acceleration)
+    real_t pj_nesterov_beta_threshold{(real_t)0.995}; // pj.nesterov_beta_threshold
+    int    pj_nesterov_restart_limit{4};              // pj.nesterov_restart_limit
+    bool   pj_warmstart{true};                        // pj.warmstart (enable warmstart & cache)
+    bool   pj_rdiag_true_delassus{false};             // pj.rdiag_true_delassus
+    std::string pj_convergence_csv_dir{""};          // pj.convergence_csv_dir (empty to disable)
+
+    // Presence flags for precedence handling (e.g., pj.alpha overrides alpha if both set)
+    bool has_pj_alpha{false};
+    bool has_pj_max_iterations{false};
+    bool has_pj_tol_abs{false};
+    bool has_pj_tol_rel{false};
+    bool has_pj_relaxation{false};
+    
+    // Integrator selection
+    IntegratorType integrator{IntegratorType::Moreau};
     real_t moreau_theta{(real_t)1.0};
     bool moreau_implicit_gyroscopy{false};
     bool moreau_lambda_theta{false};

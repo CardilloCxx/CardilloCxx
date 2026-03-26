@@ -11,21 +11,16 @@ namespace cardillo::integration {
 
 class IntegrationBase {
 public:
-    explicit IntegrationBase(cardillo::World& world, cardillo::physics::DynamicsAssembler& dyn,
+    explicit IntegrationBase(cardillo::World& world, 
+                             cardillo::solver::SolverBase& solver,
+                             cardillo::physics::DynamicsAssembler& dyn,
                              cardillo::misc::TimingManager& timings,
-                             cardillo::solver::WarmstartProvider* warmstart)
-        : m_world(world), m_dyn(dyn), m_timings(timings) {
-        // Create default numeric solver based on config (currently ProjectedJacobi)
-        m_solver = std::make_unique<cardillo::solver::ProjectedJacobiSolver>(m_dyn, world.config(),
-                                                                             warmstart);
-    }
+                             cardillo::config::Config& config)
+        : m_world(world), m_solver(solver),  m_dyn(dyn), m_timings(timings), m_config(config)
+    { }
 
     virtual ~IntegrationBase() = default;
     virtual void step(real_t dt) = 0;
-
-    // Access to the underlying numeric solver (may be null)
-    cardillo::solver::SolverBase* solver() { return m_solver.get(); }
-    const cardillo::solver::SolverBase* solver() const { return m_solver.get(); }
 
     void explicitPositionUpdate(cardillo::World& world, real_t h);
     void linearImplicitPositionUpdate(cardillo::World& world, real_t h);
@@ -34,7 +29,8 @@ protected:
     cardillo::World& m_world;
     cardillo::physics::DynamicsAssembler& m_dyn;
     cardillo::misc::TimingManager& m_timings;
-    std::unique_ptr<cardillo::solver::SolverBase> m_solver;
+    cardillo::solver::SolverBase& m_solver;
+    cardillo::config::Config& m_config;
 };
 
 } // namespace cardillo::integration

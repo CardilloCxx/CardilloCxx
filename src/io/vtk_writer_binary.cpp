@@ -11,15 +11,7 @@
 #include <algorithm>
 #include <cstring>
 
-namespace fs = std::filesystem;
-
 namespace cardillo::io {
-
-VtkWriterBinary::VtkWriterBinary(std::string outputDir, std::string baseName, int frequency)
-    : m_outputDir(std::move(outputDir)), m_baseName(std::move(baseName)), m_frequency(frequency) {
-    if (m_frequency < 1) m_frequency = 1;
-    if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
-}
 
 void VtkWriterBinary::setOutputDir(const std::string& dir) {
     m_outputDir = dir; if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
@@ -54,7 +46,7 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
         if (collision_mgr) {
             if (sys.consumeStructureDirty()) collision_mgr->rebuild();
             const auto& contacts = collision_mgr->lastFlattenedContacts();
-            const bool writeBody = sys.config().output_contacts_body_vectors;
+            const bool writeBody = m_cfg.output_contacts_body_vectors;
             writeContacts(step, contacts, writeBody, warmstart_provider);
         }
     }

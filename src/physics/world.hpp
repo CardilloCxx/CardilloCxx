@@ -19,6 +19,7 @@
 #include "../misc/dofs.hpp"
 #include "../config/config.hpp"
 #include "../misc/timings/TimingManager.hpp"
+#include "../misc/math_helper.hpp"
 #include <coal/BVH/BVH_model.h>
 #include <coal/collision_object.h>
 #include <coal/broadphase/broadphase.h>
@@ -31,42 +32,36 @@ namespace cardillo { namespace physics { class ConstraintPattern; class LinearDi
 namespace cardillo {
 class World {
 public:
-    static Quaternion4r alignQuaternionTo(const Quaternion4r& q_in, const Quaternion4r& q_ref) {
-        Quaternion4r q = q_in;
-        if (!q.coeffs().allFinite()) return q_ref;
-        q.normalize();
-        if (q_ref.dot(q) < (real_t)0) q.coeffs() = -q.coeffs();
-        return q;
-    }
-
-    using RigidState = cardillo::physics::RigidState;
-    using RigidShape = cardillo::physics::RigidShape;
-    using RigidProps = cardillo::physics::RigidProps;
-    using BeamCrossSection = cardillo::physics::BeamCrossSection;
-    using BeamSpringParams = cardillo::physics::BeamSpringParams;
-    using BeamBodyType = cardillo::physics::BeamBodyType;
-
-    World();
     explicit World(const config::Config& cfg);
     ~World();
-    // Global config accessible across subsystems
-    void setConfig(const config::Config& cfg) { m_cfg = cfg; setGravity(m_cfg.sim_gravity); }
-    const config::Config& config() const { return m_cfg; }
 
-    // (Removed) collision/timings access — owned by PhysicsEngine now
+    entt::registry m_reg;
+    Vector3r m_gravity;  // gravity vector
+
+    // System dirty flags (mutable so const getters/setters can flip)
+    mutable bool m_state_dirty = true;     // q or v changed outside of physics loop
+    mutable bool m_structure_dirty = true; // objects added/removed
+    mutable bool m_forces_dirty = true;    // external forces changed
+
+    // Cached number of bodies (entities with C_BodyIndex & C_PhysicsObject)
+    mutable int m_num_bodies_cached = -1;
+    mutable bool m_num_bodies_dirty = true;
+
+    config::Config m_cfg{}; // global config
+
+    std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>> m_constraints_new;
+    std::shared_ptr<class PhysicsAssets> m_assets;
+
+    // Access global config
+    const config::Config& config() const { return m_cfg; }
+    config::Config& config() { return m_cfg; }
+
+    // Access asset manager
+    class PhysicsAssets& assets();
+    const class PhysicsAssets& assets() const;
 
     void setGravity(const Vector3r& g);
     const Vector3r& gravity() const { return m_gravity; }
-
-    // Visual/collision plane configuration (for future use in collisions)
-    struct Plane {
-        Vector3r center{0,0,0};
-        Vector3r normal{0,0,1};
-        Vector3r up{0,1,0};
-        real_t sizeX{5}, sizeY{5}; // half extents for visualization
-    };
-    void updateBeamElementEntity(entt::entity e);
-    void updateEntities();
 
     // Dynamics getters (Cache them inside the entity to avoid recomputation)
     MatrixXXr getMass( entt::entity e ) const;        // Linear Inertia and Angular Inertia
@@ -88,18 +83,11 @@ public:
     const ::cardillo::MeshAsset& getMeshAsset(entt::entity e) const;
     const ::cardillo::HeightFieldAsset& getHeightFieldAsset(entt::entity e) const;
 
-    // Optional inertia component for rigid bodies with arbitrary shapes
-    struct C_InertiaDiag { Vector3r I; }; // body-frame diagonal inertia (Ixx,Iyy,Izz)
-
     // Expose ECS for external querying (read-only)
     const entt::registry& ecs() const { return m_reg; }
     // Mutable ECS access when external systems need to emplace components
     entt::registry& ecs() { return m_reg; }
 
-
-    // (Removed) disableCollisionBetween: collision pair control now owned by PhysicsEngine
-
-    // New constraint-pattern API -------------------------------------------
     // Access all constraint patterns (mutable and const)
     std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() { return m_constraints_new; }
     const std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() const { return m_constraints_new; }
@@ -139,39 +127,6 @@ public:
     void track(entt::entity e, const std::string& name);
     void writeTrackedStateToCsv(real_t t);
 
-private:
-
-    entt::registry m_reg;
-    Vector3r m_gravity;  // gravity vector
-    // no mass/structure caches here
-
-    // System dirty flags (mutable so const getters/setters can flip)
-    mutable bool m_state_dirty = true;     // q or v changed outside of physics loop
-    mutable bool m_structure_dirty = true; // objects added/removed
-    mutable bool m_forces_dirty = true;    // external forces changed
-
-    // Cached number of bodies (entities with C_BodyIndex & C_PhysicsObject)
-    mutable int m_num_bodies_cached = -1;
-    mutable bool m_num_bodies_dirty = true;
-
-    // assignDofs_ moved to DynamicsAssembler
-
-    // Persistent subsystems (owned externally — World holds non-owning pointers)
-    config::Config m_cfg{}; // global config
-    // New constraint-pattern storage (owned by the system)
-    std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>> m_constraints_new;
-
-    // Asset manager (new abstraction)
-    std::shared_ptr<class PhysicsAssets> m_assets;
-
-    // (Removed) external subsystem pointers — subsystems are owned by PhysicsEngine
-
-public:
-    void setAssets(std::shared_ptr<class PhysicsAssets> assets) { m_assets = std::move(assets); }
-    class PhysicsAssets& assets();
-    const class PhysicsAssets& assets() const;
-
-    // (Removed) setters for external subsystem pointers — PhysicsEngine manages subsystems
 };
 
 } // namespace cardillo

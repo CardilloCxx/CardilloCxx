@@ -21,12 +21,24 @@ namespace cardillo { namespace misc { class TimingManager; } }
 namespace cardillo::collision {
 
 class CollisionCoal {
-public:
-    CollisionCoal() = default;
-    ~CollisionCoal();
 
-    // Attach to a World (not owned)
-    void registerSystem(const cardillo::World* sys) { m_sys = sys; }
+private:
+    enum class ColliderKind { Box, Sphere, Halfspace, Mesh, HeightField, Capsule, Cylinder, Cone };
+
+    // Helpers
+    void ensureBroadphaseFromConfig_();
+    ColliderKind inferKind_(entt::entity e) const;
+    std::shared_ptr<coal::CollisionGeometry> makeGeometryFor_(ColliderKind kind, entt::entity e) const;
+    coal::Transform3s makeTransformFromQ_(const VectorXr& q) const;
+
+    // Backrefs
+    const cardillo::World* m_world = nullptr; // not owned
+    cardillo::misc::TimingManager* m_timings = nullptr; // optional timings pointer
+    cardillo::config::Config& m_cfg; // reference to global config for easy access
+
+public:
+    CollisionCoal(cardillo::World& world, cardillo::misc::TimingManager* timings, cardillo::config::Config& cfg);
+    ~CollisionCoal();
 
     // (Re)build the COAL scene from ECS collidables (creates geometries & objects and registers them in broadphase)
     void rebuild();
@@ -48,23 +60,6 @@ public:
     void disablePair(entt::entity a, entt::entity b);
     void enablePair(entt::entity a, entt::entity b);
     bool isPairDisabled(entt::entity a, entt::entity b) const;
-
-private:
-    enum class ColliderKind { Box, Sphere, Halfspace, Mesh, HeightField, Capsule, Cylinder, Cone };
-
-    // Helpers
-    void ensureBroadphaseFromConfig_();
-    ColliderKind inferKind_(entt::entity e) const;
-    std::shared_ptr<coal::CollisionGeometry> makeGeometryFor_(ColliderKind kind, entt::entity e) const;
-    coal::Transform3s makeTransformFromQ_(const VectorXr& q) const;
-
-    // Backrefs
-    const cardillo::World* m_sys = nullptr; // not owned
-    cardillo::misc::TimingManager* m_timings = nullptr; // optional timings pointer (not owned)
-
-public:
-    // Optional: set external timings manager so collision code can record scopes
-    void setTimings(cardillo::misc::TimingManager* t) { m_timings = t; }
 
     // COAL scene storage
     std::unique_ptr<coal::BroadPhaseCollisionManager> m_broadphase; // manager chosen from config

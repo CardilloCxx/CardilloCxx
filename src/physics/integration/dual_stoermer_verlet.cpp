@@ -8,7 +8,7 @@
 
 namespace cardillo::integration {
 
-void DualStoermerVerletSolver::step(real_t dt)
+void DualStoermerVerletIntegrator::step(real_t dt)
 {
     // 1) Get current state vectors
     m_dyn.refreshState();
@@ -18,7 +18,6 @@ void DualStoermerVerletSolver::step(real_t dt)
 
     // 2) Inplace midpoint position update
     linearImplicitPositionUpdate(m_world, 0.5 * dt);
-    m_world.updateEntities();
 
     // TODO: Why does this break the solver?
     //       This function rebuilds the collusion mangager, so it should be called after the position update?
@@ -68,7 +67,7 @@ void DualStoermerVerletSolver::step(real_t dt)
     if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = - Wgamma * vn;
 
     // 5) Solve extended system
-    auto xnp1 = m_solver ? m_solver->solve(rhs, m_world.config().pj_tol_abs) : VectorXr();
+    auto xnp1 = m_solver.solve(rhs, m_world.config().pj_tol_abs);
     // auto xnp1 = m_dyn.solveS(rhs);                             // No contacts
     VectorXr vnp1 = xnp1.segment(0, totalV);
     VectorXr Lambda_g_12 = xnp1.segment(totalV, nSprings);
@@ -81,7 +80,6 @@ void DualStoermerVerletSolver::step(real_t dt)
 
     // 7) Inplace final position update
     explicitPositionUpdate(m_world, 0.5 * dt);
-    m_world.updateEntities();
 }
 
 }

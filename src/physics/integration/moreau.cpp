@@ -17,12 +17,11 @@ void MoreauSolver::step(real_t dt)
     const auto& fn_ext = m_dyn.fVecExternal();    // gravity + applied external forces
     const auto& fn_gyro = m_dyn.fVecGyroscopic(); // gyroscopic forces from current state
 
-    const bool implicitGyro = m_world.config().moreau_implicit_gyroscopy;
-    const bool lambdaTheta = m_world.config().moreau_lambda_theta;
+    const bool implicitGyro = m_config.moreau_implicit_gyroscopy;
+    const bool lambdaTheta = m_config.moreau_lambda_theta;
 
     // 2) Inplace midpoint position update
     explicitPositionUpdate(m_world, (1.0 - m_theta) * dt);
-    m_world.updateEntities();
 
     // 3) Evaluate contacts at midpoint positions
     m_dyn.refreshCollisionsAndSprings(dt, m_theta, implicitGyro, lambdaTheta);
@@ -57,7 +56,7 @@ void MoreauSolver::step(real_t dt)
     if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -(1.0 - m_theta) / m_theta * Wgamma * vn;
 
     // 5) Solve extended system
-    auto xnp1 = m_solver ? m_solver->solve(rhs, m_world.config().pj_tol_abs) : VectorXr();
+    auto xnp1 = m_solver.solve(rhs, m_config.pj_tol_abs);
     // auto xnp1 = m_dyn.solveS(rhs);                             // No contacts
     VectorXr vnp1 = xnp1.segment(0, totalV);
     if (nSprings > 0) m_dyn.setLambda_g(xnp1.segment(totalV, nSprings)); else m_dyn.setLambda_g(VectorXr(0));
@@ -68,7 +67,6 @@ void MoreauSolver::step(real_t dt)
 
     // 7) Inplace final position update
     explicitPositionUpdate(m_world, m_theta * dt);
-    m_world.updateEntities();
 }
 
 }

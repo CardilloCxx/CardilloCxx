@@ -41,7 +41,7 @@ static inline MatrixXXr buildWRowPoint(const Vector3r& n_world, real_t s) {
 
 void DynamicsAssembler::updateContactsFromSystem() {
     if (!m_collision_mgr) throw std::runtime_error("DynamicsAssembler::updateContactsFromSystem: no CollisionCoal provided");
-    if (m_sys.consumeStructureDirty()) m_collision_mgr->rebuild();
+    if (m_world.consumeStructureDirty()) m_collision_mgr->rebuild();
     m_collision_mgr->applyTransforms();
     m_contacts = m_collision_mgr->detectAll();
 }
@@ -63,17 +63,17 @@ const VectorXr& DynamicsAssembler::fVecGyroscopic() { return m_f_vec_gyroscopic;
 // ---------- Rebuild helpers ----------
 
 void DynamicsAssembler::rebuildMass_() {
-    const int Nb = m_sys.numBodies();
+    const int Nb = m_world.numBodies();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     m_Minv_diag = VectorXr::Zero(totalV);
     m_M_diag = VectorXr::Zero(totalV);
 
-    const auto& reg = m_sys.ecs();
+    const auto& reg = m_world.ecs();
     auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b; if (b < 0 || b >= Nb) continue;
         // Get inverse mass diagonal directly
-        VectorXr MinvDiag = m_sys.getMassInverseDiag(e);
+        VectorXr MinvDiag = m_world.getMassInverseDiag(e);
         const int off = m_body_vel_offsets[(size_t)b];
         const int n = (int)MinvDiag.size();
         for (int i = 0; i < n; ++i) {
@@ -85,18 +85,18 @@ void DynamicsAssembler::rebuildMass_() {
 }
 
 void DynamicsAssembler::rebuildForces_() {
-    const int Nb = m_sys.numBodies();
+    const int Nb = m_world.numBodies();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     m_f_vec = VectorXr::Zero(totalV);
     m_f_vec_external = VectorXr::Zero(totalV);
     m_f_vec_gyroscopic = VectorXr::Zero(totalV);
     m_v_compat.assign((size_t)Nb, VectorXr());
-    const auto& reg = m_sys.ecs();
+    const auto& reg = m_world.ecs();
     auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b; if (b >= 0 && b < Nb) {
-            const VectorXr fb_ext = m_sys.getForceExternal(e);
-            const VectorXr fb_gyro = m_sys.getForceGyroscopic(e);
+            const VectorXr fb_ext = m_world.getForceExternal(e);
+            const VectorXr fb_gyro = m_world.getForceGyroscopic(e);
             const VectorXr fb = fb_ext + fb_gyro;
             const int off = m_body_vel_offsets[(size_t)b];
             const int n = (int)fb.size();
@@ -108,7 +108,7 @@ void DynamicsAssembler::rebuildForces_() {
         }
     }
     // One-shot: clear external force/torque components after assembling forces
-    auto &reg_mut = const_cast<entt::registry&>(m_sys.ecs());
+    auto &reg_mut = const_cast<entt::registry&>(m_world.ecs());
     auto viewF = reg_mut.view<cardillo::C_ExternalForce>();
     for (auto e : viewF) { reg_mut.get<cardillo::C_ExternalForce>(e).f.setZero(); }
     auto viewT = reg_mut.view<cardillo::C_ExternalTorque>();
@@ -116,19 +116,19 @@ void DynamicsAssembler::rebuildForces_() {
 }
 
 void DynamicsAssembler::loadStateFromSystem() {
-    const int Nb = m_sys.numBodies();
+    const int Nb = m_world.numBodies();
     const int totalQ = (m_body_pos_offsets.empty() ? 0 : m_body_pos_offsets.back());
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     m_q_vec = VectorXr::Zero(totalQ);
     m_v_vec = VectorXr::Zero(totalV);
     m_v_compat.assign((size_t)Nb, VectorXr()); // deprecated compatibility only
-    const auto& reg = m_sys.ecs();
+    const auto& reg = m_world.ecs();
     auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b >= 0 && b < Nb) {
-            const VectorXr qb = m_sys.getPosition(e);
-            const VectorXr vb = m_sys.getVelocity(e);
+            const VectorXr qb = m_world.getPosition(e);
+            const VectorXr vb = m_world.getVelocity(e);
             const int offQ = m_body_pos_offsets[(size_t)b];
             const int nQ = (int)qb.size();
             if (nQ > 0) std::copy(qb.data(), qb.data() + nQ, m_q_vec.data() + offQ);
@@ -141,7 +141,7 @@ void DynamicsAssembler::loadStateFromSystem() {
 }
 
 void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
-    const auto& reg = m_sys.ecs();
+    const auto& reg = m_world.ecs();
     auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
@@ -155,16 +155,16 @@ void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
             if (qb.size() >= 7 && reg.any_of<cardillo::C_Orientation>(e)) {
                 Quaternion4r qn(qb.tail<4>());
                 const Quaternion4r q_ref = reg.get<cardillo::C_Orientation>(e).value;
-                const_cast<cardillo::C_Orientation&>(reg.get<cardillo::C_Orientation>(e)).value = World::alignQuaternionTo(qn, q_ref);
+                const_cast<cardillo::C_Orientation&>(reg.get<cardillo::C_Orientation>(e)).value = MathHelper::alignQuaternionTo(qn, q_ref);
             }
         }
     }
-    m_sys.markStateDirty();
-    m_sys.markForcesDirty();
+    m_world.markStateDirty();
+    m_world.markForcesDirty();
 }
 
 void DynamicsAssembler::writeVelocityToSystem(const VectorXr& v) {
-    const auto& reg = m_sys.ecs();
+    const auto& reg = m_world.ecs();
     auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
@@ -180,8 +180,8 @@ void DynamicsAssembler::writeVelocityToSystem(const VectorXr& v) {
             }
         }
     }
-    m_sys.markStateDirty();
-    m_sys.markForcesDirty();
+    m_world.markStateDirty();
+    m_world.markForcesDirty();
 }
 
 void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v) {
@@ -190,7 +190,7 @@ void DynamicsAssembler::writeStateToSystem(const VectorXr& q, const VectorXr& v)
 }
 
 void DynamicsAssembler::assignDofs() {
-    auto& reg = const_cast<entt::registry&>(m_sys.ecs());
+    auto& reg = const_cast<entt::registry&>(m_world.ecs());
     // Assign consecutive body indices to dynamic entities and compute DOF sizes in one pass
     int nextBody = 0;
     m_numQ = 0; m_numV = 0;
@@ -199,14 +199,14 @@ void DynamicsAssembler::assignDofs() {
         entt::entity ent = static_cast<entt::entity>(e);
         reg.emplace_or_replace<cardillo::C_BodyIndex>(ent, cardillo::C_BodyIndex{nextBody});
         ++nextBody;
-        m_numQ += (index_t)m_sys.getPosition(ent).size();
-        m_numV += (index_t)m_sys.getVelocity(ent).size();
+        m_numQ += (index_t)m_world.getPosition(ent).size();
+        m_numV += (index_t)m_world.getVelocity(ent).size();
     }
 }
 
 void DynamicsAssembler::rebuildW_() {
     const int C_all = (int)m_contacts.size();
-    const int Nb = m_sys.numBodies();
+    const int Nb = m_world.numBodies();
     m_contact_index_orig.clear();
     m_contact_index_orig.reserve((size_t)C_all);
 
@@ -214,8 +214,8 @@ void DynamicsAssembler::rebuildW_() {
     std::vector<Eigen::Triplet<real_t>> trips;
     trips.reserve((size_t)C_all * 36); // allow room for tangential rows when friction is enabled
 
-    const auto& reg = m_sys.ecs();
-    const bool frictionEnabled = m_sys.config().friction_enable;
+    const auto& reg = m_world.ecs();
+    const bool frictionEnabled = m_world.config().friction_enable;
 
     int dynContactId = 0; // index into dynamic contacts (rows in W)
     for (int i = 0; i < C_all; ++i) {
@@ -285,7 +285,7 @@ void DynamicsAssembler::rebuildInteractionW_()
     if (m_timings) { auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::RebuildConstraintJacobians); (void)sc; }
     // Build m_Wg/m_Wgamma and diagonals from new constraint patterns first, then legacy springs
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
-    const auto &reg = m_sys.ecs();
+    const auto &reg = m_world.ecs();
 
     std::vector<Eigen::Triplet<real_t>> tripsWg;
     std::vector<Eigen::Triplet<real_t>> tripsWgamma;
@@ -319,7 +319,7 @@ void DynamicsAssembler::rebuildInteractionW_()
     };
 
     // 1) New constraint patterns (support multi-row constraints)
-    const auto& patterns = m_sys.constraintPatterns();
+    const auto& patterns = m_world.constraintPatterns();
     for (const auto& uptr : patterns) {
         if (!uptr) continue;
         auto crN = uptr->getConstraint();
@@ -403,7 +403,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
     // Optionally include linearized gyroscopic term in the system matrix.
     // This adds -dt * G(omega_n) to each rigid body's rotational 3x3 block and breaks symmetry.
     if (includeGyroInMatrix) {
-        const auto& reg = m_sys.ecs();
+        const auto& reg = m_world.ecs();
         auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
         for (auto [e, bi] : view.each()) {
             const int b = bi.b;
@@ -414,7 +414,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
             if (!reg.all_of<cardillo::C_RigidBodyTag, cardillo::C_AngularVelocity3>(e)) continue;
 
             const Vector3r omega = reg.get<cardillo::C_AngularVelocity3>(e).value; // body-frame
-            const Vector3r I = m_sys.getInertiaDiag(e);
+            const Vector3r I = m_world.getInertiaDiag(e);
             const Vector3r Iomega = I.cwiseProduct(omega);
             const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
             const Matrix33r omegaSkew = skew_from_vector(omega);
@@ -488,11 +488,11 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
             m_S_sparse_lu.reset();
             std::cout << "DynamicsAssembler::buildAndFactorS: SparseLU factorization failed\n";
             return false;
-        } else if (m_sys.config().debug_rb) {
+        } else if (m_world.config().debug_rb) {
             std::cout << "[DynamicsAssembler] SparseLU factorization success.\n";
         }
     } catch (const std::exception& ex) {
-        if (m_sys.config().debug_rb) {
+        if (m_world.config().debug_rb) {
             std::cout << "[DynamicsAssembler] Exception during SparseLU: " << ex.what() << '\n';
         }
         m_S_sparse_lu.reset();
@@ -614,11 +614,11 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
             m_S_sparse_lu.reset();
             std::cout << "[DynamicsAssembler] SparseLU factorization failed\n";
             return false;
-        } else if (m_sys.config().debug_rb) {
+        } else if (m_world.config().debug_rb) {
             std::cout << "[DynamicsAssembler] SparseLU factorization success (Stormer-Verlet).\n";
         }
     } catch (const std::exception& ex) {
-        if (m_sys.config().debug_rb) {
+        if (m_world.config().debug_rb) {
             std::cout << "[DynamicsAssembler] Exception during SparseLU (Stormer-Verlet): " << ex.what() << '\n';
         }
         m_S_sparse_lu.reset();
@@ -645,22 +645,22 @@ VectorXr DynamicsAssembler::solveS(const VectorXr& rhs_ext) const
 void DynamicsAssembler::refreshState() {
     auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::DynamicsAssembler_RefreshState);
     bool structureChanged = false;
-    if (m_sys.consumeStructureDirty()) {
+    if (m_world.consumeStructureDirty()) {
         structureChanged = true;
         assignDofs();
         // Recompute body offsets from ECS sizes
-        const int Nb = m_sys.numBodies();
+        const int Nb = m_world.numBodies();
         m_body_vel_offsets.assign((size_t)Nb + 1, 0);
         m_body_pos_offsets.assign((size_t)Nb + 1, 0);
         
         // First gather sizes per body index
         std::vector<int> vSizes((size_t)Nb, 0), qSizes((size_t)Nb, 0);
-        const auto& reg = m_sys.ecs();
+        const auto& reg = m_world.ecs();
         auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
         for (auto [e, bi] : view.each()) {
             const int b = bi.b; if (b < 0 || b >= Nb) continue;
-            vSizes[(size_t)b] = (int)m_sys.getVelocity(e).size();
-            qSizes[(size_t)b] = (int)m_sys.getPosition(e).size();
+            vSizes[(size_t)b] = (int)m_world.getVelocity(e).size();
+            qSizes[(size_t)b] = (int)m_world.getPosition(e).size();
         }
         // Then compute prefix sums in ascending body index order
         int offV = 0, offQ = 0;
@@ -677,16 +677,17 @@ void DynamicsAssembler::refreshState() {
         m_collision_mgr->rebuild();
     }
 
-    if (m_sys.consumeStateDirty() || structureChanged) {
+    if (m_world.consumeStateDirty() || structureChanged) {
         loadStateFromSystem();
     }
 
-    if (m_sys.consumeForcesDirty() || structureChanged) {
+    if (m_world.consumeForcesDirty() || structureChanged) {
         rebuildForces_();
     }
 }
 
 void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt, real_t theta, bool includeGyroInMatrix, bool lambdaTheta) {
+    DerivedEntitySync::updateEntities(m_world);
     updateContactsFromSystem();
     rebuildW_();
     if (!buildAndFactorS(dt, theta, includeGyroInMatrix, lambdaTheta)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");

@@ -226,15 +226,15 @@ public:
     BeamConstraint(entt::registry& reg,
                    entt::entity a,
                    entt::entity b,
-                   const cardillo::World::BeamSpringParams& springs,
-                   const cardillo::World::BeamCrossSection& section);
+                   const cardillo::physics::BeamSpringParams& springs,
+                   const cardillo::physics::BeamCrossSection& section);
 
     // Fill W and compliance vectors for 6 beam rows
     ConstraintResult getConstraint() const override;
 
 private:
-    cardillo::World::BeamSpringParams m_springs{};
-    cardillo::World::BeamCrossSection m_section{};
+    cardillo::physics::BeamSpringParams m_springs{};
+    cardillo::physics::BeamCrossSection m_section{};
     Vector3r m_delta0{Vector3r::Zero()};
     Vector3r m_kappa0{Vector3r::Zero()};
     real_t   l_0{ 0 };

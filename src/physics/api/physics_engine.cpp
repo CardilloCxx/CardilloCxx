@@ -10,7 +10,7 @@ namespace physics {
 
 PhysicsEngine::~PhysicsEngine() = default;
 
-PhysicsEngine::PhysicsEngine() : m_world(std::make_unique<World>()) {}
+PhysicsEngine::PhysicsEngine() = default;
 
 PhysicsEngine::PhysicsEngine(const config::Config& cfg) : PhysicsEngine() {
     initFromConfig(cfg);
@@ -18,19 +18,12 @@ PhysicsEngine::PhysicsEngine(const config::Config& cfg) : PhysicsEngine() {
 
 void PhysicsEngine::initFromConfig(const config::Config& cfg) {
     m_cfg = cfg;
-    if (!m_world) m_world = std::make_unique<World>();
-    m_world->setConfig(m_cfg);
+    if (!m_world) m_world = std::make_unique<World>(m_cfg);
 
     // Create and own low-level subsystems
     m_timings = std::make_unique<cardillo::misc::TimingManager>();
     m_warmstart_provider = std::make_unique<cardillo::solver::WarmstartCache>();
-    m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
-    m_collision_mgr->registerSystem(m_world.get());
-    // Provide timings to collision manager (required)
-    m_collision_mgr->setTimings(m_timings.get());
-
-    // World no longer stores subsystem pointers; engine keeps ownership and
-    // will pass these into the pipeline/assemblers as needed.
+    m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>(*m_world, m_timings.get(), m_cfg);
 
     // Create pipeline and pass owned subsystem pointers explicitly
     m_pipeline = std::make_unique<cardillo::physics::pipeline::PhysicsPipeline>(*m_world, m_cfg,
@@ -44,8 +37,7 @@ void PhysicsEngine::step(real_t dt) {
 }
 
 void PhysicsEngine::step() {
-    real_t dt = (m_cfg.sim_dt > (real_t)0) ? m_cfg.sim_dt : m_world->config().sim_dt;
-    if (m_pipeline) m_pipeline->step(dt);
+    if (m_pipeline) m_pipeline->step(m_cfg.sim_dt);
 }
 
 collision::CollisionCoal& PhysicsEngine::collisionManager() {

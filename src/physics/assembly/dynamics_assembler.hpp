@@ -6,24 +6,18 @@
 
 #include "../../misc/types.hpp"
 #include "../world.hpp"
+#include "../synchronization/derived_entity_sync.hpp"
 #include "../../collision/types.hpp"
+#include "../../misc/math_helper.hpp"
 
 namespace cardillo::physics {
 
-
-// Contracts:
-// - Provides cached assembly of state vectors (q, v), force vector f, mass matrix M,
-//   contact matrix W (maps v -> normal velocities), and Delassus matrix G = W M^{-1} W^T.
-// - Maintains dirty flags; callers can mark state/structure/forces/contacts dirty or set contacts.
-// - Rebuilds lazily on demand.
 class DynamicsAssembler {
 public:
-    explicit DynamicsAssembler(World& sys, cardillo::collision::CollisionCoal* collision_mgr = nullptr,
-                               cardillo::misc::TimingManager* timings = nullptr,
-                               cardillo::solver::WarmstartProvider* warmstart = nullptr)
-        : m_sys(sys), m_collision_mgr(collision_mgr), m_timings(timings), m_warmstart_provider(warmstart) {}
+    explicit DynamicsAssembler(World& sys, cardillo::collision::CollisionCoal* collision_mgr,
+                               cardillo::misc::TimingManager* timings, const cardillo::config::Config& cfg)
 
-    // Legacy one-shot assembly helpers removed; use cached getters instead.
+        : m_world(sys), m_collision_mgr(collision_mgr), m_timings(timings), m_cfg(cfg) {}
 
     // Cached getters (rebuild on demand) as concatenated global vectors
     const VectorXr& qVec();   // stacked positions
@@ -46,7 +40,7 @@ public:
     // Map dynamic-only contact index (used in W/G) back to original contact index in m_contacts
     const std::vector<int>& dynamicContactToOriginalAll() const { return m_contact_index_orig; }
     // Access underlying system (for debug / diagnostics)
-    const World& system() const { return m_sys; }
+    const World& system() const { return m_world; }
     // Expose current contacts (includes penetration and points) for biasing, debug, etc.
     const std::vector<collision::Contact>& contacts() const { return m_contacts; }
 
@@ -70,16 +64,57 @@ public:
     void refreshCollisionsAndSprings(real_t dt, real_t theta, bool includeGyroInMatrix = false, bool lambdaTheta = false);
     void refreshCollisionsAndSpringsStormerVerlet(real_t dt);
 
-     cardillo::misc::TimingManager* timings() const { return m_timings; }
-     cardillo::collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
-     cardillo::solver::WarmstartProvider* warmstartProvider() const { return m_warmstart_provider; }
+    cardillo::misc::TimingManager* timings() const { return m_timings; }
+    cardillo::collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
+
+     // Accessors for newly added matrices
+    const Eigen::SparseMatrix<real_t>& WgSparse() const { return m_Wg; }
+    const Eigen::SparseMatrix<real_t>& WgammaSparse() const { return m_Wgamma; }
+
+    // Per-spring diagonal C/A
+    const VectorXr& Cdiag() const { return m_Cdiag; }
+    const VectorXr& Adiag() const { return m_Adiag; }
+
+    // Counts
+    // Number of spring rows (rows in m_Wg / length of m_Cdiag)
+    int numSprings() const { return (int)m_Cdiag.size(); }
+    int numDampers() const { return (int)m_Adiag.size(); }
+
+    // Accessors for Lagrange multipliers
+    const VectorXr& Lambda_g() const { return m_Lambda_g; }
+    const VectorXr& Lambda_gamma() const { return m_Lambda_gamma; }
+    void setLambda_g(const VectorXr& lam);
+    void setLambda_gamma(const VectorXr& lam) { m_Lambda_gamma = lam; }
+
+    // Extended block matrix S (sparse) accessor and solver
+    const CscMatrix& SSparse() const { return m_S_sparse; }
+
+    // Build and factorize the effective mass matrix S = M + dt^2 * Wg * K * Wg^T + h * W_gamma * D * W_gamma^T
+    // Returns true on successful factorization.
+    bool buildAndFactorS(real_t dt, real_t theta, bool includeGyroInMatrix = false, bool lambdaTheta = false);
+    // Solve the full extended system S * x = rhs_ext and return the complete solution (ext-length)
+    VectorXr solveS(const VectorXr& rhs_ext) const;
+
+    std::vector<int> m_contact_index_orig; // size Nc_dynamic, maps dynamic contact id -> original contact index
+    std::vector<collision::Contact> m_contacts;
+
+    // Cached sizes
+    index_t m_numQ{0};
+    index_t m_numV{0};
+
+    // Rebuild helpers
+    void rebuildMass_();
+    void rebuildForces_();
+    void rebuildW_();
+    void rebuildInteractionW_();
+    bool buildAndFactorS_StormerVerlet(real_t dt);
 
 private:
-    World& m_sys;
+    World& m_world;
     // Non-owning pointers to external subsystems (moved out of World)
     cardillo::collision::CollisionCoal* m_collision_mgr{nullptr};
     cardillo::misc::TimingManager* m_timings{nullptr};
-    cardillo::solver::WarmstartProvider* m_warmstart_provider{nullptr};
+    const cardillo::config::Config& m_cfg;
 
     // Cached data
     // Concatenated state
@@ -118,52 +153,6 @@ private:
     // Store Lagrange multipliers (they are being integrated)
     VectorXr m_Lambda_g;
     VectorXr m_Lambda_gamma;
-
-public:
-    // Accessors for newly added matrices
-    const Eigen::SparseMatrix<real_t>& WgSparse() const { return m_Wg; }
-    const Eigen::SparseMatrix<real_t>& WgammaSparse() const { return m_Wgamma; }
-
-    // Per-spring diagonal C/A
-    const VectorXr& Cdiag() const { return m_Cdiag; }
-    const VectorXr& Adiag() const { return m_Adiag; }
-
-    // Counts
-    // Number of spring rows (rows in m_Wg / length of m_Cdiag)
-    int numSprings() const { return (int)m_Cdiag.size(); }
-    int numDampers() const { return (int)m_Adiag.size(); }
-
-    // Accessors for Lagrange multipliers
-    const VectorXr& Lambda_g() const { return m_Lambda_g; }
-    const VectorXr& Lambda_gamma() const { return m_Lambda_gamma; }
-    void setLambda_g(const VectorXr& lam);
-    void setLambda_gamma(const VectorXr& lam) { m_Lambda_gamma = lam; }
-
-    // Extended block matrix S (sparse) accessor and solver
-    const CscMatrix& SSparse() const { return m_S_sparse; }
-
-    // Build and factorize the effective mass matrix S = M + dt^2 * Wg * K * Wg^T + h * W_gamma * D * W_gamma^T
-    // Returns true on successful factorization.
-    bool buildAndFactorS(real_t dt, real_t theta, bool includeGyroInMatrix = false, bool lambdaTheta = false);
-    // Solve the full extended system S * x = rhs_ext and return the complete solution (ext-length)
-    VectorXr solveS(const VectorXr& rhs_ext) const;
-
-    std::vector<int> m_contact_index_orig; // size Nc_dynamic, maps dynamic contact id -> original contact index
-    std::vector<collision::Contact> m_contacts;
-
-    // Dirty flags
-    // (unused) bool m_contacts_dirty{true};
-
-    // Cached sizes
-    index_t m_numQ{0};
-    index_t m_numV{0};
-
-    // Rebuild helpers
-    void rebuildMass_();
-    void rebuildForces_();
-    void rebuildW_();
-    void rebuildInteractionW_();
-    bool buildAndFactorS_StormerVerlet(real_t dt);
 };
 
 } // namespace cardillo::physics

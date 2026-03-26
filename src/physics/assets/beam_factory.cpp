@@ -105,7 +105,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
         Quaternion4r qworld(Rworld);
         qworld.normalize();
 
-        qworld = World::alignQuaternionTo(qworld, q_prev);
+        qworld = MathHelper::alignQuaternionTo(qworld, q_prev);
         q_prev = qworld;
 
         const Vector3r worldPos = splineCOMWorld + stateDefaults.position + Rbody * (s.position - splineCOMWorld);
@@ -253,7 +253,7 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(
                 system.ecs().any_of<cardillo::C_Orientation>(pair.first)) {
                 auto& qNext = system.ecs().get<cardillo::C_Orientation>(pair.first).value;
                 const auto& qPrev = system.ecs().get<cardillo::C_Orientation>(prevEnd).value;
-                qNext = World::alignQuaternionTo(qNext, qPrev);
+                qNext = MathHelper::alignQuaternionTo(qNext, qPrev);
             }
             ConstraintFactory::addRigidConstraint(system, prevEnd, pair.first);
             if (collision_mgr) collision_mgr->disablePair(prevEnd, pair.first);

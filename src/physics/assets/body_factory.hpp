@@ -4,6 +4,9 @@
 #include <vector>
 #include <utility>
 #include <entt/entt.hpp>
+#include "rigid_body_factory.hpp"
+#include "beam_factory.hpp"
+#include "../../misc/math_helper.hpp"
 
 #include "../world.hpp"
 
@@ -13,13 +16,40 @@ namespace physics {
 class BodyFactory {
 public:
     static entt::entity addRigidBody(World& sys,
-                                     const World::RigidShape& shape,
-                                     const World::RigidState& state,
-                                     const World::RigidProps& props);
+                                     const physics::RigidShape& shape,
+                                     const physics::RigidState& state,
+                                     const physics::RigidProps& props) {
+                                        return RigidBodyFactory::create(sys, shape, state, props);
+                                    }
 
     static entt::entity addStaticBody(World& sys,
-                                      const World::RigidShape& shape,
-                                      const World::RigidState& state);
+                                      const physics::RigidShape& shape,
+                                      const physics::RigidState& state) { 
+                                        physics::RigidProps props(0);
+                                        return RigidBodyFactory::create(sys, shape, state, props);
+                                    }
+
+    static std::pair<entt::entity, entt::entity> createBeam(World& sys,
+                        const misc::SplinePattern& spline,
+                        const physics::BeamCrossSection& section,
+                        const physics::BeamSpringParams& springs,
+                        const physics::RigidState& stateDefaults,
+                        const physics::RigidProps& propsDefaults,
+                        size_t segments,
+                        cardillo::collision::CollisionCoal* collision_mgr = nullptr) { 
+                            return BeamFactory::createBeam(sys, spline, section, springs, stateDefaults, propsDefaults, segments, collision_mgr);
+                        }
+
+    static std::pair<entt::entity, entt::entity> createBeams(World& sys,
+                                                              const std::vector<const misc::SplinePattern*>& splines,
+                                                              const physics::BeamCrossSection& section,
+                                                              const physics::BeamSpringParams& springs,
+                                                              const physics::RigidState& stateDefaults,
+                                                              const physics::RigidProps& propsDefaults,
+                                                              size_t segmentsPerSpline,
+                                                              cardillo::collision::CollisionCoal* collision_mgr = nullptr) {
+                                                                    return BeamFactory::createBeams(sys, splines, section, springs, stateDefaults, propsDefaults, segmentsPerSpline, collision_mgr);
+                                                              }
 
     static index_t addPointMass(World& sys,
                                 real_t mass,
@@ -45,24 +75,6 @@ public:
                                                   const Vector3r& linearVelocity = Vector3r::Zero(),
                                                   const Vector3r& angularVelocity = Vector3r::Zero(),
                                                   real_t totalMass = (real_t)0.0);
-
-    static std::pair<entt::entity, entt::entity> createBeam(World& sys,
-                                                             const misc::SplinePattern& spline,
-                                                             const World::BeamCrossSection& section,
-                                                             const World::BeamSpringParams& springs,
-                                                             const World::RigidState& stateDefaults,
-                                                             const World::RigidProps& propsDefaults,
-                                                             size_t segments,
-                                                             cardillo::collision::CollisionCoal* collision_mgr = nullptr);
-
-    static std::pair<entt::entity, entt::entity> createBeams(World& sys,
-                                                              const std::vector<const misc::SplinePattern*>& splines,
-                                                              const World::BeamCrossSection& section,
-                                                              const World::BeamSpringParams& springs,
-                                                              const World::RigidState& stateDefaults,
-                                                              const World::RigidProps& propsDefaults,
-                                                              size_t segmentsPerSpline,
-                                                              cardillo::collision::CollisionCoal* collision_mgr = nullptr);
 };
 
 } // namespace physics

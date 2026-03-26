@@ -89,8 +89,8 @@ public:
     static size_t addBeamConstraint(World& world,
                                     entt::entity a,
                                     entt::entity b,
-                                    const World::BeamSpringParams& springs,
-                                    const World::BeamCrossSection& section) {
+                                    const physics::BeamSpringParams& springs,
+                                    const physics::BeamCrossSection& section) {
         return insertPattern(world, std::unique_ptr<ConstraintPattern>(
             new BeamConstraint(world.ecs(), a, b, springs, section)));
     }

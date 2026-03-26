@@ -26,6 +26,12 @@
 #include <map>
 
 namespace cardillo::collision {
+
+CollisionCoal::CollisionCoal(cardillo::World& world, cardillo::misc::TimingManager* timings, cardillo::config::Config& cfg)
+    : m_world(&world), m_timings(timings), m_cfg(cfg)
+{
+    ensureBroadphaseFromConfig_();
+}
 CollisionCoal::~CollisionCoal() = default;
 
 namespace {
@@ -221,7 +227,7 @@ inline std::size_t appendContactsFromPair(const entt::registry& reg,
 void CollisionCoal::ensureBroadphaseFromConfig_() {
     if (m_broadphase) return;
     // Select based on config
-    std::string bp = m_sys ? m_sys->config().collision_broadphase : std::string("dynamic_aabb");
+    std::string bp = m_world ? m_cfg.collision_broadphase : std::string("dynamic_aabb");
     auto toLower = [](std::string s){ for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; };
     bp = toLower(bp);
     if (bp == "dynamic_aabb" || bp == "daabb" || bp == "default") {
@@ -241,7 +247,7 @@ void CollisionCoal::ensureBroadphaseFromConfig_() {
 }
 
 CollisionCoal::ColliderKind CollisionCoal::inferKind_(entt::entity e) const {
-    const auto& reg = m_sys->ecs();
+    const auto& reg = m_world->ecs();
     if (reg.any_of<cardillo::C_RB_Cube>(e)) return ColliderKind::Box;
     if (reg.any_of<cardillo::C_RB_Capsule>(e)) return ColliderKind::Capsule;
     if (reg.any_of<cardillo::C_RB_Cylinder>(e)) return ColliderKind::Cylinder;
@@ -254,7 +260,7 @@ CollisionCoal::ColliderKind CollisionCoal::inferKind_(entt::entity e) const {
 }
 
 std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(ColliderKind kind, entt::entity e) const {
-    const auto& reg = m_sys->ecs();
+    const auto& reg = m_world->ecs();
     switch (kind) {
         case ColliderKind::Box: {
             const auto& he = reg.get<cardillo::C_RB_Cube>(e).halfExtents;
@@ -287,12 +293,12 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
                                                 (coal::CoalScalar)cone.height);
         }
         case ColliderKind::Mesh: {
-            const auto& asset = m_sys->getMeshAsset(e);
+            const auto& asset = m_world->getMeshAsset(e);
             if (!asset.bvh) throw std::runtime_error("COAL MeshLoader failed to load BVH for mesh entity");
             return asset.bvh;
         }
         case ColliderKind::HeightField: {
-            const auto& asset = m_sys->getHeightFieldAsset(e);
+            const auto& asset = m_world->getHeightFieldAsset(e);
             if (!asset.hf) throw std::runtime_error("HeightField asset not loaded for entity");
             return asset.hf;
         }
@@ -301,11 +307,11 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
 }
 
 void CollisionCoal::rebuild() {
-    if (!m_sys) return;
+    if (!m_world) return;
     auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
     clear();
     ensureBroadphaseFromConfig_();
-    const auto& reg = m_sys->ecs();
+    const auto& reg = m_world->ecs();
 
     // Gather all collidable entities in a single pass
     m_entities.clear();
@@ -349,7 +355,7 @@ void CollisionCoal::rebuild() {
 }
 
 void CollisionCoal::applyTransforms() {
-    if (!m_sys) return;
+    if (!m_world) return;
     auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
     // Lazily build scene on first use or after clear
     if (!m_broadphase || m_objects.empty()) {
@@ -360,7 +366,7 @@ void CollisionCoal::applyTransforms() {
     for (std::size_t i = 0; i < m_objects.size(); ++i) {
         entt::entity e = m_entities[i];
         auto* obj = m_objects[i].get();
-        const bool isDynamic = m_sys->ecs().any_of<cardillo::C_PhysicsObject>(e);
+        const bool isDynamic = m_world->ecs().any_of<cardillo::C_PhysicsObject>(e);
         if (!isDynamic) {
             // Static objects: transform was set at rebuild; no need to recompute each step
             continue;
@@ -369,7 +375,7 @@ void CollisionCoal::applyTransforms() {
         if (m_kinds[i] == ColliderKind::Halfspace) {
             coal::Transform3s X; X.setIdentity(); obj->setTransform(X);
         } else {
-            obj->setTransform(makeTfFromEcs(m_sys->ecs(), e));
+            obj->setTransform(makeTfFromEcs(m_world->ecs(), e));
         }
         obj->computeAABB();
         updated.push_back(obj);
@@ -379,14 +385,14 @@ void CollisionCoal::applyTransforms() {
 
 std::vector<Contact> CollisionCoal::detectAll() const {
     ContactMap mapCurr;
-    if (!m_sys) return {};
+    if (!m_world) return {};
     // Ensure the scene exists on first use
     if (!m_broadphase || m_objects.empty()) {
         auto* self = const_cast<CollisionCoal*>(this);
         self->rebuild();
     }
 
-    const auto& reg = m_sys->ecs();
+    const auto& reg = m_world->ecs();
 
     std::vector<coal::CollisionCallBackCollect::CollisionPair> pairs;
     {
@@ -404,7 +410,7 @@ std::vector<Contact> CollisionCoal::detectAll() const {
 
     if (pairs.empty()) {
         m_prevContactMap.clear();
-        if( m_sys && m_sys->config().debug_rb) {
+        if( m_world && m_cfg.debug_rb) {
             std::printf("[Collision] no potential collision pairs found in broadphase.\n");
         }
         return {};
@@ -412,19 +418,19 @@ std::vector<Contact> CollisionCoal::detectAll() const {
 
     // Prepare reusable request/result for collide and patch computation
     coal::CollisionRequest creq;
-    creq.num_max_contacts = m_sys ? m_sys->config().collision_max_raw_contacts : 1024;      // per pair cap
+    creq.num_max_contacts = m_world ? m_cfg.collision_max_raw_contacts : 1024;      // per pair cap
     // Use configurable security margin (>=0). A small positive value improves robustness for thin triangles
-    creq.security_margin = m_sys ? m_sys->config().collision_security_margin : (real_t)1e-5;
+    creq.security_margin = m_world ? m_cfg.collision_security_margin : (real_t)1e-5;
     creq.enable_contact = true;
     coal::CollisionResult cres;
 
     // Contact patch request/result
-    const std::size_t max_patch_req = m_sys ? m_sys->config().collision_max_patches : (std::size_t)4;
+    const std::size_t max_patch_req = m_world ? m_cfg.collision_max_patches : (std::size_t)4;
     coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req);
     coal::ContactPatchResult patch_res(patch_req);
-    const bool usePatchVertices = m_sys ? m_sys->config().collision_use_patch_vertices : true;
+    const bool usePatchVertices = m_world ? m_cfg.collision_use_patch_vertices : true;
 
-    const std::string frictionCombine = m_sys->config().friction_combine;
+    const std::string frictionCombine = m_cfg.friction_combine;
 
     for (const auto& pr : pairs) {
     auto sc_n = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionNarrowphase);
@@ -471,7 +477,7 @@ std::vector<Contact> CollisionCoal::detectAll() const {
         }
     }
     // Per-pair contact deduplication by proximity (optional)
-    const real_t minPairDist = m_sys ? m_sys->config().collision_min_pair_contact_distance : (real_t)0.0;
+    const real_t minPairDist = m_world ? m_cfg.collision_min_pair_contact_distance : (real_t)0.0;
     std::size_t totalBefore = 0, totalAfter = 0;
     if (minPairDist > (real_t)0) {
         for (auto& kv : mapCurr) {
@@ -481,7 +487,7 @@ std::vector<Contact> CollisionCoal::detectAll() const {
         }
     }
     // Try to match current contacts to previous generation per pair (for warmstarting)
-    const real_t maxMatchDist = m_sys ? m_sys->config().collision_match_max_dist : (real_t)0.02;
+    const real_t maxMatchDist = m_world ? m_cfg.collision_match_max_dist : (real_t)0.02;
     std::size_t totalContacts = 0;
     std::size_t totalMatched = 0;
     for (auto& kv : mapCurr) {
@@ -508,7 +514,7 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     }
 
     // Optional simple diagnostics
-    if (m_sys && m_sys->config().debug_rb) {
+    if (m_world && m_cfg.debug_rb) {
         std::printf("[Collision] matched %zu/%zu contacts (threshold = %.4g)\n",
                     totalMatched, totalContacts, (double)maxMatchDist);
         if (minPairDist > (real_t)0) {

@@ -8,6 +8,7 @@
 // Forward declarations to avoid heavy includes in the header
 namespace cardillo { namespace physics { class DynamicsAssembler; } }
 namespace cardillo { namespace integration { class IntegrationBase; } }
+namespace cardillo { namespace solver { class SolverBase; } }
 namespace cardillo { namespace io { class VtkWriterBinary; } }
 namespace cardillo { namespace misc { class ProgressBar; } }
 
@@ -19,7 +20,7 @@ class PhysicsPipeline {
 public:
     // Construct pipeline with references/pointers to the world and owned subsystems
     PhysicsPipeline(World& world,
-                    const config::Config& cfg,
+                    config::Config& cfg,
                     cardillo::collision::CollisionCoal* collision_mgr,
                     cardillo::misc::TimingManager* timings,
                     cardillo::solver::WarmstartProvider* warmstart_provider);
@@ -39,7 +40,7 @@ public:
 
 private:
     World& m_world;
-    const config::Config& m_cfg;
+    config::Config& m_cfg;
     cardillo::collision::CollisionCoal* m_collision_mgr;
     cardillo::misc::TimingManager* m_timings;
     cardillo::solver::WarmstartProvider* m_warmstart_provider;
@@ -47,6 +48,7 @@ private:
     // Owned pipeline components
     std::unique_ptr<cardillo::physics::DynamicsAssembler> m_dyn;
     std::unique_ptr<cardillo::integration::IntegrationBase> m_integrator;
+    std::unique_ptr<cardillo::solver::SolverBase> m_solver;
     std::unique_ptr<cardillo::io::VtkWriterBinary> m_vtk_writer;
     // Owned progress bar
     std::unique_ptr<cardillo::misc::ProgressBar> m_pbar;

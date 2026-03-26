@@ -8,9 +8,9 @@ namespace cardillo::physics {
 
 struct RigidBodyFactory {
     static entt::entity create(World& system,
-                               const World::RigidShape& shape,
-                               const World::RigidState& state,
-                               const World::RigidProps& props);
+                               const physics::RigidShape& shape,
+                               const physics::RigidState& state,
+                               const physics::RigidProps& props);
 };
 
 } // namespace cardillo::physics

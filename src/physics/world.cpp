@@ -13,33 +13,29 @@
 
 namespace cardillo {
 
-namespace {
+// namespace {
 
-Vector3r worldPointFromLocal(const entt::registry& reg, entt::entity e, const Vector3r& r_local) {
-    Vector3r p = r_local;
-    if (reg.valid(e) && reg.all_of<C_Position3>(e)) {
-        p = reg.get<C_Position3>(e).value;
-        if (reg.all_of<C_Orientation>(e)) {
-            p += reg.get<C_Orientation>(e).value.toRotationMatrix() * r_local;
-        } else {
-            p += r_local;
-        }
-    }
-    return p;
-}
+// Vector3r worldPointFromLocal(const entt::registry& reg, entt::entity e, const Vector3r& r_local) {
+//     Vector3r p = r_local;
+//     if (reg.valid(e) && reg.all_of<C_Position3>(e)) {
+//         p = reg.get<C_Position3>(e).value;
+//         if (reg.all_of<C_Orientation>(e)) {
+//             p += reg.get<C_Orientation>(e).value.toRotationMatrix() * r_local;
+//         } else {
+//             p += r_local;
+//         }
+//     }
+//     return p;
+// }
 
-} // namespace
+// } // namespace
 
-// Construction and configuration
-World::World() 
-{
-    m_gravity = Vector3r(0, 0, -9.81);
-}
 
 World::~World() = default;
 
-World::World(const config::Config& cfg) : World() {
-    setConfig(cfg);
+World::World(const config::Config& cfg) {
+    m_cfg = cfg;
+    setGravity(m_cfg.sim_gravity);
 }
 
 void World::setGravity(const Vector3r& g) { m_gravity = g; m_forces_dirty = true; }
@@ -53,6 +49,9 @@ const PhysicsAssets& World::assets() const {
     if (!m_assets) const_cast<World*>(this)->m_assets = std::make_shared<PhysicsAssets>();
     return *m_assets;
 }
+
+// const config::Config& World::config() const { return m_cfg; }
+// config::Config& World::config() { return m_cfg; }
 
 void World::track(entt::entity e, const std::string& name)
 {
@@ -102,12 +101,10 @@ void World::writeTrackedStateToCsv(real_t t)
     }
 }
 
-
-// Constraint forwarding methods removed; use ConstraintFactory or PhysicsEngine instead.
-
 // ---------- Dynamics getters ----------
 
 MatrixXXr World::getMass(entt::entity e) const {
+
     // Rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass, C_InertiaDiag>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
@@ -120,6 +117,7 @@ MatrixXXr World::getMass(entt::entity e) const {
         M(5,5) = Idiag.z();
         return M;
     }
+
     // Point mass
     if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
@@ -344,7 +342,7 @@ void World::setOrientation(entt::entity e, const Quaternion4r& q_in) {
     if (!m_reg.valid(e)) return;
     if (m_reg.any_of<C_Orientation>(e)) {
         const Quaternion4r q_ref = m_reg.get<C_Orientation>(e).value;
-        m_reg.get<C_Orientation>(e).value = World::alignQuaternionTo(q_in, q_ref);
+        m_reg.get<C_Orientation>(e).value = MathHelper::alignQuaternionTo(q_in, q_ref);
     } else {
         Quaternion4r q = q_in; q.normalize();
         m_reg.emplace<C_Orientation>(e, C_Orientation{q});
@@ -385,12 +383,6 @@ void World::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r
     m_forces_dirty = true;
 }
 
-// (Removed) World no longer exposes collision/timings/warmstart accessors;
-// these subsystems are owned by the PhysicsEngine and should be passed
-// into pipeline/assemblers/solvers as needed.
-
-// (Removed) collision pair control moved to engine-owned CollisionCoal
-
 // ---------- Mesh / HeightField asset access ----------
 
 const ::cardillo::MeshAsset& World::getMeshAsset(entt::entity e) const {
@@ -404,16 +396,4 @@ const ::cardillo::HeightFieldAsset& World::getHeightFieldAsset(entt::entity e) c
     const auto& ch = m_reg.get<C_HeightField>(e);
     return assets().getHeightField(ch.path, ch.x_dim, ch.y_dim, ch.z_scale, ch.min_height);
 }
-
-void World::updateBeamElementEntity(entt::entity e) {
-    physics::DerivedEntitySync::updateBeamElementEntity(*this, e);
-}
-
-void World::updateEntities() {
-    physics::DerivedEntitySync::updateEntities(*this);
-}
-
-} // namespace cardillo::
-
-// Set external non-owning subsystem pointers
-// (Removed) setters for external subsystems — PhysicsEngine manages these.
+} // namespace cardillo::physics

@@ -7,19 +7,29 @@
 #include "misc/types.hpp"
 #include "../physics/world.hpp"
 #include "vtk_sphere_util.hpp"
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 namespace cardillo { namespace collision { struct Contact; } }
 
 namespace cardillo::io {
 
-// A clean binary VTK (legacy) writer mirroring VtkWriter's functionality
-// - Writes two files per step: <base>_pts_####.vtk and <base>_geo_####.vtk
-// - Uses POLYDATA dataset with POINTS and POLYGONS
-// - PointData includes mass/velocity/radius/partition/entity_id (for points-only)
-//   and velocity/partition/entity_id (+optional mesh UVs) for geometry
 class VtkWriterBinary {
 public:
-    VtkWriterBinary(std::string outputDir = ".", std::string baseName = "scene_bin", int frequency = 1);
+    VtkWriterBinary(const cardillo::config::Config& cfg) : m_cfg(cfg) 
+    , m_outputDir(cfg.output_folder)
+    , m_baseName(cfg.output_filename_prefix)
+    , m_frequency(cfg.output_interval_steps) 
+    , m_hfStride(cfg.output_heightfield_stride)
+    , m_writeContacts(cfg.output_write_contacts)
+    , m_contactsBase(cfg.output_filename_prefix + std::string("_contacts"))
+    , m_writeSprings(true)
+    , m_springsBase(cfg.output_filename_prefix + std::string("_springs"))
+    {
+        if (m_frequency < 1) m_frequency = 1;
+        if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
+    }
 
     void setOutputDir(const std::string& dir);
     void setBaseName(const std::string& name);
@@ -35,12 +45,21 @@ public:
                cardillo::solver::WarmstartProvider* warmstart_provider,
                cardillo::misc::TimingManager* timings);
 
-    // Optional contacts output
     void enableContactsOutput(bool enable, const std::string& baseName) { m_writeContacts = enable; m_contactsBase = baseName; }
-    // Optional springs output: writes one POINT per spring (attachment A) and a VECTORS field pointing to attachment B
     void enableSpringsOutput(bool enable, const std::string& baseName) { m_writeSprings = enable; m_springsBase = baseName; }
 
 private:
+    const cardillo::config::Config& m_cfg;
+    std::string m_outputDir;
+    std::string m_baseName;
+    int m_frequency{1};
+    int m_hfStride{8}; 
+    bool m_writeContacts{false};
+    std::string m_contactsBase{"contacts"};
+    bool m_writeSprings{false};
+    std::string m_springsBase{"springs"};
+    mutable bool m_staticGeoWritten{false};
+
     struct PointOut {
         Vector3r pos{Vector3r::Zero()};
         float mass{0.0f};
@@ -117,16 +136,6 @@ private:
     void writeDynamicGeometry(int step, const Collected& data) const;
     void writeSprings(int step, const cardillo::World& sys) const;
     void writeStaticGeometryStep(int step, const Collected& data) const; // write static geometry each timestep (entity transforms may change)
-
-    std::string m_outputDir;
-    std::string m_baseName;
-    int m_frequency{1};
-    int m_hfStride{8}; // decimation stride for heightfield VTK output
-    bool m_writeContacts{false};
-    std::string m_contactsBase{"contacts"};
-    bool m_writeSprings{false};
-    std::string m_springsBase{"springs"};
-    mutable bool m_staticGeoWritten{false};
 };
 
 } // namespace cardillo::io
