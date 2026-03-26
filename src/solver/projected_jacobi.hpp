@@ -7,6 +7,7 @@
 #include "misc/types.hpp"
 #include "../physics/assembly/dynamics_assembler.hpp"
 #include "warmstart.hpp"
+#include "solver_base.hpp"
 #include "../config/config.hpp"
 
 namespace cardillo::solver {
@@ -17,7 +18,7 @@ namespace cardillo::solver {
 // Notes:
 // - We treat the projection as clamping to non-positive impulses (compressive only).
 // - alpha in (0,2) typically for convergence; default alpha=1.
-class ProjectedJacobiSolver {
+class ProjectedJacobiSolver : public SolverBase {
 public:
     explicit ProjectedJacobiSolver(cardillo::physics::DynamicsAssembler& dyn,
                                    const cardillo::config::Config& cfg,
@@ -39,11 +40,14 @@ public:
     {}
 
     real_t alpha() const { return m_alpha; }
-    int lastIterations() const { return m_lastIterations; }
-    real_t lastError() const { return m_lastError; }
-    
+    real_t lastError() const override { return m_lastError; }
+
     // Concatenated API: accept stacked preliminary velocities and return stacked velocities
-    VectorXr solve(VectorXr& rhs, real_t tol = 1e-5);
+    VectorXr solve(VectorXr& rhs, real_t tol = 1e-5) override;
+
+    int lastIterations() const override { return m_lastIterations; }
+
+    const char* name() const override { return "ProjectedJacobi"; }
 
 private:
     cardillo::physics::DynamicsAssembler& m_dyn;

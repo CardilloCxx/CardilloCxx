@@ -20,7 +20,6 @@ public:
 	}
 
 	void step(real_t dt) override;
-	int lastProjectedJacobiIterations() const override { return m_pj.lastIterations(); }
 
 private:
 	// Constraint-space Lagrange multipliers for generalized springs (size = C_dyn)

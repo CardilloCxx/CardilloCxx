@@ -112,13 +112,6 @@ public:
     std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() { return m_constraints_new; }
     const std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() const { return m_constraints_new; }
 
-    // Explicit constraint API moved to `ConstraintFactory`/`physics_engine`.
-
-    // Public ECS component/tag types are declared in ecs_types.hpp so they can
-    // be used directly as cardillo::C_* across the codebase.
-
-    // No numQ/numV or DOF accessors here; DynamicsAssembler owns DOF scans
-    // Helper: number of dynamic bodies (with a body index)
     int numBodies() const;
 
     // State changed: positions/velocities modified
@@ -184,10 +177,20 @@ private:
     // Asset manager (new abstraction)
     std::shared_ptr<class PhysicsAssets> m_assets;
 
+    // Non-owning external pointers (set when an external manager owns the subsystems)
+    collision::CollisionCoal* m_collision_mgr_external{nullptr};
+    cardillo::misc::TimingManager* m_timings_external{nullptr};
+    cardillo::solver::WarmstartProvider* m_warmstart_provider_external{nullptr};
+
 public:
     void setAssets(std::shared_ptr<class PhysicsAssets> assets) { m_assets = std::move(assets); }
     class PhysicsAssets& assets();
     const class PhysicsAssets& assets() const;
+
+    // Set non-owning pointers to subsystems owned by an external lifecycle manager (e.g., PhysicsEngine)
+    void setCollisionManager(collision::CollisionCoal* mgr);
+    void setTimings(cardillo::misc::TimingManager* timings);
+    void setWarmstartProvider(cardillo::solver::WarmstartProvider* provider);
 };
 
 } // namespace cardillo

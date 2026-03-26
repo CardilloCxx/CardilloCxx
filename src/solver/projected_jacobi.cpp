@@ -65,7 +65,6 @@ static inline VectorXr precompute_Rdiag_true_delassus(
 }
 
 // Small context to avoid re-passing many references for each sweep
-namespace {
 struct PJIterContext {
 	const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W;
 	cardillo::physics::DynamicsAssembler* dyn; // pointer to assembler (for S-solve etc.)
@@ -94,7 +93,6 @@ struct PJIterContext {
 	real_t err_global{std::numeric_limits<real_t>::max()};
 	index_t iteration{0};
 };
-}
 
 class ConvergenceCsvWriter {
 public:
@@ -320,8 +318,6 @@ static inline double global_segment_dot(const PJIterContext& ctx, const VectorXr
 	return loc;
 }
 
-namespace {
-
 // Standard fixed-point iteration loop
 static inline void standard_loop(PJIterContext& ctx,
 				 VectorXr& u, VectorXr& p,
@@ -421,8 +417,6 @@ static inline void nesterov_loop(PJIterContext& ctx,
 
 	u = xuk1;
 	p = xpk1;
-}
-
 }
 
 VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {

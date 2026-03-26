@@ -57,7 +57,7 @@ void MoreauSolver::step(real_t dt)
     if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -(1.0 - m_theta) / m_theta * Wgamma * vn;
 
     // 5) Solve extended system
-    auto xnp1 = m_pj.solve(rhs, m_world.config().pj_tol_abs);
+    auto xnp1 = m_solver ? m_solver->solve(rhs, m_world.config().pj_tol_abs) : VectorXr();
     // auto xnp1 = m_dyn.solveS(rhs);                             // No contacts
     VectorXr vnp1 = xnp1.segment(0, totalV);
     if (nSprings > 0) m_dyn.setLambda_g(xnp1.segment(totalV, nSprings)); else m_dyn.setLambda_g(VectorXr(0));

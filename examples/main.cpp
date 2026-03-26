@@ -50,10 +50,10 @@
 
 using namespace cardillo;
 
-static World sys(cardillo::config::Config{}); 
+static cardillo::physics::PhysicsEngine* g_engine = nullptr;
 
 void printTimingsAtExit(int sig) {
-    sys.timings().printBreakdown(std::cout);
+    if (g_engine) g_engine->timings().printBreakdown(std::cout);
     std::exit(EXIT_FAILURE);
 }
 
@@ -71,7 +71,9 @@ int main(int argc, char** argv) {
     
     if (argc <= 1 && worldRank == 0) std::cout << "No config file provided, using defaults." << std::endl;
     
-    sys.setConfig(cfg);
+    // Construct engine from config (engine will create and own subsystems)
+    cardillo::physics::PhysicsEngine engine(cfg);
+    g_engine = &engine;
 
     // Construct all available scenes and select the one matching cfg.scene_name
     std::vector<std::unique_ptr<SceneBase>> scenes;
@@ -131,73 +133,20 @@ int main(int argc, char** argv) {
     }
     std::cout << "Selected scene: " << selected->sceneName() << std::endl;
     SceneBase& scene = *selected;
-    cardillo::physics::PhysicsEngine engine(sys);
     cfg.output_filename_prefix = scene.sceneName();
     scene.populate(engine);
 
-    // Setup solver based on config
-    std::unique_ptr<cardillo::integration::IntegrationBase> solver;
-    if (cfg.solver == cardillo::config::SolverType::StoermerVerlet) {
-        if (worldRank == 0) {
-            std::cout << "[Warning] Dual Stoermer-Verlet is deprecated; prefer Moreau (solver.name=moreau).\n";
-        }
-        solver = std::make_unique<cardillo::integration::DualStoermerVerletSolver>(sys);
-    } else {
-        solver = std::make_unique<cardillo::integration::MoreauSolver>(sys, cfg.moreau_theta);
-    }
-
-    std::cout << "[Info] Selected solver: " 
-              << ((cfg.solver == cardillo::config::SolverType::StoermerVerlet) ? "Dual Stoermer-Verlet" : "Moreau") 
-              << std::endl;
-
-    if (cfg.solver == cardillo::config::SolverType::Moreau) {
-        std::cout << "[Info] Moreau settings: theta=" << cfg.moreau_theta
-                  << ", implicit_gyroscopy=" << (cfg.moreau_implicit_gyroscopy ? "true" : "false")
-                  << std::endl;
-    }
-    
-    // Writer (rank 0)
-    std::unique_ptr<cardillo::io::VtkWriterBinary> writer;
-    if (worldRank == 0) {
-        writer = std::make_unique<cardillo::io::VtkWriterBinary>(cfg.output_folder, cfg.output_filename_prefix, cfg.output_interval_steps);
-        writer->setHeightFieldStride(cfg.output_heightfield_stride);
-        if (cfg.output_write_contacts) writer->enableContactsOutput(true, cfg.output_filename_prefix + std::string("_contacts"));
-        writer->enableSpringsOutput(true, cfg.output_filename_prefix + std::string("_springs"));
-    }
-
+    // Simulation loop: let PhysicsEngine own the pipeline, integrator and writer
     real_t t = 0.0;
-    const real_t T = cfg.sim_T;
     const real_t dt = cfg.sim_dt;
-    const int steps = (int)(T / dt);
-    if (writer) writer->maybeWrite(0, t, sys);
-
-    auto t0 = std::chrono::steady_clock::now();
-    std::unique_ptr<cardillo::misc::ProgressBar> pbar;
-    if (worldRank == 0) {
-        pbar = std::make_unique<cardillo::misc::ProgressBar>(static_cast<std::size_t>(steps), std::cout);
-        pbar->set_description("Simulating");
+    while (!engine.isFinished()) {
+        scene.updateScene(engine, t, dt);
+        engine.step(dt);
+        if (worldRank == 0) engine.writeTrackedStateToCsv(t + dt);
+        t += dt;
     }
-    {
-        auto totalScope = sys.timings().scope(cardillo::misc::TimingManager::TimerId::Total);
-        for (int k = 0; k < steps; ++k) {
-            scene.updateScene(engine, t, dt);
-            solver->step(dt);
-            if (worldRank == 0) {
-                sys.writeTrackedStateToCsv(t + dt);
-            }
-            t += dt;
-            if (writer) writer->maybeWrite(k+1, t, sys);
-            if (pbar) {
-                int jorIters = solver->lastProjectedJacobiIterations();
-                if (jorIters >= 0) pbar->set_postfix("jor=" + std::to_string(jorIters) + "        ");
-                pbar->update(1);
-            }
-        }
-    }
-    if (pbar) pbar->close();
-    if (worldRank == 0) {
-        sys.timings().printBreakdown(std::cout);
-    }
+    // print timings
+    if (worldRank == 0) engine.timings().printBreakdown(std::cout);
 
     PetscFinalize();
     return 0;

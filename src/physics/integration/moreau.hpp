@@ -24,7 +24,6 @@ public:
 
 	// Midpoint rule for unconstrained translation-only point masses
 	void step(real_t dt) override;
-	int lastProjectedJacobiIterations() const override { return m_pj.lastIterations(); }
 
 private:
 

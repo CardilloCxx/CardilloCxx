@@ -390,6 +390,7 @@ void World::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r
 // ---------- Subsystems ----------
 
 cardillo::collision::CollisionCoal& World::collisionManager() {
+    if (m_collision_mgr_external) return *m_collision_mgr_external;
     if (!m_collision_mgr) {
         m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
         m_collision_mgr->registerSystem(this);
@@ -408,6 +409,7 @@ const cardillo::collision::CollisionCoal& World::collisionManager() const {
 }
 
 cardillo::misc::TimingManager& World::timings() {
+    if (m_timings_external) return *m_timings_external;
     if (!m_timings) m_timings = std::make_unique<cardillo::misc::TimingManager>();
     return *m_timings;
 }
@@ -446,3 +448,16 @@ void World::updateEntities() {
 }
 
 } // namespace cardillo::
+
+// Set external non-owning subsystem pointers
+void World::setCollisionManager(cardillo::collision::CollisionCoal* mgr) {
+    m_collision_mgr_external = mgr;
+}
+
+void World::setTimings(cardillo::misc::TimingManager* timings) {
+    m_timings_external = timings;
+}
+
+void World::setWarmstartProvider(cardillo::solver::WarmstartProvider* provider) {
+    m_warmstart_provider_external = provider;
+}
