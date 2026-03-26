@@ -190,7 +190,6 @@ private:
     std::unique_ptr<cardillo::collision::CollisionCoal> m_collision_mgr; // engine-owned
     std::unique_ptr<cardillo::misc::TimingManager> m_timings;  // engine-owned
     std::unique_ptr<cardillo::solver::WarmstartProvider> m_warmstart_provider; // engine-owned
-
     // Pipeline (orchestrates collision, assembly, solver, integrator)
     std::unique_ptr<cardillo::physics::pipeline::PhysicsPipeline> m_pipeline;
 };

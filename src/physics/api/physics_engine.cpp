@@ -22,10 +22,12 @@ void PhysicsEngine::initFromConfig(const config::Config& cfg) {
     m_world->setConfig(m_cfg);
 
     // Create and own low-level subsystems
-    m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
-    m_collision_mgr->registerSystem(m_world.get());
     m_timings = std::make_unique<cardillo::misc::TimingManager>();
     m_warmstart_provider = std::make_unique<cardillo::solver::WarmstartCache>();
+    m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>();
+    m_collision_mgr->registerSystem(m_world.get());
+    // Provide timings to collision manager (required)
+    m_collision_mgr->setTimings(m_timings.get());
 
     // World no longer stores subsystem pointers; engine keeps ownership and
     // will pass these into the pipeline/assemblers as needed.

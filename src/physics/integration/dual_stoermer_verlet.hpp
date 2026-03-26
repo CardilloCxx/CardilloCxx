@@ -14,8 +14,8 @@ namespace cardillo::integration {
 
 class DualStoermerVerletSolver : public IntegrationBase {
 public:
-    explicit DualStoermerVerletSolver(cardillo::World& world, cardillo::physics::DynamicsAssembler& dyn, cardillo::solver::WarmstartProvider* warmstart)
-        : IntegrationBase(world, dyn, warmstart) {
+    explicit DualStoermerVerletSolver(cardillo::World& world, cardillo::physics::DynamicsAssembler& dyn, cardillo::misc::TimingManager& timings, cardillo::solver::WarmstartProvider* warmstart)
+        : IntegrationBase(world, dyn, timings, warmstart) {
         m_dyn.refreshState();
     }
 

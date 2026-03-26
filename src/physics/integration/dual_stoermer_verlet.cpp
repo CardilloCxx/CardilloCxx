@@ -80,7 +80,7 @@ void DualStoermerVerletSolver::step(real_t dt)
     m_dyn.writeVelocityToSystem(vnp1);
 
     // 7) Inplace final position update
-    explicitPositionUpdate(m_world, 0.5 * dt, m_dyn.timings());
+    explicitPositionUpdate(m_world, 0.5 * dt);
     m_world.updateEntities();
 }
 

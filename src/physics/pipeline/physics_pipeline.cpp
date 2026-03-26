@@ -26,9 +26,9 @@ PhysicsPipeline::PhysicsPipeline(World& world,
     // Choose integrator based on config
     using namespace cardillo::integration;
     if (cfg.solver == cardillo::config::SolverType::Moreau) {
-        m_integrator = std::make_unique<MoreauSolver>(m_world, *m_dyn, m_warmstart_provider);
+        m_integrator = std::make_unique<MoreauSolver>(m_world, *m_dyn, *m_timings, m_warmstart_provider);
     } else {
-        m_integrator = std::make_unique<DualStoermerVerletSolver>(m_world, *m_dyn, m_warmstart_provider);
+        m_integrator = std::make_unique<DualStoermerVerletSolver>(m_world, *m_dyn, *m_timings, m_warmstart_provider);
     }
 
     // Create VTK writer if output is enabled
