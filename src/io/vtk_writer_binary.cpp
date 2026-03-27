@@ -1,7 +1,7 @@
 #include "vtk_writer_binary.hpp"
 #include "../collision/collision_coal.hpp"
 #include "vtk_sphere_util.hpp"
-#include "../solver/warmstart.hpp"
+#include "../physics/solver/warmstart.hpp"
 #include "../physics/constraints/constraints.hpp"
 #include <cmath>
 #include <coal/hfield.h>

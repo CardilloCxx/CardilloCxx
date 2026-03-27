@@ -5,8 +5,6 @@
 #include "misc/types.hpp"
 #include "integration_base.hpp"
 #include "physics/world.hpp"
-#include "solver/projected_jacobi.hpp"
-#include "solver/warmstart.hpp"
 #include "config/config.hpp"
 #include "physics/assembly/dynamics_assembler.hpp"
 

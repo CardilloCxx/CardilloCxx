@@ -5,7 +5,7 @@
 #include "constraints/constraint_factory.hpp"
 #include "synchronization/derived_entity_sync.hpp"
 #include "../collision/collision_coal.hpp"
-#include "../solver/warmstart.hpp"
+#include "solver/warmstart.hpp"
 #include "../io/csv_writer.hpp"
 #include <sstream>
 #include <iomanip>

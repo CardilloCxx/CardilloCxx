@@ -1,5 +1,5 @@
 #include "moreau.hpp"
-#include "solver/projected_jacobi.hpp"
+#include "../solver/projected_jacobi.hpp"
 #include <vector>
 #include <algorithm>
 #include <limits>

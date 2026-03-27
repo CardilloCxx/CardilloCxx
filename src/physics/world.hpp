@@ -126,7 +126,6 @@ public:
 
     void track(entt::entity e, const std::string& name);
     void writeTrackedStateToCsv(real_t t);
-
 };
 
 } // namespace cardillo

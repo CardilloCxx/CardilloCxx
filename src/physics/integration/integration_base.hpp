@@ -3,8 +3,8 @@
 #include "misc/types.hpp"
 #include "physics/world.hpp"
 #include "physics/assembly/dynamics_assembler.hpp"
-#include "solver/solver_base.hpp"
-#include "solver/projected_jacobi.hpp"
+#include "../solver/solver_base.hpp"
+#include "../solver/projected_jacobi.hpp"
 #include <memory>
 
 namespace cardillo::integration {

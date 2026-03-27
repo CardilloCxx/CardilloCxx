@@ -4,11 +4,11 @@
 #include <Eigen/Dense>
 #include <optional>
 #include <algorithm>
-#include "misc/types.hpp"
-#include "../physics/assembly/dynamics_assembler.hpp"
+#include "../../misc/types.hpp"
+#include "../assembly/dynamics_assembler.hpp"
 #include "warmstart.hpp"
 #include "solver_base.hpp"
-#include "../config/config.hpp"
+#include "../../config/config.hpp"
 
 namespace cardillo::solver {
 

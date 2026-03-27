@@ -1,5 +1,4 @@
 #include "dual_stoermer_verlet.hpp"
-#include "solver/projected_jacobi.hpp"
 #include <vector>
 #include <algorithm>
 #include <limits>
@@ -67,7 +66,7 @@ void DualStoermerVerletIntegrator::step(real_t dt)
     if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = - Wgamma * vn;
 
     // 5) Solve extended system
-    auto xnp1 = m_solver.solve(rhs, m_world.config().pj_tol_abs);
+    auto xnp1 = m_solver.solve(rhs, m_config.pj_tol_abs);
     // auto xnp1 = m_dyn.solveS(rhs);                             // No contacts
     VectorXr vnp1 = xnp1.segment(0, totalV);
     VectorXr Lambda_g_12 = xnp1.segment(totalV, nSprings);

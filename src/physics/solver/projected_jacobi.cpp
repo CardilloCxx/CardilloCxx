@@ -94,41 +94,6 @@ struct PJIterContext {
 	index_t iteration{0};
 };
 
-class ConvergenceCsvWriter {
-public:
-	ConvergenceCsvWriter(const std::string& dir)
-		: m_enabled(!dir.empty()), m_dir(dir) {
-		if (m_enabled) {
-			std::error_code ec;
-			std::filesystem::create_directories(m_dir, ec);
-		}
-	}
-
-	void startTimestep(int stepIdx) {
-		if (!m_enabled) return;
-		if (m_out.is_open()) m_out.close();
-		const std::filesystem::path path = std::filesystem::path(m_dir) / ("pj_convergence_" + std::to_string(stepIdx) + ".csv");
-		m_out.open(path);
-		if (m_out) {
-			m_out << "iteration,vel_error,percussion_error,beta,reset,reason\n";
-		}
-	}
-
-	void report(int iteration, real_t velErr, real_t percErr, double beta, bool reset, const std::string& reason) {
-		if (!m_enabled || !m_out) return;
-		m_out << iteration << ',' << velErr << ',' << percErr << ',' << beta << ',' << (reset ? 1 : 0) << ',';
-		if (reset) m_out << reason;
-		m_out << '\n';
-	}
-
-private:
-	bool m_enabled{false};
-	std::string m_dir;
-	std::ofstream m_out;
-};
-
-static int g_pj_convergence_counter = 0;
-
 // Compact holder for grouped contact rows and friction coefficients
 struct ContactGroups {
 	std::vector<std::vector<int>> rows; // 1 or 3 rows per contact
@@ -320,8 +285,7 @@ static inline double global_segment_dot(const PJIterContext& ctx, const VectorXr
 
 // Standard fixed-point iteration loop
 static inline void standard_loop(PJIterContext& ctx,
-				 VectorXr& u, VectorXr& p,
-				 ConvergenceCsvWriter* logger) {
+				 VectorXr& u, VectorXr& p) {
 	ctx.err_global = std::numeric_limits<real_t>::max();
 	ctx.iteration = 0;
 	VectorXr u_prev = u;
@@ -329,11 +293,6 @@ static inline void standard_loop(PJIterContext& ctx,
 	while (ctx.iteration < ctx.maxIterations) {
 		pj_sweep(ctx, u_prev, p_prev, u, p);
 		ctx.err_global = global_segment_norm(ctx, u, u_prev, ctx.tol);
-		if (logger) {
-			const real_t log_du = global_velocity_l2_norm(ctx, u, u_prev);
-			const real_t log_dp = global_contact_norm(ctx, p, p_prev);
-			logger->report(static_cast<int>(ctx.iteration + 1), log_du, log_dp, 0.0, false, "");
-		}
 		++ctx.iteration;
 		if (ctx.err_global <= (real_t)1) break;
 		if (ctx.debug && (ctx.iteration % 1000 == 0)) {
@@ -347,8 +306,7 @@ static inline void standard_loop(PJIterContext& ctx,
 // Nesterov-accelerated loop
 static inline void nesterov_loop(PJIterContext& ctx,
 				VectorXr& u, VectorXr& p,
-				double beta_threshold, int restart_limit,
-				ConvergenceCsvWriter* logger) {
+				double beta_threshold, int restart_limit) {
 	ctx.err_global = std::numeric_limits<real_t>::max();
 	ctx.iteration = 0;
 	VectorXr xuk = u;
@@ -380,11 +338,6 @@ static inline void nesterov_loop(PJIterContext& ctx,
 			if (d > 0.0) { restart = true; resetReason = "direction_conflict"; }
 		}
 		if (!restart && (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0)) { restart = true; resetReason = "beta_invalid"; }
-		if (logger) {
-			const real_t log_du = global_velocity_l2_norm(ctx, xuk1, xuk);
-			const real_t log_dp = global_contact_norm(ctx, xpk1, xpk);
-			logger->report(static_cast<int>(ctx.iteration), log_du, log_dp, betak1, restart, resetReason);
-		}
 		if (ctx.err_global <= (real_t)1) break;
 
 		if (restart) {
@@ -434,19 +387,8 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	VectorXr p = VectorXr::Zero(C);
 	if (m_warmStart && m_wsProvider != nullptr) {
 		const auto& contactsAll = m_dyn.contacts();
-		std::vector<ContactImpulse> hints = m_wsProvider->makeHint(contactsAll);
 		const auto& dynToOrig = m_dyn.dynamicContactToOriginalAll();
-		// Expand per-contact hints into row vector according to grouped rows
-		for (const auto& rows : ctx.contactRowGroups) {
-			if (rows.empty()) continue;
-			const int rn = rows[0];
-			const int origIdx = (rn >= 0 && rn < (int)dynToOrig.size()) ? dynToOrig[(size_t)rn] : -1;
-			if (origIdx < 0 || origIdx >= (int)hints.size()) continue;
-			const ContactImpulse& hi = hints[(size_t)origIdx];
-			p[rn] = std::max<real_t>(hi.pn, (real_t)0);
-			if (rows.size() > 1) p[rows[1]] = hi.pt1;
-			if (rows.size() > 2) p[rows[2]] = hi.pt2;
-		}
+		m_wsProvider->applyHintToRowVector(p, ctx.contactRowGroups, dynToOrig, contactsAll);
 	}
 
 	// Initialize state vector x consisting of velocities and lagrange multipliers (springs)
@@ -466,19 +408,13 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	ctx.debug = m_debug;
 	ctx.eps_rel = m_epsRel;
 
-	ConvergenceCsvWriter csvWriter(m_convCsvDir);
-	ConvergenceCsvWriter* logger = (!m_convCsvDir.empty()) ? &csvWriter : nullptr;
-	if (logger) {
-		csvWriter.startTimestep(g_pj_convergence_counter++);
-	}
-
 	if (!m_useNesterov) {
-		standard_loop(ctx, x, p, logger);
+		standard_loop(ctx, x, p);
 		if (m_debug) {
 			std::cout << "[ProjectedJacobi] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
 	} else {
-		nesterov_loop(ctx, x, p, m_nest_beta_threshold, m_nest_restart_limit, logger);
+		nesterov_loop(ctx, x, p, m_nest_beta_threshold, m_nest_restart_limit);
 		if (m_debug) {
 			std::cout << "[ProjectedJacobi+Nesterov] Converged in " << ctx.iteration << " iterations, final error = " << ctx.err_global << std::endl;
 		}
@@ -491,19 +427,7 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	if (m_wsProvider != nullptr) {
 		const auto& contactsAll = m_dyn.contacts();
 		const auto& dynToOrig = m_dyn.dynamicContactToOriginalAll();
-		std::vector<ContactImpulse> lastImp(contactsAll.size());
-		for (const auto& rows : ctx.contactRowGroups) {
-			if (rows.empty()) continue;
-			const int rn = rows[0];
-			const int origIdx = (rn >= 0 && rn < (int)dynToOrig.size()) ? dynToOrig[(size_t)rn] : -1;
-			if (origIdx < 0 || origIdx >= (int)lastImp.size()) continue;
-			ContactImpulse ci{};
-			ci.pn = p[rn];
-			if (rows.size() > 1) ci.pt1 = p[rows[1]]; else ci.pt1 = (real_t)0;
-			if (rows.size() > 2) ci.pt2 = p[rows[2]]; else ci.pt2 = (real_t)0;
-			lastImp[(size_t)origIdx] = ci;
-		}
-		m_wsProvider->store(contactsAll, lastImp);
+		m_wsProvider->storeFromRowVector(p, ctx.contactRowGroups, dynToOrig, contactsAll);
 	}
 
 	return x;
