@@ -21,15 +21,15 @@ void VtkWriterBinary::setFrequency(int freq) { m_frequency = std::max(1, freq); 
 
 void VtkWriterBinary::maybeWrite(int step, real_t time, const cardillo::World& sys,
                                  cardillo::collision::CollisionCoal* collision_mgr,
-                                 cardillo::solver::WarmstartProvider* warmstart_provider,
-                                 cardillo::misc::TimingManager* timings) {
-    if (step % m_frequency == 0) write(step, time, sys, collision_mgr, warmstart_provider, timings);
+                                 cardillo::misc::TimingManager* timings,
+                                 cardillo::physics::DynamicsAssembler* dyn) {
+    if (step % m_frequency == 0) write(step, time, sys, collision_mgr, timings, dyn);
 }
 
 void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sys,
                             cardillo::collision::CollisionCoal* collision_mgr,
-                            cardillo::solver::WarmstartProvider* warmstart_provider,
-                            cardillo::misc::TimingManager* timings) {
+                            cardillo::misc::TimingManager* timings,
+                            cardillo::physics::DynamicsAssembler* dyn) {
     auto sc = timings->scope(cardillo::misc::TimingManager::TimerId::OutputWrite);
     Collected data = collect(sys);
     writePointsOnly(step, 0, data);
@@ -44,10 +44,9 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
     writeDynamicGeometry(step, data);
     if (m_writeContacts) {
         if (collision_mgr) {
-            if (sys.consumeStructureDirty()) collision_mgr->rebuild();
-            const auto& contacts = collision_mgr->lastFlattenedContacts();
+            std::vector<cardillo::collision::Contact> contacts = dyn->contacts();
             const bool writeBody = m_cfg.output_contacts_body_vectors;
-            writeContacts(step, contacts, writeBody, warmstart_provider);
+            writeContacts(step, contacts, writeBody);
         }
     }
     if (m_writeSprings) {
@@ -1041,8 +1040,7 @@ void VtkWriterBinary::writeStaticGeometryStep(int step, const Collected& data) c
     out.close();
 }
 
-void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors,
-                                    cardillo::solver::WarmstartProvider* warmstartProvider) const {
+void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const {
     if (!m_writeContacts) return;
     if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
     const std::string path = buildPath(m_contactsBase, step);
@@ -1085,40 +1083,32 @@ void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collis
     out << "SCALARS penetration float 1\nLOOKUP_TABLE default\n";
     for (const auto& c : contacts) writeBE(out, f32(c.penetration));
 
-    // If a warmstart provider is available, emit percussion data (pn, tangential magnitude, and vector)
-    if (warmstartProvider != nullptr) {
+    // Emit percussion data (pn, tangential magnitude, and vector) if any contact has a non-zero last_impulse
+    bool hasImpulse = false;
+    for (const auto &c : contacts) {
+        if (c.last_impulse.squaredNorm() > (real_t)1e-12) { hasImpulse = true; break; }
+    }
+    if (hasImpulse) {
         // normal impulse magnitude
         out << "SCALARS pn float 1\nLOOKUP_TABLE default\n";
         for (const auto& c : contacts) {
-            float pn = 0.f;
-            if (c.prev_global_out_index >= 0) {
-                auto opt = warmstartProvider->get(c.prev_global_out_index);
-                if (opt) pn = static_cast<float>(opt->pn);
-            }
+            float pn = static_cast<float>(std::max<real_t>(c.last_impulse(0), (real_t)0));
             writeBE(out, pn);
         }
 
         // tangential magnitude (sqrt(pt1^2 + pt2^2))
         out << "SCALARS pt_mag float 1\nLOOKUP_TABLE default\n";
         for (const auto& c : contacts) {
-            float ptmag = 0.f;
-            if (c.prev_global_out_index >= 0) {
-                auto opt = warmstartProvider->get(c.prev_global_out_index);
-                if (opt) ptmag = static_cast<float>(std::sqrt((double)opt->pt1*opt->pt1 + (double)opt->pt2*opt->pt2));
-            }
+            const real_t t1 = c.last_impulse(1);
+            const real_t t2 = c.last_impulse(2);
+            float ptmag = static_cast<float>(std::sqrt((double)t1 * t1 + (double)t2 * t2));
             writeBE(out, ptmag);
         }
 
         // percussion vector in world coordinates: pn*normal + pt1*tangent1 + pt2*tangent2
         out << "VECTORS percussion float\n";
         for (const auto& c : contacts) {
-            Vector3r pvec = Vector3r::Zero();
-            if (c.prev_global_out_index >= 0) {
-                auto opt = warmstartProvider->get(c.prev_global_out_index);
-                if (opt) {
-                    pvec = (real_t)opt->pn * c.normal + (real_t)opt->pt1 * c.tangent1 + (real_t)opt->pt2 * c.tangent2;
-                }
-            }
+            Vector3r pvec = (real_t)c.last_impulse(0) * c.normal + (real_t)c.last_impulse(1) * c.tangent1 + (real_t)c.last_impulse(2) * c.tangent2;
             writeBE(out, f32(pvec.x())); writeBE(out, f32(pvec.y())); writeBE(out, f32(pvec.z()));
         }
     }

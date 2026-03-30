@@ -28,7 +28,7 @@
 namespace cardillo::collision {
 
 CollisionCoal::CollisionCoal(cardillo::World& world, cardillo::misc::TimingManager* timings, cardillo::config::Config& cfg)
-    : m_world(&world), m_timings(timings), m_cfg(cfg)
+    : m_world(&world), m_timings(timings), m_cfg(cfg), m_contactTracker(cfg, timings)
 {
     ensureBroadphaseFromConfig_();
 }
@@ -156,29 +156,6 @@ inline void addContactToMap(ContactMap& cmap, const Contact& c) {
         cmap.emplace(key, ContactList{c});
     } else {
         it->second.emplace_back(c);
-    }
-}
-
-// For each current contact, find the closest previous contact (by world-point distance).
-// If the closest is within maxDist, write its index to prev_pair_contact_idx; otherwise set -1.
-inline void matchContactsForPair(const ContactList& prev, ContactList& curr, real_t maxDist) {
-    if (curr.empty()) return;
-    const real_t max2 = maxDist * maxDist;
-    for (std::size_t i = 0; i < curr.size(); ++i) {
-        int best = -1;
-        real_t best2 = std::numeric_limits<real_t>::infinity();
-        const Vector3r& p = curr[i].point;
-        for (std::size_t j = 0; j < prev.size(); ++j) {
-            const Vector3r d = p - prev[j].point;
-            const real_t d2 = d.squaredNorm();
-            if (d2 < best2) { best2 = d2; best = (int)j; }
-        }
-        if (best >= 0 && best2 <= max2) {
-            // Record the previous contact's global index
-            curr[i].prev_global_out_index = prev[best].global_out_index;
-        } else {
-            curr[i].prev_global_out_index = -1;
-        }
     }
 }
 
@@ -409,7 +386,6 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     mapCurr.reserve(pairs.size());
 
     if (pairs.empty()) {
-        m_prevContactMap.clear();
         if( m_world && m_cfg.debug_rb) {
             std::printf("[Collision] no potential collision pairs found in broadphase.\n");
         }
@@ -433,7 +409,7 @@ std::vector<Contact> CollisionCoal::detectAll() const {
     const std::string frictionCombine = m_cfg.friction_combine;
 
     for (const auto& pr : pairs) {
-    auto sc_n = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionNarrowphase);
+        auto sc_n = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionNarrowphase);
         auto* o1 = pr.first;
         auto* o2 = pr.second;
         if (!o1 || !o2) continue;
@@ -476,56 +452,29 @@ std::vector<Contact> CollisionCoal::detectAll() const {
             appendContactsFromPair(reg, ea, eb, cres, patch_res, mapCurr, frictionCombine, usePatchVertices);
         }
     }
-    // Per-pair contact deduplication by proximity (optional)
+
+    // Dedupe contacts within each pair by proximity
     const real_t minPairDist = m_world ? m_cfg.collision_min_pair_contact_distance : (real_t)0.0;
-    std::size_t totalBefore = 0, totalAfter = 0;
     if (minPairDist > (real_t)0) {
         for (auto& kv : mapCurr) {
-            totalBefore += kv.second.size();
             dedupeContactsForPair(kv.second, minPairDist);
-            totalAfter += kv.second.size();
-        }
-    }
-    // Try to match current contacts to previous generation per pair (for warmstarting)
-    const real_t maxMatchDist = m_world ? m_cfg.collision_match_max_dist : (real_t)0.02;
-    std::size_t totalContacts = 0;
-    std::size_t totalMatched = 0;
-    for (auto& kv : mapCurr) {
-        auto sc_match = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionMatching);
-        auto itPrev = m_prevContactMap.find(kv.first);
-        if (itPrev != m_prevContactMap.end()) {
-            matchContactsForPair(itPrev->second, kv.second, maxMatchDist);
-        } else {
-            for (auto& c : kv.second) c.prev_global_out_index = -1;
-        }
-        // Accumulate simple stats
-        totalContacts += kv.second.size();
-        for (const auto& c : kv.second) if (c.prev_global_out_index >= 0) ++totalMatched;
-    }
-
-    // Flatten map to vector (stable-ish order by map iteration) and assign global indices
-    std::vector<Contact> out; out.reserve(1024);
-    for (auto& kv : mapCurr) {
-        auto& list = kv.second;
-        for (std::size_t i = 0; i < list.size(); ++i) {
-            list[i].global_out_index = (int)out.size();
-            out.emplace_back(list[i]);
         }
     }
 
-    // Optional simple diagnostics
-    if (m_world && m_cfg.debug_rb) {
-        std::printf("[Collision] matched %zu/%zu contacts (threshold = %.4g)\n",
-                    totalMatched, totalContacts, (double)maxMatchDist);
-        if (minPairDist > (real_t)0) {
-            std::printf("[Collision] dedupe kept %zu/%zu contacts (min_pair_dist = %.4g)\n",
-                        totalAfter, totalBefore, (double)minPairDist);
+    // --- Contact tracking (matching + diagnostics + timing) ---
+    m_contactTracker.registerNextContacts(mapCurr);
+
+    // --- Flatten to solver buffer ---
+    std::vector<Contact> out;
+    out.reserve(1024);
+
+    int globalIndex = 0;
+    for (auto& [key, list] : mapCurr) {
+        for (auto& c : list) {
+            out.emplace_back(c);
+            c.global_out_index = globalIndex++;
         }
     }
-
-    // Update previous contact map for potential warmstarting (next iteration)
-    m_prevContactMap = std::move(mapCurr);
-    m_last_flattened = out;
     return out;
 }
 

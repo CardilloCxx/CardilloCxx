@@ -12,6 +12,7 @@
 namespace fs = std::filesystem;
 
 namespace cardillo { namespace collision { struct Contact; } }
+namespace cardillo { namespace physics { class DynamicsAssembler; } }
 
 namespace cardillo::io {
 
@@ -38,12 +39,12 @@ public:
 
     void maybeWrite(int step, real_t time, const cardillo::World& sys,
                     cardillo::collision::CollisionCoal* collision_mgr,
-                    cardillo::solver::WarmstartProvider* warmstart_provider,
-                    cardillo::misc::TimingManager* timings);
+                    cardillo::misc::TimingManager* timings,
+                    cardillo::physics::DynamicsAssembler* dyn = nullptr);
     void write(int step, real_t time, const cardillo::World& sys,
                cardillo::collision::CollisionCoal* collision_mgr,
-               cardillo::solver::WarmstartProvider* warmstart_provider,
-               cardillo::misc::TimingManager* timings);
+               cardillo::misc::TimingManager* timings,
+               cardillo::physics::DynamicsAssembler* dyn = nullptr);
 
     void enableContactsOutput(bool enable, const std::string& baseName) { m_writeContacts = enable; m_contactsBase = baseName; }
     void enableSpringsOutput(bool enable, const std::string& baseName) { m_writeSprings = enable; m_springsBase = baseName; }
@@ -127,8 +128,7 @@ private:
     void writeMeshTextureCoordinates(std::ofstream& out, const Collected& data) const;
 
     // Contacts (binary legacy VTK)
-    void writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors,
-                       cardillo::solver::WarmstartProvider* warmstartProvider) const;
+    void writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const;
 
     void writePointsOnly(int step, real_t time, const Collected& data) const;
     void writeGeometryOnly(int step, real_t time, const Collected& data) const;

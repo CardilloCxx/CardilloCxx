@@ -37,8 +37,6 @@ public:
     // Diagonal of block-diagonal Minv (size = total velocity dofs)
     const VectorXr& MinvDiag() const { return m_Minv_diag; }
     const VectorXr& MDiag() const { return m_M_diag; }
-    // Map dynamic-only contact index (used in W/G) back to original contact index in m_contacts
-    const std::vector<int>& dynamicContactToOriginalAll() const { return m_contact_index_orig; }
     // Access underlying system (for debug / diagnostics)
     const World& system() const { return m_world; }
     // Expose current contacts (includes penetration and points) for biasing, debug, etc.
@@ -95,8 +93,9 @@ public:
     // Solve the full extended system S * x = rhs_ext and return the complete solution (ext-length)
     VectorXr solveS(const VectorXr& rhs_ext) const;
 
-    std::vector<int> m_contact_index_orig; // size Nc_dynamic, maps dynamic contact id -> original contact index
     std::vector<collision::Contact> m_contacts;
+    
+    void setContactLastImpulse(int global_out_index, const cardillo::Vector3r& imp);
 
     // Cached sizes
     index_t m_numQ{0};

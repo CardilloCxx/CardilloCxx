@@ -103,24 +103,19 @@ struct ContactGroups {
 static inline ContactGroups build_contact_groups(const cardillo::physics::DynamicsAssembler& dyn)
 {
 	ContactGroups cg;
-	const auto& W = dyn.W();
-	const int C = (int)W.rows();
-	const auto& dynToOrig = dyn.dynamicContactToOriginalAll();
 	const auto& contactsAll = dyn.contacts();
-	std::unordered_map<int, std::vector<int>> groups;
-	groups.reserve((size_t)C);
-	for (int r = 0; r < C; ++r) {
-		int origIdx = (r >= 0 && r < (int)dynToOrig.size()) ? dynToOrig[(size_t)r] : -1;
-		if (origIdx < 0 || origIdx >= (int)contactsAll.size()) continue;
-		groups[origIdx].push_back(r);
-	}
-	cg.rows.reserve(groups.size());
-	cg.mu.reserve(groups.size());
-	for (auto& kv : groups) {
-		auto& rows = kv.second;
+	cg.rows.reserve(contactsAll.size());
+	cg.mu.reserve(contactsAll.size());
+	for (const auto& c : contactsAll) {
+		if (c.impulse_base_index < 0) continue;
+		std::vector<int> rows;
+		rows.reserve((size_t)c.impulse_size);
+		rows.push_back(c.impulse_base_index);
+		if (c.impulse_size > 1) rows.push_back(c.impulse_base_index + 1);
+		if (c.impulse_size > 2) rows.push_back(c.impulse_base_index + 2);
 		std::sort(rows.begin(), rows.end());
-		cg.rows.push_back(rows);
-		cg.mu.push_back(contactsAll[(size_t)kv.first].friction_mu);
+		cg.rows.push_back(std::move(rows));
+		cg.mu.push_back(c.friction_mu);
 	}
 	return cg;
 }
@@ -319,6 +314,7 @@ static inline void nesterov_loop(PJIterContext& ctx,
 	real_t err_prev = std::numeric_limits<real_t>::infinity();
 	int restarts = 0;
 	bool momentum_disabled = false;
+	
 	while (ctx.iteration < ctx.maxIterations) {
 		pj_sweep(ctx, yuk, ypk, xuk1, xpk1);
 
@@ -386,9 +382,7 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	// Initialize impulses
 	VectorXr p = VectorXr::Zero(C);
 	if (m_warmStart && m_wsProvider != nullptr) {
-		const auto& contactsAll = m_dyn.contacts();
-		const auto& dynToOrig = m_dyn.dynamicContactToOriginalAll();
-		m_wsProvider->applyHintToRowVector(p, ctx.contactRowGroups, dynToOrig, contactsAll);
+		m_wsProvider->applyWarmstart(p, m_dyn);
 	}
 
 	// Initialize state vector x consisting of velocities and lagrange multipliers (springs)
@@ -425,9 +419,7 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 
 	// Store last impulses into cache for next step warmstarting
 	if (m_wsProvider != nullptr) {
-		const auto& contactsAll = m_dyn.contacts();
-		const auto& dynToOrig = m_dyn.dynamicContactToOriginalAll();
-		m_wsProvider->storeFromRowVector(p, ctx.contactRowGroups, dynToOrig, contactsAll);
+		m_wsProvider->storeImpulse(p, m_dyn);
 	}
 
 	return x;

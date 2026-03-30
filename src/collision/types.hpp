@@ -31,6 +31,12 @@ struct Contact {
     Vector3r tangent2B_body; // second tangent in body B frame
     real_t penetration;   // overlap distance (> 0 means interpenetration)
     real_t friction_mu{0}; // combined friction coefficient for the pair at this contact
+    // Last solved impulse for this contact (pn, pt1, pt2) stored in contact for warmstarting
+    Vector3r last_impulse{Vector3r::Zero()};
+    // Base index into dynamic solver rows for this contact (-1 if not dynamic)
+    int impulse_base_index{-1};
+    // Number of rows allocated for this contact in solver (1 or 3)
+    int impulse_size{0};
     // Global indices in the flattened contacts vector
     // Index of this contact in the previous generation's flattened output; -1 if none (for warmstarting)
     int prev_global_out_index{-1};

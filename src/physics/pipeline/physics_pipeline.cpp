@@ -72,7 +72,8 @@ void PhysicsPipeline::step(real_t dt) {
     // Output VTK if present
     if (m_vtk_writer) {
         m_vtk_writer->maybeWrite(m_current_step, m_current_time, m_world,
-                                 m_collision_mgr, m_warmstart_provider, m_timings);
+                     m_collision_mgr, m_timings,
+                     m_dyn.get());
     }
 
     // Update progress bar if present
