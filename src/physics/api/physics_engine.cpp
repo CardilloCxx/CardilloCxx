@@ -2,7 +2,6 @@
 
 #include "../../collision/collision_coal.hpp"
 #include "../../misc/timings/TimingManager.hpp"
-#include "../solver/warmstart.hpp"
 #include "../pipeline/physics_pipeline.hpp"
 
 namespace cardillo {
@@ -22,14 +21,12 @@ void PhysicsEngine::initFromConfig(const config::Config& cfg) {
 
     // Create and own low-level subsystems
     m_timings = std::make_unique<cardillo::misc::TimingManager>();
-    m_warmstart_provider = std::make_unique<cardillo::solver::WarmstartProvider>();
     m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>(*m_world, m_timings.get(), m_cfg);
 
     // Create pipeline and pass owned subsystem pointers explicitly
     m_pipeline = std::make_unique<cardillo::physics::pipeline::PhysicsPipeline>(*m_world, m_cfg,
                                                                                m_collision_mgr.get(),
-                                                                               m_timings.get(),
-                                                                               m_warmstart_provider.get());
+                                                                               m_timings.get());
 }
 
 void PhysicsEngine::step(real_t dt) {

@@ -6,6 +6,7 @@
 #include "../integration/moreau.hpp"
 #include "../integration/dual_stoermer_verlet.hpp"
 #include "../../io/vtk_writer_binary.hpp"
+#include "../../io/csv_writer.hpp"
 #include "../../misc/progress/ProgressBar.hpp"
 
 namespace cardillo {
@@ -17,19 +18,20 @@ PhysicsPipeline::~PhysicsPipeline() = default;
 PhysicsPipeline::PhysicsPipeline(World& world,
                                  config::Config& cfg,
                                  cardillo::collision::CollisionCoal* collision_mgr,
-                                 cardillo::misc::TimingManager* timings,
-                                 cardillo::solver::WarmstartProvider* warmstart_provider)
-    : m_world(world), m_cfg(cfg), m_collision_mgr(collision_mgr), m_timings(timings), m_warmstart_provider(warmstart_provider) {
+                                 cardillo::misc::TimingManager* timings)
+    : m_world(world), m_cfg(cfg), m_collision_mgr(collision_mgr), m_timings(timings) {
+    // Pipeline owns its warmstart provider
+    m_warmstart_provider = std::make_unique<cardillo::solver::WarmstartProvider>();
     // Create owned components
     m_dyn = std::make_unique<cardillo::physics::DynamicsAssembler>(m_world, m_collision_mgr, m_timings, m_cfg);
 
     // Choose solver based on config
     using namespace cardillo::solver;
     if (cfg.solver == cardillo::config::SolverType::ProjectedJacobi) {
-        m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg, m_warmstart_provider);
+        m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg, m_warmstart_provider.get());
     } else {
         std::cerr << "Warning: Unrecognized solver type in config; defaulting to ProjectedJacobi.\n";
-        m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg, m_warmstart_provider);
+        m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg, m_warmstart_provider.get());
     }
 
     // Choose integrator based on config
@@ -47,6 +49,9 @@ PhysicsPipeline::PhysicsPipeline(World& world,
     if (cfg.output_interval_steps > 0) {
         m_vtk_writer = std::make_unique<cardillo::io::VtkWriterBinary>(cfg);
     }
+
+    // Create tracked CSV writer object but do not open file yet; CsvWriter will open lazily on first write
+    m_tracked_writer = std::make_unique<cardillo::io::CsvWriter>(m_cfg);
 
     // Create progress bar if sim parameters are available
     if (cfg.sim_dt > 0 && cfg.sim_T > 0) {
@@ -76,6 +81,11 @@ void PhysicsPipeline::step(real_t dt) {
                      m_dyn.get());
     }
 
+    // Write tracked state to CSV
+    if (m_tracked_writer) {
+        m_tracked_writer->writeTrackedState(m_current_time, m_world.ecs());
+    }
+
     // Update progress bar if present
     if (m_pbar) {
         int jorIters = m_solver->lastIterations();
@@ -88,6 +98,8 @@ void PhysicsPipeline::step(real_t dt) {
         if (m_pbar) m_pbar->close();
     }
 }
+
+
 
 } // namespace pipeline
 } // namespace physics

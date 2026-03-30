@@ -6,7 +6,6 @@
 #include "synchronization/derived_entity_sync.hpp"
 #include "../collision/collision_coal.hpp"
 #include "solver/warmstart.hpp"
-#include "../io/csv_writer.hpp"
 #include <sstream>
 #include <iomanip>
 #include <fstream>
@@ -60,44 +59,6 @@ void World::track(entt::entity e, const std::string& name)
         m_reg.emplace<C_TrackTag>(e, C_TrackTag{name});
     } else {
         m_reg.get<C_TrackTag>(e).name = name;
-    }
-}
-
-
-void World::writeTrackedStateToCsv(real_t t)
-{
-    static cardillo::io::CsvWriter writer;
-    static bool initialized = false;
-    if (!initialized) {
-        std::string path = m_cfg.output_folder + "/" + m_cfg.output_filename_prefix + "_tracked.csv";
-        std::vector<std::string> header = {
-            "t",
-            "name",
-            "px","py","pz",
-            "vx","vy","vz",
-            "wx","wy","wz",
-            "euler_x","euler_y","euler_z"
-        };
-        writer.open(path, header);
-        initialized = true;
-    }
-    if (!writer.isOpen()) return;
-
-    auto view = m_reg.view<C_TrackTag, C_Position3, C_LinearVelocity3, C_AngularVelocity3, C_Orientation>();
-    for (auto e : view) {
-        const auto& tag   = view.get<C_TrackTag>(e);
-        const auto& pos   = view.get<C_Position3>(e).value;
-        const auto& v     = view.get<C_LinearVelocity3>(e).value;
-        const auto& w     = view.get<C_AngularVelocity3>(e).value;
-        const auto& euler = view.get<C_Orientation>(e).value.toRotationMatrix().eulerAngles(0, 1, 2);
-        writer.writeRow(
-            t,
-            tag.name,
-            pos.x(), pos.y(), pos.z(),
-            v.x(), v.y(), v.z(),
-            w.x(), w.y(), w.z(),
-            euler.x(), euler.y(), euler.z()
-        );
     }
 }
 

@@ -1,6 +1,6 @@
 #include "vtk_writer_binary.hpp"
 #include "../collision/collision_coal.hpp"
-#include "vtk_sphere_util.hpp"
+#include "mesh_generator.hpp"
 #include "../physics/solver/warmstart.hpp"
 #include "../physics/constraints/constraints.hpp"
 #include <cmath>
@@ -56,214 +56,7 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
 
 static inline float f32(real_t v) { return static_cast<float>(v); }
 
-// Partition helper (same heuristic as ASCII writer)
-static inline float partitionFromBodyIndex_(const cardillo::World& sys, const entt::registry& reg, entt::entity e) {
-    (void)sys;
-    if (reg.any_of<cardillo::C_BodyIndex>(e)) {
-        return 0.0f;
-    }
-    return -1.f;
-}
 
-namespace {
-
-void generateCapsuleMesh(int segmentsCircumference,
-                         int segmentsHemisphere,
-                         int segmentsCylinder,
-                         real_t radius,
-                         real_t halfLength,
-                         std::vector<Vector3r>& vertices,
-                         std::vector<Eigen::Vector3i>& triangles)
-{
-    vertices.clear();
-    triangles.clear();
-    if (radius <= (real_t)0) return;
-    const int nCirc = std::max(segmentsCircumference, 3);
-    const int nHem = std::max(segmentsHemisphere, 1);
-    const int nCyl = std::max(segmentsCylinder, 1);
-
-    const real_t pi = std::acos(static_cast<real_t>(-1));
-    const real_t halfPi = pi * (real_t)0.5;
-
-    auto addRing = [&](real_t z, real_t ringRadius) {
-        std::vector<int> idx;
-        idx.reserve(nCirc);
-        for (int i = 0; i < nCirc; ++i) {
-            const real_t angle = static_cast<real_t>(2.0 * pi * i / nCirc);
-            const real_t cx = ringRadius * std::cos(angle);
-            const real_t cy = ringRadius * std::sin(angle);
-            idx.push_back(static_cast<int>(vertices.size()));
-            vertices.emplace_back(cx, cy, z);
-        }
-        return idx;
-    };
-
-    std::vector<std::vector<int>> rings;
-    rings.reserve(nHem * 2 + nCyl + 2);
-
-    const int bottomPole = static_cast<int>(vertices.size());
-    vertices.emplace_back(0, 0, -halfLength - radius);
-
-    for (int i = 1; i < nHem; ++i) {
-        const real_t theta = (static_cast<real_t>(i) / nHem) * halfPi;
-        const real_t ringRadius = radius * std::sin(theta);
-        const real_t z = -halfLength - radius * std::cos(theta);
-        rings.push_back(addRing(z, ringRadius));
-    }
-
-    rings.push_back(addRing(-halfLength, radius));
-
-    for (int i = 1; i < nCyl; ++i) {
-        const real_t t = static_cast<real_t>(i) / nCyl;
-        const real_t z = -halfLength + t * (halfLength * 2);
-        rings.push_back(addRing(z, radius));
-    }
-
-    rings.push_back(addRing(halfLength, radius));
-
-    for (int i = nHem - 1; i >= 1; --i) {
-        const real_t theta = (static_cast<real_t>(i) / nHem) * halfPi;
-        const real_t ringRadius = radius * std::sin(theta);
-        const real_t z = halfLength + radius * std::cos(theta);
-        rings.push_back(addRing(z, ringRadius));
-    }
-
-    const int topPole = static_cast<int>(vertices.size());
-    vertices.emplace_back(0, 0, halfLength + radius);
-
-    if (rings.empty()) return;
-
-    const auto& firstRing = rings.front();
-    for (int j = 0; j < nCirc; ++j) {
-        const int a = bottomPole;
-        const int b = firstRing[j];
-        const int c = firstRing[(j + 1) % nCirc];
-        triangles.emplace_back(a, b, c);
-    }
-
-    for (std::size_t i = 0; i + 1 < rings.size(); ++i) {
-        const auto& r0 = rings[i];
-        const auto& r1 = rings[i + 1];
-        for (int j = 0; j < nCirc; ++j) {
-            const int jn = (j + 1) % nCirc;
-            triangles.emplace_back(r0[j], r1[j], r0[jn]);
-            triangles.emplace_back(r0[jn], r1[j], r1[jn]);
-        }
-    }
-
-    const auto& lastRing = rings.back();
-    for (int j = 0; j < nCirc; ++j) {
-        const int a = lastRing[j];
-        const int b = lastRing[(j + 1) % nCirc];
-        const int c = topPole;
-        triangles.emplace_back(a, b, c);
-    }
-}
-
-void generateCylinderMesh(int segmentsCircumference,
-                          real_t radius,
-                          real_t halfLength,
-                          std::vector<Vector3r>& vertices,
-                          std::vector<Eigen::Vector3i>& triangles)
-{
-    vertices.clear();
-    triangles.clear();
-    if (radius <= (real_t)0) return;
-    const int nCirc = std::max(segmentsCircumference, 3);
-
-    const real_t pi = std::acos(static_cast<real_t>(-1));
-
-    const int bottomCenterIdx = static_cast<int>(vertices.size());
-    vertices.emplace_back(0, 0, -halfLength);
-    const int topCenterIdx = static_cast<int>(vertices.size());
-    vertices.emplace_back(0, 0, +halfLength);
-
-    std::vector<int> bottomRing;
-    std::vector<int> topRing;
-    bottomRing.reserve(nCirc);
-    topRing.reserve(nCirc);
-
-    for (int i = 0; i < nCirc; ++i) {
-        const real_t angle = static_cast<real_t>(2.0 * pi * i / nCirc);
-        const real_t cx = radius * std::cos(angle);
-        const real_t cy = radius * std::sin(angle);
-        bottomRing.push_back(static_cast<int>(vertices.size()));
-        vertices.emplace_back(cx, cy, -halfLength);
-        topRing.push_back(static_cast<int>(vertices.size()));
-        vertices.emplace_back(cx, cy, +halfLength);
-    }
-
-    // Side faces
-    for (int i = 0; i < nCirc; ++i) {
-        const int i0 = bottomRing[i];
-        const int i1 = bottomRing[(i + 1) % nCirc];
-        const int j0 = topRing[i];
-        const int j1 = topRing[(i + 1) % nCirc];
-        triangles.emplace_back(i0, i1, j1);
-        triangles.emplace_back(i0, j1, j0);
-    }
-
-    // Bottom cap
-    for (int i = 0; i < nCirc; ++i) {
-        const int i0 = bottomRing[i];
-        const int i1 = bottomRing[(i + 1) % nCirc];
-        triangles.emplace_back(bottomCenterIdx, i1, i0);
-    }
-
-    // Top cap
-    for (int i = 0; i < nCirc; ++i) {
-        const int i0 = topRing[i];
-        const int i1 = topRing[(i + 1) % nCirc];
-        triangles.emplace_back(topCenterIdx, i0, i1);
-    }
-}
-
-void generateConeMesh(int segmentsCircumference,
-                      real_t radius,
-                      real_t height,
-                      std::vector<Vector3r>& vertices,
-                      std::vector<Eigen::Vector3i>& triangles)
-{
-    vertices.clear();
-    triangles.clear();
-    if (radius <= (real_t)0 || height <= (real_t)0) return;
-    const int nCirc = std::max(segmentsCircumference, 3);
-
-    const real_t pi = std::acos(static_cast<real_t>(-1));
-    const real_t halfH = height * (real_t)0.5;
-
-    const int baseCenterIdx = static_cast<int>(vertices.size());
-    vertices.emplace_back(0, 0, -halfH);
-
-    std::vector<int> ringIdx;
-    ringIdx.reserve(nCirc);
-    for (int i = 0; i < nCirc; ++i) {
-        const real_t angle = static_cast<real_t>(2.0 * pi * i / nCirc);
-        const real_t cx = radius * std::cos(angle);
-        const real_t cy = radius * std::sin(angle);
-        ringIdx.push_back(static_cast<int>(vertices.size()));
-        vertices.emplace_back(cx, cy, -halfH);
-    }
-
-    const int apexIdx = static_cast<int>(vertices.size());
-    vertices.emplace_back(0, 0, halfH);
-
-    // Base triangles
-    for (int i = 0; i < nCirc; ++i) {
-        const int i0 = ringIdx[i];
-        const int i1 = ringIdx[(i + 1) % nCirc];
-        triangles.emplace_back(baseCenterIdx, i1, i0);
-    }
-
-    // Side triangles
-    for (int i = 0; i < nCirc; ++i) {
-        const int i0 = ringIdx[i];
-        const int i1 = ringIdx[(i + 1) % nCirc];
-        triangles.emplace_back(i0, i1, apexIdx);
-    }
-}
-
-} // namespace
 
 VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) const {
     Collected out;
@@ -285,7 +78,6 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
             po.mass = static_cast<float>(m.m);
             po.vel = v.value;
             po.radius = static_cast<float>(r.r);
-            po.partition = partitionFromBodyIndex_(sys, reg, e);
             po.entityId = static_cast<int>(entt::to_integral(e));
             out.points.push_back(po);
         }
@@ -315,7 +107,6 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
             co.center = pos.value + q_world * cb.center; // apply local center offset under local cube rotation
             co.halfExtents = cb.halfExtents; co.q = q_world;
             co.entityId = static_cast<int>(entt::to_integral(e));
-            co.partition = partitionFromBodyIndex_(sys, reg, e);
             co.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
             if (reg.any_of<cardillo::C_BeamElement>(e)) {
                 const auto& be = reg.get<cardillo::C_BeamElement>(e);
@@ -339,11 +130,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
         for (auto [e, cap, pos, ori] : vcaps.each()) {
             std::vector<Vector3r> verts;
             std::vector<Eigen::Vector3i> tris;
-            generateCapsuleMesh(8, 3, 1, cap.radius, cap.halfLength, verts, tris);
+            MeshGenerator::generateCapsuleMesh(8, 3, 1, cap.radius, cap.halfLength, verts, tris);
             if (verts.empty() || tris.empty()) continue;
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
             if (reg.any_of<cardillo::C_BeamElement>(e)) {
@@ -377,11 +167,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
         for (auto [e, cyl, pos, ori] : vcyl.each()) {
             std::vector<Vector3r> verts;
             std::vector<Eigen::Vector3i> tris;
-            generateCylinderMesh(16, cyl.radius, cyl.halfLength, verts, tris);
+            MeshGenerator::generateCylinderMesh(16, cyl.radius, cyl.halfLength, verts, tris);
             if (verts.empty() || tris.empty()) continue;
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
             if (reg.any_of<cardillo::C_BeamElement>(e)) {
@@ -415,11 +204,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
         for (auto [e, cone, pos, ori] : vcones.each()) {
             std::vector<Vector3r> verts;
             std::vector<Eigen::Vector3i> tris;
-            generateConeMesh(24, cone.radius, cone.height, verts, tris);
+            MeshGenerator::generateConeMesh(24, cone.radius, cone.height, verts, tris);
             if (verts.empty() || tris.empty()) continue;
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
             if (reg.any_of<cardillo::C_BeamElement>(e)) {
@@ -453,7 +241,6 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
         for (auto [e, cm, pos, ori] : vmeshes.each()) {
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
             if (reg.any_of<cardillo::C_BeamElement>(e)) {
@@ -497,7 +284,6 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
             // Build a MeshOut by sampling current positions of the nodes
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.partition = -1.0f; // visualization-only
             mo.center = Vector3r::Zero();
             mo.isDynamic = true; // nodes move over time
             // Gather vertex positions from node entities
@@ -557,7 +343,6 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
 
                 MeshOut mo;
                 mo.entityId = static_cast<int>(entt::to_integral(e));
-                mo.partition = -1.f;
                 mo.center = pos.value;
                 mo.isDynamic = false;
 
@@ -605,7 +390,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
         static std::vector<Vector3r> unitVerts;
         static std::vector<Eigen::Vector3i> unitTris;
         static bool inited = false;
-        if (!inited) { generateUVSphere(12, 24, unitVerts, unitTris); inited = true; }
+        if (!inited) { MeshGenerator::generateUVSphere(12, 24, unitVerts, unitTris); inited = true; }
         auto vspheres = reg.view<cardillo::C_VisualObject,
                      cardillo::C_RB_Sphere,
                      cardillo::C_Radius,
@@ -614,7 +399,6 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
         for (auto [e, rad, pos, ori] : vspheres.each()) {
             MeshOut mo;
             mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.partition = partitionFromBodyIndex_(sys, reg, e);
             mo.center = pos.value;
             mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
             Quaternion4r qn = ori.value; qn.normalize();
@@ -792,10 +576,6 @@ void VtkWriterBinary::writePointDataPts(std::ofstream& out, const Collected& dat
     out << "SCALARS radius float 1\nLOOKUP_TABLE default\n";
     for (const auto& pt : data.points) writeBE(out, pt.radius);
 
-    // partition
-    out << "SCALARS partition float 1\nLOOKUP_TABLE default\n";
-    for (const auto& pt : data.points) writeBE(out, pt.partition);
-
     // entity_id
     out << "SCALARS entity_id int 1\nLOOKUP_TABLE default\n";
     for (const auto& pt : data.points) writeBE(out, int32_t(pt.entityId));
@@ -887,12 +667,6 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
         }
     }
 
-    // partition: planes -1, cubes replicated, meshes replicated
-    out << "SCALARS partition float 1\nLOOKUP_TABLE default\n";
-    for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, -1.f);
-    for (const auto& cu : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, cu.partition); }
-    for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, m.partition); }
-
     // entity_id
     out << "SCALARS entity_id int 1\nLOOKUP_TABLE default\n";
     for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, int32_t(-1));
@@ -905,8 +679,6 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
     for (const auto& cu : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, cu.beamLengthRatio); }
     for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, m.beamLengthRatio); }
 }
-
-// (Normals output removed intentionally)
 
 void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const Collected& data) const {
     std::size_t nmesh_pts = 0; bool any = false;

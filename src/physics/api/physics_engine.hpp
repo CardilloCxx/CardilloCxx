@@ -16,7 +16,6 @@
 // Forward declarations for subsystems that will be owned by PhysicsEngine
 namespace cardillo { namespace collision { class CollisionCoal; } }
 namespace cardillo { namespace misc { class TimingManager; } }
-namespace cardillo { namespace solver { class WarmstartProvider; } }
 namespace cardillo { namespace physics { namespace pipeline { class PhysicsPipeline; } } }
 
 namespace cardillo {
@@ -171,7 +170,6 @@ public:
 
     void markStructureDirty() { m_world->markStructureDirty(); }
     void track(entt::entity e, const std::string& name) { m_world->track(e, name); }
-    void writeTrackedStateToCsv(real_t t) { m_world->writeTrackedStateToCsv(t); }
 
     // === Pipeline Control ===
     // Advance the simulation pipeline by dt seconds
@@ -188,7 +186,6 @@ private:
     config::Config m_cfg{}; // global config
     std::unique_ptr<cardillo::collision::CollisionCoal> m_collision_mgr; // engine-owned
     std::unique_ptr<cardillo::misc::TimingManager> m_timings;  // engine-owned
-    std::unique_ptr<cardillo::solver::WarmstartProvider> m_warmstart_provider; // engine-owned
     // Pipeline (orchestrates collision, assembly, solver, integrator)
     std::unique_ptr<cardillo::physics::pipeline::PhysicsPipeline> m_pipeline;
 };

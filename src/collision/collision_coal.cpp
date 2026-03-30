@@ -471,8 +471,6 @@ std::vector<Contact>& CollisionCoal::detectAll() {
     m_prev_flattened = std::move(m_flattened);
     m_flattened.clear();
 
-    // --- Contact tracking ---
-
     // Copy last_impulse values from authoritative previous flattened buffer into current ContactMap
     m_flattened.reserve(1024);
     int globalIndex = 0;
@@ -489,7 +487,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
         m_contactTracker.registerNextContacts(mapCurr);
         m_contactTracker.applyPrevImpulses(m_flattened, m_prev_flattened);
     }
-    
+
     return m_flattened;
 }
 

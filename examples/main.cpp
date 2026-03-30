@@ -138,7 +138,6 @@ int main(int argc, char** argv) {
     while (!engine.isFinished()) {
         scene.updateScene(engine, t, dt);
         engine.step(dt);
-        engine.writeTrackedStateToCsv(t + dt);
         t += dt;
     }
     engine.timings().printBreakdown(std::cout);

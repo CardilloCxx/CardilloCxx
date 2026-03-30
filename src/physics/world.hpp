@@ -125,7 +125,6 @@ public:
     void setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w);
 
     void track(entt::entity e, const std::string& name);
-    void writeTrackedStateToCsv(real_t t);
 };
 
 } // namespace cardillo
