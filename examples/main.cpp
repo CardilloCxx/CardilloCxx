@@ -68,10 +68,6 @@ int main(int argc, char** argv) {
         : cardillo::config::Config{}; // defaults from header
     
     if (argc <= 1) std::cout << "No config file provided, using defaults." << std::endl;
-    
-    // Construct engine from config
-    cardillo::physics::PhysicsEngine engine(cfg);
-    g_engine = &engine;
 
     // Construct all available scenes and select the one matching cfg.scene_name
     std::vector<std::unique_ptr<SceneBase>> scenes;
@@ -129,6 +125,10 @@ int main(int argc, char** argv) {
     }
     
     std::cout << "Selected scene: " << selected->sceneName() << std::endl;
+
+    // Construct engine from config
+    cardillo::physics::PhysicsEngine engine(cfg);
+    g_engine = &engine;
     SceneBase& scene = *selected;
     cfg.output_filename_prefix = scene.sceneName();
     scene.populate(engine);

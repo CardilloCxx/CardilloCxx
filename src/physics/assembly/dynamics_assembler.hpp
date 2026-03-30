@@ -39,8 +39,11 @@ public:
     const VectorXr& MDiag() const { return m_M_diag; }
     // Access underlying system (for debug / diagnostics)
     const World& system() const { return m_world; }
-    // Expose current contacts (includes penetration and points) for biasing, debug, etc.
-    const std::vector<collision::Contact>& contacts() const { return m_contacts; }
+    // Expose current contacts (includes penetration and points)
+    const std::vector<collision::Contact>& contacts() const {
+        static const std::vector<collision::Contact> emptyContacts;
+        return m_contacts_ptr ? *m_contacts_ptr : emptyContacts;
+    }
 
     // DOF queries owned by the assembler (scan ECS indices)
     index_t numQ() const { return m_numQ; }
@@ -93,8 +96,8 @@ public:
     // Solve the full extended system S * x = rhs_ext and return the complete solution (ext-length)
     VectorXr solveS(const VectorXr& rhs_ext) const;
 
-    std::vector<collision::Contact> m_contacts;
-    
+    std::vector<collision::Contact>* m_contacts_ptr{nullptr};
+
     void setContactLastImpulse(int global_out_index, const cardillo::Vector3r& imp);
 
     // Cached sizes

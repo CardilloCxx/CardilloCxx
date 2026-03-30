@@ -15,9 +15,10 @@
 #include <coal/mesh_loader/loader.h>
 #include <coal/BVH/BVH_model.h>
 
-// Forward declare World in the correct namespace
+// Forward declare World and DynamicsAssembler in the correct namespaces
 namespace cardillo { class World; }
 namespace cardillo { namespace misc { class TimingManager; } }
+namespace cardillo { namespace physics { class DynamicsAssembler; } }
 
 namespace cardillo::collision {
 
@@ -46,9 +47,12 @@ public:
 
     // Update per-object transforms from World state and notify broadphase
     void applyTransforms();
+    
+    // Run broadphase + narrowphase and return a reference to the authoritative contact buffer
+    std::vector<Contact>& detectAll();
 
-    // Run broadphase + narrowphase and return contacts
-    std::vector<Contact> detectAll() const;
+    std::vector<Contact> m_prev_flattened; // contacts from previous step
+    std::vector<Contact> m_flattened;      // contacts from current step (authoritative)
 
     // Clear all internal caches/objects
     void clear();
@@ -71,7 +75,6 @@ public:
     // Contact Tracker
     ContactTracker m_contactTracker;
 
-    // (removed cached last-flattened contacts; callers should call detectAll())
 
     // Pairs to skip in collision (canonicalized ContactPairKey)
     std::unordered_set<ContactPairKey, ContactPairKeyHash> m_disabledPairs;

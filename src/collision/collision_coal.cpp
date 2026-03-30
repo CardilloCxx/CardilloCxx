@@ -360,13 +360,16 @@ void CollisionCoal::applyTransforms() {
     m_broadphase->update(updated);
 }
 
-std::vector<Contact> CollisionCoal::detectAll() const {
+std::vector<Contact>& CollisionCoal::detectAll() {
     ContactMap mapCurr;
-    if (!m_world) return {};
+    if (!m_world) {
+        m_prev_flattened.clear();
+        m_flattened.clear();
+        return m_flattened;
+    }
     // Ensure the scene exists on first use
     if (!m_broadphase || m_objects.empty()) {
-        auto* self = const_cast<CollisionCoal*>(this);
-        self->rebuild();
+        rebuild();
     }
 
     const auto& reg = m_world->ecs();
@@ -389,7 +392,10 @@ std::vector<Contact> CollisionCoal::detectAll() const {
         if( m_world && m_cfg.debug_rb) {
             std::printf("[Collision] no potential collision pairs found in broadphase.\n");
         }
-        return {};
+        // clear previous/current buffers
+        m_prev_flattened.clear();
+        m_flattened.clear();
+        return m_flattened;
     }
 
     // Prepare reusable request/result for collide and patch computation
@@ -461,21 +467,30 @@ std::vector<Contact> CollisionCoal::detectAll() const {
         }
     }
 
-    // --- Contact tracking (matching + diagnostics + timing) ---
-    m_contactTracker.registerNextContacts(mapCurr);
+    // Move previous authoritative flattened buffer aside so tracker can use it
+    m_prev_flattened = std::move(m_flattened);
+    m_flattened.clear();
 
-    // --- Flatten to solver buffer ---
-    std::vector<Contact> out;
-    out.reserve(1024);
+    // --- Contact tracking ---
 
+    // Copy last_impulse values from authoritative previous flattened buffer into current ContactMap
+    m_flattened.reserve(1024);
     int globalIndex = 0;
     for (auto& [key, list] : mapCurr) {
-        for (auto& c : list) {
-            out.emplace_back(c);
-            c.global_out_index = globalIndex++;
+        for (int i = 0; i < list.size(); ++i) {
+            Contact& c = list[i];
+            m_flattened.emplace_back(std::move(c));
+            m_flattened.back().global_out_index = globalIndex++;
+            mapCurr[key][i].global_out_index = m_flattened.back().global_out_index;
         }
     }
-    return out;
+    
+    if (m_cfg.pj_warmstart) {
+        m_contactTracker.registerNextContacts(mapCurr);
+        m_contactTracker.applyPrevImpulses(m_flattened, m_prev_flattened);
+    }
+    
+    return m_flattened;
 }
 
 void CollisionCoal::clear() {

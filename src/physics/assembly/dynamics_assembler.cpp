@@ -43,7 +43,7 @@ void DynamicsAssembler::updateContactsFromSystem() {
     if (!m_collision_mgr) throw std::runtime_error("DynamicsAssembler::updateContactsFromSystem: no CollisionCoal provided");
     if (m_world.consumeStructureDirty()) m_collision_mgr->rebuild();
     m_collision_mgr->applyTransforms();
-    m_contacts = m_collision_mgr->detectAll();
+        m_contacts_ptr = &m_collision_mgr->detectAll();
 }
 
 void DynamicsAssembler::setLambda_g(const VectorXr& lam) {
@@ -205,7 +205,7 @@ void DynamicsAssembler::assignDofs() {
 }
 
 void DynamicsAssembler::rebuildW_() {
-    const int C_all = (int)m_contacts.size();
+    const int C_all = (int)m_contacts_ptr->size();
     const int Nb = m_world.numBodies();
         // m_contact_index_orig removed; contact row mapping is stored per-contact
 
@@ -218,7 +218,7 @@ void DynamicsAssembler::rebuildW_() {
 
     int dynContactId = 0; // index into dynamic contacts (rows in W)
     for (int i = 0; i < C_all; ++i) {
-        auto& c = m_contacts[i];
+        auto& c = (*m_contacts_ptr)[i];
         const bool aDyn = reg.any_of<cardillo::C_BodyIndex>(c.a);
         const bool bDyn = reg.any_of<cardillo::C_BodyIndex>(c.b);
         // Skip static-static contacts
@@ -254,7 +254,6 @@ void DynamicsAssembler::rebuildW_() {
         c.impulse_size = 1;
         emitDirForSide(c.normal, c.pointA_body, c.normalA_body, c.a, aDyn, (real_t)-1, rowN);
         emitDirForSide(c.normal, c.pointB_body, c.normalB_body, c.b, bDyn, (real_t)+1, rowN);
-        // (removed legacy m_contact_index_orig push)
         ++dynContactId;
 
         // Optional rows: two tangential directions if friction enabled and mu > 0
@@ -262,13 +261,11 @@ void DynamicsAssembler::rebuildW_() {
             const int rowT1 = dynContactId;
             emitDirForSide(c.tangent1, c.pointA_body, c.tangent1A_body, c.a, aDyn, (real_t)-1, rowT1);
             emitDirForSide(c.tangent1, c.pointB_body, c.tangent1B_body, c.b, bDyn, (real_t)+1, rowT1);
-            // (removed legacy m_contact_index_orig push)
             ++dynContactId;
 
             const int rowT2 = dynContactId;
             emitDirForSide(c.tangent2, c.pointA_body, c.tangent2A_body, c.a, aDyn, (real_t)-1, rowT2);
             emitDirForSide(c.tangent2, c.pointB_body, c.tangent2B_body, c.b, bDyn, (real_t)+1, rowT2);
-            // (removed legacy m_contact_index_orig push)
             ++dynContactId;
             // update impulse_size to include tangential rows
             c.impulse_size = 3;
@@ -284,8 +281,9 @@ void DynamicsAssembler::rebuildW_() {
 }
 
 void DynamicsAssembler::setContactLastImpulse(int global_out_index, const cardillo::Vector3r& imp) {
-    if (global_out_index < 0 || global_out_index >= (int)m_contacts.size()) return;
-    m_contacts[(size_t)global_out_index].last_impulse = imp;
+    if (!m_contacts_ptr) return;
+    if (global_out_index < 0 || global_out_index >= (int)m_contacts_ptr->size()) return;
+    (*m_contacts_ptr)[(size_t)global_out_index].last_impulse = imp;
 }
 
 // Rebuild auxiliary block matrices derived from W and current contacts/state.
