@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include "../../collision/collision_coal.hpp"
+
 #include "../assembly/dynamics_assembler.hpp"
 #include "../integration/moreau.hpp"
 #include "../integration/dual_stoermer_verlet.hpp"
@@ -20,18 +22,17 @@ PhysicsPipeline::PhysicsPipeline(World& world,
                                  cardillo::collision::CollisionCoal* collision_mgr,
                                  cardillo::misc::TimingManager* timings)
     : m_world(world), m_cfg(cfg), m_collision_mgr(collision_mgr), m_timings(timings) {
-    // Pipeline owns its warmstart provider
-    m_warmstart_provider = std::make_unique<cardillo::solver::WarmstartProvider>();
+    // Use engine-owned collision manager (passed-in)
     // Create owned components
     m_dyn = std::make_unique<cardillo::physics::DynamicsAssembler>(m_world, m_collision_mgr, m_timings, m_cfg);
 
     // Choose solver based on config
     using namespace cardillo::solver;
     if (cfg.solver == cardillo::config::SolverType::ProjectedJacobi) {
-        m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg, m_warmstart_provider.get());
+        m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);
     } else {
         std::cerr << "Warning: Unrecognized solver type in config; defaulting to ProjectedJacobi.\n";
-        m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg, m_warmstart_provider.get());
+        m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);
     }
 
     // Choose integrator based on config
@@ -77,8 +78,9 @@ void PhysicsPipeline::step(real_t dt) {
     // Output VTK if present
     if (m_vtk_writer) {
         m_vtk_writer->maybeWrite(m_current_step, m_current_time, m_world,
-                     m_collision_mgr, m_timings,
-                     m_dyn.get());
+             m_collision_mgr,
+             m_timings,
+             m_dyn.get());
     }
 
     // Write tracked state to CSV

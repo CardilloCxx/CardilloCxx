@@ -12,11 +12,11 @@ namespace cardillo::solver {
 class WarmstartProvider {
 public:
     WarmstartProvider() = default;
-    virtual ~WarmstartProvider() = default;
+    ~WarmstartProvider() = default;
 
     // Apply a warmstart hint using per-contact stored impulses in `contactsAll`.
-    virtual void applyWarmstart(cardillo::VectorXr& p,
-                                       cardillo::physics::DynamicsAssembler& dyn) const
+    static void applyWarmstart(cardillo::VectorXr& p,
+                                       cardillo::physics::DynamicsAssembler& dyn)
     {   
         const auto& contacts  = dyn.contacts();
         for (const auto& c : contacts) {
@@ -32,7 +32,7 @@ public:
     }
 
     // Extract per-contact impulses and store them into contactsAll (by reference to underlying contacts)
-    virtual void storeImpulse(const cardillo::VectorXr& p,
+    static void storeImpulse(const cardillo::VectorXr& p,
                                     cardillo::physics::DynamicsAssembler& dyn)
     {
         // Iterate contacts and write last_impulse directly into the assembler's contact storage
@@ -50,8 +50,6 @@ public:
             dyn.setContactLastImpulse(c.global_out_index, imp);
         }
     }
-
-    virtual void clear() {}
 };
 
 } // namespace cardillo::solver

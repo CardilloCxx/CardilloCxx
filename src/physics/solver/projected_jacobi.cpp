@@ -371,7 +371,6 @@ static inline void nesterov_loop(PJIterContext& ctx,
 VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	auto sc_solve = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobi);
 
-
 	// Use sparse W and the effective-mass S (assembled & factorized in DynamicsAssembler)
 	const auto& Wref = m_dyn.W();
 	const int C = (int)Wref.rows();
@@ -382,8 +381,8 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 
 	// Initialize impulses
 	VectorXr p = VectorXr::Zero(C);
-	if (m_warmStart && m_wsProvider != nullptr) {
-		m_wsProvider->applyWarmstart(p, m_dyn);
+	if (m_warmStart) {
+		cardillo::solver::WarmstartProvider::applyWarmstart(p, m_dyn);
 	}
 
 	// Initialize state vector x consisting of velocities and lagrange multipliers (springs)
@@ -419,8 +418,8 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	m_lastError = ctx.err_global;
 
 	// Store last impulses into cache for next step warmstarting
-	if (m_wsProvider != nullptr) {
-		m_wsProvider->storeImpulse(p, m_dyn);
+	if (m_warmStart) {
+		cardillo::solver::WarmstartProvider::storeImpulse(p, m_dyn);
 	}
 
 	return x;

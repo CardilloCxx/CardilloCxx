@@ -127,17 +127,17 @@ int main(int argc, char** argv) {
     std::cout << "Selected scene: " << selected->sceneName() << std::endl;
 
     // Construct engine from config
-    cardillo::physics::PhysicsEngine engine(cfg);
-    g_engine = &engine;
     SceneBase& scene = *selected;
     cfg.output_filename_prefix = scene.sceneName();
+    cardillo::physics::PhysicsEngine engine(cfg);
+    g_engine = &engine;
     scene.populate(engine);
 
     real_t t = 0.0;
     const real_t dt = cfg.sim_dt;
     while (!engine.isFinished()) {
         scene.updateScene(engine, t, dt);
-        engine.step(dt);
+        engine.step();
         t += dt;
     }
     engine.timings().printBreakdown(std::cout);

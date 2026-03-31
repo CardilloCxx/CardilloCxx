@@ -18,12 +18,8 @@ PhysicsEngine::PhysicsEngine(const config::Config& cfg) : PhysicsEngine() {
 void PhysicsEngine::initFromConfig(const config::Config& cfg) {
     m_cfg = cfg;
     if (!m_world) m_world = std::make_unique<World>(m_cfg);
-
-    // Create and own low-level subsystems
     m_timings = std::make_unique<cardillo::misc::TimingManager>();
     m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>(*m_world, m_timings.get(), m_cfg);
-
-    // Create pipeline and pass owned subsystem pointers explicitly
     m_pipeline = std::make_unique<cardillo::physics::pipeline::PhysicsPipeline>(*m_world, m_cfg,
                                                                                m_collision_mgr.get(),
                                                                                m_timings.get());

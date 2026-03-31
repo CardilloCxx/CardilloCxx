@@ -12,6 +12,7 @@ namespace cardillo { namespace integration { class IntegrationBase; } }
 namespace cardillo { namespace solver { class SolverBase; class WarmstartProvider; } }
 namespace cardillo { namespace io { class VtkWriterBinary; } }
 namespace cardillo { namespace misc { class ProgressBar; } }
+namespace cardillo { namespace collision { class CollisionCoal; } }
 
 namespace cardillo {
 namespace physics {
@@ -35,6 +36,7 @@ public:
     cardillo::physics::DynamicsAssembler& dynamicsAssembler() { return *m_dyn; }
     cardillo::integration::IntegrationBase& integrator() { return *m_integrator; }
     cardillo::io::VtkWriterBinary* vtkWriter() { return m_vtk_writer.get(); }
+    cardillo::collision::CollisionCoal& collisionManager() { return *m_collision_mgr; }
     
 
     ~PhysicsPipeline();
@@ -42,9 +44,8 @@ public:
 private:
     World& m_world;
     config::Config& m_cfg;
-    cardillo::collision::CollisionCoal* m_collision_mgr;
+    cardillo::collision::CollisionCoal* m_collision_mgr{nullptr};
     cardillo::misc::TimingManager* m_timings;
-    std::unique_ptr<cardillo::solver::WarmstartProvider> m_warmstart_provider;
     
     
     // Owned pipeline components

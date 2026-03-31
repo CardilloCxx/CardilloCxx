@@ -84,7 +84,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(EnTT)
 
-# MPI (required by PETSc headers)
+# MPI
 find_package(MPI REQUIRED)
 
 # PETSc via pkg-config (optional)
@@ -133,4 +133,6 @@ endif()
 # Add subdirs
 add_subdirectory(src)
 add_subdirectory(examples)
-add_subdirectory(benchmarks/matrix_bench)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/matrix_bench/CMakeLists.txt")
+    add_subdirectory(benchmarks/matrix_bench)
+endif()

@@ -174,6 +174,7 @@ public:
     // === Pipeline Control ===
     // Advance the simulation pipeline by dt seconds
     void step(real_t dt);
+    
     // Accessors for owned subsystems
     collision::CollisionCoal& collisionManager();
     cardillo::misc::TimingManager& timings();
