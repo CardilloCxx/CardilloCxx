@@ -109,8 +109,8 @@ QOCOCscMatrix QocoAssembler::A(real_t dt) {
     TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * (4.0 / (dt * dt)));
     TripletMatrix A = TripletMatrix::fromDiag(m_dyn->Adiag() * (2.0 / dt));
 
-    A = (m_dyn->Wg()    | (C * -1.0)   | A.zeroLike()).vConcat(
-        m_dyn->Wgamma() | C.zeroLike() | (A * -1.0));
+    A = (m_dyn->Wg()    | (C * -1.0)   | TripletMatrix::zero(C.nRows(), A.nCols())).vConcat(
+        m_dyn->Wgamma() | TripletMatrix::zero(A.nRows(), C.nCols()) | (A * -1.0));
 
     return toQocoCSC( A.asSparse() );
 }
@@ -133,7 +133,12 @@ QOCOFloat* QocoAssembler::c(real_t dt) {
 
 QOCOFloat* QocoAssembler::b(real_t dt) {
 
-    auto bTop = -2.0 * (4.0 / (dt * dt)) * m_dyn->Cdiag().cwiseProduct(m_dyn->Lambda_g()) - m_dyn->Wg().asSparse() * m_dyn->vVec();
+    auto Lambda_g = m_dyn->Lambda_g();
+    if (Lambda_g.size() != m_dyn->Cdiag().size()) {
+        Lambda_g = VectorXr::Zero(m_dyn->Cdiag().size());
+    }
+    
+    auto bTop = -2.0 * (4.0 / (dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) - m_dyn->Wg().asSparse() * m_dyn->vVec();
     auto bBot = - m_dyn->Wgamma().asSparse() * m_dyn->vVec();
 
     Eigen::VectorX<real_t> b(bTop.size() + bBot.size());
