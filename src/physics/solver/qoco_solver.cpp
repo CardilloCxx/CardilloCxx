@@ -11,56 +11,63 @@ QocoSolver::QocoSolver(cardillo::physics::DynamicsAssembler& dyn,
         m_assembler = cardillo::physics::assembly::QocoAssembler(m_dyn);
     }
 
-void QocoSolver::initQocoSolver() {
-    if(!m_qoco_solver) {
-        QOCOSettings* settings = (QOCOSettings*)malloc(sizeof(QOCOSettings));
-        set_default_settings(settings);
-        settings->verbose = 1;
+void QocoSolver::initQocoSolver(real_t dt) {
+    QOCOSettings* settings = (QOCOSettings*)malloc(sizeof(QOCOSettings));
+    set_default_settings(settings);
+    settings->verbose = 0;
 
-        //TODO: set settings from config        
+    //TODO: set settings from config        
 
-        m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
+    m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
 
-        QOCOCscMatrix P = m_assembler.P();
-        QOCOFloat* c = m_assembler.c();
-        QOCOCscMatrix A = m_assembler.A();
-        QOCOFloat* b = m_assembler.b();
-        QOCOCscMatrix G = m_assembler.G();
-        QOCOFloat* h = m_assembler.h();
+    QOCOCscMatrix P = m_assembler.P(dt);
+    QOCOFloat* c = m_assembler.c(dt);
+    QOCOCscMatrix A = m_assembler.A(dt);
+    QOCOFloat* b = m_assembler.b(dt);
+    QOCOCscMatrix G = m_assembler.G(dt);
+    QOCOFloat* h = m_assembler.h(dt);
 
-        // second-order cones: assume friction cones of size 3
-        const QOCOInt nsoc = static_cast<QOCOInt>(m_dyn.W().nRows() / 3);
-        std::vector<QOCOInt> qvec((size_t)nsoc, (QOCOInt)3);
+    // second-order cones: assume friction cones of size 3
+    const QOCOInt nsoc = static_cast<QOCOInt>(m_dyn.W().nRows() / 3);
+    std::vector<QOCOInt> qvec((size_t)nsoc, (QOCOInt)3);
 
-        QOCOInt exit = qoco_setup(
-            m_qoco_solver,
-            (QOCOInt) m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers(),  // n
-            (QOCOInt) m_dyn.W().nRows(),                                       // m
-            (QOCOInt) m_dyn.numSprings() + m_dyn.numDampers(),                 // p
-            &P,
-            c,
-            &A,
-            b,
-            &G,
-            h,
-            (QOCOInt) 0, // dimension of non-negative orthant                 // l
-            nsoc,
-            nsoc ? qvec.data() : nullptr,                                     // q
-            settings
-        );
+    QOCOInt exit = qoco_setup(
+        m_qoco_solver,
+        (QOCOInt) m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers(),  // n
+        (QOCOInt) m_dyn.W().nRows(),                                       // m
+        (QOCOInt) m_dyn.numSprings() + m_dyn.numDampers(),                 // p
+        &P,
+        c,
+        &A,
+        b,
+        &G,
+        h,
+        (QOCOInt) 0, // dimension of non-negative orthant                 // l
+        nsoc,
+        nsoc ? qvec.data() : nullptr,                                     // q
+        settings
+    );
 
-        if (exit != 0) {
-            throw std::runtime_error("Failed to initialize QOCO solver");
-        }
+    if (exit != 0) {
+        throw std::runtime_error("Failed to initialize QOCO solver");
     }
 }
 
+void QocoSolver::updateQocoSolver(real_t dt) {
+    qoco_cleanup(m_qoco_solver);
+    initQocoSolver(dt);
+
+    // Not working as sparsity pattern changes with time, need to re-setup the solver
+    // qoco_update_matrix_data(m_qoco_solver, 0, m_assembler.A(dt), m_assembler.G(dt));
+    // qoco_update_vector_data(m_qoco_solver, m_assembler.c(dt), m_assembler.b(dt), m_assembler.h(dt));
+}
+
 VectorXr QocoSolver::solve(VectorXr& rhs, real_t tol) {
-
-    std::cout << "[QocoSolver] Solving with QOCO...\n";
-    initQocoSolver();
-
-    //TODO: update QocoSolver with current problem data from assembler
+    // TODO: dont build and factor S for QOCO solver
+    // TODO: check that implicit gyrosopic forces are disabled for QOCO solver
+    // TODO: get current dt from pipeline instead
+    if(!m_qoco_solver) initQocoSolver(m_cfg.sim_dt); 
+    else updateQocoSolver(m_cfg.sim_dt);
 
     QOCOInt exit = qoco_solve(m_qoco_solver);
 
@@ -79,7 +86,6 @@ VectorXr QocoSolver::solve(VectorXr& rhs, real_t tol) {
               << " sec, solve time: " << solve_time << " sec\n";
 
     QOCOFloat x = sol->x[0]; 
-
     VectorXr x_vec(rhs.size());
 
     for (int i = 0; i < rhs.size(); ++i) {

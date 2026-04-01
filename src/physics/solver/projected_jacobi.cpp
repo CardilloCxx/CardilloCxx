@@ -417,10 +417,8 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	m_lastIterations = static_cast<int>(ctx.iteration);
 	m_lastError = ctx.err_global;
 
-	// Store last impulses into cache for next step warmstarting
-	if (m_warmStart) {
-		cardillo::solver::WarmstartProvider::storeImpulse(p, m_dyn);
-	}
+	// Store last impulses into cache for next step
+	cardillo::solver::WarmstartProvider::storeImpulse(p, m_dyn);
 
 	return x;
 }

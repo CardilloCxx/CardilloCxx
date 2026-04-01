@@ -17,7 +17,8 @@ public:
     const char* name() const override { return "QocoSolver"; }
 
 private:
-    void initQocoSolver();
+    void initQocoSolver(real_t dt);
+    void updateQocoSolver(real_t dt);
 
     cardillo::physics::DynamicsAssembler& m_dyn;
     cardillo::physics::assembly::QocoAssembler m_assembler{m_dyn};

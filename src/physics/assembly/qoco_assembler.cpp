@@ -91,10 +91,13 @@ QOCOFloat* QocoAssembler::toQocoVector(const Eigen::VectorX<real_t>& v) {
     return out;
 }
 
-QOCOCscMatrix  QocoAssembler::P() {
+// C -> 4/dt^2 * C, 
+// A -> 2/dt * A
+
+QOCOCscMatrix  QocoAssembler::P(real_t dt) {
     auto M = m_dyn->MDiag(); 
-    auto C = m_dyn->Cdiag();
-    auto A = m_dyn->Adiag();
+    auto C = m_dyn->Cdiag() * (4.0 / (dt * dt));
+    auto A = m_dyn->Adiag() * (2.0 / dt);
 
     Eigen::VectorX<real_t> diag(M.size() + C.size() + A.size());
     diag << M, C, A;
@@ -102,9 +105,9 @@ QOCOCscMatrix  QocoAssembler::P() {
     return toQocoCSC(diag);
 }
 
-QOCOCscMatrix QocoAssembler::A() {
-    TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag());
-    TripletMatrix A = TripletMatrix::fromDiag(m_dyn->Adiag());
+QOCOCscMatrix QocoAssembler::A(real_t dt) {
+    TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * (4.0 / (dt * dt)));
+    TripletMatrix A = TripletMatrix::fromDiag(m_dyn->Adiag() * (2.0 / dt));
 
     A = (m_dyn->Wg()    | (C * -1.0)   | A.zeroLike()).vConcat(
         m_dyn->Wgamma() | C.zeroLike() | (A * -1.0));
@@ -112,15 +115,15 @@ QOCOCscMatrix QocoAssembler::A() {
     return toQocoCSC( A.asSparse() );
 }
 
-QOCOCscMatrix QocoAssembler::G() {
-    // Smu missing
+QOCOCscMatrix QocoAssembler::G(real_t dt) {
+    //TODO: add friction scaling, currently mu = 1.0
     TripletMatrix G = (m_dyn->W() | TripletMatrix::zero(m_dyn->W().nRows(), m_dyn->numSprings() + m_dyn->numDampers()));
 
     return toQocoCSC( G.asSparse() );
 }
 
-QOCOFloat* QocoAssembler::c() {
-    auto cTop = - (m_dyn->MDiag().cwiseProduct(m_dyn->vVec()) + m_dyn->fVecGyroscopic());
+QOCOFloat* QocoAssembler::c(real_t dt) {
+    auto cTop = - (m_dyn->MDiag().cwiseProduct(m_dyn->vVec()) + dt * (m_dyn->fVecGyroscopic() + m_dyn->fVecExternal()));
     auto cBot = VectorXr::Zero(m_dyn->numSprings() + m_dyn->numDampers());
 
     Eigen::VectorX<real_t> c(cTop.size() + cBot.size());
@@ -128,9 +131,9 @@ QOCOFloat* QocoAssembler::c() {
     return toQocoVector(c);
 }
 
-QOCOFloat* QocoAssembler::b() {
+QOCOFloat* QocoAssembler::b(real_t dt) {
 
-    auto bTop = -2.0 * m_dyn->Cdiag().cwiseProduct(m_dyn->Lambda_g()) - m_dyn->Wg().asSparse() * m_dyn->vVec();
+    auto bTop = -2.0 * (4.0 / (dt * dt)) * m_dyn->Cdiag().cwiseProduct(m_dyn->Lambda_g()) - m_dyn->Wg().asSparse() * m_dyn->vVec();
     auto bBot = - m_dyn->Wgamma().asSparse() * m_dyn->vVec();
 
     Eigen::VectorX<real_t> b(bTop.size() + bBot.size());
@@ -138,7 +141,7 @@ QOCOFloat* QocoAssembler::b() {
     return toQocoVector(b);
 }
 
-QOCOFloat* QocoAssembler::h() {
+QOCOFloat* QocoAssembler::h(real_t dt) {
     //Smu missing, for w = 0
     const int n = m_dyn->W().nRows();
     auto h = VectorXr::Zero(n);
