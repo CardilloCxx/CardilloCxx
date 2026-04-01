@@ -10,6 +10,7 @@
 #include "../../io/vtk_writer_binary.hpp"
 #include "../../io/csv_writer.hpp"
 #include "../../misc/progress/ProgressBar.hpp"
+#include "../solver/qoco_solver.hpp"
 
 namespace cardillo {
 namespace physics {
@@ -30,6 +31,8 @@ PhysicsPipeline::PhysicsPipeline(World& world,
     using namespace cardillo::solver;
     if (cfg.solver == cardillo::config::SolverType::ProjectedJacobi) {
         m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);
+    } else if (cfg.solver == cardillo::config::SolverType::Qoco) {
+        m_solver = std::make_unique<QocoSolver>(*m_dyn, m_cfg);
     } else {
         std::cerr << "Warning: Unrecognized solver type in config; defaulting to ProjectedJacobi.\n";
         m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);

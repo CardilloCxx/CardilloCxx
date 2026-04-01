@@ -93,6 +93,12 @@ Config ConfigReader::fromFile(const std::string& path) {
             else if (v == "stoermverlet" || v == "stoermerverlet" || v == "sv") cfg.integrator = IntegratorType::StoermerVerlet;
             else cfg.integrator = IntegratorType::StoermerVerlet;
         }
+        else if (key == "solver.type") {
+            std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            if (v == "projected_jacobi" || v == "projectedjacobi" || v == "pj") cfg.solver = SolverType::ProjectedJacobi;
+            else if (v == "ip" || v == "interior_point" || v == "interior point"  || v == "qoco" || v == "qoco_solver") cfg.solver = SolverType::Qoco;
+            else cfg.solver = SolverType::ProjectedJacobi;
+        }
         else if (key == "moreau.theta" || key == "solver.theta") {
             try { cfg.moreau_theta = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }

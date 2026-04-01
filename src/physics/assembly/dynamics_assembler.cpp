@@ -275,9 +275,7 @@ void DynamicsAssembler::rebuildW_() {
     // Build W as C_dyn x totalV
     const int C_dyn = dynContactId;
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
-    m_W_sparse.resize(C_dyn, totalV);
-    m_W_sparse.setFromTriplets(trips.begin(), trips.end());
-    m_W_sparse.makeCompressed();
+    m_W = TripletMatrix(C_dyn, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(trips)));
 }
 
 void DynamicsAssembler::setContactLastImpulse(int global_out_index, const cardillo::Vector3r& imp) {
@@ -358,13 +356,8 @@ void DynamicsAssembler::rebuildInteractionW_()
     // Build sparse matrices from accumulated triplets
     const int nSprings = (int)Crows.size();
     const int nDampers = (int)Arows.size();
-    m_Wg.resize(nSprings, totalV);
-    m_Wg.setFromTriplets(tripsWg.begin(), tripsWg.end());
-    m_Wg.makeCompressed();
-
-    m_Wgamma.resize(nDampers, totalV);
-    m_Wgamma.setFromTriplets(tripsWgamma.begin(), tripsWgamma.end());
-    m_Wgamma.makeCompressed();
+    m_Wg = TripletMatrix(nSprings, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(tripsWg)));
+    m_Wgamma = TripletMatrix(nDampers, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(tripsWgamma)));
 
     // Store C (per-spring) and A (per-damper) diagonals
     m_Cdiag = VectorXr::Zero((index_t)nSprings);
@@ -383,28 +376,23 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
     // Ensure current blocks are built
     rebuildInteractionW_();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
-    const int nSprings = (int)m_Wg.rows();
-    const int nDampers = (int)m_Wgamma.rows();
+    const int nSprings = m_Wg.nRows();
+    const int nDampers = m_Wgamma.nRows();
     const int extV = totalV + nSprings + nDampers;
-    
+
     if (extV == 0) {
         m_S_sparse_lu.reset();
-        m_S_sparse.resize(0,0);
+        m_S = TripletMatrix::zero(0, 0);
         return true;
     }
 
-    // Build sparse block matrix using triplets
-    std::vector<Eigen::Triplet<real_t>> trips;
-    const std::size_t tripEstimate = static_cast<std::size_t>(totalV)              
-                                   + static_cast<std::size_t>(m_Wg.nonZeros() * 2) 
-                                   + static_cast<std::size_t>(m_Wgamma.nonZeros() * 2) 
-                                   + static_cast<std::size_t>(nSprings + nDampers);
-    trips.reserve(tripEstimate);
+    std::vector<Eigen::Triplet<real_t>> mTrips;
+    mTrips.reserve(static_cast<std::size_t>(totalV) + 64);
 
     // Top-left: M diagonal
     for (int i = 0; i < totalV; ++i) {
         real_t mval = m_M_diag[i];
-        if (mval != (real_t)0) trips.emplace_back(i, i, mval);
+        if (mval != (real_t)0) mTrips.emplace_back(i, i, mval);
     }
 
     // Optionally include linearized gyroscopic term in the system matrix.
@@ -434,7 +422,7 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
             for (int r = 0; r < 3; ++r) {
                 for (int c = 0; c < 3; ++c) {
                     const real_t val = corr(r, c);
-                    if (val != (real_t)0) trips.emplace_back(off + 3 + r, off + 3 + c, val);
+                    if (val != (real_t)0) mTrips.emplace_back(off + 3 + r, off + 3 + c, val);
                 }
             }
         }
@@ -442,55 +430,23 @@ bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyr
 
     const real_t topScale = lambdaTheta ? theta : (real_t)1.0;
 
-    // Wg and Wgamma contributions: m_Wg is (nSprings x totalV)
-    for (int k = 0; k < m_Wg.outerSize(); ++k) {
-        for (typename Eigen::SparseMatrix<real_t>::InnerIterator it(m_Wg, k); it; ++it) {
-            int row = it.row(); // spring index
-            int col = it.col(); // velocity index
-            real_t v = it.value();
-            // top-right: (col, totalV + row)
-            trips.emplace_back(col, totalV + row, topScale * v);
-            // middle-left: (totalV + row, col)
-            trips.emplace_back(totalV + row, col, v);
-        }
-    }
-    for (int k = 0; k < m_Wgamma.outerSize(); ++k) {
-        for (typename Eigen::SparseMatrix<real_t>::InnerIterator it(m_Wgamma, k); it; ++it) {
-            int row = it.row(); int col = it.col(); real_t v = it.value();
-            // top-right gamma: (col, totalV + nSprings + row)
-            trips.emplace_back(col, totalV + nSprings + row, topScale * v);
-            // lower-left gamma: (totalV + nSprings + row, col)
-            trips.emplace_back(totalV + nSprings + row, col, v);
-        }
-    }
+    const TripletMatrix Mblk(totalV, totalV,
+                             std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(mTrips)));
+    const real_t cScale = - (real_t)1.0 / (theta * dt * dt);
+    const real_t aScale = - (real_t)1.0 / (theta * dt);
+    const TripletMatrix top = Mblk | (m_Wg * topScale).T() | (m_Wgamma * topScale).T();
+    const TripletMatrix mid = m_Wg | (TripletMatrix::fromDiag(m_Cdiag) * cScale) | TripletMatrix::zero(nSprings, nDampers);
+    const TripletMatrix bot = m_Wgamma | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_Adiag) * aScale);
+    m_S = top.vConcat(mid).vConcat(bot);
 
-    // Middle and lower diagonal blocks (C and A terms)
-    // C block over nSprings rows (assemble compliance; clamp zeros to avoid singular KKT when using SPD factorization)
-    for (int i = 0; i < nSprings; ++i) {
-        real_t Ci = m_Cdiag[i];
-        if (!std::isfinite(Ci)) continue; // skip non-finite
-        real_t cval = - (real_t)1.0 / (theta * dt * dt) * Ci;
-        trips.emplace_back(totalV + i, totalV + i, cval);
-    }
-    // A block over nDampers rows (assemble damping compliance; clamp zeros similarly)
-    for (int i = 0; i < nDampers; ++i) {
-        real_t Ai = m_Adiag[i];
-        if (!std::isfinite(Ai)) continue;
-        real_t aval = - (real_t)1.0 / (theta * dt) * Ai;
-        trips.emplace_back(totalV + nSprings + i, totalV + nSprings + i, aval);
-    }
-
-    // Build sparse matrix
-    m_S_sparse.resize(extV, extV);
-    m_S_sparse.setFromTriplets(trips.begin(), trips.end());
-    m_S_sparse.makeCompressed();
+    const auto& S_sparse = m_S.asSparse();
 
     // Factorize using SparseLU (provide symmetry hint when applicable).
     try {
         m_S_sparse_lu.emplace();
         m_S_sparse_lu->isSymmetric(!includeGyroInMatrix && !lambdaTheta);
-        m_S_sparse_lu->analyzePattern(m_S_sparse);
-        m_S_sparse_lu->factorize(m_S_sparse);
+        m_S_sparse_lu->analyzePattern(S_sparse);
+        m_S_sparse_lu->factorize(S_sparse);
         if (m_S_sparse_lu->info() != Eigen::Success) {
             m_S_sparse_lu.reset();
             std::cout << "DynamicsAssembler::buildAndFactorS: SparseLU factorization failed\n";
@@ -514,22 +470,18 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
     if (m_timings) { auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS); (void)sc; }
     rebuildInteractionW_();
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
-    const int nSprings = (int)m_Wg.rows();
-    const int nDampers = (int)m_Wgamma.rows();
+    const int nSprings = m_Wg.nRows();
+    const int nDampers = m_Wgamma.nRows();
     const int extV = totalV + nSprings + nDampers;
 
     if (extV == 0) {
         m_S_sparse_lu.reset();
-        m_S_sparse.resize(0,0);
+        m_S = TripletMatrix::zero(0, 0);
         return true;
     }
 
-    std::vector<Eigen::Triplet<real_t>> trips;
-    const std::size_t tripEstimate = static_cast<std::size_t>(totalV)
-                                   + static_cast<std::size_t>(m_Wg.nonZeros() * 2)
-                                   + static_cast<std::size_t>(m_Wgamma.nonZeros() * 2)
-                                   + static_cast<std::size_t>(nSprings + nDampers);
-    trips.reserve(tripEstimate);
+    std::vector<Eigen::Triplet<real_t>> mTrips;
+    mTrips.reserve(static_cast<std::size_t>(totalV));
 
     // // Top-left: M - dt/2 * G(u) where G(u) contains gyroscopic skew term (-w_skew * I)
     // const auto &reg = m_sys.ecs();
@@ -573,50 +525,24 @@ bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
     // Top-left: M diagonal (no gyroscopic term)
     for (int i = 0; i < totalV; ++i) {
         real_t mval = m_M_diag[i];
-        if (mval != (real_t)0) trips.emplace_back(i, i, mval);
+        if (mval != (real_t)0) mTrips.emplace_back(i, i, mval);
     }
 
-    // Wg and Wgamma contributions
-    for (int k = 0; k < m_Wg.outerSize(); ++k) {
-        for (typename Eigen::SparseMatrix<real_t>::InnerIterator it(m_Wg, k); it; ++it) {
-            int row = it.row();
-            int col = it.col();
-            real_t v = it.value();
-            trips.emplace_back(col, totalV + row, v);
-            trips.emplace_back(totalV + row, col, v);
-        }
-    }
-    for (int k = 0; k < m_Wgamma.outerSize(); ++k) {
-        for (typename Eigen::SparseMatrix<real_t>::InnerIterator it(m_Wgamma, k); it; ++it) {
-            int row = it.row(); int col = it.col(); real_t v = it.value();
-            trips.emplace_back(col, totalV + nSprings + row, v);
-            trips.emplace_back(totalV + nSprings + row, col, v);
-        }
-    }
+    const TripletMatrix Mblk(totalV, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(mTrips)));
+    const real_t cSV = - (real_t)4.0 / (dt * dt);
+    const real_t aSV = - (real_t)2.0 / dt;
+    const TripletMatrix top = Mblk | (m_Wg).T() | (m_Wgamma).T();
+    const TripletMatrix mid = m_Wg | (TripletMatrix::fromDiag(m_Cdiag) * cSV) | TripletMatrix::zero(nSprings, nDampers);
+    const TripletMatrix bot = m_Wgamma | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_Adiag) * aSV);
+    m_S = top.vConcat(mid).vConcat(bot);
 
-    // C and A blocks with Stormer-Verlet scalings
-    for (int i = 0; i < nSprings; ++i) {
-        real_t Ci = m_Cdiag[i];
-        if (!std::isfinite(Ci)) continue;
-        real_t cval = - (real_t)4.0 / (dt * dt) * Ci;
-        trips.emplace_back(totalV + i, totalV + i, cval);
-    }
-    for (int i = 0; i < nDampers; ++i) {
-        real_t Ai = m_Adiag[i];
-        if (!std::isfinite(Ai)) continue;
-        real_t aval = - (real_t)2.0 / dt * Ai;
-        trips.emplace_back(totalV + nSprings + i, totalV + nSprings + i, aval);
-    }
-
-    m_S_sparse.resize(extV, extV);
-    m_S_sparse.setFromTriplets(trips.begin(), trips.end());
-    m_S_sparse.makeCompressed();
+    const auto& S_sparse = m_S.asSparse();
 
     try {
         m_S_sparse_lu.emplace();
         m_S_sparse_lu->isSymmetric(false); // gyro term breaks symmetry
-        m_S_sparse_lu->analyzePattern(m_S_sparse);
-        m_S_sparse_lu->factorize(m_S_sparse);
+        m_S_sparse_lu->analyzePattern(S_sparse);
+        m_S_sparse_lu->factorize(S_sparse);
         if (m_S_sparse_lu->info() != Eigen::Success) {
             m_S_sparse_lu.reset();
             std::cout << "[DynamicsAssembler] SparseLU factorization failed\n";

@@ -62,6 +62,19 @@ target_link_libraries(${PROJECT_NAME} INTERFACE coal)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC CARDILLO_HAVE_COAL=1)
 
+# If QOCO was installed by the top-level ExternalProject, link against it
+set(QOCO_INSTALL_DIR "${CMAKE_SOURCE_DIR}/lib/qoco-install")
+# Add QOCO include dir (may be populated by ExternalProject at build time)
+target_include_directories(${PROJECT_NAME} PUBLIC "${QOCO_INSTALL_DIR}/include")
+target_include_directories(${PROJECT_NAME} PUBLIC "${QOCO_INSTALL_DIR}/include/qdldl")
+ target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_BINARY_DIR}/_deps/qoco/src/qoco_project/include")
+
+if(EXISTS "${QOCO_INSTALL_DIR}/lib/libqoco.so")
+    message(STATUS "Found installed QOCO at ${QOCO_INSTALL_DIR}; linking")
+    target_link_libraries(${PROJECT_NAME} PUBLIC "${QOCO_INSTALL_DIR}/lib/libqoco.so")
+    target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_QOCO=1)
+endif()
+
 # Optional: enable EXR loading via tinyexr (header-only). Define CARDILLO_USE_TINYEXR to turn it on if header is provided.
 # Users can set -DCARDILLO_USE_TINYEXR=ON when configuring to enable.
 option(CARDILLO_USE_TINYEXR "Enable EXR heightmap loading via tinyexr" OFF)

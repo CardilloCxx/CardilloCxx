@@ -111,6 +111,13 @@ include_directories( ${PYTHON3_INCLUDE_DIRS})
 
 include(ExternalProject)
 
+# Auto-detect QOCO if a local checkout exists at project root
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/qoco")
+    message(STATUS "Found local qoco directory, enabling QOCO integration")
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/qoco EXCLUDE_FROM_ALL)
+    add_compile_definitions(HAVE_QOCO=1)
+endif()
+
 # Coal via pip (via ExternalProject_Add)
 set(COAL_INSTALL_DIR ${CMAKE_BINARY_DIR}/external/coal)
 
@@ -120,6 +127,15 @@ ExternalProject_Add(coal_project
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ${Python3_EXECUTABLE} -m pip install coal -t ${COAL_INSTALL_DIR}
     INSTALL_COMMAND ""
+)
+
+# Automatically fetch, build and install QOCO into ${CMAKE_SOURCE_DIR}/lib/qoco-install
+ExternalProject_Add(qoco_project
+    GIT_REPOSITORY https://github.com/qoco-org/qoco.git
+    GIT_TAG main
+    PREFIX ${CMAKE_BINARY_DIR}/_deps/qoco
+    GIT_SHALLOW TRUE
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/lib/qoco-install -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DBUILD_SHARED_LIBS=ON -DENABLE_TESTING=OFF
 )
 
 # If PETSc was discovered via pkg-config, expose a macro and include dirs
@@ -132,7 +148,8 @@ endif()
 
 # Add subdirs
 add_subdirectory(src)
-add_subdirectory(examples)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/matrix_bench/CMakeLists.txt")
-    add_subdirectory(benchmarks/matrix_bench)
+if(TARGET qoco_project)
+    add_dependencies(cardillo qoco_project)
 endif()
+add_subdirectory(examples)
+add_subdirectory(benchmarks/matrix_bench)

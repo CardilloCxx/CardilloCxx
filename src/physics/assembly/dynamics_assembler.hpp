@@ -5,6 +5,7 @@
 #include <Eigen/SparseCore>
 
 #include "../../misc/types.hpp"
+#include "../../misc/triplet_matrix.hpp"
 #include "../world.hpp"
 #include "../synchronization/derived_entity_sync.hpp"
 #include "../../collision/types.hpp"
@@ -27,16 +28,16 @@ public:
     const VectorXr& fVecGyroscopic(); // stacked gyroscopic forces/torques only
 
     // Columns correspond to stacked body velocity DOFs in body order, laid out contiguously per body
-    const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W() const { return m_W_sparse; }
-    // Prefix sums of column offsets per body in stacked velocity vector; size = Nb + 1
+    const TripletMatrix& W() const { return m_W; }
+
     // Body b occupies columns [bodyVelOffsets()[b], bodyVelOffsets()[b+1])
     const std::vector<int>& bodyVelOffsets() const { return m_body_vel_offsets; }
-    // Prefix sums for stacked position vector
     const std::vector<int>& bodyPosOffsets() const { return m_body_pos_offsets; }
 
     // Diagonal of block-diagonal Minv (size = total velocity dofs)
     const VectorXr& MinvDiag() const { return m_Minv_diag; }
     const VectorXr& MDiag() const { return m_M_diag; }
+    
     // Access underlying system (for debug / diagnostics)
     const World& system() const { return m_world; }
     // Expose current contacts (includes penetration and points)
@@ -69,8 +70,8 @@ public:
     cardillo::collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
 
      // Accessors for newly added matrices
-    const Eigen::SparseMatrix<real_t>& WgSparse() const { return m_Wg; }
-    const Eigen::SparseMatrix<real_t>& WgammaSparse() const { return m_Wgamma; }
+    const TripletMatrix& Wg() const { return m_Wg; }
+    const TripletMatrix& Wgamma() const { return m_Wgamma; }
 
     // Per-spring diagonal C/A
     const VectorXr& Cdiag() const { return m_Cdiag; }
@@ -87,11 +88,7 @@ public:
     void setLambda_g(const VectorXr& lam);
     void setLambda_gamma(const VectorXr& lam) { m_Lambda_gamma = lam; }
 
-    // Extended block matrix S (sparse) accessor and solver
-    const CscMatrix& SSparse() const { return m_S_sparse; }
-
     // Build and factorize the effective mass matrix S = M + dt^2 * Wg * K * Wg^T + h * W_gamma * D * W_gamma^T
-    // Returns true on successful factorization.
     bool buildAndFactorS(real_t dt, real_t theta, bool includeGyroInMatrix = false, bool lambdaTheta = false);
     // Solve the full extended system S * x = rhs_ext and return the complete solution (ext-length)
     VectorXr solveS(const VectorXr& rhs_ext) const;
@@ -128,18 +125,18 @@ private:
     // Legacy caches removed
     std::vector<VectorXr> m_v_compat; // kept temporarily for transition; unused in solvers
 
-    // Sparse contact Jacobian and supporting mappings
-    Eigen::SparseMatrix<real_t, Eigen::RowMajor> m_W_sparse; // (C_dynamic x totalV), RowMajor to allow efficient row access
+    // Contact Jacobian and supporting mappings
+    TripletMatrix m_W; // (C_dynamic x totalV)
     std::vector<int> m_body_vel_offsets;    // size Nb+1, prefix sums for body velocity columns
     std::vector<int> m_body_pos_offsets;    // size Nb+1, prefix sums for body position columns
     VectorXr m_Minv_diag;                   // size totalV, diagonal of Minv
     VectorXr m_M_diag;                      // size totalV, diagonal of M (non-inverted)
 
     // Additional per-contact/block matrices used by solvers
-    // Wg maps constraint-space generalized g/constraint DOFs to global velocity DOFs (same shape as m_W_sparse)
-    Eigen::SparseMatrix<real_t> m_Wg;
-    // W_gamma often is the gamma-related Jacobian (negated Wg for one side); keep as sparse
-    Eigen::SparseMatrix<real_t> m_Wgamma;
+    // Wg maps constraint-space generalized g/constraint DOFs to global velocity DOFs.
+    TripletMatrix m_Wg;
+    // W_gamma is the gamma-related Jacobian.
+    TripletMatrix m_Wgamma;
 
    
     // Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)
@@ -148,7 +145,7 @@ private:
     VectorXr m_Adiag; // size = numDampers
 
     // Extended block matrix S (sparse) and its sparse factorization
-    CscMatrix m_S_sparse; // size extV x extV
+    TripletMatrix m_S; // size extV x extV
     // Use SparseLU on the symmetric S matrix.
     std::optional<Eigen::SparseLU<CscMatrix>> m_S_sparse_lu; // lazily constructed
 

@@ -37,7 +37,7 @@ static inline VectorXr precompute_Rdiag_true_delassus(
 	const cardillo::physics::DynamicsAssembler& dyn,
 	real_t alpha)
 {
-	const auto& W = dyn.W();
+	const auto& W = dyn.W().asSparseRowMajor();
 	const int C = (int)W.rows();
 	VectorXr R = VectorXr::Zero(C);
 	const int totalV = (dyn.bodyVelOffsets().empty() ? 0 : dyn.bodyVelOffsets().back());
@@ -125,10 +125,10 @@ static inline PJIterContext build_context(
 	real_t alpha,
 	bool useTrueDelassus)
 {
-	const auto& W = dyn.W();
+	const auto& W = dyn.W().asSparseRowMajor();
 	const int C = (int)W.rows();
 
-	PJIterContext ctx{dyn.W(), &dyn, std::vector<int>{}, VectorXr()};
+	PJIterContext ctx{W, &dyn, std::vector<int>{}, VectorXr()};
 	ctx.bodyOffsets = dyn.bodyVelOffsets();
 	// Use Minv diagonal from DynamicsAssembler when computing diagonal of G = W * Minv * W^T
 	ctx.Rdiag = useTrueDelassus
@@ -372,7 +372,7 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	auto sc_solve = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobi);
 
 	// Use sparse W and the effective-mass S (assembled & factorized in DynamicsAssembler)
-	const auto& Wref = m_dyn.W();
+	const auto& Wref = m_dyn.W().asSparseRowMajor();
 	const int C = (int)Wref.rows();
 	const int Nv = (Wref.cols() > 0) ? Wref.cols() : 0;
 

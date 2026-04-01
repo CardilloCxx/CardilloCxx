@@ -27,8 +27,8 @@ void MoreauSolver::step(real_t dt)
     m_dyn.refreshCollisionsAndSprings(dt, m_theta, implicitGyro, lambdaTheta);
 
     // 4) Build the full extended RHS and solve the extended system S * x = b
-    const auto& Wg = m_dyn.WgSparse();
-    const auto& Wgamma = m_dyn.WgammaSparse();
+    const auto& Wg = m_dyn.Wg().asSparse();
+    const auto& Wgamma = m_dyn.Wgamma().asSparse();
     const auto& M_diag = m_dyn.MDiag();
     const int totalV = (m_dyn.bodyVelOffsets().empty() ? 0 : m_dyn.bodyVelOffsets().back());
     const int nSprings = (int)m_dyn.Cdiag().size();
