@@ -17,20 +17,21 @@ namespace cardillo::physics::assembly {
 class QocoAssembler {
 
     public:
+        QocoAssembler(cardillo::physics::DynamicsAssembler& dyn) : m_dyn(&dyn) {}
+
         QOCOCscMatrix toQocoCSC(const SparseMatrix<Eigen::ColMajor>& A);
         QOCOCscMatrix toQocoCSC(const Eigen::VectorX<real_t>& v);
-        QOCOVectorf* toQocoVectorf(const Eigen::VectorX<real_t>& v);
+        QOCOFloat* toQocoVector(const Eigen::VectorX<real_t>& v);
 
         QOCOCscMatrix P();
         QOCOCscMatrix A();
         QOCOCscMatrix G();
 
-        QOCOVectorf* c();
-        QOCOVectorf* b();
-        QOCOVectorf* h();
+        QOCOFloat* c();
+        QOCOFloat* b();
+        QOCOFloat* h();
 
     private:
-        cardillo::physics::World* m_world{nullptr};
         cardillo::physics::DynamicsAssembler* m_dyn{nullptr};
 };
 

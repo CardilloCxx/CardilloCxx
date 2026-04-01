@@ -18,8 +18,8 @@ namespace pipeline {
 
 PhysicsPipeline::~PhysicsPipeline() = default;
 
-PhysicsPipeline::PhysicsPipeline(World& world,
-                                 config::Config& cfg,
+PhysicsPipeline::PhysicsPipeline(cardillo::World& world,
+                                 cardillo::config::Config& cfg,
                                  cardillo::collision::CollisionCoal* collision_mgr,
                                  cardillo::misc::TimingManager* timings)
     : m_world(world), m_cfg(cfg), m_collision_mgr(collision_mgr), m_timings(timings) {

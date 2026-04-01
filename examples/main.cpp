@@ -66,6 +66,9 @@ int main(int argc, char** argv) {
     cardillo::config::Config cfg = (argc > 1)
         ? cardillo::config::ConfigReader::fromFile(argv[1])
         : cardillo::config::Config{}; // defaults from header
+
+    // print working drectory
+    std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
     
     if (argc <= 1) std::cout << "No config file provided, using defaults." << std::endl;
 
