@@ -1,4 +1,5 @@
 build/
+myvenv/
 .vscode/
 literature/
 vtk_out*

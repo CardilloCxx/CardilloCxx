@@ -15,6 +15,11 @@ void QocoSolver::initQocoSolver(real_t dt) {
     QOCOSettings* settings = (QOCOSettings*)malloc(sizeof(QOCOSettings));
     set_default_settings(settings);
     settings->verbose = 0;
+    settings->abstol = 1e-12;
+    settings->reltol = 1e-12;
+    settings->kkt_static_reg = 1e-15;
+    settings->kkt_dynamic_reg = 1e-15;
+    settings->iter_ref_iters = 0;
 
     //TODO: set settings from config        
 
