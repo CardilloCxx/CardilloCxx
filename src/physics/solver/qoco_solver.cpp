@@ -14,14 +14,19 @@ QocoSolver::QocoSolver(cardillo::physics::DynamicsAssembler& dyn,
 void QocoSolver::initQocoSolver(real_t dt, real_t theta) {
     QOCOSettings* settings = (QOCOSettings*)malloc(sizeof(QOCOSettings));
     set_default_settings(settings);
-    settings->verbose = 0;
-    settings->abstol = 1e-12;
-    settings->reltol = 1e-12;
-    settings->kkt_static_reg = 1e-15;
-    settings->kkt_dynamic_reg = 1e-15;
-    settings->iter_ref_iters = 0;
+    settings->verbose = m_cfg.debug_pj ? 1 : 0;
+    settings->abstol = m_cfg.pj_tol_abs;
+    settings->reltol = m_cfg.pj_tol_rel;
+    settings->kkt_static_reg = 1e-15;    
+    settings->kkt_dynamic_reg = 1e-5;
+    settings->iter_ref_iters = 10;
+    settings->max_iters = m_cfg.pj_max_iterations;
 
-    //TODO: set settings from config        
+    if(m_cfg.moreau_implicit_gyroscopy) 
+        std::cerr << "Warning: QOCO solver does not support implicit gyroscopic forces; ignoring config setting.\n";
+
+    if(m_cfg.moreau_lambda_theta) 
+        std::cerr << "Warning: QOCO solver does not support lambda theta integration; ignoring config setting.\n";
 
     m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
 
@@ -68,22 +73,36 @@ void QocoSolver::updateQocoSolver(real_t dt, real_t theta) {
 }
 
 VectorXr QocoSolver::solve(real_t dt, real_t theta)  {
-    if (m_dyn.timings()) { auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoSolve); (void)sc; }
+    auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoSolve); 
 
-    // TODO: dont build and factor S for QOCO solver
-    // TODO: check that implicit gyrosopic forces are disabled for QOCO solver
-      m_dyn.updateStateDependentTerms();
+    m_dyn.updateStateDependentTerms();
     if(!m_qoco_solver) initQocoSolver(dt, theta); 
     else updateQocoSolver(dt, theta);
 
     QOCOInt exit = qoco_solve(m_qoco_solver);
 
     if (exit != QOCO_SOLVED) {
-        std::cerr << "Error solving QOCO problem: " << exit << std::endl;
-        throw std::runtime_error("QOCO solver failed");
+        auto exit_str = (exit == QOCO_UNSOLVED) ? "Unsolved" :
+                        (exit == QOCO_SOLVED_INACCURATE) ? "Solved Inaccurately" :
+                        (exit == QOCO_NUMERICAL_ERROR) ? "Numerical Error" :
+                        (exit == QOCO_MAX_ITER) ? "Maximum Iterations Reached" : "Unknown Error";
+        std::cerr << "\nError solving QOCO problem: " << exit_str << " (" << exit << ")" << std::endl;
+
+        // Print diagnostics if available
+        if (m_qoco_solver && m_qoco_solver->sol) {
+            QOCOSolution* sol = m_qoco_solver->sol;
+            std::cerr << "  Iterations: " << sol->iters << std::endl;
+            std::cerr << "  Objective value: " << sol->obj << std::endl;
+            std::cerr << "  Primal residual: " << sol->pres << std::endl;
+            std::cerr << "  Dual residual: " << sol->dres << std::endl;
+            std::cerr << "  Duality gap: " << sol->gap << std::endl;
+        }
+
+        throw std::runtime_error("QOCO solver failed to solve the problem");
     }
 
     QOCOSolution *sol = m_qoco_solver->sol;
+    m_last_iters = sol->iters;
 
     QOCOFloat x = sol->x[0]; 
     VectorXr x_vec = VectorXr::Zero(m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers());

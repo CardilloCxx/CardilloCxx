@@ -13,10 +13,13 @@ public:
     virtual VectorXr solve(real_t dt, real_t theta) = 0;
 
     // Diagnostics
-    virtual int lastIterations() const { return -1; }
+    virtual int lastIterations() const { return m_last_iters; }
     virtual real_t lastError() const { return (real_t)0; }
 
     virtual const char* name() const { return "SolverBase"; }
+
+protected:
+    int m_last_iters{-1};
 };
 
 }} // namespace cardillo::solver

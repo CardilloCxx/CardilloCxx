@@ -96,8 +96,8 @@ QOCOFloat* QocoAssembler::toQocoVector(const Eigen::VectorX<real_t>& v) {
 
 QOCOCscMatrix  QocoAssembler::P(real_t dt, real_t theta) {
     auto M = m_dyn->MDiag(); 
-    auto C = m_dyn->Cdiag() * (4.0 / (theta * dt * dt));
-    auto A = m_dyn->Adiag() * (2.0 / (theta * dt));
+    auto C = m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
+    auto A = m_dyn->Adiag() * (1.0 / (theta * dt));
 
     Eigen::VectorX<real_t> diag(M.size() + C.size() + A.size());
     diag << M, C, A;
@@ -106,8 +106,8 @@ QOCOCscMatrix  QocoAssembler::P(real_t dt, real_t theta) {
 }
 
 QOCOCscMatrix QocoAssembler::A(real_t dt, real_t theta) {
-    TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * (4.0 / (theta * dt * dt)));
-    TripletMatrix A = TripletMatrix::fromDiag(m_dyn->Adiag() * (2.0 / (theta * dt)));
+    TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * (1.0 / (theta * dt * dt)));
+    TripletMatrix A = TripletMatrix::fromDiag(m_dyn->Adiag() * (1.0 / (theta * dt)));
 
     A = (m_dyn->Wg()    | (C * -1.0)   | TripletMatrix::zero(C.nRows(), A.nCols())).vConcat(
         m_dyn->Wgamma() | TripletMatrix::zero(A.nRows(), C.nCols()) | (A * -1.0));
@@ -138,7 +138,7 @@ QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
         Lambda_g = VectorXr::Zero(m_dyn->Cdiag().size());
     }
     
-    auto bTop = - (4.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) *  m_dyn->Wg().asSparse() * m_dyn->vVec();
+    auto bTop = - (1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) *  m_dyn->Wg().asSparse() * m_dyn->vVec();
     auto bBot = - ((1.0 - theta) / theta) * m_dyn->Wgamma().asSparse() * m_dyn->vVec();
 
     Eigen::VectorX<real_t> b(bTop.size() + bBot.size());

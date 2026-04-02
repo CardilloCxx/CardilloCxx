@@ -363,7 +363,7 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta)  {
 	VectorXr x = m_assembler.solveS(rhs);
 	
 	if (C == 0 || Wref.nonZeros() == 0) {
-		m_lastIterations = 0;
+		m_last_iters= 0;
 		m_lastError = (real_t)0;
 		
 		// Track spring and damper forces, return velocity.
@@ -393,7 +393,7 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta)  {
 		}
 	}
 
-	m_lastIterations = static_cast<int>(ctx.iteration);
+	m_last_iters = static_cast<int>(ctx.iteration);
 	m_lastError = ctx.err_global;
 
 	// Store last impulses into cache for next step

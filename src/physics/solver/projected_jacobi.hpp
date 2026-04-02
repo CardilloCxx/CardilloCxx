@@ -45,8 +45,6 @@ public:
     // Concatenated API: accept stacked preliminary velocities and return stacked velocities
     VectorXr solve(real_t dt, real_t theta)  override;
 
-    int lastIterations() const override { return m_lastIterations; }
-
     const char* name() const override { return "ProjectedJacobi"; }
 
 private:
@@ -66,7 +64,6 @@ private:
     real_t m_epsRel{(real_t)0};
     
     std::string m_convCsvDir{};
-    int m_lastIterations{0};
     real_t m_lastError{(real_t)0};
 };
 

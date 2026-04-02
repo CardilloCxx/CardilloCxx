@@ -17,9 +17,9 @@ public:
                          std::size_t barBlocks = 50, // number of block chars inside the bar after percent marker
                          bool enabled = true)
         : m_total(total), m_os(os), m_barBlocks(barBlocks), m_enabled(enabled) {
+            
         m_start = clock::now();
         m_lastDraw = m_start;
-        if (m_enabled) draw(true);
     }
 
     // Backward-compatible overload: third argument as 'enabled' (bool)
