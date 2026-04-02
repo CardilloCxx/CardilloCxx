@@ -33,41 +33,11 @@ static inline VectorXr precompute_Rdiag_sparse(
 	return R;
 }
 
-static inline VectorXr precompute_Rdiag_true_delassus(
-	const cardillo::physics::DynamicsAssembler& dyn,
-	real_t alpha)
-{
-	const auto& W = dyn.W().asSparseRowMajor();
-	const int C = (int)W.rows();
-	VectorXr R = VectorXr::Zero(C);
-	const int totalV = (dyn.bodyVelOffsets().empty() ? 0 : dyn.bodyVelOffsets().back());
-	const int nSprings = (int)dyn.Cdiag().size();
-	const int nDampers = (int)dyn.Adiag().size();
-	const int extV = totalV + nSprings + nDampers;
-	VectorXr rhs_ext = VectorXr::Zero(extV);
-
-	for (int cid = 0; cid < C; ++cid) {
-		if (cid < 0 || cid >= C) continue;
-		rhs_ext.setZero();
-		for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
-			const int col = it.col();
-			rhs_ext[col] = it.value();
-		}
-		const VectorXr x = dyn.solveS(rhs_ext);
-		real_t Dii = 0;
-		for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
-			const int col = it.col();
-			Dii += it.value() * x[col];
-		}
-		R[cid] = (Dii > (real_t)0) ? (alpha / Dii) : (real_t)0;
-	}
-	return R;
-}
-
 // Small context to avoid re-passing many references for each sweep
 struct PJIterContext {
 	const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W;
 	cardillo::physics::DynamicsAssembler* dyn; // pointer to assembler (for S-solve etc.)
+	cardillo::physics::assembly::PjAssembler* assembler; // pointer to PJAssembler (for S-solve etc.)
 	std::vector<int> bodyOffsets;
 	VectorXr Rdiag;
 	// Grouping of contact rows by original contact index (for friction cone projection)
@@ -122,18 +92,16 @@ static inline ContactGroups build_contact_groups(const cardillo::physics::Dynami
 
 static inline PJIterContext build_context(
 	cardillo::physics::DynamicsAssembler& dyn,
-	real_t alpha,
-	bool useTrueDelassus)
+	cardillo::physics::assembly::PjAssembler& m_assembler,
+	real_t alpha)
 {
 	const auto& W = dyn.W().asSparseRowMajor();
 	const int C = (int)W.rows();
 
-	PJIterContext ctx{W, &dyn, std::vector<int>{}, VectorXr()};
+	PJIterContext ctx{W, &dyn, &m_assembler, std::vector<int>{}, VectorXr()};
 	ctx.bodyOffsets = dyn.bodyVelOffsets();
 	// Use Minv diagonal from DynamicsAssembler when computing diagonal of G = W * Minv * W^T
-	ctx.Rdiag = useTrueDelassus
-		? precompute_Rdiag_true_delassus(dyn, alpha)
-		: precompute_Rdiag_sparse(W, dyn.MinvDiag(), alpha);
+	ctx.Rdiag = precompute_Rdiag_sparse(W, dyn.MinvDiag(), alpha);
 	// Populate dimension helpers: velocity dofs, percussion (contact) rows, and spring dofs
 	const int dofConcat = (ctx.bodyOffsets.empty() ? 0 : ctx.bodyOffsets.back());
 	ctx.nV = dofConcat;
@@ -200,7 +168,7 @@ static inline void relax_exchange_update(PJIterContext& ctx, const VectorXr& x_o
 	// Build extended RHS [tmp_concat; 0; 0] and solve full S * delta_x = rhs_ext, then apply only velocity part
 	VectorXr rhs_ext = VectorXr::Zero(ctx.nV + ctx.nS + ctx.nD);
 	rhs_ext.segment(0,  ctx.nV) = W.transpose() * (p_new - p_old);
-	x_new = x_old + dyn->solveS(rhs_ext);
+	x_new = x_old + ctx.assembler->solveS(rhs_ext);
 }
 
 // One Projected-Jacobi sweep: update p with current u, then compute new u
@@ -368,7 +336,10 @@ static inline void nesterov_loop(PJIterContext& ctx,
 	p = xpk1;
 }
 
-VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
+VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta)  {
+	m_dyn.updateStateDependentTerms();
+	m_assembler.buildAndFactorS(dt, theta);
+
 	auto sc_solve = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobi);
 
 	// Use sparse W and the effective-mass S (assembled & factorized in DynamicsAssembler)
@@ -377,7 +348,7 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	const int Nv = (Wref.cols() > 0) ? Wref.cols() : 0;
 
 	// Build iteration context and precomputations
-	PJIterContext ctx = build_context(m_dyn, alpha(), m_useTrueDelassus);
+	PJIterContext ctx = build_context(m_dyn, m_assembler, alpha());
 
 	// Initialize impulses
 	VectorXr p = VectorXr::Zero(C);
@@ -386,8 +357,10 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	}
 
 	// Initialize state vector x consisting of velocities and lagrange multipliers (springs)
+	VectorXr rhs = m_assembler.rhs(dt, theta);
 	rhs.segment(0, Nv).noalias() += Wref.transpose() * p;
-	VectorXr x = m_dyn.solveS(rhs);
+
+	VectorXr x = m_assembler.solveS(rhs);
 	
 	if (C == 0 || Wref.nonZeros() == 0) {
 		m_lastIterations = 0;
@@ -397,7 +370,7 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 
 	// Configure iteration context
 	ctx.maxIterations = m_maxIterations;
-	ctx.tol = tol;
+	ctx.tol = m_cfg.pj_tol_abs;
 	ctx.relax = m_relax;
 	ctx.debug = m_debug;
 	ctx.eps_rel = m_epsRel;
@@ -420,7 +393,12 @@ VectorXr ProjectedJacobiSolver::solve(VectorXr& rhs, real_t tol) {
 	// Store last impulses into cache for next step
 	cardillo::solver::WarmstartProvider::storeImpulse(p, m_dyn);
 
-	return x;
+	// Track spring and damper forces, return velocity.
+	const int nSprings = (int)m_dyn.Cdiag().size();
+	const int nDampers = (int)m_dyn.Adiag().size();
+	if (nSprings > 0) m_dyn.setLambda_g(x.segment(Nv, nSprings)); 
+    if (nDampers > 0) m_dyn.setLambda_gamma(x.segment(Nv + nSprings, nDampers));
+	return x.segment(0, Nv);
 }
 
 } // namespace cardillo::solver

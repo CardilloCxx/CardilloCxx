@@ -12,13 +12,13 @@ public:
     explicit QocoSolver(cardillo::physics::DynamicsAssembler& dyn,
                         const cardillo::config::Config& cfg);
 
-    VectorXr solve(VectorXr& rhs, real_t tol = (real_t)1e-5) override;
+    VectorXr solve(real_t dt, real_t theta)  override;
 
     const char* name() const override { return "QocoSolver"; }
 
 private:
-    void initQocoSolver(real_t dt);
-    void updateQocoSolver(real_t dt);
+    void initQocoSolver(real_t dt, real_t theta);
+    void updateQocoSolver(real_t dt, real_t theta);
 
     cardillo::physics::DynamicsAssembler& m_dyn;
     cardillo::physics::assembly::QocoAssembler m_assembler{m_dyn};

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "../../misc/types.hpp"
 #include "../assembly/dynamics_assembler.hpp"
+#include "../assembly/pj_assembler.hpp"
 #include "warmstart.hpp"
 #include "solver_base.hpp"
 #include "../../config/config.hpp"
@@ -25,12 +26,11 @@ public:
         : m_dyn(dyn)
         , m_cfg(cfg)
         , m_alpha(cfg.pj_alpha)
-        
+        , m_assembler(dyn, cfg) 
         , m_relax(std::clamp<real_t>(cfg.pj_relaxation, 0, 1))
         , m_maxIterations(std::max(1, cfg.pj_max_iterations))
         , m_epsRel(cfg.pj_tol_rel)
         , m_warmStart(cfg.pj_warmstart)
-        , m_useTrueDelassus(cfg.pj_rdiag_true_delassus)
         , m_debug(cfg.debug_pj)
         , m_useNesterov(cfg.pj_nesterov)
         , m_nest_beta_threshold((double)cfg.pj_nesterov_beta_threshold)
@@ -43,7 +43,7 @@ public:
     real_t lastError() const override { return m_lastError; }
 
     // Concatenated API: accept stacked preliminary velocities and return stacked velocities
-    VectorXr solve(VectorXr& rhs, real_t tol = 1e-5) override;
+    VectorXr solve(real_t dt, real_t theta)  override;
 
     int lastIterations() const override { return m_lastIterations; }
 
@@ -51,6 +51,7 @@ public:
 
 private:
     cardillo::physics::DynamicsAssembler& m_dyn;
+    cardillo::physics::assembly::PjAssembler m_assembler;
     cardillo::config::Config m_cfg;
     
     real_t m_alpha{(real_t)1};
@@ -58,7 +59,6 @@ private:
     real_t m_relax{(real_t)1};
     int m_maxIterations{1000000};
     bool m_warmStart{true};
-    bool m_useTrueDelassus{false};
     bool m_debug{false};
     bool m_useNesterov{false};
     double m_nest_beta_threshold{0.995};

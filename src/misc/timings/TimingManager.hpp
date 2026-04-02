@@ -21,6 +21,7 @@ public:
         RebuildConstraintJacobians,
         Integration,
         ProjectedJacobi,
+        QocoSolve,
         CollisionMakeContact,
         DisableCollisionPairs,
         CollisionNarrowphaseCollide,
@@ -202,6 +203,7 @@ private:
             case TimerId::CollisionMakeContactPatch: return "Collision Make Patches";
             case TimerId::CollisionMakeContact: return "Collision Make Contact";
             case TimerId::ProjectedJacobi: return "Projected Jacobi"; 
+            case TimerId::QocoSolve: return "QOCO Solve";
             case TimerId::DisableCollisionPairs: return "Disable Collision Pairs";
             case TimerId::DynamicsAssembler_RefreshState: return "DA Refresh State"; 
             case TimerId::Total: return "Total (all)"; 

@@ -6,7 +6,6 @@
 
 #include "../assembly/dynamics_assembler.hpp"
 #include "../integration/moreau.hpp"
-#include "../integration/dual_stoermer_verlet.hpp"
 #include "../../io/vtk_writer_binary.hpp"
 #include "../../io/csv_writer.hpp"
 #include "../../misc/progress/ProgressBar.hpp"
@@ -41,12 +40,10 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world,
     // Choose integrator based on config
     using namespace cardillo::integration;
     if (cfg.integrator == cardillo::config::IntegratorType::Moreau) {
-        m_integrator = std::make_unique<MoreauSolver>(m_world, *m_solver, *m_dyn, *m_timings, m_cfg);
-    } else if (cfg.integrator == cardillo::config::IntegratorType::StoermerVerlet) {
-        m_integrator = std::make_unique<DualStoermerVerletIntegrator>(m_world, *m_solver, *m_dyn, *m_timings, m_cfg);
+        m_integrator = std::make_unique<MoreauIntegrator>(m_world, *m_solver, *m_dyn, *m_timings, m_cfg);
     } else {
         std::cerr << "Warning: Unrecognized integrator type in config; defaulting to Moreau." << std::endl;
-        m_integrator = std::make_unique<MoreauSolver>(m_world, *m_solver, *m_dyn, *m_timings, m_cfg);
+        m_integrator = std::make_unique<MoreauIntegrator>(m_world, *m_solver, *m_dyn, *m_timings, m_cfg);
     }
 
     // Create VTK writer if output is enabled

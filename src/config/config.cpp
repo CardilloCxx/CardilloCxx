@@ -3,6 +3,8 @@
 #include <sstream>
 #include <cctype>
 #include <algorithm>
+#include <stdexcept>
+#include <iostream>
 
 namespace cardillo::config {
 
@@ -90,8 +92,10 @@ Config ConfigReader::fromFile(const std::string& path) {
         else if (key == "solver.name") {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
             if (v == "moreau" || v == "first_order" || v == "theta") cfg.integrator = IntegratorType::Moreau;
-            else if (v == "stoermverlet" || v == "stoermerverlet" || v == "sv") cfg.integrator = IntegratorType::StoermerVerlet;
-            else cfg.integrator = IntegratorType::StoermerVerlet;
+            else{
+                std::cerr << "Warning: unrecognized solver.name '" << val << "'. Defaulting to Moreau." << std::endl;
+                cfg.integrator = IntegratorType::Moreau;
+            } 
         }
         else if (key == "solver.type") {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });

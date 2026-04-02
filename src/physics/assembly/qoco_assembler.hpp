@@ -23,13 +23,13 @@ class QocoAssembler {
         QOCOCscMatrix toQocoCSC(const Eigen::VectorX<real_t>& v);
         QOCOFloat* toQocoVector(const Eigen::VectorX<real_t>& v);
 
-        QOCOCscMatrix P(real_t dt);
-        QOCOCscMatrix A(real_t dt);
-        QOCOCscMatrix G(real_t dt);
+        QOCOCscMatrix P(real_t dt, real_t theta);
+        QOCOCscMatrix A(real_t dt, real_t theta);
+        QOCOCscMatrix G(real_t dt, real_t theta);
 
-        QOCOFloat* c(real_t dt);
-        QOCOFloat* b(real_t dt);
-        QOCOFloat* h(real_t dt);
+        QOCOFloat* c(real_t dt, real_t theta);
+        QOCOFloat* b(real_t dt, real_t theta);
+        QOCOFloat* h(real_t dt, real_t theta);
 
     private:
         cardillo::physics::DynamicsAssembler* m_dyn{nullptr};

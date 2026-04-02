@@ -1,7 +1,6 @@
 #include "io/vtk_writer_binary.hpp"
 #include "physics/integration/integration_base.hpp"
 #include "physics/integration/moreau.hpp"
-#include "physics/integration/dual_stoermer_verlet.hpp"
 #include <iostream>
 #include <iomanip>
 #include <Eigen/Geometry>

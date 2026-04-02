@@ -6,7 +6,7 @@
 
 namespace cardillo::config {
 
-enum class IntegratorType { Moreau, StoermerVerlet };
+enum class IntegratorType { Moreau };
 enum class SolverType { ProjectedJacobi, Qoco };
 
 struct Config {

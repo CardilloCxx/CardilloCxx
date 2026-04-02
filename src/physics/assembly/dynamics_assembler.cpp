@@ -90,7 +90,6 @@ void DynamicsAssembler::rebuildForces_() {
     m_f_vec = VectorXr::Zero(totalV);
     m_f_vec_external = VectorXr::Zero(totalV);
     m_f_vec_gyroscopic = VectorXr::Zero(totalV);
-    m_v_compat.assign((size_t)Nb, VectorXr());
     const auto& reg = m_world.ecs();
     auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
@@ -121,7 +120,6 @@ void DynamicsAssembler::loadStateFromSystem() {
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     m_q_vec = VectorXr::Zero(totalQ);
     m_v_vec = VectorXr::Zero(totalV);
-    m_v_compat.assign((size_t)Nb, VectorXr()); // deprecated compatibility only
     const auto& reg = m_world.ecs();
     auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
@@ -135,7 +133,6 @@ void DynamicsAssembler::loadStateFromSystem() {
             const int offV = m_body_vel_offsets[(size_t)b];
             const int nV = (int)vb.size();
             if (nV > 0) std::copy(vb.data(), vb.data() + nV, m_v_vec.data() + offV);
-            m_v_compat[(size_t)b] = vb; // deprecated
         }
     }
 }
@@ -287,7 +284,8 @@ void DynamicsAssembler::setContactLastImpulse(int global_out_index, const cardil
 // Rebuild auxiliary block matrices derived from W and current contacts/state.
 void DynamicsAssembler::rebuildInteractionW_()
 {
-    if (m_timings) { auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::RebuildConstraintJacobians); (void)sc; }
+    auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::RebuildConstraintJacobians);
+    
     // Build m_Wg/m_Wgamma and diagonals from new constraint patterns first, then legacy springs
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     const auto &reg = m_world.ecs();
@@ -365,214 +363,6 @@ void DynamicsAssembler::rebuildInteractionW_()
 
     m_Adiag = VectorXr::Zero((index_t)nDampers);
     for (int i = 0; i < nDampers; ++i) { m_Adiag[i] = Arows[(size_t)i]; }
-
-    // Invalidate previous sparse S factorization
-    m_S_sparse_lu.reset();
-}
-
-bool DynamicsAssembler::buildAndFactorS(real_t dt, real_t theta, bool includeGyroInMatrix, bool lambdaTheta)
-{
-    if (m_timings) { auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS); (void)sc; }
-    // Ensure current blocks are built
-    rebuildInteractionW_();
-    const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
-    const int nSprings = m_Wg.nRows();
-    const int nDampers = m_Wgamma.nRows();
-    const int extV = totalV + nSprings + nDampers;
-
-    if (extV == 0) {
-        m_S_sparse_lu.reset();
-        m_S = TripletMatrix::zero(0, 0);
-        return true;
-    }
-
-    std::vector<Eigen::Triplet<real_t>> mTrips;
-    mTrips.reserve(static_cast<std::size_t>(totalV) + 64);
-
-    // Top-left: M diagonal
-    for (int i = 0; i < totalV; ++i) {
-        real_t mval = m_M_diag[i];
-        if (mval != (real_t)0) mTrips.emplace_back(i, i, mval);
-    }
-
-    // Optionally include linearized gyroscopic term in the system matrix.
-    // This adds -dt * G(omega_n) to each rigid body's rotational 3x3 block and breaks symmetry.
-    if (includeGyroInMatrix) {
-        const auto& reg = m_world.ecs();
-        auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
-        for (auto [e, bi] : view.each()) {
-            const int b = bi.b;
-            if (b < 0 || b + 1 >= (int)m_body_vel_offsets.size()) continue;
-            const int off = m_body_vel_offsets[(size_t)b];
-            const int nV = m_body_vel_offsets[(size_t)b + 1] - off;
-            if (nV < 6) continue;
-            if (!reg.all_of<cardillo::C_RigidBodyTag, cardillo::C_AngularVelocity3>(e)) continue;
-
-            const Vector3r omega = reg.get<cardillo::C_AngularVelocity3>(e).value; // body-frame
-            const Vector3r I = m_world.getInertiaDiag(e);
-            const Vector3r Iomega = I.cwiseProduct(omega);
-            const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
-            const Matrix33r omegaSkew = skew_from_vector(omega);
-            const Matrix33r IomegaSkew = skew_from_vector(Iomega);
-
-            // G_rot = 0.5 * ( [I*omega]_x - [omega]_x * I )
-            const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * Idiag);
-            const Matrix33r corr = -dt * Grot; // M_eff = M - dt*G
-
-            for (int r = 0; r < 3; ++r) {
-                for (int c = 0; c < 3; ++c) {
-                    const real_t val = corr(r, c);
-                    if (val != (real_t)0) mTrips.emplace_back(off + 3 + r, off + 3 + c, val);
-                }
-            }
-        }
-    }
-
-    const real_t topScale = lambdaTheta ? theta : (real_t)1.0;
-
-    const TripletMatrix Mblk(totalV, totalV,
-                             std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(mTrips)));
-    const real_t cScale = - (real_t)1.0 / (theta * dt * dt);
-    const real_t aScale = - (real_t)1.0 / (theta * dt);
-    const TripletMatrix top = Mblk | (m_Wg * topScale).T() | (m_Wgamma * topScale).T();
-    const TripletMatrix mid = m_Wg | (TripletMatrix::fromDiag(m_Cdiag) * cScale) | TripletMatrix::zero(nSprings, nDampers);
-    const TripletMatrix bot = m_Wgamma | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_Adiag) * aScale);
-    m_S = top.vConcat(mid).vConcat(bot);
-
-    const auto& S_sparse = m_S.asSparse();
-
-    // Factorize using SparseLU (provide symmetry hint when applicable).
-    try {
-        m_S_sparse_lu.emplace();
-        m_S_sparse_lu->isSymmetric(!includeGyroInMatrix && !lambdaTheta);
-        m_S_sparse_lu->analyzePattern(S_sparse);
-        m_S_sparse_lu->factorize(S_sparse);
-        if (m_S_sparse_lu->info() != Eigen::Success) {
-            m_S_sparse_lu.reset();
-            std::cout << "DynamicsAssembler::buildAndFactorS: SparseLU factorization failed\n";
-            return false;
-        } else if (m_world.config().debug_rb) {
-            std::cout << "[DynamicsAssembler] SparseLU factorization success.\n";
-        }
-    } catch (const std::exception& ex) {
-        if (m_world.config().debug_rb) {
-            std::cout << "[DynamicsAssembler] Exception during SparseLU: " << ex.what() << '\n';
-        }
-        m_S_sparse_lu.reset();
-        return false;
-    }
-    return true;
-}
-
-// Build and factor S using effective mass with gyroscopic term for Stormer-Verlet
-bool DynamicsAssembler::buildAndFactorS_StormerVerlet(real_t dt)
-{
-    if (m_timings) { auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS); (void)sc; }
-    rebuildInteractionW_();
-    const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
-    const int nSprings = m_Wg.nRows();
-    const int nDampers = m_Wgamma.nRows();
-    const int extV = totalV + nSprings + nDampers;
-
-    if (extV == 0) {
-        m_S_sparse_lu.reset();
-        m_S = TripletMatrix::zero(0, 0);
-        return true;
-    }
-
-    std::vector<Eigen::Triplet<real_t>> mTrips;
-    mTrips.reserve(static_cast<std::size_t>(totalV));
-
-    // // Top-left: M - dt/2 * G(u) where G(u) contains gyroscopic skew term (-w_skew * I)
-    // const auto &reg = m_sys.ecs();
-    // auto view = reg.view<World::C_BodyIndex, World::C_PhysicsObject>();
-    // for (auto [e, bi] : view.each()) {
-    //     const int b = bi.b;
-    //     if (b < 0 || b + 1 >= (int)m_body_vel_offsets.size()) continue;
-    //     const int off = m_body_vel_offsets[(size_t)b];
-    //     const int nV = m_body_vel_offsets[(size_t)b + 1] - off;
-
-    //     // Point mass: translational block only
-    //     if (reg.all_of<World::C_PointMassTag, World::C_Mass>(e)) {
-    //         const real_t m = reg.get<World::C_Mass>(e).m;
-    //         for (int i = 0; i < nV; ++i) trips.emplace_back(off + i, off + i, m);
-    //         continue;
-    //     }
-
-    //     // Rigid body: translational mass and rotational inertia plus gyro skew term
-    //     if (reg.all_of<World::C_RigidBodyTag, World::C_Mass, World::C_InertiaDiag, World::C_AngularVelocity3>(e)) {
-    //         const real_t m = reg.get<World::C_Mass>(e).m;
-    //         for (int i = 0; i < 3 && i < nV; ++i) trips.emplace_back(off + i, off + i, m);
-
-    //         if (nV >= 6) {
-    //             const Vector3r w = reg.get<World::C_AngularVelocity3>(e).value; // body-frame
-    //             const Vector3r I = m_sys.getInertiaDiag(e);
-    //             Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
-    //             const Vector3r Iw = I.cwiseProduct(w);
-    //             auto omegaSkew = skew_from_vector(w);
-    //             Matrix33r IwSkew = skew_from_vector(Iw);
-    //             auto rotBlock = Idiag - ((dt * (real_t)0.5) * (IwSkew - omegaSkew * Idiag));
-    //             for (int r = 0; r < 3; ++r) {
-    //                 for (int c = 0; c < 3; ++c) {
-    //                     const real_t val = rotBlock(r, c);
-    //                     if (val != (real_t)0) trips.emplace_back(off + 3 + r, off + 3 + c, val);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
-    // Top-left: M diagonal (no gyroscopic term)
-    for (int i = 0; i < totalV; ++i) {
-        real_t mval = m_M_diag[i];
-        if (mval != (real_t)0) mTrips.emplace_back(i, i, mval);
-    }
-
-    const TripletMatrix Mblk(totalV, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(mTrips)));
-    const real_t cSV = - (real_t)4.0 / (dt * dt);
-    const real_t aSV = - (real_t)2.0 / dt;
-    const TripletMatrix top = Mblk | (m_Wg).T() | (m_Wgamma).T();
-    const TripletMatrix mid = m_Wg | (TripletMatrix::fromDiag(m_Cdiag) * cSV) | TripletMatrix::zero(nSprings, nDampers);
-    const TripletMatrix bot = m_Wgamma | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_Adiag) * aSV);
-    m_S = top.vConcat(mid).vConcat(bot);
-
-    const auto& S_sparse = m_S.asSparse();
-
-    try {
-        m_S_sparse_lu.emplace();
-        m_S_sparse_lu->isSymmetric(false); // gyro term breaks symmetry
-        m_S_sparse_lu->analyzePattern(S_sparse);
-        m_S_sparse_lu->factorize(S_sparse);
-        if (m_S_sparse_lu->info() != Eigen::Success) {
-            m_S_sparse_lu.reset();
-            std::cout << "[DynamicsAssembler] SparseLU factorization failed\n";
-            return false;
-        } else if (m_world.config().debug_rb) {
-            std::cout << "[DynamicsAssembler] SparseLU factorization success (Stormer-Verlet).\n";
-        }
-    } catch (const std::exception& ex) {
-        if (m_world.config().debug_rb) {
-            std::cout << "[DynamicsAssembler] Exception during SparseLU (Stormer-Verlet): " << ex.what() << '\n';
-        }
-        m_S_sparse_lu.reset();
-        return false;
-    }
-
-    return true;
-}
-
-
-// Solve full extended system and return complete solution
-VectorXr DynamicsAssembler::solveS(const VectorXr& rhs_ext) const
-{  
-    if (rhs_ext.size() == 0) return rhs_ext; // empty system: identity solve
-    if (!m_S_sparse_lu.has_value()) throw std::runtime_error("DynamicsAssembler::solveS called but S matrix is not factorized");
-
-    Eigen::VectorXd sol = m_S_sparse_lu->solve(rhs_ext);
-    if (m_S_sparse_lu->info() != Eigen::Success) {
-        throw std::runtime_error("DynamicsAssembler::solveS: SparseLU solve failed");
-    }
-    return sol;
 }
 
 void DynamicsAssembler::refreshState() {
@@ -619,17 +409,11 @@ void DynamicsAssembler::refreshState() {
     }
 }
 
-void DynamicsAssembler::refreshCollisionsAndSprings(real_t dt, real_t theta, bool includeGyroInMatrix, bool lambdaTheta) {
+void DynamicsAssembler::updateStateDependentTerms() {
     DerivedEntitySync::updateEntities(m_world);
     updateContactsFromSystem();
     rebuildW_();
-    if (!buildAndFactorS(dt, theta, includeGyroInMatrix, lambdaTheta)) throw std::runtime_error("Failed to build and factor S matrix in DynamicsAssembler");
-}
-
-void DynamicsAssembler::refreshCollisionsAndSpringsStormerVerlet(real_t dt) {
-    updateContactsFromSystem();
-    rebuildW_();
-    if (!buildAndFactorS_StormerVerlet(dt)) throw std::runtime_error("Failed to build and factor S matrix (Stormer-Verlet) in DynamicsAssembler");
+    rebuildInteractionW_();
 }
 
 

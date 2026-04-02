@@ -63,8 +63,7 @@ public:
 
     // Check system dirty flags and structural updates once per step and rebuild caches as needed
     void refreshState();
-    void refreshCollisionsAndSprings(real_t dt, real_t theta, bool includeGyroInMatrix = false, bool lambdaTheta = false);
-    void refreshCollisionsAndSpringsStormerVerlet(real_t dt);
+    void updateStateDependentTerms();
 
     cardillo::misc::TimingManager* timings() const { return m_timings; }
     cardillo::collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
@@ -88,13 +87,7 @@ public:
     void setLambda_g(const VectorXr& lam);
     void setLambda_gamma(const VectorXr& lam) { m_Lambda_gamma = lam; }
 
-    // Build and factorize the effective mass matrix S = M + dt^2 * Wg * K * Wg^T + h * W_gamma * D * W_gamma^T
-    bool buildAndFactorS(real_t dt, real_t theta, bool includeGyroInMatrix = false, bool lambdaTheta = false);
-    // Solve the full extended system S * x = rhs_ext and return the complete solution (ext-length)
-    VectorXr solveS(const VectorXr& rhs_ext) const;
-
     std::vector<collision::Contact>* m_contacts_ptr{nullptr};
-
     void setContactLastImpulse(int global_out_index, const cardillo::Vector3r& imp);
 
     // Cached sizes
@@ -106,7 +99,6 @@ public:
     void rebuildForces_();
     void rebuildW_();
     void rebuildInteractionW_();
-    bool buildAndFactorS_StormerVerlet(real_t dt);
 
 private:
     World& m_world;
@@ -122,8 +114,6 @@ private:
     VectorXr m_f_vec;
     VectorXr m_f_vec_external;   // gravity + external forces/torques only
     VectorXr m_f_vec_gyroscopic; // gyroscopic forces/torques only
-    // Legacy caches removed
-    std::vector<VectorXr> m_v_compat; // kept temporarily for transition; unused in solvers
 
     // Contact Jacobian and supporting mappings
     TripletMatrix m_W; // (C_dynamic x totalV)
@@ -132,22 +122,12 @@ private:
     VectorXr m_Minv_diag;                   // size totalV, diagonal of Minv
     VectorXr m_M_diag;                      // size totalV, diagonal of M (non-inverted)
 
-    // Additional per-contact/block matrices used by solvers
-    // Wg maps constraint-space generalized g/constraint DOFs to global velocity DOFs.
+    // per-contact/block matrices used by solvers
     TripletMatrix m_Wg;
-    // W_gamma is the gamma-related Jacobian.
     TripletMatrix m_Wgamma;
 
-   
-    // Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)
-    VectorXr m_Cdiag; // size = numSprings
-    // Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)
-    VectorXr m_Adiag; // size = numDampers
-
-    // Extended block matrix S (sparse) and its sparse factorization
-    TripletMatrix m_S; // size extV x extV
-    // Use SparseLU on the symmetric S matrix.
-    std::optional<Eigen::SparseLU<CscMatrix>> m_S_sparse_lu; // lazily constructed
+    VectorXr m_Cdiag; // Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)
+    VectorXr m_Adiag; //Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)
 
     // Store Lagrange multipliers (they are being integrated)
     VectorXr m_Lambda_g;

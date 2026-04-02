@@ -11,7 +11,7 @@ QocoSolver::QocoSolver(cardillo::physics::DynamicsAssembler& dyn,
         m_assembler = cardillo::physics::assembly::QocoAssembler(m_dyn);
     }
 
-void QocoSolver::initQocoSolver(real_t dt) {
+void QocoSolver::initQocoSolver(real_t dt, real_t theta) {
     QOCOSettings* settings = (QOCOSettings*)malloc(sizeof(QOCOSettings));
     set_default_settings(settings);
     settings->verbose = 0;
@@ -25,12 +25,12 @@ void QocoSolver::initQocoSolver(real_t dt) {
 
     m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
 
-    QOCOCscMatrix P = m_assembler.P(dt);
-    QOCOFloat* c = m_assembler.c(dt);
-    QOCOCscMatrix A = m_assembler.A(dt);
-    QOCOFloat* b = m_assembler.b(dt);
-    QOCOCscMatrix G = m_assembler.G(dt);
-    QOCOFloat* h = m_assembler.h(dt);
+    QOCOCscMatrix P = m_assembler.P(dt, theta);
+    QOCOFloat* c = m_assembler.c(dt, theta);
+    QOCOCscMatrix A = m_assembler.A(dt, theta);
+    QOCOFloat* b = m_assembler.b(dt, theta);
+    QOCOCscMatrix G = m_assembler.G(dt, theta);
+    QOCOFloat* h = m_assembler.h(dt, theta);
 
     // second-order cones: assume friction cones of size 3
     const QOCOInt nsoc = static_cast<QOCOInt>(m_dyn.W().nRows() / 3);
@@ -58,21 +58,23 @@ void QocoSolver::initQocoSolver(real_t dt) {
     }
 }
 
-void QocoSolver::updateQocoSolver(real_t dt) {
+void QocoSolver::updateQocoSolver(real_t dt, real_t theta) {
     qoco_cleanup(m_qoco_solver);
-    initQocoSolver(dt);
+    initQocoSolver(dt, theta);
 
     // Not working as sparsity pattern changes with time, need to re-setup the solver
-    // qoco_update_matrix_data(m_qoco_solver, 0, m_assembler.A(dt), m_assembler.G(dt));
-    // qoco_update_vector_data(m_qoco_solver, m_assembler.c(dt), m_assembler.b(dt), m_assembler.h(dt));
+    // qoco_update_matrix_data(m_qoco_solver, 0, m_assembler.A(dt, theta), m_assembler.G(dt, theta));
+    // qoco_update_vector_data(m_qoco_solver, m_assembler.c(dt, theta), m_assembler.b(dt, theta), m_assembler.h(dt, theta));
 }
 
-VectorXr QocoSolver::solve(VectorXr& rhs, real_t tol) {
+VectorXr QocoSolver::solve(real_t dt, real_t theta)  {
+    if (m_dyn.timings()) { auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoSolve); (void)sc; }
+
     // TODO: dont build and factor S for QOCO solver
     // TODO: check that implicit gyrosopic forces are disabled for QOCO solver
-    // TODO: get current dt from pipeline instead
-    if(!m_qoco_solver) initQocoSolver(m_cfg.sim_dt); 
-    else updateQocoSolver(m_cfg.sim_dt);
+      m_dyn.updateStateDependentTerms();
+    if(!m_qoco_solver) initQocoSolver(dt, theta); 
+    else updateQocoSolver(dt, theta);
 
     QOCOInt exit = qoco_solve(m_qoco_solver);
 
@@ -83,21 +85,19 @@ VectorXr QocoSolver::solve(VectorXr& rhs, real_t tol) {
 
     QOCOSolution *sol = m_qoco_solver->sol;
 
-    QOCOInt iters = sol->iters;
-    QOCOFloat setup_time = sol->setup_time_sec;
-    QOCOFloat solve_time = sol->solve_time_sec;
-
-    std::cout << "[QocoSolver] QOCO solved in " << iters << " iterations, setup time: " << setup_time
-              << " sec, solve time: " << solve_time << " sec\n";
-
     QOCOFloat x = sol->x[0]; 
-    VectorXr x_vec(rhs.size());
+    VectorXr x_vec = VectorXr::Zero(m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers());
+    for (int i = 0; i < x_vec.size(); ++i) x_vec[i] = sol->x[i];
 
-    for (int i = 0; i < rhs.size(); ++i) {
-        x_vec[i] = static_cast<real_t>(sol->x[i]);
-    }
-    
-    return x_vec;
+    // cardillo::solver::WarmstartProvider::storeImpulse(p, m_dyn);
+
+	// Track spring and damper forces, return velocity.
+    const int nV = (int)m_dyn.numV();
+	const int nSprings = (int)m_dyn.numSprings();
+	const int nDampers = (int)m_dyn.numDampers();
+	if (nSprings > 0) m_dyn.setLambda_g(x_vec.segment(nV, nSprings)); 
+    if (nDampers > 0) m_dyn.setLambda_gamma(x_vec.segment(nV + nSprings, nDampers));
+	return x_vec.segment(0, nV);
 }
 
 } // namespace cardillo::solver
