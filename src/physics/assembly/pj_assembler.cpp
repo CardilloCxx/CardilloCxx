@@ -70,7 +70,7 @@ namespace cardillo::physics::assembly {
 
         m_S = top.vConcat(mid).vConcat(bot);
         const auto& S_sparse = m_S.asSparse();
-
+        
         // Factorize using SparseLU
         try {
             m_S_sparse_lu.emplace();

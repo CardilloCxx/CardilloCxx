@@ -21,6 +21,7 @@ public:
     bool buildAndFactorS(real_t dt, real_t theta, bool implicitGyro = false, bool lambdaTheta = false);
     VectorXr rhs(real_t dt, real_t theta) const;
     VectorXr solveS(const VectorXr& rhs_ext) const;
+    const TripletMatrix& S() const { return m_S; }
 
 private:
     TripletMatrix m_S;

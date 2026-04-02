@@ -365,7 +365,13 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta)  {
 	if (C == 0 || Wref.nonZeros() == 0) {
 		m_lastIterations = 0;
 		m_lastError = (real_t)0;
-		return x; // no contacts, return preliminary velocity as-is
+		
+		// Track spring and damper forces, return velocity.
+		const int nSprings = (int)m_dyn.Cdiag().size();
+		const int nDampers = (int)m_dyn.Adiag().size();
+		if (nSprings > 0) m_dyn.setLambda_g(x.segment(Nv, nSprings)); 
+		if (nDampers > 0) m_dyn.setLambda_gamma(x.segment(Nv + nSprings, nDampers));
+		return x.segment(0, Nv);
 	}
 
 	// Configure iteration context

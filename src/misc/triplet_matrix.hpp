@@ -154,15 +154,36 @@ private:
         result.n_rows_ = horizontal ? n_rows_ : n_rows_ + other.n_rows_;
         result.n_cols_ = horizontal ? n_cols_ + other.n_cols_ : n_cols_;
 
-        result.blocks_ = blocks_;
-        for (const auto& b : other.blocks_) {
+        // Fold pending matrix-level scale/transpose into block metadata so
+        // concatenation preserves transforms from both operands.
+        result.blocks_ = transformedBlocks_();
+        auto otherBlocks = other.transformedBlocks_();
+        for (const auto& b : otherBlocks) {
             Block shifted = b;
             if (horizontal) shifted.col_offset += n_cols_;
             else shifted.row_offset += n_rows_;
             result.blocks_.push_back(shifted);
         }
 
+        result.scale_ = 1.0;
+        result.transposed_ = false;
+
         return result;
+    }
+
+    std::vector<Block> transformedBlocks_() const {
+        std::vector<Block> transformed;
+        transformed.reserve(blocks_.size());
+        for (const auto& b : blocks_) {
+            Block out = b;
+            out.scale *= scale_;
+            if (transposed_) {
+                out.transposed = !out.transposed;
+                std::swap(out.row_offset, out.col_offset);
+            }
+            transformed.push_back(out);
+        }
+        return transformed;
     }
 
     // Invalidate cached sparse matrix
