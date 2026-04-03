@@ -18,7 +18,7 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta) {
     settings->abstol = m_cfg.pj_tol_abs;
     settings->reltol = m_cfg.pj_tol_rel;
     settings->kkt_static_reg = 1e-15;    
-    settings->kkt_dynamic_reg = 1e-5;
+    settings->kkt_dynamic_reg = 1e-10;
     settings->iter_ref_iters = 10;
     settings->max_iters = m_cfg.pj_max_iterations;
 
