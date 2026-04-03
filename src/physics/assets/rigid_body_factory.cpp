@@ -74,12 +74,12 @@ inline Vector3r computeUnitInertia(const RigidShape& shape, const World* system)
             return Vector3r(Ixx,Ixx,Izz);
         } else if constexpr (std::is_same_v<T, CapsuleShape>) {
             coal::Capsule capsule((coal::CoalScalar)s.radius, (coal::CoalScalar)(2.0*s.halfLength));
-            auto Iunit = capsule.computeMomentofInertia() / ((real_t)computeVolume(s, system)); // convert to unit inertia
-            return Vector3r(Iunit(0,0), Iunit(1,1), Iunit(2,2));
+            auto Iunit = capsule.computeMomentofInertia(); // convert to unit inertia
+            return Vector3r(Iunit(0,0), Iunit(1,1), Iunit(2,2)) / ((real_t)computeVolume(s, system)); 
         } else if constexpr (std::is_same_v<T, ConeShape>) {
             coal::Cone cone((coal::CoalScalar)s.radius, (coal::CoalScalar)s.height);
-            auto Iunit = cone.computeMomentofInertia() / ((real_t)computeVolume(s, system)); // convert to unit inertia
-            return Vector3r(Iunit(0,0), Iunit(1,1), Iunit(2,2));
+            auto Iunit = cone.computeMomentofInertia(); // convert to unit inertia
+            return Vector3r(Iunit(0,0), Iunit(1,1), Iunit(2,2)) / ((real_t)computeVolume(s, system));
         } else if constexpr (std::is_same_v<T, PlaneShape>) {
             return Vector3r::Zero();
         } else if constexpr (std::is_same_v<T, MeshShape>) {
