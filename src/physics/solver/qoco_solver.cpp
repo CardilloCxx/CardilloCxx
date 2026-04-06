@@ -16,24 +16,13 @@ QocoSolver::QocoSolver(cardillo::physics::DynamicsAssembler& dyn,
 
 QocoSolver::~QocoSolver() {
     if (m_qoco_solver) {
-        if (m_qoco_initialized) {
             qoco_cleanup(m_qoco_solver);
-            m_qoco_initialized = false;
             m_qoco_solver = nullptr;
-        } else {
-            std::free(m_qoco_solver);
-            m_qoco_solver = nullptr;
-        }
     }
 }
 
 void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
-    ++m_setup_calls;
-
     QOCOSettings* settings = (QOCOSettings*)malloc(sizeof(QOCOSettings));
-    if (!settings) {
-        throw std::bad_alloc();
-    }
     set_default_settings(settings);
     settings->verbose = m_cfg.debug_pj ? 1 : 0;
     settings->abstol = m_cfg.pj_tol_abs;
@@ -43,11 +32,7 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
     settings->iter_ref_iters = 0;
     settings->max_iters = m_cfg.pj_max_iterations;
 
-    m_qoco_solver = (QOCOSolver*)std::malloc(sizeof(QOCOSolver));
-    if (!m_qoco_solver) {
-        std::free(settings);
-        throw std::bad_alloc();
-    }
+    m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
 
     QOCOCscMatrix* P = m_assembler.P(dt, theta);
     QOCOFloat* c = m_assembler.c(dt, theta);
@@ -63,16 +48,6 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
     const QOCOInt l = (QOCOInt)m_dyn.numFrictionlessContacts();
     const QOCOInt nsoc = (QOCOInt)m_dyn.numFrictionalContacts();
     std::vector<QOCOInt> qvec((size_t)nsoc, (QOCOInt)3);
-
-    const bool dims_changed = (n != m_prev_n) || (m != m_prev_m) || (p != m_prev_p);
-    if (dims_changed) {
-        std::cout << "[QOCO] setup#" << m_setup_calls
-                  << " dims changed: n=" << n << ", m=" << m << ", p=" << p
-                  << ", l=" << l << ", nsoc=" << nsoc << "\n";
-        m_prev_n = n;
-        m_prev_m = m;
-        m_prev_p = p;
-    }
 
     if (first_init) {
         std::cout << "Initializing QOCO solver with settings:\n";
@@ -91,14 +66,13 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
     }
 
     QOCOInt exit = qoco_setup(m_qoco_solver, n, m, p, P, c, A, b, G, h, l, nsoc, nsoc ? qvec.data() : nullptr, settings);
+    if (exit != 0) throw std::runtime_error("Failed to initialize QOCO solver");
 
     // P comes from a dense diagonal vector conversion and owns its CSC arrays.
     std::free(P->p);
     std::free(P->i);
     std::free(P->x);
     delete P;
-
-    // A/G are zero-copy CSC views into assembler-owned sparse caches.
     delete A;
     delete G;
 
@@ -106,28 +80,10 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
     std::free(b);
     std::free(h);
     std::free(settings);
-
-    if (exit != 0) {
-        std::free(m_qoco_solver);
-        m_qoco_solver = nullptr;
-        throw std::runtime_error("Failed to initialize QOCO solver");
-    }
-
-    m_qoco_initialized = true;
 }
 
 void QocoSolver::updateQocoSolver(real_t dt, real_t theta) {
-    if (m_qoco_solver) {
-        if (m_qoco_initialized) {
-            qoco_cleanup(m_qoco_solver);
-            m_qoco_initialized = false;
-            m_qoco_solver = nullptr;
-        } else {
-            std::free(m_qoco_solver);
-            m_qoco_solver = nullptr; 
-        }
-    }
-
+    qoco_cleanup(m_qoco_solver);
     initQocoSolver(dt, theta, false);
 
     // Not working as sparsity pattern changes with time, need to re-setup the solver
