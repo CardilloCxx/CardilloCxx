@@ -1,94 +1,27 @@
 #include "qoco_assembler.hpp"
 #include "dynamics_assembler.hpp"
-#include <cstdlib>
 #include <stdexcept>
 
 namespace cardillo::physics::assembly {
 
-QOCOCscMatrix* QocoAssembler::toQocoCSC(const SparseMatrix<Eigen::ColMajor>& A) {
-    QOCOCscMatrix* out = new QOCOCscMatrix;
-    
-    out->m = static_cast<QOCOInt>(A.rows());
-    out->n = static_cast<QOCOInt>(A.cols());
-    out->nnz = static_cast<QOCOInt>(A.nonZeros());
-    out->p = const_cast<QOCOInt*>(A.outerIndexPtr());
-    out->i = const_cast<QOCOInt*>(A.innerIndexPtr());
-    out->x = const_cast<QOCOFloat*>(A.valuePtr());
+QOCOCscMatrix* QocoAssembler::toQocoCSC(SparseMatrix<Eigen::ColMajor>& A, QOCOCscMatrix& out) {
+    using StorageIndex = typename SparseMatrix<Eigen::ColMajor>::StorageIndex;
+    static_assert(sizeof(StorageIndex) == sizeof(QOCOInt), "SparseMatrix<>::StorageIndex and QOCOInt must have the same size for zero-copy conversion");
+    static_assert(sizeof(typename SparseMatrix<Eigen::ColMajor>::Scalar) == sizeof(QOCOFloat), "SparseMatrix<>::Scalar and QOCOFloat must have the same size for zero-copy conversion");
+    out.m = static_cast<QOCOInt>(A.rows());
+    out.n = static_cast<QOCOInt>(A.cols());
+    out.nnz = static_cast<QOCOInt>(A.nonZeros());
+    out.p = const_cast<QOCOInt*>(A.outerIndexPtr());
+    out.i = const_cast<QOCOInt*>(A.innerIndexPtr());
+    out.x = const_cast<QOCOFloat*>(A.valuePtr());
 
-    return out;
+    return &out;
 }
 
-// QOCOCscMatrix* QocoAssembler::toQocoCSC(const SparseMatrix<Eigen::ColMajor>& A) {
-//     QOCOCscMatrix* out = new QOCOCscMatrix;
-// 
-//     out->m = static_cast<QOCOInt>(A.rows());
-//     out->n = static_cast<QOCOInt>(A.cols());
-//     out->nnz = static_cast<QOCOInt>(A.nonZeros());
-// 
-//     out->p = static_cast<QOCOInt*>(std::malloc(sizeof(QOCOInt) * (out->n + 1)));
-//     out->i = static_cast<QOCOInt*>(std::malloc(sizeof(QOCOInt) * out->nnz));
-//     out->x = static_cast<QOCOFloat*>(std::malloc(sizeof(QOCOFloat) * out->nnz));
-// 
-//     if (!out->p || !out->i || !out->x) {
-//         throw std::bad_alloc();
-//     }
-// 
-//     for (int k = 0; k < out->n + 1; ++k) {
-//         out->p[k] = static_cast<QOCOInt>(A.outerIndexPtr()[k]);
-//     }
-// 
-//     for (int k = 0; k < out->nnz; ++k) {
-//         out->i[k] = static_cast<QOCOInt>(A.innerIndexPtr()[k]);
-//     }
-// 
-//     for (int k = 0; k < out->nnz; ++k) {
-//         out->x[k] = static_cast<QOCOFloat>(A.valuePtr()[k]);
-//     }
-// 
-//     return out;
-// }
-
-QOCOCscMatrix* QocoAssembler::toQocoCSC(const Eigen::VectorX<real_t>& v) {
-    const int n = static_cast<int>(v.size());
-
-    QOCOCscMatrix* out = new QOCOCscMatrix;
-    out->m = out->n = n;
-    out->nnz = n;
-
-    out->p = (QOCOInt*)std::malloc(sizeof(QOCOInt) * (n + 1));
-    out->i = (QOCOInt*)std::malloc(sizeof(QOCOInt) * n);
-    out->x = (QOCOFloat*)std::malloc(sizeof(QOCOFloat) * n);
-
-    if (!out->p || !out->i || !out->x) {
-        throw std::bad_alloc();
-    }
-
-    for (int j = 0; j < n; ++j) {
-        out->p[j] = j;       // one entry per column
-        out->i[j] = j;       // diagonal
-        out->x[j] = static_cast<QOCOFloat>(v[j]);
-    }
-    out->p[n] = n;
-
-    return out;
+QOCOFloat* QocoAssembler::toQocoVector(Eigen::VectorX<real_t>& v) {
+    static_assert(sizeof(real_t) == sizeof(QOCOFloat), "real_t and QOCOFloat must have the same size for zero-copy conversion");
+    return reinterpret_cast<QOCOFloat*>(v.data());
 }
-
-QOCOFloat* QocoAssembler::toQocoVector(const Eigen::VectorX<real_t>& v) {
-    const int n = static_cast<int>(v.size());
-    QOCOFloat* out = static_cast<QOCOFloat*>(std::malloc(sizeof(QOCOFloat) * n));
-    if (!out) {
-        throw std::bad_alloc();
-    }
-
-    for (int i = 0; i < n; ++i) {
-        out[i] = static_cast<QOCOFloat>(v[i]);
-    }
-
-    return out;
-}
-
-// C -> 4/dt^2 * C, 
-// A -> 2/dt * A
 
 QOCOCscMatrix* QocoAssembler::P(real_t dt, real_t theta) {
     auto M = m_dyn->MDiag(); 
@@ -98,7 +31,10 @@ QOCOCscMatrix* QocoAssembler::P(real_t dt, real_t theta) {
     Eigen::VectorX<real_t> diag(M.size() + C.size() + A.size());
     diag << M, C, A;
 
-    return toQocoCSC(diag);
+    TripletMatrix P = TripletMatrix::fromDiag(diag);
+    m_P_cache = P.asSparse();
+
+    return toQocoCSC(m_P_cache, m_P_view);
 }
 
 QOCOCscMatrix* QocoAssembler::A(real_t dt, real_t theta) {
@@ -109,7 +45,7 @@ QOCOCscMatrix* QocoAssembler::A(real_t dt, real_t theta) {
         m_dyn->Wgamma() | TripletMatrix::zero(A.nRows(), C.nCols()) | (A * -1.0));
 
     m_A_cache = A.asSparse();
-    return toQocoCSC(m_A_cache);
+    return toQocoCSC(m_A_cache, m_A_view);
 }
 
 VectorXr QocoAssembler::computeSmu() {
@@ -129,16 +65,16 @@ QOCOCscMatrix* QocoAssembler::G(real_t dt, real_t theta) {
     TripletMatrix G = ((m_dyn->W().scaleRows(Smu) * -1.0) | TripletMatrix::zero(m_dyn->numContactRows(), m_dyn->numSprings() + m_dyn->numDampers()));
 
     m_G_cache = G.asSparse();
-    return toQocoCSC(m_G_cache);
+    return toQocoCSC(m_G_cache, m_G_view);
 }
 
 QOCOFloat* QocoAssembler::c(real_t dt, real_t theta) {
     auto cTop = - (m_dyn->MDiag().cwiseProduct(m_dyn->vVec()) + dt * (m_dyn->fVecGyroscopic() + m_dyn->fVecExternal()));
     auto cBot = VectorXr::Zero(m_dyn->numSprings() + m_dyn->numDampers());
 
-    Eigen::VectorX<real_t> c(cTop.size() + cBot.size());
-    c << cTop, cBot;
-    return toQocoVector(c);
+    m_c_cache.resize(cTop.size() + cBot.size());
+    m_c_cache << cTop, cBot;
+    return toQocoVector(m_c_cache);
 }
 
 QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
@@ -151,17 +87,17 @@ QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
     auto bTop = - (1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) *  m_dyn->Wg().asSparse() * m_dyn->vVec();
     auto bBot = - ((1.0 - theta) / theta) * m_dyn->Wgamma().asSparse() * m_dyn->vVec();
 
-    Eigen::VectorX<real_t> b(bTop.size() + bBot.size());
-    b << bTop, bBot;
-    return toQocoVector(b);
+    m_b_cache.resize(bTop.size() + bBot.size());
+    m_b_cache << bTop, bBot;
+    return toQocoVector(m_b_cache);
 }
 
 QOCOFloat* QocoAssembler::h(real_t dt, real_t theta) {
 
     //Smu missing, for w = 0
     const int n = m_dyn->numContactRows();
-    auto h = VectorXr::Zero(n);
-    return toQocoVector(h);
+    m_h_cache = VectorXr::Zero(n);
+    return toQocoVector(m_h_cache);
 }
 
 } // namespace cardillo::physics::assembly

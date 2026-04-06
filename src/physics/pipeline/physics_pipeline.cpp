@@ -9,6 +9,7 @@
 #include "../../io/vtk_writer_binary.hpp"
 #include "../../io/csv_writer.hpp"
 #include "../../misc/progress/ProgressBar.hpp"
+#include "../solver/projected_jacobi.hpp"
 #include "../solver/qoco_solver.hpp"
 
 namespace cardillo {

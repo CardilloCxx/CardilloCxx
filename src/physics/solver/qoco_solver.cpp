@@ -34,23 +34,29 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
 
     m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
 
-    QOCOCscMatrix* P = m_assembler.P(dt, theta);
-    QOCOFloat* c = m_assembler.c(dt, theta);
-    QOCOCscMatrix* A = m_assembler.A(dt, theta);
-    QOCOFloat* b = m_assembler.b(dt, theta);
-    QOCOCscMatrix* G = m_assembler.G(dt, theta);
-    QOCOFloat* h = m_assembler.h(dt, theta);
-
     // TODO: test mix of frictional and frictionless contacts
     const QOCOInt n = (QOCOInt)m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers();
     const QOCOInt m = (QOCOInt)m_dyn.numContactRows();
     const QOCOInt p = (QOCOInt)m_dyn.numSprings() + m_dyn.numDampers();
     const QOCOInt l = (QOCOInt)m_dyn.numFrictionlessContacts();
     const QOCOInt nsoc = (QOCOInt)m_dyn.numFrictionalContacts();
+
+    QOCOCscMatrix* P = m_assembler.P(dt, theta);
+    QOCOFloat* c = m_assembler.c(dt, theta);
+    QOCOCscMatrix* A = (p > 0) ? m_assembler.A(dt, theta) : nullptr;
+    QOCOFloat* b = (p > 0) ? m_assembler.b(dt, theta) : nullptr;
+    QOCOCscMatrix* G = (m > 0) ? m_assembler.G(dt, theta) : nullptr;
+    QOCOFloat* h = (m > 0) ? m_assembler.h(dt, theta) : nullptr;
+
     std::vector<QOCOInt> qvec((size_t)nsoc, (QOCOInt)3);
 
     if (first_init) {
         std::cout << "Initializing QOCO solver with settings:\n";
+    #ifdef QOCO_CUDSS_LIBRARY_DIR
+        std::cout << "  QOCO backend: cuda (cuDSS)\n";
+    #else
+        std::cout << "  QOCO backend: builtin (CPU)\n";
+    #endif
         std::cout << "  Absolute tolerance: " << settings->abstol << "\n";
         std::cout << "  Relative tolerance: " << settings->reltol << "\n";
         std::cout << "  Max iterations: " << settings->max_iters << "\n";
@@ -67,18 +73,6 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
 
     QOCOInt exit = qoco_setup(m_qoco_solver, n, m, p, P, c, A, b, G, h, l, nsoc, nsoc ? qvec.data() : nullptr, settings);
     if (exit != 0) throw std::runtime_error("Failed to initialize QOCO solver");
-
-    // P comes from a dense diagonal vector conversion and owns its CSC arrays.
-    std::free(P->p);
-    std::free(P->i);
-    std::free(P->x);
-    delete P;
-    delete A;
-    delete G;
-
-    std::free(c);
-    std::free(b);
-    std::free(h);
     std::free(settings);
 }
 
