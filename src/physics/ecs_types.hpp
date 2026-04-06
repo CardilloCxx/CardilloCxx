@@ -14,6 +14,8 @@ struct C_Mass { real_t m; };
 struct C_Position3 { Vector3r value; };
 struct C_LinearVelocity3 { Vector3r value; };
 struct C_AngularVelocity3 { Vector3r value; };
+struct C_LinearAcceleration3 { Vector3r value; };
+struct C_AngularAcceleration3 { Vector3r value; };
 struct C_Orientation { Quaternion4r value; };
 struct C_DirectorTriad { Matrix33r value; };
 struct C_PhysicsObject {};

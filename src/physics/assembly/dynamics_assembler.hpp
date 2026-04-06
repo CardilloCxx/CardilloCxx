@@ -53,7 +53,7 @@ public:
     // Explicit state IO
     void loadStateFromSystem();
     void writePositionToSystem(const VectorXr& q);
-    void writeVelocityToSystem(const VectorXr& v);
+    void writeVelocityToSystem(const VectorXr& v, real_t dt = (real_t)-1);
     void writeStateToSystem(const VectorXr& q, const VectorXr& v);
     // Assign contiguous DOF indices (3 per dynamic entity)
     void assignDofs();

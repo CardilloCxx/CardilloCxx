@@ -282,7 +282,9 @@ void World::makeStatic(entt::entity e) {
     if (m_reg.any_of<C_Mass>(e)) m_reg.remove<C_Mass>(e);
     if (m_reg.any_of<C_InertiaDiag>(e)) m_reg.remove<C_InertiaDiag>(e);
     if (m_reg.any_of<C_LinearVelocity3>(e)) m_reg.remove<C_LinearVelocity3>(e);
+    if (m_reg.any_of<C_LinearAcceleration3>(e)) m_reg.remove<C_LinearAcceleration3>(e);
     if (m_reg.any_of<C_AngularVelocity3>(e)) m_reg.remove<C_AngularVelocity3>(e);
+    if (m_reg.any_of<C_AngularAcceleration3>(e)) m_reg.remove<C_AngularAcceleration3>(e);
     if (m_reg.any_of<C_ExternalForce>(e)) m_reg.remove<C_ExternalForce>(e);
     if (m_reg.any_of<C_ExternalTorque>(e)) m_reg.remove<C_ExternalTorque>(e);
     // Ensure pose remains; visuals/collidable components are left intact
@@ -314,12 +316,16 @@ void World::setOrientation(entt::entity e, const Quaternion4r& q_in) {
 void World::setLinearVelocity(entt::entity e, const Vector3r& v) {
     if (!m_reg.valid(e)) return;
     if (m_reg.any_of<C_LinearVelocity3>(e)) m_reg.get<C_LinearVelocity3>(e).value = v; else m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{v});
+    if (m_reg.any_of<C_LinearAcceleration3>(e)) m_reg.get<C_LinearAcceleration3>(e).value = Vector3r::Zero();
+    else m_reg.emplace<C_LinearAcceleration3>(e, C_LinearAcceleration3{Vector3r::Zero()});
     markStateDirty();
 }
 
 void World::setAngularVelocity(entt::entity e, const Vector3r& w) {
     if (!m_reg.valid(e)) return;
     if (m_reg.any_of<C_AngularVelocity3>(e)) m_reg.get<C_AngularVelocity3>(e).value = w; else m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{w});
+    if (m_reg.any_of<C_AngularAcceleration3>(e)) m_reg.get<C_AngularAcceleration3>(e).value = Vector3r::Zero();
+    else m_reg.emplace<C_AngularAcceleration3>(e, C_AngularAcceleration3{Vector3r::Zero()});
     markStateDirty();
 }
 

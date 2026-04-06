@@ -65,6 +65,7 @@ private:
         Vector3r pos{Vector3r::Zero()};
         float mass{0.0f};
         Vector3r vel{Vector3r::Zero()};
+        Vector3r acc{Vector3r::Zero()};
         float radius{0.0f};
         int entityId{-1};
     };
@@ -86,10 +87,16 @@ private:
         // Optional per-vertex velocities (used for softbody visual surfaces)
         std::vector<Vector3r> perVertexVelocity;   // same size as vertices when present
         bool hasPerVertexVelocity{false};
+        std::vector<Vector3r> perVertexAcceleration;
+        bool hasPerVertexAcceleration{false};
+        std::vector<Matrix33r> perVertexStress;
+        bool hasPerVertexStress{false};
         // Kinematics for per-vertex velocities (rigid assumption)
         Vector3r center{Vector3r::Zero()};
         Vector3r vlin{Vector3r::Zero()};
         Vector3r omega{Vector3r::Zero()};
+        Vector3r alin{Vector3r::Zero()};
+        Vector3r alpha{Vector3r::Zero()};
         Matrix33r R{Matrix33r::Identity()};
         bool hasKinematics{false};
         int entityId{-1};
@@ -105,7 +112,8 @@ private:
     };
 
     // Helpers
-    Collected collect(const cardillo::World& sys) const;
+    Collected collect(const cardillo::World& sys,
+                      const std::vector<cardillo::collision::Contact>& contacts) const;
 
     // Binary (big-endian) write helpers
     static inline uint32_t bswap32(uint32_t v);

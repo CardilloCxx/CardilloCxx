@@ -122,6 +122,8 @@ entt::entity RigidBodyFactory::create(World& system,
     reg.emplace<cardillo::C_Orientation>(e, Quaternion4r(state.orientation).normalized());
     reg.emplace<cardillo::C_LinearVelocity3>(e, state.linearVelocity);
     reg.emplace<cardillo::C_AngularVelocity3>(e, state.angularVelocity);
+    reg.emplace<cardillo::C_LinearAcceleration3>(e, Vector3r::Zero());
+    reg.emplace<cardillo::C_AngularAcceleration3>(e, Vector3r::Zero());
 
     const bool wantsColliderVisual =
         std::holds_alternative<MeshShape>(shape) &&

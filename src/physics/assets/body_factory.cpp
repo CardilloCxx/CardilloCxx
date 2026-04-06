@@ -33,6 +33,7 @@ index_t BodyFactory::addPointMass(World& sys,
     reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
     reg.emplace<cardillo::C_Position3>(e, cardillo::C_Position3{x0});
     reg.emplace<cardillo::C_LinearVelocity3>(e, cardillo::C_LinearVelocity3{v0});
+    reg.emplace<cardillo::C_LinearAcceleration3>(e, cardillo::C_LinearAcceleration3{Vector3r::Zero()});
     reg.emplace<cardillo::C_Radius>(e, cardillo::C_Radius{radius});
     if (!reg.any_of<cardillo::C_Friction>(e)) {
         reg.emplace<cardillo::C_Friction>(e, cardillo::C_Friction{sys.config().friction_default_mu});

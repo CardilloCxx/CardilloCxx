@@ -160,8 +160,8 @@ void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
     m_world.markForcesDirty();
 }
 
-void DynamicsAssembler::writeVelocityToSystem(const VectorXr& v) {
-    const auto& reg = m_world.ecs();
+void DynamicsAssembler::writeVelocityToSystem(const VectorXr& v, real_t dt) {
+    auto& reg = m_world.ecs();
     auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
@@ -170,10 +170,34 @@ void DynamicsAssembler::writeVelocityToSystem(const VectorXr& v) {
             const int nV = m_body_vel_offsets[(size_t)b+1] - offV;
             VectorXr vb = (nV>0) ? v.segment(offV, nV) : VectorXr(0);
             if (vb.size() >= 3 && reg.any_of<cardillo::C_LinearVelocity3>(e)) {
-                const_cast<cardillo::C_LinearVelocity3&>(reg.get<cardillo::C_LinearVelocity3>(e)).value = vb.head<3>();
+                auto& vlinComp = reg.get<cardillo::C_LinearVelocity3>(e);
+                const Vector3r prev = vlinComp.value;
+                const Vector3r curr = vb.head<3>();
+                vlinComp.value = curr;
+
+                if (dt > (real_t)0) {
+                    const Vector3r a = (curr - prev) / dt;
+                    if (reg.any_of<cardillo::C_LinearAcceleration3>(e)) {
+                        reg.get<cardillo::C_LinearAcceleration3>(e).value = a;
+                    } else {
+                        reg.emplace<cardillo::C_LinearAcceleration3>(e, a);
+                    }
+                }
             }
             if (vb.size() >= 6 && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
-                const_cast<cardillo::C_AngularVelocity3&>(reg.get<cardillo::C_AngularVelocity3>(e)).value = vb.tail<3>();
+                auto& omegaComp = reg.get<cardillo::C_AngularVelocity3>(e);
+                const Vector3r prev = omegaComp.value;
+                const Vector3r curr = vb.tail<3>();
+                omegaComp.value = curr;
+
+                if (dt > (real_t)0) {
+                    const Vector3r alpha = (curr - prev) / dt;
+                    if (reg.any_of<cardillo::C_AngularAcceleration3>(e)) {
+                        reg.get<cardillo::C_AngularAcceleration3>(e).value = alpha;
+                    } else {
+                        reg.emplace<cardillo::C_AngularAcceleration3>(e, alpha);
+                    }
+                }
             }
         }
     }

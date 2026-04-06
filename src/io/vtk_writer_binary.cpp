@@ -1,6 +1,7 @@
 #include "vtk_writer_binary.hpp"
 #include "../collision/collision_coal.hpp"
 #include "mesh_generator.hpp"
+#include "../misc/stress_tensor_estimator.hpp"
 #include "../physics/solver/warmstart.hpp"
 #include "../physics/constraints/constraints.hpp"
 #include <cmath>
@@ -31,7 +32,10 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
                             cardillo::misc::TimingManager* timings,
                             cardillo::physics::DynamicsAssembler* dyn) {
     auto sc = timings->scope(cardillo::misc::TimingManager::TimerId::OutputWrite);
-    Collected data = collect(sys);
+    std::vector<cardillo::collision::Contact> contacts;
+    if (dyn) contacts = dyn->contacts();
+
+    Collected data = collect(sys, contacts);
     writePointsOnly(step, 0, data);
     // Write static geometry once or when structure changed
     if (!m_staticGeoWritten || sys.isStructureDirty()) {
@@ -44,7 +48,6 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
     writeDynamicGeometry(step, data);
     if (m_writeContacts) {
         if (collision_mgr) {
-            std::vector<cardillo::collision::Contact> contacts = dyn->contacts();
             const bool writeBody = m_cfg.output_contacts_body_vectors;
             writeContacts(step, contacts, writeBody);
         }
@@ -58,7 +61,8 @@ static inline float f32(real_t v) { return static_cast<float>(v); }
 
 
 
-VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) const {
+VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys,
+                                                    const std::vector<cardillo::collision::Contact>& contacts) const {
     Collected out;
     const auto& reg = sys.ecs();
 
@@ -77,6 +81,9 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
             po.pos = pos.value;
             po.mass = static_cast<float>(m.m);
             po.vel = v.value;
+            if (reg.any_of<cardillo::C_LinearAcceleration3>(e)) {
+                po.acc = reg.get<cardillo::C_LinearAcceleration3>(e).value;
+            }
             po.radius = static_cast<float>(r.r);
             po.entityId = static_cast<int>(entt::to_integral(e));
             out.points.push_back(po);
@@ -152,6 +159,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
                 mo.vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
                 const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
                 mo.omega = omega_body;
+                if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
+                    mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
+                if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
+                    mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
                 mo.hasKinematics = true;
             }
             out.meshes.push_back(std::move(mo));
@@ -189,6 +200,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
                 mo.vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
                 const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
                 mo.omega = omega_body;
+                if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
+                    mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
+                if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
+                    mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
                 mo.hasKinematics = true;
             }
             out.meshes.push_back(std::move(mo));
@@ -226,6 +241,10 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
                 mo.vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
                 const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
                 mo.omega = omega_body;
+                if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
+                    mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
+                if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
+                    mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
                 mo.hasKinematics = true;
             }
             out.meshes.push_back(std::move(mo));
@@ -255,6 +274,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
                     const auto& F = *bvh->tri_indices;
                     Quaternion4r qn = ori.value; qn.normalize();
                     const Matrix33r R = qn.toRotationMatrix();
+                    mo.R = R;
                     mo.vertices.reserve(V.size());
                     for (const auto& v : V) {
                         Vector3r p((real_t)v[0], (real_t)v[1], (real_t)v[2]);
@@ -268,7 +288,13 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
                     if (reg.any_of<cardillo::C_LinearVelocity3>(e) && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
                         const auto& vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
                         const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
-                        mo.vlin = vlin; mo.omega = omega_body; mo.hasKinematics = true; mo.R = R;
+                        mo.vlin = vlin;
+                        mo.omega = omega_body;
+                        if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
+                            mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
+                        if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
+                            mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
+                        mo.hasKinematics = true;
                     }
                     out.meshes.push_back(std::move(mo));
                 }
@@ -289,6 +315,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
             // Gather vertex positions from node entities
             mo.vertices.reserve(surf.nodes.size());
             mo.perVertexVelocity.reserve(surf.nodes.size());
+            mo.perVertexAcceleration.reserve(surf.nodes.size());
             const auto& reg2 = reg;
             for (entt::entity nodeEnt : surf.nodes) {
                 if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::C_Position3>(nodeEnt)) {
@@ -302,8 +329,15 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
                 } else {
                     mo.perVertexVelocity.emplace_back(Vector3r::Zero());
                 }
+
+                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::C_LinearAcceleration3>(nodeEnt)) {
+                    mo.perVertexAcceleration.push_back(reg2.get<cardillo::C_LinearAcceleration3>(nodeEnt).value);
+                } else {
+                    mo.perVertexAcceleration.emplace_back(Vector3r::Zero());
+                }
             }
             mo.hasPerVertexVelocity = (mo.perVertexVelocity.size() == mo.vertices.size());
+            mo.hasPerVertexAcceleration = (mo.perVertexAcceleration.size() == mo.vertices.size());
             // Copy triangles directly
             mo.triangles = surf.triangles;
             mo.hasUV = false;
@@ -403,6 +437,7 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
             mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
             Quaternion4r qn = ori.value; qn.normalize();
             const Matrix33r R = qn.toRotationMatrix();
+            mo.R = R;
             const real_t r = rad.r;
             mo.vertices.reserve(unitVerts.size());
             for (const auto& v : unitVerts) {
@@ -425,9 +460,71 @@ VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys) 
             if (reg.any_of<cardillo::C_LinearVelocity3>(e) && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
                 const auto& vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
                 const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
-                mo.vlin = vlin; mo.omega = omega_body; mo.hasKinematics = true;
+                mo.vlin = vlin;
+                mo.omega = omega_body;
+                if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
+                    mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
+                if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
+                    mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
+                mo.hasKinematics = true;
             }
             out.meshes.push_back(std::move(mo));
+        }
+    }
+
+    if (!contacts.empty()) {
+        const real_t stressDecayExponent = (real_t)2;
+        for (auto& m : out.meshes) {
+            const entt::entity ent = static_cast<entt::entity>((uint32_t)std::max(m.entityId, 0));
+            const bool validEntity = m.entityId >= 0 && reg.valid(ent);
+            const bool rigidBody = validEntity && reg.any_of<cardillo::C_RigidBodyTag>(ent);
+            const real_t entityMass = (validEntity && reg.any_of<cardillo::C_Mass>(ent))
+                                        ? reg.get<cardillo::C_Mass>(ent).m
+                                        : (real_t)1;
+
+            if (m.perVertexAcceleration.size() != m.vertices.size()) {
+                m.perVertexAcceleration.assign(m.vertices.size(), Vector3r::Zero());
+                if (m.hasKinematics) {
+                    const Vector3r omegaWorld = m.R * m.omega;
+                    const Vector3r alphaWorld = m.R * m.alpha;
+                    for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+                        const Vector3r rWorld = m.vertices[i] - m.center;
+                        m.perVertexAcceleration[i] = m.alin
+                            + alphaWorld.cross(rWorld)
+                            + omegaWorld.cross(omegaWorld.cross(rWorld));
+                    }
+                }
+                m.hasPerVertexAcceleration = true;
+            }
+
+            if (!validEntity || m.vertices.empty()) {
+                continue;
+            }
+
+            cardillo::StressTensorEstimator est(stressDecayExponent, entityMass);
+            est.Init(contacts, m_cfg.sim_dt);
+
+            m.perVertexStress.clear();
+            m.perVertexStress.reserve(m.vertices.size());
+            const Vector3r gravityWorld = sys.gravity();
+            for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+                const Vector3r pw = m.vertices[i];
+                const Vector3r accWorld = (m.perVertexAcceleration.size() == m.vertices.size())
+                                            ? m.perVertexAcceleration[i]
+                                            : Vector3r::Zero();
+
+                Vector3r inBodyPosition = pw;
+                Vector3r accBody = accWorld;
+                Vector3r gravityBody = gravityWorld;
+                if (rigidBody) {
+                    inBodyPosition = m.R.transpose() * (pw - m.center);
+                    accBody = m.R.transpose() * accWorld;
+                    gravityBody = m.R.transpose() * gravityWorld;
+                }
+
+                m.perVertexStress.push_back(est.GetStress(ent, inBodyPosition, accBody, gravityBody));
+            }
+            m.hasPerVertexStress = (m.perVertexStress.size() == m.vertices.size());
         }
     }
 
@@ -568,6 +665,10 @@ void VtkWriterBinary::writePointDataPts(std::ofstream& out, const Collected& dat
     out << "VECTORS velocity float\n";
     for (const auto& pt : data.points) { writeBE(out, f32(pt.vel.x())); writeBE(out, f32(pt.vel.y())); writeBE(out, f32(pt.vel.z())); }
 
+    // acceleration
+    out << "VECTORS acceleration float\n";
+    for (const auto& pt : data.points) { writeBE(out, f32(pt.acc.x())); writeBE(out, f32(pt.acc.y())); writeBE(out, f32(pt.acc.z())); }
+
     // entity velocity: emit the entity's linear velocity (for particles this is the same as the point velocity)
     out << "VECTORS entity_velocity float\n";
     for (const auto& pt : data.points) { writeBE(out, f32(pt.vel.x())); writeBE(out, f32(pt.vel.y())); writeBE(out, f32(pt.vel.z())); }
@@ -616,6 +717,7 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
             writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
         }
     }
+
     // Mesh vertices velocities: softbodies provide per-vertex values; otherwise use rigid kinematics if available
     for (const auto& m : data.meshes) {
         const bool usePV = m.hasPerVertexVelocity && (m.perVertexVelocity.size() == m.vertices.size());
@@ -631,6 +733,20 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
                 }
                 writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
             }
+        }
+    }
+
+    out << "VECTORS acceleration float\n";
+    for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
+    for (const auto& cu : data.cubes) {
+        for (int i = 0; i < 8; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
+    }
+    for (const auto& m : data.meshes) {
+        const bool usePA = m.hasPerVertexAcceleration && (m.perVertexAcceleration.size() == m.vertices.size());
+        if (usePA) {
+            for (const auto& a : m.perVertexAcceleration) { writeBE(out, f32(a.x())); writeBE(out, f32(a.y())); writeBE(out, f32(a.z())); }
+        } else {
+            for (std::size_t i = 0; i < m.vertices.size(); ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
         }
     }
 
@@ -678,6 +794,36 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& dat
     for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, 1.0f);
     for (const auto& cu : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, cu.beamLengthRatio); }
     for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, m.beamLengthRatio); }
+
+    out << "TENSORS stress_tensor float\n";
+    for (std::size_t i = 0; i < 4*nplanes; ++i) {
+        for (int r = 0; r < 3; ++r) {
+            for (int c = 0; c < 3; ++c) writeBE(out, 0.f);
+        }
+    }
+    for (const auto& cu : data.cubes) {
+        for (int i = 0; i < 8; ++i) {
+            for (int r = 0; r < 3; ++r) {
+                for (int c = 0; c < 3; ++c) writeBE(out, 0.f);
+            }
+        }
+    }
+    for (const auto& m : data.meshes) {
+        const bool useStress = m.hasPerVertexStress && (m.perVertexStress.size() == m.vertices.size());
+        if (useStress) {
+            for (const auto& S : m.perVertexStress) {
+                for (int r = 0; r < 3; ++r) {
+                    for (int c = 0; c < 3; ++c) writeBE(out, f32(S(r, c)));
+                }
+            }
+        } else {
+            for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+                for (int r = 0; r < 3; ++r) {
+                    for (int c = 0; c < 3; ++c) writeBE(out, 0.f);
+                }
+            }
+        }
+    }
 }
 
 void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const Collected& data) const {
