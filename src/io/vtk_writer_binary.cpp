@@ -4,19 +4,27 @@
 #include "../misc/stress_tensor_estimator.hpp"
 #include "../physics/solver/warmstart.hpp"
 #include "../physics/constraints/constraints.hpp"
-#include <cmath>
-#include <coal/hfield.h>
-#include <filesystem>
-#include <sstream>
-#include <iomanip>
+
 #include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <filesystem>
+#include <iomanip>
+#include <sstream>
 
 namespace cardillo::io {
 
+namespace {
+
+static inline float f32(real_t v) { return static_cast<float>(v); }
+
+} // namespace
+
 void VtkWriterBinary::setOutputDir(const std::string& dir) {
-    m_outputDir = dir; if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
+    m_outputDir = dir;
+    if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
 }
+
 void VtkWriterBinary::setBaseName(const std::string& name) { m_baseName = name; }
 void VtkWriterBinary::setFrequency(int freq) { m_frequency = std::max(1, freq); }
 
@@ -32,523 +40,122 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
                             cardillo::misc::TimingManager* timings,
                             cardillo::physics::DynamicsAssembler* dyn) {
     auto sc = timings->scope(cardillo::misc::TimingManager::TimerId::OutputWrite);
+
     std::vector<cardillo::collision::Contact> contacts;
     if (dyn) contacts = dyn->contacts();
 
-    Collected data = collect(sys, contacts);
-    writePointsOnly(step, 0, data);
-    // Write static geometry once or when structure changed
-    if (!m_staticGeoWritten || sys.isStructureDirty()) {
-        writeStaticGeometry(data);
-        m_staticGeoWritten = true;
-    }
-    // Additionally write a timestep-qualified static geometry snapshot every time
-    // writeStaticGeometryStep(step, data);
-    // Always write dynamic geometry per step
-    writeDynamicGeometry(step, data);
-    if (m_writeContacts) {
-        if (collision_mgr) {
-            const bool writeBody = m_cfg.output_contacts_body_vectors;
-            writeContacts(step, contacts, writeBody);
+    std::vector<EntityMesh> meshes;
+    const auto& reg = sys.ecs();
+    auto vis = reg.view<cardillo::C_VisualObject>();
+    for (auto e : vis) {
+        EntityMesh mesh;
+        if (MeshGenerator::buildEntityMesh(sys, static_cast<entt::entity>(e), m_hfStride, mesh)) {
+            meshes.push_back(std::move(mesh));
         }
     }
+
+    enrichStress(meshes, sys, contacts);
+
+    if (!m_staticGeoWritten || sys.isStructureDirty()) {
+        writeStaticGeometry(meshes);
+        m_staticGeoWritten = true;
+    }
+
+    writeDynamicGeometry(step, meshes);
+
+    if (m_writeContacts && collision_mgr) {
+        const bool writeBody = m_cfg.output_contacts_body_vectors;
+        writeContacts(step, contacts, writeBody);
+    }
+
     if (m_writeSprings) {
         writeSprings(step, sys);
     }
 }
 
-static inline float f32(real_t v) { return static_cast<float>(v); }
+void VtkWriterBinary::enrichStress(std::vector<EntityMesh>& meshes,
+                                   const cardillo::World& sys,
+                                   const std::vector<cardillo::collision::Contact>& contacts) const {
+    if (contacts.empty()) return;
 
-
-
-VtkWriterBinary::Collected VtkWriterBinary::collect(const cardillo::World& sys,
-                                                    const std::vector<cardillo::collision::Contact>& contacts) const {
-    Collected out;
     const auto& reg = sys.ecs();
+    const Vector3r gravityWorld = sys.gravity();
+    const real_t stressDecayExponent = (real_t)2;
 
-    // Points
-    {
-        auto vpoints = reg.view<cardillo::C_VisualObject,
-                    cardillo::C_PointVisualTag,
-                    cardillo::C_Position3,
-                    cardillo::C_Mass,
-                    cardillo::C_LinearVelocity3,
-                    cardillo::C_Radius>();
-        for (auto [e, pos, m, v, r] : vpoints.each()) {
-            // Skip rigid-body spheres: they will be emitted as triangle meshes
-            if (reg.any_of<cardillo::C_RB_Sphere>(e)) continue;
-            PointOut po;
-            po.pos = pos.value;
-            po.mass = static_cast<float>(m.m);
-            po.vel = v.value;
-            if (reg.any_of<cardillo::C_LinearAcceleration3>(e)) {
-                po.acc = reg.get<cardillo::C_LinearAcceleration3>(e).value;
-            }
-            po.radius = static_cast<float>(r.r);
-            po.entityId = static_cast<int>(entt::to_integral(e));
-            out.points.push_back(po);
-        }
-    }
+    for (auto& m : meshes) {
+        if (m.vertices.empty()) continue;
+        if (!reg.valid(m.entity)) continue;
 
-    // Planes
-    {
-        auto vplanes = reg.view<cardillo::C_VisualObject,
-                    cardillo::C_Position3,
-                    cardillo::C_Plane>();
-        for (auto [e, pos, pl] : vplanes.each()) {
-            PlaneOut po; po.center = pos.value; po.normal = pl.normal; po.up = pl.up; po.sizeX = pl.sizeX; po.sizeY = pl.sizeY;
-            out.planes.push_back(po);
-        }
-    }
+        const bool rigidBody = reg.any_of<cardillo::C_RigidBodyTag>(m.entity);
+        const real_t entityMass = reg.any_of<cardillo::C_Mass>(m.entity)
+                                    ? reg.get<cardillo::C_Mass>(m.entity).m
+                                    : (real_t)1;
 
-    // Cubes
-    {
-        auto vcubes = reg.view<cardillo::C_VisualObject,
-                       cardillo::C_Position3,
-                       cardillo::C_Cube,
-                       cardillo::C_Orientation>();
-        for (auto [e, pos, cb, ori] : vcubes.each()) {
-            CubeOut co;
-            Quaternion4r q_local = cb.q;
-            Quaternion4r q_world = ori.value * q_local;
-            co.center = pos.value + q_world * cb.center; // apply local center offset under local cube rotation
-            co.halfExtents = cb.halfExtents; co.q = q_world;
-            co.entityId = static_cast<int>(entt::to_integral(e));
-            co.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::C_BeamElement>(e);
-                co.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
-            }
-            if (reg.any_of<cardillo::C_LinearVelocity3>(e) && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
-                const auto& vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
-                co.vlin = vlin; co.omega = omega_body; co.hasKinematics = true;
-            }
-            out.cubes.push_back(co);
-        }
-    }
-
-    // Capsules (emitted as triangle meshes)
-    {
-        auto vcaps = reg.view<cardillo::C_VisualObject,
-                       cardillo::C_Capsule,
-                       cardillo::C_Position3,
-                       cardillo::C_Orientation>();
-        for (auto [e, cap, pos, ori] : vcaps.each()) {
-            std::vector<Vector3r> verts;
-            std::vector<Eigen::Vector3i> tris;
-            MeshGenerator::generateCapsuleMesh(8, 3, 1, cap.radius, cap.halfLength, verts, tris);
-            if (verts.empty() || tris.empty()) continue;
-            MeshOut mo;
-            mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::C_BeamElement>(e);
-                mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
-            }
-            Quaternion4r qn = ori.value; qn.normalize();
-            const Matrix33r R = qn.toRotationMatrix();
-            mo.vertices.reserve(verts.size());
-            for (const auto& v : verts) {
-                mo.vertices.push_back(R * v + pos.value);
-            }
-            mo.R = R;
-            mo.triangles = std::move(tris);
-            if (reg.any_of<cardillo::C_LinearVelocity3>(e) && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
-                mo.vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
-                mo.omega = omega_body;
-                if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
-                    mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
-                if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
-                    mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
-                mo.hasKinematics = true;
-            }
-            out.meshes.push_back(std::move(mo));
-        }
-    }
-
-    // Cylinders (emitted as triangle meshes)
-    {
-        auto vcyl = reg.view<cardillo::C_VisualObject,
-                      cardillo::C_Cylinder,
-                      cardillo::C_Position3,
-                      cardillo::C_Orientation>();
-        for (auto [e, cyl, pos, ori] : vcyl.each()) {
-            std::vector<Vector3r> verts;
-            std::vector<Eigen::Vector3i> tris;
-            MeshGenerator::generateCylinderMesh(16, cyl.radius, cyl.halfLength, verts, tris);
-            if (verts.empty() || tris.empty()) continue;
-            MeshOut mo;
-            mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::C_BeamElement>(e);
-                mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
-            }
-            Quaternion4r qn = ori.value; qn.normalize();
-            const Matrix33r R = qn.toRotationMatrix();
-            mo.vertices.reserve(verts.size());
-            for (const auto& v : verts) {
-                mo.vertices.push_back(R * v + pos.value);
-            }
-            mo.R = R;
-            mo.triangles = std::move(tris);
-            if (reg.any_of<cardillo::C_LinearVelocity3>(e) && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
-                mo.vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
-                mo.omega = omega_body;
-                if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
-                    mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
-                if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
-                    mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
-                mo.hasKinematics = true;
-            }
-            out.meshes.push_back(std::move(mo));
-        }
-    }
-
-    // Cones (emitted as triangle meshes)
-    {
-        auto vcones = reg.view<cardillo::C_VisualObject,
-                       cardillo::C_Cone,
-                       cardillo::C_Position3,
-                       cardillo::C_Orientation>();
-        for (auto [e, cone, pos, ori] : vcones.each()) {
-            std::vector<Vector3r> verts;
-            std::vector<Eigen::Vector3i> tris;
-            MeshGenerator::generateConeMesh(24, cone.radius, cone.height, verts, tris);
-            if (verts.empty() || tris.empty()) continue;
-            MeshOut mo;
-            mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::C_BeamElement>(e);
-                mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
-            }
-            Quaternion4r qn = ori.value; qn.normalize();
-            const Matrix33r R = qn.toRotationMatrix();
-            mo.vertices.reserve(verts.size());
-            for (const auto& v : verts) {
-                mo.vertices.push_back(R * v + pos.value);
-            }
-            mo.R = R;
-            mo.triangles = std::move(tris);
-            if (reg.any_of<cardillo::C_LinearVelocity3>(e) && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
-                mo.vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
-                mo.omega = omega_body;
-                if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
-                    mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
-                if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
-                    mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
-                mo.hasKinematics = true;
-            }
-            out.meshes.push_back(std::move(mo));
-        }
-    }
-
-    // Meshes
-    {
-        auto vmeshes = reg.view<cardillo::C_VisualObject,
-                     cardillo::C_Mesh,
-                     cardillo::C_Position3,
-                     cardillo::C_Orientation>();
-        for (auto [e, cm, pos, ori] : vmeshes.each()) {
-            MeshOut mo;
-            mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
-            if (reg.any_of<cardillo::C_BeamElement>(e)) {
-                const auto& be = reg.get<cardillo::C_BeamElement>(e);
-                mo.beamLengthRatio = (be.l0 > (real_t)0) ? static_cast<float>(be.l / be.l0) : 1.0f;
-            }
-            try {
-                const auto& asset = sys.getMeshAsset(e);
-                coal::BVHModelPtr_t bvh = asset.bvh;
-                if (bvh && bvh->vertices && bvh->tri_indices) {
-                    const auto& V = *bvh->vertices;
-                    const auto& F = *bvh->tri_indices;
-                    Quaternion4r qn = ori.value; qn.normalize();
-                    const Matrix33r R = qn.toRotationMatrix();
-                    mo.R = R;
-                    mo.vertices.reserve(V.size());
-                    for (const auto& v : V) {
-                        Vector3r p((real_t)v[0], (real_t)v[1], (real_t)v[2]);
-                        Vector3r pw = R * p + pos.value;
-                        mo.vertices.push_back(pw);
-                    }
-                    mo.triangles.reserve(F.size());
-                    for (const auto& t : F) mo.triangles.emplace_back((int)t[0], (int)t[1], (int)t[2]);
-                    if (asset.hasUV && asset.uvs.size() == V.size()) { mo.uvs = asset.uvs; mo.hasUV = true; }
-                    // Kinematics if available
-                    if (reg.any_of<cardillo::C_LinearVelocity3>(e) && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
-                        const auto& vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
-                        const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
-                        mo.vlin = vlin;
-                        mo.omega = omega_body;
-                        if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
-                            mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
-                        if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
-                            mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
-                        mo.hasKinematics = true;
-                    }
-                    out.meshes.push_back(std::move(mo));
-                }
-            } catch (...) { /* skip */ }
-        }
-    }
-
-    // Softbody surfaces (deformed meshes driven by point-mass nodes)
-    {
-        auto vsb = reg.view<cardillo::C_VisualObject,
-                     cardillo::C_SoftBodySurface>();
-        for (auto [e, surf] : vsb.each()) {
-            // Build a MeshOut by sampling current positions of the nodes
-            MeshOut mo;
-            mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.center = Vector3r::Zero();
-            mo.isDynamic = true; // nodes move over time
-            // Gather vertex positions from node entities
-            mo.vertices.reserve(surf.nodes.size());
-            mo.perVertexVelocity.reserve(surf.nodes.size());
-            mo.perVertexAcceleration.reserve(surf.nodes.size());
-            const auto& reg2 = reg;
-            for (entt::entity nodeEnt : surf.nodes) {
-                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::C_Position3>(nodeEnt)) {
-                    mo.vertices.push_back(reg2.get<cardillo::C_Position3>(nodeEnt).value);
-                } else {
-                    mo.vertices.emplace_back(Vector3r::Zero());
-                }
-                // Per-vertex velocity (default to zero if missing)
-                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::C_LinearVelocity3>(nodeEnt)) {
-                    mo.perVertexVelocity.push_back(reg2.get<cardillo::C_LinearVelocity3>(nodeEnt).value);
-                } else {
-                    mo.perVertexVelocity.emplace_back(Vector3r::Zero());
-                }
-
-                if (reg2.valid(nodeEnt) && reg2.any_of<cardillo::C_LinearAcceleration3>(nodeEnt)) {
-                    mo.perVertexAcceleration.push_back(reg2.get<cardillo::C_LinearAcceleration3>(nodeEnt).value);
-                } else {
-                    mo.perVertexAcceleration.emplace_back(Vector3r::Zero());
+        if (m.perVertexAcceleration.size() != m.vertices.size()) {
+            m.perVertexAcceleration.assign(m.vertices.size(), Vector3r::Zero());
+            if (m.hasKinematics) {
+                const Vector3r omegaWorld = m.R * m.omega;
+                const Vector3r alphaWorld = m.R * m.alpha;
+                for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+                    const Vector3r rWorld = m.vertices[i] - m.center;
+                    m.perVertexAcceleration[i] = m.alin
+                        + alphaWorld.cross(rWorld)
+                        + omegaWorld.cross(omegaWorld.cross(rWorld));
                 }
             }
-            mo.hasPerVertexVelocity = (mo.perVertexVelocity.size() == mo.vertices.size());
-            mo.hasPerVertexAcceleration = (mo.perVertexAcceleration.size() == mo.vertices.size());
-            // Copy triangles directly
-            mo.triangles = surf.triangles;
-            mo.hasUV = false;
-            out.meshes.push_back(std::move(mo));
+        }
+
+        cardillo::StressTensorEstimator est(stressDecayExponent, entityMass);
+        est.Init(contacts, m_cfg.sim_dt);
+
+        m.perVertexStress.clear();
+        m.perVertexStress.reserve(m.vertices.size());
+
+        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+            const Vector3r pw = m.vertices[i];
+            const Vector3r accWorld = (m.perVertexAcceleration.size() == m.vertices.size())
+                                        ? m.perVertexAcceleration[i]
+                                        : Vector3r::Zero();
+
+            Vector3r inBodyPosition = pw;
+            Vector3r accBody = accWorld;
+            Vector3r gravityBody = gravityWorld;
+            if (rigidBody) {
+                inBodyPosition = m.R.transpose() * (pw - m.center);
+                accBody = m.R.transpose() * accWorld;
+                gravityBody = m.R.transpose() * gravityWorld;
+            }
+
+            m.perVertexStress.push_back(est.GetStress(m.entity, inBodyPosition, accBody, gravityBody));
         }
     }
-
-    // HeightFields (emit as meshes with UVs, decimated by stride)
-    {
-        auto vhfs = reg.view<cardillo::C_VisualObject,
-                      cardillo::C_HeightField,
-                      cardillo::C_HeightFieldVisualTag,
-                      cardillo::C_Position3,
-                      cardillo::C_Orientation>();
-        for (auto [e, ch, pos, ori] : vhfs.each()) {
-            try {
-                const auto& asset = sys.getHeightFieldAsset(e);
-                if (!asset.hf) continue;
-                const auto& hf = *asset.hf;
-                const auto& X = hf.getXGrid();
-                const auto& Y = hf.getYGrid();
-                const auto& H = hf.getHeights();
-                const int rows = (int)H.rows();
-                const int cols = (int)H.cols();
-                if (rows <= 1 || cols <= 1) continue;
-                const int s = std::max(1, m_hfStride);
-
-                // Build index maps honoring stride and forcing inclusion of last indices
-                std::vector<int> xIdx; xIdx.reserve((cols + s - 1) / s + 1);
-                std::vector<int> yIdx; yIdx.reserve((rows + s - 1) / s + 1);
-                for (int x = 0; x < cols; x += s) xIdx.push_back(x);
-                if (xIdx.back() != cols - 1) xIdx.push_back(cols - 1);
-                for (int y = 0; y < rows; y += s) yIdx.push_back(y);
-                if (yIdx.back() != rows - 1) yIdx.push_back(rows - 1);
-                const int nxs = (int)xIdx.size();
-                const int nys = (int)yIdx.size();
-
-                MeshOut mo;
-                mo.entityId = static_cast<int>(entt::to_integral(e));
-                mo.center = pos.value;
-                mo.isDynamic = false;
-
-                Quaternion4r qn = ori.value; qn.normalize();
-                const Matrix33r R = qn.toRotationMatrix();
-                mo.vertices.reserve((size_t)nys * (size_t)nxs);
-                mo.uvs.reserve((size_t)nys * (size_t)nxs);
-
-                for (int yi = 0; yi < nys; ++yi) {
-                    int y = yIdx[yi];
-                    const float vf = nys > 1 ? (float)yi / (float)(nys - 1) : 0.f;
-                    for (int xi = 0; xi < nxs; ++xi) {
-                        int x = xIdx[xi];
-                        const float uf = nxs > 1 ? (float)xi / (float)(nxs - 1) : 0.f;
-                        Vector3r p_local((real_t)X[x], (real_t)Y[y], (real_t)H(y, x));
-                        Vector3r p_world = R * p_local + pos.value;
-                        mo.vertices.push_back(p_world);
-                        mo.uvs.emplace_back(uf, 1.0 - vf);
-                    }
-                }
-
-                // Triangulate grid: two triangles per strided cell
-                mo.triangles.reserve((size_t)(nys - 1) * (size_t)(nxs - 1) * 2);
-                for (int yi = 0; yi < nys - 1; ++yi) {
-                    for (int xi = 0; xi < nxs - 1; ++xi) {
-                        int i0 = yi * nxs + xi;
-                        int i1 = i0 + 1;
-                        int i2 = i0 + nxs;
-                        int i3 = i2 + 1;
-                        mo.triangles.emplace_back(i0, i1, i2);
-                        mo.triangles.emplace_back(i1, i3, i2);
-                    }
-                }
-                mo.hasUV = true;
-                out.meshes.push_back(std::move(mo));
-            } catch (...) {
-                // ignore HF emit errors
-            }
-        }
-    }
-
-    // Rigid-body spheres as triangle meshes (UV-sphere)
-    {
-        // Pre-generate a shared unit sphere mesh
-        static std::vector<Vector3r> unitVerts;
-        static std::vector<Eigen::Vector3i> unitTris;
-        static bool inited = false;
-        if (!inited) { MeshGenerator::generateUVSphere(12, 24, unitVerts, unitTris); inited = true; }
-        auto vspheres = reg.view<cardillo::C_VisualObject,
-                     cardillo::C_RB_Sphere,
-                     cardillo::C_Radius,
-                     cardillo::C_Position3,
-                     cardillo::C_Orientation>();
-        for (auto [e, rad, pos, ori] : vspheres.each()) {
-            MeshOut mo;
-            mo.entityId = static_cast<int>(entt::to_integral(e));
-            mo.center = pos.value;
-            mo.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
-            Quaternion4r qn = ori.value; qn.normalize();
-            const Matrix33r R = qn.toRotationMatrix();
-            mo.R = R;
-            const real_t r = rad.r;
-            mo.vertices.reserve(unitVerts.size());
-            for (const auto& v : unitVerts) {
-                Vector3r p = R * (r * v) + pos.value;
-                mo.vertices.push_back(p);
-            }
-            // Generate spherical UVs from the canonical unit sphere vertices
-            mo.uvs.reserve(unitVerts.size());
-            for (const auto& uvv : unitVerts) {
-                const real_t vx = uvv.x();
-                const real_t vy = uvv.y();
-                const real_t vz = uvv.z();
-                float u = static_cast<float>(std::atan2((double)vy, (double)vx) / (2.0 * M_PI) + 0.5);
-                float v = static_cast<float>(std::acos((double)vz) / M_PI);
-                mo.uvs.emplace_back(u, v);
-            }
-            mo.hasUV = true;
-            mo.triangles = unitTris;
-            // Kinematics
-            if (reg.any_of<cardillo::C_LinearVelocity3>(e) && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
-                const auto& vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
-                const auto& omega_body = reg.get<cardillo::C_AngularVelocity3>(e).value;
-                mo.vlin = vlin;
-                mo.omega = omega_body;
-                if (reg.any_of<cardillo::C_LinearAcceleration3>(e))
-                    mo.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
-                if (reg.any_of<cardillo::C_AngularAcceleration3>(e))
-                    mo.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
-                mo.hasKinematics = true;
-            }
-            out.meshes.push_back(std::move(mo));
-        }
-    }
-
-    if (!contacts.empty()) {
-        const real_t stressDecayExponent = (real_t)2;
-        for (auto& m : out.meshes) {
-            const entt::entity ent = static_cast<entt::entity>((uint32_t)std::max(m.entityId, 0));
-            const bool validEntity = m.entityId >= 0 && reg.valid(ent);
-            const bool rigidBody = validEntity && reg.any_of<cardillo::C_RigidBodyTag>(ent);
-            const real_t entityMass = (validEntity && reg.any_of<cardillo::C_Mass>(ent))
-                                        ? reg.get<cardillo::C_Mass>(ent).m
-                                        : (real_t)1;
-
-            if (m.perVertexAcceleration.size() != m.vertices.size()) {
-                m.perVertexAcceleration.assign(m.vertices.size(), Vector3r::Zero());
-                if (m.hasKinematics) {
-                    const Vector3r omegaWorld = m.R * m.omega;
-                    const Vector3r alphaWorld = m.R * m.alpha;
-                    for (std::size_t i = 0; i < m.vertices.size(); ++i) {
-                        const Vector3r rWorld = m.vertices[i] - m.center;
-                        m.perVertexAcceleration[i] = m.alin
-                            + alphaWorld.cross(rWorld)
-                            + omegaWorld.cross(omegaWorld.cross(rWorld));
-                    }
-                }
-                m.hasPerVertexAcceleration = true;
-            }
-
-            if (!validEntity || m.vertices.empty()) {
-                continue;
-            }
-
-            cardillo::StressTensorEstimator est(stressDecayExponent, entityMass);
-            est.Init(contacts, m_cfg.sim_dt);
-
-            m.perVertexStress.clear();
-            m.perVertexStress.reserve(m.vertices.size());
-            const Vector3r gravityWorld = sys.gravity();
-            for (std::size_t i = 0; i < m.vertices.size(); ++i) {
-                const Vector3r pw = m.vertices[i];
-                const Vector3r accWorld = (m.perVertexAcceleration.size() == m.vertices.size())
-                                            ? m.perVertexAcceleration[i]
-                                            : Vector3r::Zero();
-
-                Vector3r inBodyPosition = pw;
-                Vector3r accBody = accWorld;
-                Vector3r gravityBody = gravityWorld;
-                if (rigidBody) {
-                    inBodyPosition = m.R.transpose() * (pw - m.center);
-                    accBody = m.R.transpose() * accWorld;
-                    gravityBody = m.R.transpose() * gravityWorld;
-                }
-
-                m.perVertexStress.push_back(est.GetStress(ent, inBodyPosition, accBody, gravityBody));
-            }
-            m.hasPerVertexStress = (m.perVertexStress.size() == m.vertices.size());
-        }
-    }
-
-    return out;
 }
 
-// Big-endian helpers
 inline uint32_t VtkWriterBinary::bswap32(uint32_t v) {
-    return ((v & 0x000000FFu) << 24) | ((v & 0x0000FF00u) << 8) | ((v & 0x00FF0000u) >> 8) | ((v & 0xFF000000u) >> 24);
+    return ((v & 0x000000FFu) << 24) | ((v & 0x0000FF00u) << 8)
+         | ((v & 0x00FF0000u) >> 8)  | ((v & 0xFF000000u) >> 24);
 }
+
 inline void VtkWriterBinary::writeBE(std::ofstream& out, uint32_t v) {
-    uint32_t b = bswap32(v); out.write(reinterpret_cast<const char*>(&b), sizeof(uint32_t));
+    uint32_t b = bswap32(v);
+    out.write(reinterpret_cast<const char*>(&b), sizeof(uint32_t));
 }
+
 inline void VtkWriterBinary::writeBE(std::ofstream& out, int32_t v) {
     writeBE(out, static_cast<uint32_t>(v));
 }
+
 inline void VtkWriterBinary::writeBE(std::ofstream& out, float v) {
     static_assert(sizeof(float) == 4, "float must be 4 bytes");
-    uint32_t u; std::memcpy(&u, &v, 4); writeBE(out, u);
+    uint32_t u;
+    std::memcpy(&u, &v, 4);
+    writeBE(out, u);
 }
 
 std::string VtkWriterBinary::buildPath(const std::string& prefix, int step) const {
-    std::ostringstream ss; ss << prefix << '_' << std::setw(4) << std::setfill('0') << step << ".vtk";
-    std::string filename = ss.str();
+    std::ostringstream ss;
+    ss << prefix << '_' << std::setw(4) << std::setfill('0') << step << ".vtk";
+    const std::string filename = ss.str();
     return m_outputDir.empty() ? filename : (fs::path(m_outputDir) / filename).string();
 }
 
@@ -559,403 +166,178 @@ void VtkWriterBinary::writeHeader(std::ofstream& out, const char* title) const {
     out << "DATASET POLYDATA\n";
 }
 
-void VtkWriterBinary::writePointsBlock(std::ofstream& out, const Collected& data) const {
-    std::size_t np = data.points.size();
-    std::size_t nplanes = data.planes.size();
-    std::size_t ncubes = data.cubes.size();
-    std::size_t nmesh_pts = 0; for (const auto& m : data.meshes) nmesh_pts += m.vertices.size();
-    const std::size_t ntotal = np + 4*nplanes + 8*ncubes + nmesh_pts;
-    out << "POINTS " << ntotal << " float\n";
+void VtkWriterBinary::writePointsBlock(std::ofstream& out, const std::vector<EntityMesh>& meshes) const {
+    std::size_t nPoints = 0;
+    for (const auto& m : meshes) nPoints += m.vertices.size();
 
-    // Points
-    for (const auto& pt : data.points) { writeBE(out, f32(pt.pos.x())); writeBE(out, f32(pt.pos.y())); writeBE(out, f32(pt.pos.z())); }
-    // Plane corners
-    for (const auto& p : data.planes) {
-        Vector3r n = p.normal; n.normalize();
-        Vector3r a = p.up - p.up.dot(n)*n; if (a.norm() < 1e-12) a = Vector3r(1,0,0) - Vector3r(1,0,0).dot(n)*n; a.normalize();
-        Vector3r b = n.cross(a);
-        Vector3r c0 = p.center + (-p.sizeX)*a + (-p.sizeY)*b;
-        Vector3r c1 = p.center + ( p.sizeX)*a + (-p.sizeY)*b;
-        Vector3r c2 = p.center + ( p.sizeX)*a + ( p.sizeY)*b;
-        Vector3r c3 = p.center + (-p.sizeX)*a + ( p.sizeY)*b;
-        const Vector3r corners[4] = {c0,c1,c2,c3};
-        for (int i = 0; i < 4; ++i) { writeBE(out, f32(corners[i].x())); writeBE(out, f32(corners[i].y())); writeBE(out, f32(corners[i].z())); }
-    }
-    // Cube corners
-    for (const auto& c : data.cubes) {
-        Matrix33r R = c.q.toRotationMatrix();
-        Vector3r ex = R * Vector3r::UnitX();
-        Vector3r ey = R * Vector3r::UnitY();
-        Vector3r ez = R * Vector3r::UnitZ();
-        Vector3r vx = ex * c.halfExtents.x();
-        Vector3r vy = ey * c.halfExtents.y();
-        Vector3r vz = ez * c.halfExtents.z();
-        Vector3r p[8] = {
-            c.center - vx - vy - vz,
-            c.center + vx - vy - vz,
-            c.center + vx + vy - vz,
-            c.center - vx + vy - vz,
-            c.center - vx - vy + vz,
-            c.center + vx - vy + vz,
-            c.center + vx + vy + vz,
-            c.center - vx + vy + vz
-        };
-        for (int i = 0; i < 8; ++i) { writeBE(out, f32(p[i].x())); writeBE(out, f32(p[i].y())); writeBE(out, f32(p[i].z())); }
-    }
-    // Mesh vertices
-    for (const auto& m : data.meshes) {
-        for (const auto& p : m.vertices) { writeBE(out, f32(p.x())); writeBE(out, f32(p.y())); writeBE(out, f32(p.z())); }
-    }
-}
-
-void VtkWriterBinary::writeVerticesBlock(std::ofstream& out, std::size_t np) const {
-    out << "\nVERTICES " << np << ' ' << (2*np) << "\n";
-    for (std::size_t i = 0; i < np; ++i) { writeBE(out, int32_t(1)); writeBE(out, int32_t(i)); }
-}
-
-void VtkWriterBinary::writePolygonsBlock(std::ofstream& out, const Collected& data) const {
-    const std::size_t np = data.points.size();
-    const std::size_t nplanes = data.planes.size();
-    const std::size_t ncubes = data.cubes.size();
-    std::size_t nmesh_tris = 0; for (const auto& m : data.meshes) nmesh_tris += m.triangles.size();
-
-    const std::size_t nplane_pts = 4*nplanes;
-    const std::size_t ncube_quads = 6*ncubes;
-    const std::size_t nmesh_polys = nmesh_tris;
-    const std::size_t npolys = nplanes + ncube_quads + nmesh_polys;
-    const std::size_t polygonListSize = 5*(nplanes + ncube_quads) + 4*nmesh_polys;
-
-    out << "POLYGONS " << npolys << ' ' << polygonListSize << "\n";
-
-    // Planes as quads
-    for (std::size_t i = 0; i < nplanes; ++i) {
-        std::size_t base = np + 4*i;
-        writeBE(out, int32_t(4));
-        writeBE(out, int32_t(base+0)); writeBE(out, int32_t(base+1)); writeBE(out, int32_t(base+2)); writeBE(out, int32_t(base+3));
-    }
-    // Cubes as quads
-    for (std::size_t i = 0; i < ncubes; ++i) {
-        std::size_t base = np + nplane_pts + 8*i;
-        const int faces[6][4] = {{0,1,2,3},{4,5,6,7},{0,3,7,4},{1,5,6,2},{0,4,5,1},{3,2,6,7}};
-        for (int f = 0; f < 6; ++f) {
-            writeBE(out, int32_t(4));
-            for (int k = 0; k < 4; ++k) writeBE(out, int32_t(base + faces[f][k]));
+    out << "POINTS " << nPoints << " float\n";
+    for (const auto& m : meshes) {
+        for (const auto& p : m.vertices) {
+            writeBE(out, f32(p.x()));
+            writeBE(out, f32(p.y()));
+            writeBE(out, f32(p.z()));
         }
     }
-    // Mesh triangles
-    std::size_t base = np + nplane_pts + 8*ncubes;
-    for (const auto& m : data.meshes) {
-        for (const auto& tri : m.triangles) {
+}
+
+void VtkWriterBinary::writePolygonsBlock(std::ofstream& out, const std::vector<EntityMesh>& meshes) const {
+    std::size_t nPolys = 0;
+    std::size_t listSize = 0;
+    for (const auto& m : meshes) {
+        nPolys += m.triangles.size();
+        listSize += m.triangles.size() * 4;
+    }
+
+    out << "POLYGONS " << nPolys << ' ' << listSize << "\n";
+
+    std::size_t base = 0;
+    for (const auto& m : meshes) {
+        for (const auto& t : m.triangles) {
             writeBE(out, int32_t(3));
-            writeBE(out, int32_t(base + tri[0])); writeBE(out, int32_t(base + tri[1])); writeBE(out, int32_t(base + tri[2]));
+            writeBE(out, int32_t(base + (std::size_t)t[0]));
+            writeBE(out, int32_t(base + (std::size_t)t[1]));
+            writeBE(out, int32_t(base + (std::size_t)t[2]));
         }
         base += m.vertices.size();
     }
 }
 
-void VtkWriterBinary::writePointDataPts(std::ofstream& out, const Collected& data) const {
-    const std::size_t np = data.points.size();
-    out << "\nPOINT_DATA " << np << "\n";
-
-    // mass
-    out << "SCALARS mass float 1\nLOOKUP_TABLE default\n";
-    for (const auto& pt : data.points) writeBE(out, pt.mass);
-
-    // velocity
-    out << "VECTORS velocity float\n";
-    for (const auto& pt : data.points) { writeBE(out, f32(pt.vel.x())); writeBE(out, f32(pt.vel.y())); writeBE(out, f32(pt.vel.z())); }
-
-    // acceleration
-    out << "VECTORS acceleration float\n";
-    for (const auto& pt : data.points) { writeBE(out, f32(pt.acc.x())); writeBE(out, f32(pt.acc.y())); writeBE(out, f32(pt.acc.z())); }
-
-    // entity velocity: emit the entity's linear velocity (for particles this is the same as the point velocity)
-    out << "VECTORS entity_velocity float\n";
-    for (const auto& pt : data.points) { writeBE(out, f32(pt.vel.x())); writeBE(out, f32(pt.vel.y())); writeBE(out, f32(pt.vel.z())); }
-
-    // radius
-    out << "SCALARS radius float 1\nLOOKUP_TABLE default\n";
-    for (const auto& pt : data.points) writeBE(out, pt.radius);
-
-    // entity_id
-    out << "SCALARS entity_id int 1\nLOOKUP_TABLE default\n";
-    for (const auto& pt : data.points) writeBE(out, int32_t(pt.entityId));
-}
-
-void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const Collected& data) const {
-    const std::size_t nplanes = data.planes.size();
-    const std::size_t ncubes = data.cubes.size();
-    std::size_t nmesh_pts = 0; for (const auto& m : data.meshes) nmesh_pts += m.vertices.size();
-    const std::size_t ntotal = 4*nplanes + 8*ncubes + nmesh_pts;
-
+void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const std::vector<EntityMesh>& meshes) const {
+    std::size_t ntotal = 0;
+    for (const auto& m : meshes) ntotal += m.vertices.size();
     out << "\nPOINT_DATA " << ntotal << "\n";
 
-    // velocity: planes zero, cubes computed, meshes: use per-vertex velocities if present, else rigid approx/zero
     out << "VECTORS velocity float\n";
-    for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
-    for (const auto& cu : data.cubes) {
-        Matrix33r R = cu.q.toRotationMatrix();
-        Vector3r ex = R * Vector3r::UnitX();
-        Vector3r ey = R * Vector3r::UnitY();
-        Vector3r ez = R * Vector3r::UnitZ();
-        Vector3r vx = ex * cu.halfExtents.x();
-        Vector3r vy = ey * cu.halfExtents.y();
-        Vector3r vz = ez * cu.halfExtents.z();
-        Vector3r p[8] = {
-            cu.center - vx - vy - vz,
-            cu.center + vx - vy - vz,
-            cu.center + vx + vy - vz,
-            cu.center - vx + vy - vz,
-            cu.center - vx - vy + vz,
-            cu.center + vx - vy + vz,
-            cu.center + vx + vy + vz,
-            cu.center - vx + vy + vz
-        };
-        for (int i = 0; i < 8; ++i) {
+    for (const auto& m : meshes) {
+        const bool usePV = m.perVertexVelocity.size() == m.vertices.size();
+        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
             Vector3r v = Vector3r::Zero();
-            if (cu.hasKinematics) { Vector3r r = p[i] - cu.center; v = cu.vlin + cu.omega.cross(r); }
+            if (usePV) {
+                v = m.perVertexVelocity[i];
+            } else if (m.hasKinematics) {
+                const Vector3r rWorld = m.vertices[i] - m.center;
+                const Vector3r omegaWorld = m.R * m.omega;
+                v = m.vlin + omegaWorld.cross(rWorld);
+            }
             writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
         }
     }
 
-    // Mesh vertices velocities: softbodies provide per-vertex values; otherwise use rigid kinematics if available
-    for (const auto& m : data.meshes) {
-        const bool usePV = m.hasPerVertexVelocity && (m.perVertexVelocity.size() == m.vertices.size());
-        if (usePV) {
-            for (const auto& v : m.perVertexVelocity) { writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z())); }
-        } else {
-            for (const auto& pw : m.vertices) {
-                Vector3r v = Vector3r::Zero();
-                if (m.hasKinematics) {
-                    const Vector3r r_world = pw - m.center;
-                    const Vector3r omega_world = m.R * m.omega;  // body → world
-                    v = m.vlin + omega_world.cross(r_world);
-                }
-                writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
-            }
-        }
-    }
-
     out << "VECTORS acceleration float\n";
-    for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
-    for (const auto& cu : data.cubes) {
-        for (int i = 0; i < 8; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
-    }
-    for (const auto& m : data.meshes) {
-        const bool usePA = m.hasPerVertexAcceleration && (m.perVertexAcceleration.size() == m.vertices.size());
-        if (usePA) {
-            for (const auto& a : m.perVertexAcceleration) { writeBE(out, f32(a.x())); writeBE(out, f32(a.y())); writeBE(out, f32(a.z())); }
-        } else {
-            for (std::size_t i = 0; i < m.vertices.size(); ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
+    for (const auto& m : meshes) {
+        const bool usePA = m.perVertexAcceleration.size() == m.vertices.size();
+        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+            Vector3r a = Vector3r::Zero();
+            if (usePA) {
+                a = m.perVertexAcceleration[i];
+            } else if (m.hasKinematics) {
+                const Vector3r omegaWorld = m.R * m.omega;
+                const Vector3r alphaWorld = m.R * m.alpha;
+                const Vector3r rWorld = m.vertices[i] - m.center;
+                a = m.alin + alphaWorld.cross(rWorld) + omegaWorld.cross(omegaWorld.cross(rWorld));
+            }
+            writeBE(out, f32(a.x())); writeBE(out, f32(a.y())); writeBE(out, f32(a.z()));
         }
     }
 
-    // angular velocity: planes zero, cubes repeated per-corner, meshes repeated per-vertex
     out << "VECTORS angular_velocity float\n";
-    for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
-    for (const auto& cu : data.cubes) {
-        Vector3r omega = cu.hasKinematics ? cu.omega : Vector3r::Zero();
-        for (int i = 0; i < 8; ++i) { writeBE(out, f32(omega.x())); writeBE(out, f32(omega.y())); writeBE(out, f32(omega.z())); }
-    }
-    for (const auto& m : data.meshes) {
-        for (const auto& pw : m.vertices) {
-            Vector3r omega = m.hasKinematics ? m.omega : Vector3r::Zero();
+    for (const auto& m : meshes) {
+        const Vector3r omega = m.hasKinematics ? m.omega : Vector3r::Zero();
+        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
             writeBE(out, f32(omega.x())); writeBE(out, f32(omega.y())); writeBE(out, f32(omega.z()));
         }
     }
 
-    // entity velocity: planes zero; cubes repeated per-corner; meshes: for softbodies reuse per-vertex velocity
     out << "VECTORS entity_velocity float\n";
-    for (std::size_t i = 0; i < 4*nplanes; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
-    for (const auto& cu : data.cubes) {
-        Vector3r vlin = cu.hasKinematics ? cu.vlin : Vector3r::Zero();
-        for (int i = 0; i < 8; ++i) { writeBE(out, f32(vlin.x())); writeBE(out, f32(vlin.y())); writeBE(out, f32(vlin.z())); }
-    }
-    for (const auto& m : data.meshes) {
-        const bool usePV = m.hasPerVertexVelocity && (m.perVertexVelocity.size() == m.vertices.size());
-        if (usePV) {
-            for (const auto& v : m.perVertexVelocity) { writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z())); }
-        } else {
-            for (const auto& pw : m.vertices) {
-                Vector3r vlin = m.hasKinematics ? m.vlin : Vector3r::Zero();
-                writeBE(out, f32(vlin.x())); writeBE(out, f32(vlin.y())); writeBE(out, f32(vlin.z()));
-            }
+    for (const auto& m : meshes) {
+        const bool usePV = m.perVertexVelocity.size() == m.vertices.size();
+        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+            Vector3r v = usePV ? m.perVertexVelocity[i] : (m.hasKinematics ? m.vlin : Vector3r::Zero());
+            writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
         }
     }
 
-    // entity_id
     out << "SCALARS entity_id int 1\nLOOKUP_TABLE default\n";
-    for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, int32_t(-1));
-    for (const auto& cu : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, int32_t(cu.entityId)); }
-    for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, int32_t(m.entityId)); }
+    for (const auto& m : meshes) {
+        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+            writeBE(out, int32_t(m.entityId));
+        }
+    }
 
-    // beam length ratio: l / l0 for beam elements, 1 for others
     out << "SCALARS beam_length_ratio float 1\nLOOKUP_TABLE default\n";
-    for (std::size_t i = 0; i < 4*nplanes; ++i) writeBE(out, 1.0f);
-    for (const auto& cu : data.cubes) { for (int i = 0; i < 8; ++i) writeBE(out, cu.beamLengthRatio); }
-    for (const auto& m : data.meshes) { for (std::size_t i = 0; i < m.vertices.size(); ++i) writeBE(out, m.beamLengthRatio); }
+    for (const auto& m : meshes) {
+        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+            writeBE(out, f32(m.beamLengthRatio));
+        }
+    }
 
     out << "TENSORS stress_tensor float\n";
-    for (std::size_t i = 0; i < 4*nplanes; ++i) {
-        for (int r = 0; r < 3; ++r) {
-            for (int c = 0; c < 3; ++c) writeBE(out, 0.f);
-        }
-    }
-    for (const auto& cu : data.cubes) {
-        for (int i = 0; i < 8; ++i) {
+    for (const auto& m : meshes) {
+        const bool useStress = m.perVertexStress.size() == m.vertices.size();
+        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+            const Matrix33r S = useStress ? m.perVertexStress[i] : Matrix33r::Zero();
             for (int r = 0; r < 3; ++r) {
-                for (int c = 0; c < 3; ++c) writeBE(out, 0.f);
+                for (int c = 0; c < 3; ++c) {
+                    writeBE(out, f32(S(r, c)));
+                }
             }
         }
     }
-    for (const auto& m : data.meshes) {
-        const bool useStress = m.hasPerVertexStress && (m.perVertexStress.size() == m.vertices.size());
-        if (useStress) {
-            for (const auto& S : m.perVertexStress) {
-                for (int r = 0; r < 3; ++r) {
-                    for (int c = 0; c < 3; ++c) writeBE(out, f32(S(r, c)));
-                }
+}
+
+void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const std::vector<EntityMesh>& meshes) const {
+    out << "TEXTURE_COORDINATES tex 2 float\n";
+    for (const auto& m : meshes) {
+        const bool useUV = m.hasUV && m.uvs.size() == m.vertices.size();
+        if (useUV) {
+            for (const auto& uv : m.uvs) {
+                writeBE(out, uv.x());
+                writeBE(out, uv.y());
             }
         } else {
             for (std::size_t i = 0; i < m.vertices.size(); ++i) {
-                for (int r = 0; r < 3; ++r) {
-                    for (int c = 0; c < 3; ++c) writeBE(out, 0.f);
-                }
+                writeBE(out, 0.f);
+                writeBE(out, 0.f);
             }
         }
     }
 }
 
-void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const Collected& data) const {
-    std::size_t nmesh_pts = 0; bool any = false;
-    for (const auto& m : data.meshes) { nmesh_pts += m.vertices.size(); any = any || m.hasUV; }
-    // Always emit a TCOORDS block for geometry so viewers can texture planes/cubes even if meshes lack UVs
-    const std::size_t nplane_pts = 4*data.planes.size();
-    const std::size_t ncube_pts = 8*data.cubes.size();
-    out << "TEXTURE_COORDINATES tex 2 float\n";
-    // Planes: emit UVs in meters, matching the corner order in writePointsBlock
-    // Corner order is c0=(-hx,-hy), c1=(+hx,-hy), c2=(+hx,+hy), c3=(-hx,+hy) in the plane's local (a,b) frame.
-    for (const auto& po : data.planes) {
-        const float hx = static_cast<float>(po.sizeX);
-        const float hy = static_cast<float>(po.sizeY);
-        // Map local coordinates to [0, 2*hx] x [0, 2*hy]
-        writeBE(out, 0.f);        writeBE(out, 0.f);        // c0: (-hx,-hy) -> (0,0)
-        writeBE(out, 2.f*hx);     writeBE(out, 0.f);        // c1: (+hx,-hy) -> (2hx,0)
-        writeBE(out, 2.f*hx);     writeBE(out, 2.f*hy);     // c2: (+hx,+hy) -> (2hx,2hy)
-        writeBE(out, 0.f);        writeBE(out, 2.f*hy);     // c3: (-hx,+hy) -> (0,2hy)
+void VtkWriterBinary::writeGeometryMeshList(const std::string& path,
+                                            const std::vector<EntityMesh>& meshes,
+                                            const char* title) const {
+    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (!out) return;
+
+    writeHeader(out, title);
+    writePointsBlock(out, meshes);
+    writePolygonsBlock(out, meshes);
+    writePointDataGeo(out, meshes);
+    writeMeshTextureCoordinates(out, meshes);
+    out.close();
+}
+
+void VtkWriterBinary::writeStaticGeometry(const std::vector<EntityMesh>& meshes) const {
+    std::vector<EntityMesh> only;
+    only.reserve(meshes.size());
+    for (const auto& m : meshes) {
+        if (!m.isDynamic) only.push_back(m);
     }
 
-    // Cubes: emit simple corner UVs (u,v in {0,1}) matching the cube corner order used in writePointsBlock
-    for (const auto& c : data.cubes) {
-        // half extents in meters
-        const float hx = static_cast<float>(c.halfExtents.x());
-        const float hy = static_cast<float>(c.halfExtents.y());
-        for (int i = 0; i < 8; ++i) {
-            float lx = (i==1||i==2||i==5||i==6) ? hx : -hx;
-            float ly = (i==2||i==3||i==6||i==7) ? hy : -hy;
-            float u = lx + hx;
-            float v = ly + hy;
-            writeBE(out, u); writeBE(out, v);
-        }
+    const std::string filename = m_baseName + std::string("_static_geo.vtk");
+    const std::string path = m_outputDir.empty() ? filename : (fs::path(m_outputDir) / filename).string();
+    writeGeometryMeshList(path, only, "Static Geometry (binary)");
+}
+
+void VtkWriterBinary::writeDynamicGeometry(int step, const std::vector<EntityMesh>& meshes) const {
+    std::vector<EntityMesh> only;
+    only.reserve(meshes.size());
+    for (const auto& m : meshes) {
+        if (m.isDynamic) only.push_back(m);
     }
 
-    // Meshes: emit UVs or zeros
-    for (const auto& m : data.meshes) {
-        if (m.hasUV && m.uvs.size() == m.vertices.size()) {
-            for (const auto& uv : m.uvs) { writeBE(out, uv.x()); writeBE(out, uv.y()); }
-        } else {
-            for (std::size_t i = 0; i < m.vertices.size(); ++i) { writeBE(out, 0.f); writeBE(out, 0.f); }
-        }
-    }
-
-    // 
-}
-
-void VtkWriterBinary::writePointsOnly(int step, real_t /*time*/, const Collected& data) const {
-    std::string path = buildPath(m_baseName + "_pts", step);
-    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
-    if (!out) return;
-
-    writeHeader(out, "Particles (binary)");
-    // Only dynamic points: write their positions as full dataset (no planes/cubes/meshes)
-    Collected onlyPts = data; onlyPts.planes.clear(); onlyPts.cubes.clear(); onlyPts.meshes.clear();
-    writePointsBlock(out, onlyPts);
-    writeVerticesBlock(out, onlyPts.points.size());
-    writePointDataPts(out, onlyPts);
-    out.close();
-}
-
-void VtkWriterBinary::writeGeometryOnly(int step, real_t /*time*/, const Collected& data) const {
-    std::string path = buildPath(m_baseName + "_geo", step);
-    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
-    if (!out) return;
-
-    writeHeader(out, "Geometry (binary)");
-    Collected onlyGeo; // no dynamic points
-    onlyGeo.planes = data.planes;
-    onlyGeo.cubes = data.cubes;
-    onlyGeo.meshes = data.meshes;
-
-    writePointsBlock(out, onlyGeo);
-    writePolygonsBlock(out, onlyGeo);
-
-    // POINT_DATA for planes/cubes/meshes
-    writePointDataGeo(out, onlyGeo);
-    writeMeshTextureCoordinates(out, onlyGeo);
-    out.close();
-}
-
-void VtkWriterBinary::writeStaticGeometry(const Collected& data) const {
-    // Write only static planes/cubes/meshes to a single file without step index
-    std::string filename = m_baseName + std::string("_static_geo.vtk");
-    std::string path = m_outputDir.empty() ? filename : (fs::path(m_outputDir) / filename).string();
-    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
-    if (!out) return;
-    writeHeader(out, "Static Geometry (binary)");
-    Collected only;
-    // Planes are static
-    only.planes = data.planes;
-    // Static cubes/meshes
-    for (const auto& c : data.cubes) if (!c.isDynamic) only.cubes.push_back(c);
-    for (const auto& m : data.meshes) if (!m.isDynamic) only.meshes.push_back(m);
-    writePointsBlock(out, only);
-    writePolygonsBlock(out, only);
-    writePointDataGeo(out, only);
-    writeMeshTextureCoordinates(out, only);
-    out.close();
-}
-
-void VtkWriterBinary::writeDynamicGeometry(int step, const Collected& data) const {
-    std::string path = buildPath(m_baseName + "_geo", step);
-    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
-    if (!out) return;
-    writeHeader(out, "Dynamic Geometry (binary)");
-    Collected only;
-    // No planes (static), include dynamic cubes/meshes only
-    for (const auto& c : data.cubes) if (c.isDynamic) only.cubes.push_back(c);
-    for (const auto& m : data.meshes) if (m.isDynamic) only.meshes.push_back(m);
-    writePointsBlock(out, only);
-    writePolygonsBlock(out, only);
-    writePointDataGeo(out, only);
-    writeMeshTextureCoordinates(out, only);
-    out.close();
-}
-
-void VtkWriterBinary::writeStaticGeometryStep(int step, const Collected& data) const {
-    // Mirror writeStaticGeometry but include step index so moving static objects are captured
-    std::string path = buildPath(m_baseName + std::string("_static_geo"), step);
-    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
-    if (!out) return;
-    writeHeader(out, "Static Geometry (per-step) (binary)");
-    Collected only;
-    only.planes = data.planes; // planes treated as static
-    for (const auto& c : data.cubes) if (!c.isDynamic) only.cubes.push_back(c);
-    for (const auto& m : data.meshes) if (!m.isDynamic) only.meshes.push_back(m);
-    writePointsBlock(out, only);
-    writePolygonsBlock(out, only);
-    writePointDataGeo(out, only);
-    writeMeshTextureCoordinates(out, only);
-    out.close();
+    const std::string path = buildPath(m_baseName + "_geo", step);
+    writeGeometryMeshList(path, only, "Dynamic Geometry (binary)");
 }
 
 void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const {
@@ -1122,9 +504,7 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
     for (std::size_t i = 0; i < n_tr; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
 
     // Translation-rotation joint data for the last n_tr points; zeros for the first n
-    auto writeVecField = [&](const char* name,
-                             const std::vector<Vector3r>& prefixZeros,
-                             const std::vector<Vector3r>& tail) {
+    auto writeVecField = [&](const char* name, const std::vector<Vector3r>& tail) {
         out << name << "\n";
         for (std::size_t i = 0; i < n; ++i) {
             writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f);
@@ -1135,11 +515,11 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
     };
 
     if (n_tr > 0) {
-        writeVecField("VECTORS toA float", positions, tr_toA);
-        writeVecField("VECTORS toB float", positions, tr_toB);
-        writeVecField("VECTORS ex float",  positions, tr_ex);
-        writeVecField("VECTORS ey float",  positions, tr_ey);
-        writeVecField("VECTORS ez float",  positions, tr_ez);
+        writeVecField("VECTORS toA float", tr_toA);
+        writeVecField("VECTORS toB float", tr_toB);
+        writeVecField("VECTORS ex float",  tr_ex);
+        writeVecField("VECTORS ey float",  tr_ey);
+        writeVecField("VECTORS ez float",  tr_ez);
     }
     out.close();
 }
