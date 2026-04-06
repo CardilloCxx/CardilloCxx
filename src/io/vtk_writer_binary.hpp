@@ -63,9 +63,9 @@ private:
     using EntityMesh = MeshGenerator::EntityMesh;
 
     // Helpers
-    void enrichStress(std::vector<EntityMesh>& meshes,
-                      const cardillo::World& sys,
-                      const std::vector<cardillo::collision::Contact>& contacts) const;
+    void enrichPressure(std::vector<EntityMesh>& meshes,
+                        const cardillo::World& sys,
+                        const std::vector<cardillo::collision::Contact>& contacts) const;
 
     // Binary (big-endian) write helpers
     static inline uint32_t bswap32(uint32_t v);

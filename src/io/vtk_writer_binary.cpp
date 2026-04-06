@@ -1,22 +1,31 @@
 #include "vtk_writer_binary.hpp"
 #include "../collision/collision_coal.hpp"
 #include "mesh_generator.hpp"
-#include "../misc/stress_tensor_estimator.hpp"
 #include "../physics/solver/warmstart.hpp"
 #include "../physics/constraints/constraints.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <cmath>
 #include <cstring>
 #include <filesystem>
 #include <iomanip>
 #include <sstream>
+#include <unordered_map>
 
 namespace cardillo::io {
 
 namespace {
 
 static inline float f32(real_t v) { return static_cast<float>(v); }
+
+static inline std::uint32_t entityKey(entt::entity e) {
+    return static_cast<std::uint32_t>(entt::to_integral(e));
+}
+
+static real_t triangleArea(const Vector3r& a, const Vector3r& b, const Vector3r& c) {
+    return static_cast<real_t>(0.5) * ((b - a).cross(c - a)).norm();
+}
 
 } // namespace
 
@@ -54,7 +63,7 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
         }
     }
 
-    enrichStress(meshes, sys, contacts);
+    enrichPressure(meshes, sys, contacts);
 
     if (!m_staticGeoWritten || sys.isStructureDirty()) {
         writeStaticGeometry(meshes);
@@ -73,61 +82,48 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
     }
 }
 
-void VtkWriterBinary::enrichStress(std::vector<EntityMesh>& meshes,
-                                   const cardillo::World& sys,
-                                   const std::vector<cardillo::collision::Contact>& contacts) const {
-    if (contacts.empty()) return;
-
+void VtkWriterBinary::enrichPressure(std::vector<EntityMesh>& meshes,
+                                     const cardillo::World& sys,
+                                     const std::vector<cardillo::collision::Contact>& contacts) const {
     const auto& reg = sys.ecs();
-    const Vector3r gravityWorld = sys.gravity();
-    const real_t stressDecayExponent = (real_t)2;
+    const real_t invDt = (m_cfg.sim_dt > (real_t)0)
+                       ? ((real_t)1 / m_cfg.sim_dt)
+                       : (real_t)1;
+    constexpr real_t kMinArea = (real_t)1e-12;
+
+    std::unordered_map<std::uint32_t, real_t> compressiveForce;
+    compressiveForce.reserve(contacts.size() * 2 + 1);
+
+    for (const auto& c : contacts) {
+        const real_t pn = std::max((real_t)0, c.last_impulse(0)) * invDt;
+        if (pn <= (real_t)0) continue;
+        compressiveForce[entityKey(c.a)] += pn;
+        compressiveForce[entityKey(c.b)] += pn;
+    }
 
     for (auto& m : meshes) {
+        m.entityPressure = (real_t)0;
+        if (!m.isDynamic) continue;
         if (m.vertices.empty()) continue;
         if (!reg.valid(m.entity)) continue;
 
-        const bool rigidBody = reg.any_of<cardillo::C_RigidBodyTag>(m.entity);
-        const real_t entityMass = reg.any_of<cardillo::C_Mass>(m.entity)
-                                    ? reg.get<cardillo::C_Mass>(m.entity).m
-                                    : (real_t)1;
-
-        if (m.perVertexAcceleration.size() != m.vertices.size()) {
-            m.perVertexAcceleration.assign(m.vertices.size(), Vector3r::Zero());
-            if (m.hasKinematics) {
-                const Vector3r omegaWorld = m.R * m.omega;
-                const Vector3r alphaWorld = m.R * m.alpha;
-                for (std::size_t i = 0; i < m.vertices.size(); ++i) {
-                    const Vector3r rWorld = m.vertices[i] - m.center;
-                    m.perVertexAcceleration[i] = m.alin
-                        + alphaWorld.cross(rWorld)
-                        + omegaWorld.cross(omegaWorld.cross(rWorld));
-                }
-            }
+        real_t area = (real_t)0;
+        for (const auto& t : m.triangles) {
+            const int i0 = t[0];
+            const int i1 = t[1];
+            const int i2 = t[2];
+            if (i0 < 0 || i1 < 0 || i2 < 0) continue;
+            if ((std::size_t)i0 >= m.vertices.size() || (std::size_t)i1 >= m.vertices.size() || (std::size_t)i2 >= m.vertices.size()) continue;
+            area += triangleArea(m.vertices[(std::size_t)i0], m.vertices[(std::size_t)i1], m.vertices[(std::size_t)i2]);
         }
 
-        cardillo::StressTensorEstimator est(stressDecayExponent, entityMass);
-        est.Init(contacts, m_cfg.sim_dt);
+        if (area <= kMinArea) continue;
 
-        m.perVertexStress.clear();
-        m.perVertexStress.reserve(m.vertices.size());
+        const auto it = compressiveForce.find(entityKey(m.entity));
+        if (it == compressiveForce.end()) continue;
 
-        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
-            const Vector3r pw = m.vertices[i];
-            const Vector3r accWorld = (m.perVertexAcceleration.size() == m.vertices.size())
-                                        ? m.perVertexAcceleration[i]
-                                        : Vector3r::Zero();
-
-            Vector3r inBodyPosition = pw;
-            Vector3r accBody = accWorld;
-            Vector3r gravityBody = gravityWorld;
-            if (rigidBody) {
-                inBodyPosition = m.R.transpose() * (pw - m.center);
-                accBody = m.R.transpose() * accWorld;
-                gravityBody = m.R.transpose() * gravityWorld;
-            }
-
-            m.perVertexStress.push_back(est.GetStress(m.entity, inBodyPosition, accBody, gravityBody));
-        }
+        const real_t p = it->second / area;
+        m.entityPressure = std::isfinite(p) ? p : (real_t)0;
     }
 }
 
@@ -271,16 +267,10 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const std::vector<En
         }
     }
 
-    out << "TENSORS stress_tensor float\n";
+    out << "SCALARS entity_pressure float 1\nLOOKUP_TABLE default\n";
     for (const auto& m : meshes) {
-        const bool useStress = m.perVertexStress.size() == m.vertices.size();
         for (std::size_t i = 0; i < m.vertices.size(); ++i) {
-            const Matrix33r S = useStress ? m.perVertexStress[i] : Matrix33r::Zero();
-            for (int r = 0; r < 3; ++r) {
-                for (int c = 0; c < 3; ++c) {
-                    writeBE(out, f32(S(r, c)));
-                }
-            }
+            writeBE(out, f32(m.entityPressure));
         }
     }
 }

@@ -28,10 +28,10 @@ public:
         Vector3r omega{Vector3r::Zero()};
         Vector3r alin{Vector3r::Zero()};
         Vector3r alpha{Vector3r::Zero()};
+        real_t entityPressure{(real_t)0};
 
         std::vector<Vector3r> perVertexVelocity;
         std::vector<Vector3r> perVertexAcceleration;
-        std::vector<Matrix33r> perVertexStress;
     };
 
     // Generate a unit UV-sphere triangulation.
