@@ -19,20 +19,26 @@ class QocoAssembler {
     public:
         QocoAssembler(cardillo::physics::DynamicsAssembler& dyn) : m_dyn(&dyn) {}
 
-        QOCOCscMatrix toQocoCSC(const SparseMatrix<Eigen::ColMajor>& A);
-        QOCOCscMatrix toQocoCSC(const Eigen::VectorX<real_t>& v);
+        QOCOCscMatrix* toQocoCSC(const SparseMatrix<Eigen::ColMajor>& A);
+        QOCOCscMatrix* toQocoCSC(const Eigen::VectorX<real_t>& v);
         QOCOFloat* toQocoVector(const Eigen::VectorX<real_t>& v);
 
-        QOCOCscMatrix P(real_t dt, real_t theta);
-        QOCOCscMatrix A(real_t dt, real_t theta);
-        QOCOCscMatrix G(real_t dt, real_t theta);
+        QOCOCscMatrix* P(real_t dt, real_t theta);
+        QOCOCscMatrix* A(real_t dt, real_t theta);
+        QOCOCscMatrix* G(real_t dt, real_t theta);
 
         QOCOFloat* c(real_t dt, real_t theta);
         QOCOFloat* b(real_t dt, real_t theta);
         QOCOFloat* h(real_t dt, real_t theta);
 
+        VectorXr computeSmu();
+
     private:
         cardillo::physics::DynamicsAssembler* m_dyn{nullptr};
+
+        // Keep sparse storage alive while QOCO reads CSC pointers (zero-copy path).
+        SparseMatrix<Eigen::ColMajor> m_A_cache;
+        SparseMatrix<Eigen::ColMajor> m_G_cache;
 };
 
 } // namespace cardillo::physics::assembly

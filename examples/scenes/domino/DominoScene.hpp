@@ -16,21 +16,24 @@ public:
     void populate(cardillo::physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
-    // Create a ground plate (static cube via unified API)
-    physics::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
-    physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5);
-    engine.addStaticBody(groundShape, groundState);
+        // Create a ground plate (static cube via unified API)
+        physics::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
+        physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5);
+        engine.addStaticBody(groundShape, groundState);
 
         // Domino dims: x=length/2, y=thickness/2, z=height/2
         const Vector3r dominoHalf((real_t)0.024, (real_t)0.00375, (real_t)0.012); // length 9.6cm, thickness 1.5cm, height 4.8cm
         const real_t density = (real_t)800.0;
-        const int layers = 53; //11; // 26; //53;
-        const int gridN = 32; //16; // 16; //32;
+        const int layers = 53; //186; //11; // 26; //53;
+        const int gridN = 32; //8; //16; // 16; //32;
         const Vector3r baseCenter(0.0, 0.0, 0.0);
         const real_t gapLong = (real_t)0.004; // small longitudinal spacing
         const real_t extraLayerGap = (real_t)-0.0001;
 
-        spawnDominoTowerStructure(engine, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap);
+        spawnDominoTowerStructure(engine, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap, false);
+
+        auto upsideDownOrientation = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI, Vector3r::UnitX()));
+        engine.addRigidBody(physics::ConeShape{0.2, 0.5}, physics::RigidState{Vector3r(0.02, 0.0, 1.49), Vector3r(0.0, 0.0, -1.0), upsideDownOrientation}, physics::RigidProps::withDensity(19250.0));
     }
 
 private:
@@ -48,7 +51,8 @@ private:
         real_t density,
         const Vector3r& baseCenter,
         real_t gapLong = (real_t)0.002,
-        real_t extraLayerGap = (real_t)0.0
+        real_t extraLayerGap = (real_t)0.0,
+        bool initialImpulse = true
     ) {
         (void)gapLong; (void)extraLayerGap; // parameters kept for compatibility with older callers
         if (layers <= 0) return;
@@ -82,7 +86,7 @@ private:
             const real_t m = massFromDensity(half, density);
 
             Vector3r vel = Vector3r::Zero();
-            if (i == Ncells -1 && (j == Ncells /2 || j == Ncells /2 - 1) && k == layers -4) {
+            if (initialImpulse && (i == Ncells -1 && (j == Ncells /2 || j == Ncells /2 - 1) && k == layers -4)) {
                 vel = Vector3r(4.0, 0.0, -1.0) * 2;
             }
 

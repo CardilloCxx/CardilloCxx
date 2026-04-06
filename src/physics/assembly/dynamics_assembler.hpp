@@ -80,6 +80,10 @@ public:
     // Number of spring rows (rows in m_Wg / length of m_Cdiag)
     int numSprings() const { return (int)m_Cdiag.size(); }
     int numDampers() const { return (int)m_Adiag.size(); }
+    int numContacts() const { return (int)contacts().size(); }
+    int numContactRows() const { return (int)m_W.nRows(); }
+    int numFrictionalContacts() const { return m_numFrictionalContacts; }
+    int numFrictionlessContacts() const { return m_numFrictionlessContacts; }
 
     // Accessors for Lagrange multipliers
     const VectorXr& Lambda_g() const { return m_Lambda_g; }
@@ -117,6 +121,9 @@ private:
 
     // Contact Jacobian and supporting mappings
     TripletMatrix m_W; // (C_dynamic x totalV)
+    int m_numFrictionalContacts{0};
+    int m_numFrictionlessContacts{0};
+
     std::vector<int> m_body_vel_offsets;    // size Nb+1, prefix sums for body velocity columns
     std::vector<int> m_body_pos_offsets;    // size Nb+1, prefix sums for body position columns
     VectorXr m_Minv_diag;                   // size totalV, diagonal of Minv

@@ -74,7 +74,25 @@ public:
         TripletMatrix result = *this;
         result.transposed_ = !result.transposed_;
         std::swap(result.n_rows_, result.n_cols_);
+        std::swap(result.rowScales_, result.colScales_);
         result.invalidateCache();
+        return result;
+    }
+
+    // Scale rows: returns a copy with rows scaled by the given vector
+    TripletMatrix scaleRows(const VectorXr& rowScales) const {
+        if (rowScales.size() != n_rows_)
+            throw std::runtime_error("Row scale vector size mismatch");
+
+        TripletMatrix result = *this;
+        if (result.rowScales_.empty()) {
+            result.rowScales_.assign((size_t)rowScales.size(), (real_t)1);
+        }
+        for (int i = 0; i < rowScales.size(); ++i) {
+            result.rowScales_[(size_t)i] *= rowScales[i];
+        }
+        result.invalidateCache();
+
         return result;
     }
 
@@ -118,6 +136,9 @@ private:
     int n_cols_ = 0;
     real_t scale_ = 1.0;
     bool transposed_ = false;
+    std::vector<real_t> rowScales_;
+    std::vector<real_t> colScales_;
+
     std::vector<Block> blocks_;
 
     mutable std::shared_ptr<ColSparse> sparse_cache_col_;
@@ -136,8 +157,14 @@ private:
             for (const auto& t : *(b.data)) {
                 int r = effective_transpose ? t.col() : t.row();
                 int c = effective_transpose ? t.row() : t.col();
+                const int rr = r + b.row_offset;
+                const int cc = c + b.col_offset;
+
                 real_t v = t.value() * b.scale * scale_;
-                outTriplets.emplace_back(r + b.row_offset, c + b.col_offset, v);
+                if (!rowScales_.empty()) v *= rowScales_[(size_t)rr];
+                if (!colScales_.empty()) v *= colScales_[(size_t)cc];
+
+                outTriplets.emplace_back(rr, cc, v);
             }
         }
         return outTriplets;
@@ -180,6 +207,26 @@ private:
             if (transposed_) {
                 out.transposed = !out.transposed;
                 std::swap(out.row_offset, out.col_offset);
+            }
+
+            // Fold pending row/column scaling into block values so concat preserves semantics.
+            if (!rowScales_.empty() || !colScales_.empty()) {
+                auto scaledData = std::make_shared<std::vector<Triplet>>();
+                scaledData->reserve(out.data->size());
+
+                for (const auto& t : *out.data) {
+                    const int lr = out.transposed ? t.col() : t.row();
+                    const int lc = out.transposed ? t.row() : t.col();
+                    const int rr = lr + out.row_offset;
+                    const int cc = lc + out.col_offset;
+
+                    real_t v = t.value();
+                    if (!rowScales_.empty()) v *= rowScales_[(size_t)rr];
+                    if (!colScales_.empty()) v *= colScales_[(size_t)cc];
+                    scaledData->emplace_back(t.row(), t.col(), v);
+                }
+
+                out.data = std::move(scaledData);
             }
             transformed.push_back(out);
         }

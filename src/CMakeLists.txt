@@ -14,6 +14,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Eigen3::Eigen
         PkgConfig::PETSC
+        dl
     MPI::MPI_CXX
 )
 
@@ -73,6 +74,13 @@ if(EXISTS "${QOCO_INSTALL_DIR}/lib/libqoco.so")
     message(STATUS "Found installed QOCO at ${QOCO_INSTALL_DIR}; linking")
     target_link_libraries(${PROJECT_NAME} PUBLIC "${QOCO_INSTALL_DIR}/lib/libqoco.so")
     target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_QOCO=1)
+
+    if(DEFINED QOCO_CUDSS_LIBRARY_DIR AND NOT "${QOCO_CUDSS_LIBRARY_DIR}" STREQUAL "")
+        target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CUDSS_LIBRARY_DIR="${QOCO_CUDSS_LIBRARY_DIR}")
+    endif()
+    if(DEFINED CUDAToolkit_LIBRARY_DIR AND NOT "${CUDAToolkit_LIBRARY_DIR}" STREQUAL "")
+        target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CUDA_LIBRARY_DIR="${CUDAToolkit_LIBRARY_DIR}")
+    endif()
 endif()
 
 # Optional: enable EXR loading via tinyexr (header-only). Define CARDILLO_USE_TINYEXR to turn it on if header is provided.

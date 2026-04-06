@@ -5,74 +5,70 @@
 
 namespace cardillo::physics::assembly {
 
-// QOCOCscMatrix QocoAssembler::toQocoCSC(const SparseMatrix<Eigen::ColMajor>& A) {
-//     QOCOCscMatrix out;
-// 
-//     out.m = A.rows();
-//     out.n = A.cols();
-//     out.nnz = A.nonZeros();
-// 
-//     out.p = (QOCOInt*)std::malloc(sizeof(QOCOInt) * (A.cols() + 1));
-//     out.i = (QOCOInt*)std::malloc(sizeof(QOCOInt) * A.nonZeros());
-//     out.x = (QOCOFloat*)std::malloc(sizeof(QOCOFloat) * A.nonZeros());
-// 
-//     std::memcpy(out.p, A.outerIndexPtr(), sizeof(QOCOInt) * (A.cols() + 1));
-//     std::memcpy(out.i, A.innerIndexPtr(), sizeof(QOCOInt) * A.nonZeros());
-//     std::memcpy(out.x, A.valuePtr(),      sizeof(QOCOFloat) * A.nonZeros());
-//     return out;
-// }
-
-QOCOCscMatrix QocoAssembler::toQocoCSC(const SparseMatrix<Eigen::ColMajor>& A) {
-    QOCOCscMatrix out;
-
-    out.m = static_cast<QOCOInt>(A.rows());
-    out.n = static_cast<QOCOInt>(A.cols());
-    out.nnz = static_cast<QOCOInt>(A.nonZeros());
-
-    out.p = static_cast<QOCOInt*>(std::malloc(sizeof(QOCOInt) * (out.n + 1)));
-    out.i = static_cast<QOCOInt*>(std::malloc(sizeof(QOCOInt) * out.nnz));
-    out.x = static_cast<QOCOFloat*>(std::malloc(sizeof(QOCOFloat) * out.nnz));
-
-    if (!out.p || !out.i || !out.x) {
-        throw std::bad_alloc();
-    }
-
-    for (int k = 0; k < out.n + 1; ++k) {
-        out.p[k] = static_cast<QOCOInt>(A.outerIndexPtr()[k]);
-    }
-
-    for (int k = 0; k < out.nnz; ++k) {
-        out.i[k] = static_cast<QOCOInt>(A.innerIndexPtr()[k]);
-    }
-
-    for (int k = 0; k < out.nnz; ++k) {
-        out.x[k] = static_cast<QOCOFloat>(A.valuePtr()[k]);
-    }
+QOCOCscMatrix* QocoAssembler::toQocoCSC(const SparseMatrix<Eigen::ColMajor>& A) {
+    QOCOCscMatrix* out = new QOCOCscMatrix;
+    
+    out->m = static_cast<QOCOInt>(A.rows());
+    out->n = static_cast<QOCOInt>(A.cols());
+    out->nnz = static_cast<QOCOInt>(A.nonZeros());
+    out->p = const_cast<QOCOInt*>(A.outerIndexPtr());
+    out->i = const_cast<QOCOInt*>(A.innerIndexPtr());
+    out->x = const_cast<QOCOFloat*>(A.valuePtr());
 
     return out;
 }
 
-QOCOCscMatrix QocoAssembler::toQocoCSC(const Eigen::VectorX<real_t>& v) {
+// QOCOCscMatrix* QocoAssembler::toQocoCSC(const SparseMatrix<Eigen::ColMajor>& A) {
+//     QOCOCscMatrix* out = new QOCOCscMatrix;
+// 
+//     out->m = static_cast<QOCOInt>(A.rows());
+//     out->n = static_cast<QOCOInt>(A.cols());
+//     out->nnz = static_cast<QOCOInt>(A.nonZeros());
+// 
+//     out->p = static_cast<QOCOInt*>(std::malloc(sizeof(QOCOInt) * (out->n + 1)));
+//     out->i = static_cast<QOCOInt*>(std::malloc(sizeof(QOCOInt) * out->nnz));
+//     out->x = static_cast<QOCOFloat*>(std::malloc(sizeof(QOCOFloat) * out->nnz));
+// 
+//     if (!out->p || !out->i || !out->x) {
+//         throw std::bad_alloc();
+//     }
+// 
+//     for (int k = 0; k < out->n + 1; ++k) {
+//         out->p[k] = static_cast<QOCOInt>(A.outerIndexPtr()[k]);
+//     }
+// 
+//     for (int k = 0; k < out->nnz; ++k) {
+//         out->i[k] = static_cast<QOCOInt>(A.innerIndexPtr()[k]);
+//     }
+// 
+//     for (int k = 0; k < out->nnz; ++k) {
+//         out->x[k] = static_cast<QOCOFloat>(A.valuePtr()[k]);
+//     }
+// 
+//     return out;
+// }
+
+QOCOCscMatrix* QocoAssembler::toQocoCSC(const Eigen::VectorX<real_t>& v) {
     const int n = static_cast<int>(v.size());
 
-    QOCOCscMatrix out;
-    out.m = out.n = n;
-    out.nnz = n;
+    QOCOCscMatrix* out = new QOCOCscMatrix;
+    out->m = out->n = n;
+    out->nnz = n;
 
-    out.p = (QOCOInt*)std::malloc(sizeof(QOCOInt) * (n + 1));
-    out.i = (QOCOInt*)std::malloc(sizeof(QOCOInt) * n);
-    out.x = (QOCOFloat*)std::malloc(sizeof(QOCOFloat) * n);
+    out->p = (QOCOInt*)std::malloc(sizeof(QOCOInt) * (n + 1));
+    out->i = (QOCOInt*)std::malloc(sizeof(QOCOInt) * n);
+    out->x = (QOCOFloat*)std::malloc(sizeof(QOCOFloat) * n);
 
-    if (!out.p || !out.i || !out.x) {
+    if (!out->p || !out->i || !out->x) {
         throw std::bad_alloc();
     }
 
     for (int j = 0; j < n; ++j) {
-        out.p[j] = j;       // one entry per column
-        out.i[j] = j;       // diagonal
-        out.x[j] = static_cast<QOCOFloat>(v[j]);
+        out->p[j] = j;       // one entry per column
+        out->i[j] = j;       // diagonal
+        out->x[j] = static_cast<QOCOFloat>(v[j]);
     }
-    out.p[n] = n;
+    out->p[n] = n;
 
     return out;
 }
@@ -94,7 +90,7 @@ QOCOFloat* QocoAssembler::toQocoVector(const Eigen::VectorX<real_t>& v) {
 // C -> 4/dt^2 * C, 
 // A -> 2/dt * A
 
-QOCOCscMatrix  QocoAssembler::P(real_t dt, real_t theta) {
+QOCOCscMatrix* QocoAssembler::P(real_t dt, real_t theta) {
     auto M = m_dyn->MDiag(); 
     auto C = m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
     auto A = m_dyn->Adiag() * (1.0 / (theta * dt));
@@ -105,21 +101,35 @@ QOCOCscMatrix  QocoAssembler::P(real_t dt, real_t theta) {
     return toQocoCSC(diag);
 }
 
-QOCOCscMatrix QocoAssembler::A(real_t dt, real_t theta) {
+QOCOCscMatrix* QocoAssembler::A(real_t dt, real_t theta) {
     TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * (1.0 / (theta * dt * dt)));
     TripletMatrix A = TripletMatrix::fromDiag(m_dyn->Adiag() * (1.0 / (theta * dt)));
 
     A = (m_dyn->Wg()    | (C * -1.0)   | TripletMatrix::zero(C.nRows(), A.nCols())).vConcat(
         m_dyn->Wgamma() | TripletMatrix::zero(A.nRows(), C.nCols()) | (A * -1.0));
 
-    return toQocoCSC( A.asSparse() );
+    m_A_cache = A.asSparse();
+    return toQocoCSC(m_A_cache);
 }
 
-QOCOCscMatrix QocoAssembler::G(real_t dt, real_t theta) {
-    //TODO: add friction scaling, currently mu = 1.0
-    TripletMatrix G = (m_dyn->W() | TripletMatrix::zero(m_dyn->W().nRows(), m_dyn->numSprings() + m_dyn->numDampers()));
+VectorXr QocoAssembler::computeSmu() {
+    VectorXr Smu = VectorXr::Ones(m_dyn->numContactRows());
+    for(const auto& c  : m_dyn->contacts()) {
+        if (c.friction_mu <= 0) continue;
+        const int idx = c.impulse_base_index;
+        if (idx < 0 || idx >= Smu.size()) continue;
+        Smu[idx] = 1.0 / c.friction_mu;
+    }
+    return Smu;
+}
 
-    return toQocoCSC( G.asSparse() );
+QOCOCscMatrix* QocoAssembler::G(real_t dt, real_t theta) {
+
+    VectorXr Smu = computeSmu();
+    TripletMatrix G = ((m_dyn->W().scaleRows(Smu) * -1.0) | TripletMatrix::zero(m_dyn->numContactRows(), m_dyn->numSprings() + m_dyn->numDampers()));
+
+    m_G_cache = G.asSparse();
+    return toQocoCSC(m_G_cache);
 }
 
 QOCOFloat* QocoAssembler::c(real_t dt, real_t theta) {
@@ -147,8 +157,9 @@ QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
 }
 
 QOCOFloat* QocoAssembler::h(real_t dt, real_t theta) {
+
     //Smu missing, for w = 0
-    const int n = m_dyn->W().nRows();
+    const int n = m_dyn->numContactRows();
     auto h = VectorXr::Zero(n);
     return toQocoVector(h);
 }

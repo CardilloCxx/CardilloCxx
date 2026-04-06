@@ -214,58 +214,75 @@ void DynamicsAssembler::rebuildW_() {
     const bool frictionEnabled = m_world.config().friction_enable;
 
     int dynContactId = 0; // index into dynamic contacts (rows in W)
-    for (int i = 0; i < C_all; ++i) {
-        auto& c = (*m_contacts_ptr)[i];
-        const bool aDyn = reg.any_of<cardillo::C_BodyIndex>(c.a);
-        const bool bDyn = reg.any_of<cardillo::C_BodyIndex>(c.b);
-        // Skip static-static contacts
-        if (!aDyn && !bDyn) continue;
+    m_numFrictionalContacts = 0;
+    m_numFrictionlessContacts = 0;
 
-        auto emitDirForSide = [&](const Vector3r& dir_world, const Vector3r& r_body, const Vector3r& dir_body,
-                                   entt::entity ent, bool dyn, real_t s, int rowId) {
-            if (!dyn) return;
-            const int b = reg.get<cardillo::C_BodyIndex>(ent).b;
-            if (b < 0 || b >= Nb) return;
-            const int col0 = m_body_vel_offsets[(size_t)b];
-            if (reg.any_of<cardillo::C_RigidBodyTag>(ent)) {
-                MatrixXXr w = buildWRowRigid(dir_world, r_body, dir_body, s);
-                // 6-DoF block
-                for (int j = 0; j < w.cols(); ++j) {
-                    real_t val = w(0,j);
-                    if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
-                }
-            } else {
-                MatrixXXr w = buildWRowPoint(dir_world, s);
-                // 3-DoF block
-                for (int j = 0; j < w.cols(); ++j) {
-                    real_t val = w(0,j);
-                    if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
-                }
+    for (bool frictionPass : {false, true}) {
+        if (frictionPass && !frictionEnabled) break;
+        for (int i = 0; i < C_all; ++i) {
+            auto& c = (*m_contacts_ptr)[i];
+
+            
+            if (frictionEnabled) {
+                if (frictionPass && c.friction_mu <= 0) continue;
+                if (!frictionPass && c.friction_mu > 0) continue;
             }
-        };
 
-        // Row 0 for this contact: normal
-        const int rowN = dynContactId;
-        // record base index and default size for this contact
-        c.impulse_base_index = rowN;
-        c.impulse_size = 1;
-        emitDirForSide(c.normal, c.pointA_body, c.normalA_body, c.a, aDyn, (real_t)-1, rowN);
-        emitDirForSide(c.normal, c.pointB_body, c.normalB_body, c.b, bDyn, (real_t)+1, rowN);
-        ++dynContactId;
+            const bool aDyn = reg.any_of<cardillo::C_BodyIndex>(c.a);
+            const bool bDyn = reg.any_of<cardillo::C_BodyIndex>(c.b);
+            // Skip static-static contacts
+            if (!aDyn && !bDyn) continue;
 
-        // Optional rows: two tangential directions if friction enabled and mu > 0
-        if (frictionEnabled && c.friction_mu > (real_t)0) {
-            const int rowT1 = dynContactId;
-            emitDirForSide(c.tangent1, c.pointA_body, c.tangent1A_body, c.a, aDyn, (real_t)-1, rowT1);
-            emitDirForSide(c.tangent1, c.pointB_body, c.tangent1B_body, c.b, bDyn, (real_t)+1, rowT1);
+            auto emitDirForSide = [&](const Vector3r& dir_world, const Vector3r& r_body, const Vector3r& dir_body,
+                                    entt::entity ent, bool dyn, real_t s, int rowId) {
+                if (!dyn) return;
+                const int b = reg.get<cardillo::C_BodyIndex>(ent).b;
+                if (b < 0 || b >= Nb) return;
+                const int col0 = m_body_vel_offsets[(size_t)b];
+                if (reg.any_of<cardillo::C_RigidBodyTag>(ent)) {
+                    MatrixXXr w = buildWRowRigid(dir_world, r_body, dir_body, s);
+                    // 6-DoF block
+                    for (int j = 0; j < w.cols(); ++j) {
+                        real_t val = w(0,j);
+                        if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
+                    }
+                } else {
+                    MatrixXXr w = buildWRowPoint(dir_world, s);
+                    // 3-DoF block
+                    for (int j = 0; j < w.cols(); ++j) {
+                        real_t val = w(0,j);
+                        if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
+                    }
+                }
+            };
+
+            // Row 0 for this contact: normal
+            const int rowN = dynContactId;
+            // record base index and default size for this contact
+            c.impulse_base_index = rowN;
+            c.impulse_size = 1;
+            emitDirForSide(c.normal, c.pointA_body, c.normalA_body, c.a, aDyn, (real_t)-1, rowN);
+            emitDirForSide(c.normal, c.pointB_body, c.normalB_body, c.b, bDyn, (real_t)+1, rowN);
             ++dynContactId;
 
-            const int rowT2 = dynContactId;
-            emitDirForSide(c.tangent2, c.pointA_body, c.tangent2A_body, c.a, aDyn, (real_t)-1, rowT2);
-            emitDirForSide(c.tangent2, c.pointB_body, c.tangent2B_body, c.b, bDyn, (real_t)+1, rowT2);
-            ++dynContactId;
-            // update impulse_size to include tangential rows
-            c.impulse_size = 3;
+            // Optional rows: two tangential directions if friction enabled and mu > 0
+            if (frictionEnabled && c.friction_mu > (real_t)0) {
+                const int rowT1 = dynContactId;
+                emitDirForSide(c.tangent1, c.pointA_body, c.tangent1A_body, c.a, aDyn, (real_t)-1, rowT1);
+                emitDirForSide(c.tangent1, c.pointB_body, c.tangent1B_body, c.b, bDyn, (real_t)+1, rowT1);
+                ++dynContactId;
+
+                const int rowT2 = dynContactId;
+                emitDirForSide(c.tangent2, c.pointA_body, c.tangent2A_body, c.a, aDyn, (real_t)-1, rowT2);
+                emitDirForSide(c.tangent2, c.pointB_body, c.tangent2B_body, c.b, bDyn, (real_t)+1, rowT2);
+                ++dynContactId;
+                // update impulse_size to include tangential rows
+                c.impulse_size = 3;
+
+                ++m_numFrictionalContacts;
+            }else {
+                ++m_numFrictionlessContacts;
+            }
         }
     }
 

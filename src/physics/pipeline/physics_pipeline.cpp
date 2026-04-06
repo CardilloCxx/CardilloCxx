@@ -67,6 +67,10 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world,
 void PhysicsPipeline::step(real_t dt) {
     if (m_finished) return;
 
+    if (m_current_step == 0) {
+        m_vtk_writer->maybeWrite(m_current_step, m_current_time, m_world, m_collision_mgr, m_timings, m_dyn.get());
+    }
+
     // Refresh assembler and run integrator
     if (m_dyn) m_dyn->refreshState();
     if (m_integrator) m_integrator->step(dt);

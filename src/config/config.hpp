@@ -60,7 +60,7 @@ struct Config {
     SolverType solver{SolverType::ProjectedJacobi};
     int    pj_max_iterations{200000};   // pj.max_iterations
     real_t pj_tol_abs{(real_t)1e-4};    // pj.tol_abs
-    real_t pj_tol_rel{(real_t)0};       // pj.tol_rel
+    real_t pj_tol_rel{(real_t)1e-4};    // pj.tol_rel
     real_t pj_relaxation{(real_t)0.9};  // pj.relaxation
     real_t pj_alpha{(real_t)0.3};       // pj.alpha
     bool   pj_nesterov{false};          // pj.nesterov (enable Nesterov acceleration)
