@@ -111,12 +111,11 @@ include_directories( ${PYTHON3_INCLUDE_DIRS})
 
 include(ExternalProject)
 
-# Toggle QOCO algebra backend.
-# Set to OFF to use the normal CPU backend (QOCO "builtin" algebra).
-option(QOCO_USE_CUDA_BACKEND "Build QOCO with CUDA backend" ON)
+# Build both QOCO backends to allow runtime backend selection.
+option(QOCO_USE_CUDA_BACKEND "Build QOCO CUDA backend variant" ON)
 
-set(QOCO_ALGEBRA_BACKEND_VALUE builtin)
 set(QOCO_RUNTIME_DIRS "")
+set(QOCO_HAVE_CUDA_BACKEND OFF)
 
 if(QOCO_USE_CUDA_BACKEND)
     find_package(CUDAToolkit QUIET)
@@ -131,7 +130,7 @@ if(QOCO_USE_CUDA_BACKEND)
     )
 
     if(CUDAToolkit_FOUND AND QOCO_CUDSS_INCLUDE AND QOCO_CUDSS_LIB)
-        set(QOCO_ALGEBRA_BACKEND_VALUE cuda)
+        set(QOCO_HAVE_CUDA_BACKEND ON)
 
         get_filename_component(QOCO_CUDSS_LIBRARY_DIR "${QOCO_CUDSS_LIB}" DIRECTORY)
 
@@ -142,13 +141,16 @@ if(QOCO_USE_CUDA_BACKEND)
 
         list(REMOVE_DUPLICATES QOCO_RUNTIME_DIRS)
 
-        message(STATUS "QOCO CUDA backend enabled")
+        message(STATUS "QOCO CUDA backend variant enabled")
     else()
-        message(WARNING "CUDA backend requested but cuDSS not found, falling back.")
+        message(WARNING "CUDA backend requested but cuDSS not found, CUDA variant will not be built.")
     endif()
 endif()
 
-message(STATUS "QOCO backend selected: ${QOCO_ALGEBRA_BACKEND_VALUE}")
+message(STATUS "QOCO CPU backend variant enabled")
+if(QOCO_HAVE_CUDA_BACKEND)
+    message(STATUS "QOCO CUDA backend variant enabled")
+endif()
 
 if(QOCO_ALGEBRA_BACKEND_VALUE STREQUAL "cuda" AND QOCO_RUNTIME_DIRS)
     list(APPEND CMAKE_BUILD_RPATH ${QOCO_RUNTIME_DIRS})
@@ -172,41 +174,68 @@ ExternalProject_Add(coal_project
     INSTALL_COMMAND ""
 )
 
-# Install QOCO into the active build tree to avoid cross-build contamination.
-set(QOCO_INSTALL_DIR "${CMAKE_BINARY_DIR}/qoco-install" CACHE PATH "QOCO install prefix")
+# Install QOCO variants into the active build tree to avoid cross-build contamination.
+set(QOCO_INSTALL_DIR_CPU "${CMAKE_BINARY_DIR}/qoco-install-cpu" CACHE PATH "QOCO CPU install prefix")
+set(QOCO_INSTALL_DIR_CUDA "${CMAKE_BINARY_DIR}/qoco-install-cuda" CACHE PATH "QOCO CUDA install prefix")
 
-# Automatically fetch, build and install QOCO
-set(QOCO_CMAKE_ARGS
-    -DCMAKE_INSTALL_PREFIX=${QOCO_INSTALL_DIR}
+set(QOCO_CMAKE_ARGS_COMMON
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     -DQOCO_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-    -DQOCO_ALGEBRA_BACKEND=${QOCO_ALGEBRA_BACKEND_VALUE}
     -DBUILD_SHARED_LIBS=ON
     -DENABLE_TESTING=OFF
 )
 
+set(QOCO_CMAKE_ARGS_CPU
+    ${QOCO_CMAKE_ARGS_COMMON}
+    -DCMAKE_INSTALL_PREFIX=${QOCO_INSTALL_DIR_CPU}
+    -DQOCO_ALGEBRA_BACKEND=builtin
+)
+
+set(QOCO_CMAKE_ARGS_CUDA
+    ${QOCO_CMAKE_ARGS_COMMON}
+    -DCMAKE_INSTALL_PREFIX=${QOCO_INSTALL_DIR_CUDA}
+    -DQOCO_ALGEBRA_BACKEND=cuda
+)
+
 if(QOCO_CUDSS_LIBRARY_DIR)
-    list(APPEND QOCO_CMAKE_ARGS -DCMAKE_LIBRARY_PATH=${QOCO_CUDSS_LIBRARY_DIR})
+    list(APPEND QOCO_CMAKE_ARGS_CUDA -DCMAKE_LIBRARY_PATH=${QOCO_CUDSS_LIBRARY_DIR})
 endif()
 if(QOCO_CUDSS_INCLUDE_DIR)
-    list(APPEND QOCO_CMAKE_ARGS -DCMAKE_INCLUDE_PATH=${QOCO_CUDSS_INCLUDE_DIR})
+    list(APPEND QOCO_CMAKE_ARGS_CUDA -DCMAKE_INCLUDE_PATH=${QOCO_CUDSS_INCLUDE_DIR})
 endif()
 if(QOCO_RUNTIME_DIRS)
     string(JOIN ":" QOCO_EXTERNAL_RPATH ${QOCO_RUNTIME_DIRS})
-    list(APPEND QOCO_CMAKE_ARGS
+    list(APPEND QOCO_CMAKE_ARGS_CUDA
         -DCMAKE_BUILD_RPATH=${QOCO_EXTERNAL_RPATH}
         -DCMAKE_INSTALL_RPATH=${QOCO_EXTERNAL_RPATH}
     )
 endif()
 
-ExternalProject_Add(qoco_project
+ExternalProject_Add(qoco_project_cpu
     GIT_REPOSITORY https://github.com/qoco-org/qoco.git
     GIT_TAG v0.2.6
-    PREFIX ${CMAKE_BINARY_DIR}/_deps/qoco
+    PREFIX ${CMAKE_BINARY_DIR}/_deps/qoco-cpu
     GIT_SHALLOW TRUE
     UPDATE_DISCONNECTED TRUE
-    CMAKE_ARGS ${QOCO_CMAKE_ARGS}
+    CMAKE_ARGS ${QOCO_CMAKE_ARGS_CPU}
 )
+
+if(QOCO_HAVE_CUDA_BACKEND)
+    ExternalProject_Add(qoco_project_cuda
+        GIT_REPOSITORY https://github.com/qoco-org/qoco.git
+        GIT_TAG v0.2.6
+        PREFIX ${CMAKE_BINARY_DIR}/_deps/qoco-cuda
+        GIT_SHALLOW TRUE
+        UPDATE_DISCONNECTED TRUE
+        CMAKE_ARGS ${QOCO_CMAKE_ARGS_CUDA}
+    )
+endif()
+
+add_custom_target(qoco_project)
+add_dependencies(qoco_project qoco_project_cpu)
+if(TARGET qoco_project_cuda)
+    add_dependencies(qoco_project qoco_project_cuda)
+endif()
 
 # If PETSc was discovered via pkg-config, expose a macro and include dirs
 if(PETSC_FOUND)

@@ -2,11 +2,29 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <vector>
+#include <utility>
+#include <stdexcept>
 #include <dlfcn.h>
 
 #include <qoco/qoco.h>
 
 namespace cardillo::solver {
+
+namespace {
+
+template <typename T>
+T loadSymbol(void* handle, const char* name) {
+    dlerror();
+    void* sym = dlsym(handle, name);
+    const char* err = dlerror();
+    if (err != nullptr || sym == nullptr) {
+        throw std::runtime_error(std::string("Failed to resolve symbol '") + name + "': " + (err ? err : "unknown error"));
+    }
+    return reinterpret_cast<T>(sym);
+}
+
+} // namespace
 
 QocoSolver::QocoSolver(cardillo::physics::DynamicsAssembler& dyn,
                        const cardillo::config::Config& cfg)
@@ -16,47 +34,112 @@ QocoSolver::QocoSolver(cardillo::physics::DynamicsAssembler& dyn,
 
 QocoSolver::~QocoSolver() {
     if (m_qoco_solver) {
-            qoco_cleanup(m_qoco_solver);
-            m_qoco_solver = nullptr;
+        m_qoco_cleanup(m_qoco_solver);
+        m_qoco_solver = nullptr;
+    }
+    if (m_qoco_lib_handle) {
+        dlclose(m_qoco_lib_handle);
+        m_qoco_lib_handle = nullptr;
     }
 }
 
+void QocoSolver::ensureQocoApiLoaded(bool first_init) {
+    if (m_qoco_lib_handle) return;
+
+    std::vector<std::pair<std::string, std::string>> candidates;
+#ifdef QOCO_CPU_LIB_PATH
+    const std::string cpu_lib = QOCO_CPU_LIB_PATH;
+#else
+    const std::string cpu_lib;
+#endif
+#ifdef QOCO_CUDA_LIB_PATH
+    const std::string cuda_lib = QOCO_CUDA_LIB_PATH;
+#else
+    const std::string cuda_lib;
+#endif
+
+    const std::string requested = m_cfg.qoco_backend;
+    if (requested == "cpu") {
+        candidates.emplace_back("cpu", cpu_lib);
+    } else if (requested == "cuda") {
+        candidates.emplace_back("cuda", cuda_lib);
+    } else {
+        // auto: prefer cuda, then cpu
+        candidates.emplace_back("cuda", cuda_lib);
+        candidates.emplace_back("cpu", cpu_lib);
+    }
+
+    std::string attempt_log;
+    for (const auto& candidate : candidates) {
+        if (candidate.second.empty()) {
+            attempt_log += "  - " + candidate.first + ": library path not configured\n";
+            continue;
+        }
+        void* handle = dlopen(candidate.second.c_str(), RTLD_NOW | RTLD_LOCAL);
+        if (!handle) {
+            const char* err = dlerror();
+            attempt_log += "  - " + candidate.first + ": " + std::string(err ? err : "dlopen failed") + "\n";
+            continue;
+        }
+
+        try {
+            m_set_default_settings = loadSymbol<SetDefaultSettingsFn>(handle, "set_default_settings");
+            m_qoco_setup = loadSymbol<QocoSetupFn>(handle, "qoco_setup");
+            m_qoco_solve = loadSymbol<QocoSolveFn>(handle, "qoco_solve");
+            m_qoco_cleanup = loadSymbol<QocoCleanupFn>(handle, "qoco_cleanup");
+            m_qoco_lib_handle = handle;
+            m_loaded_backend = candidate.first;
+
+            if (first_init) {
+                std::cout << "  Requested backend: " << requested << "\n";
+                std::cout << "  Active backend: " << m_loaded_backend << "\n";
+            }
+            return;
+        } catch (...) {
+            dlclose(handle);
+            throw;
+        }
+    }
+
+    throw std::runtime_error("Failed to load QOCO runtime backend. Attempts:\n" + attempt_log);
+}
+
 void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
-    QOCOSettings* settings = (QOCOSettings*)malloc(sizeof(QOCOSettings));
-    set_default_settings(settings);
-    settings->verbose = m_cfg.debug_pj ? 1 : 0;
-    settings->abstol = m_cfg.pj_tol_abs;
-    settings->reltol = m_cfg.pj_tol_rel;
-    settings->kkt_static_reg = 1e-8;    
-    settings->kkt_dynamic_reg = 1e-8;
-    settings->iter_ref_iters = 0;
-    settings->max_iters = m_cfg.pj_max_iterations;
-
-    m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
-
     // TODO: test mix of frictional and frictionless contacts
+
+    if(first_init) ensureQocoApiLoaded(true);
+
     const QOCOInt n = (QOCOInt)m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers();
     const QOCOInt m = (QOCOInt)m_dyn.numContactRows();
     const QOCOInt p = (QOCOInt)m_dyn.numSprings() + m_dyn.numDampers();
     const QOCOInt l = (QOCOInt)m_dyn.numFrictionlessContacts();
     const QOCOInt nsoc = (QOCOInt)m_dyn.numFrictionalContacts();
 
-    QOCOCscMatrix* P = m_assembler.P(dt, theta);
-    QOCOFloat* c = m_assembler.c(dt, theta);
-    QOCOCscMatrix* A = (p > 0) ? m_assembler.A(dt, theta) : nullptr;
-    QOCOFloat* b = (p > 0) ? m_assembler.b(dt, theta) : nullptr;
-    QOCOCscMatrix* G = (m > 0) ? m_assembler.G(dt, theta) : nullptr;
-    QOCOFloat* h = (m > 0) ? m_assembler.h(dt, theta) : nullptr;
-
+    QOCOCscMatrix* P, *A, *G;
+    QOCOFloat *c, *b, *h;
+    {
+        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoAssembly);
+        P = m_assembler.P(dt, theta);
+        c = m_assembler.c(dt, theta);
+        A = (p > 0) ? m_assembler.A(dt, theta) : nullptr;
+        b = (p > 0) ? m_assembler.b(dt, theta) : nullptr;
+        G = (m > 0) ? m_assembler.G(dt, theta) : nullptr;
+        h = (m > 0) ? m_assembler.h(dt, theta) : nullptr;
+    }
     std::vector<QOCOInt> qvec((size_t)nsoc, (QOCOInt)3);
+
+    QOCOSettings* settings = (QOCOSettings*)malloc(sizeof(QOCOSettings));
+    m_set_default_settings(settings);
+    settings->verbose = m_cfg.debug_pj ? 1 : 0;
+    settings->abstol = m_cfg.pj_tol_abs;
+    settings->reltol = m_cfg.pj_tol_rel;
+    settings->kkt_static_reg = m_cfg.qoco_kkt_static_reg;
+    settings->kkt_dynamic_reg = m_cfg.qoco_kkt_dynamic_reg;
+    settings->iter_ref_iters = m_cfg.qoco_iter_ref_iters;
+    settings->max_iters = m_cfg.pj_max_iterations;
 
     if (first_init) {
         std::cout << "Initializing QOCO solver with settings:\n";
-    #ifdef QOCO_CUDSS_LIBRARY_DIR
-        std::cout << "  QOCO backend: cuda (cuDSS)\n";
-    #else
-        std::cout << "  QOCO backend: builtin (CPU)\n";
-    #endif
         std::cout << "  Absolute tolerance: " << settings->abstol << "\n";
         std::cout << "  Relative tolerance: " << settings->reltol << "\n";
         std::cout << "  Max iterations: " << settings->max_iters << "\n";
@@ -71,13 +154,17 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
             std::cerr << "Warning: QOCO solver does not support lambda theta integration; ignoring config setting.\n";
     }
 
-    QOCOInt exit = qoco_setup(m_qoco_solver, n, m, p, P, c, A, b, G, h, l, nsoc, nsoc ? qvec.data() : nullptr, settings);
+    auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoSetup);
+
+    m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
+    QOCOInt exit = m_qoco_setup(m_qoco_solver, n, m, p, P, c, A, b, G, h, l, nsoc, nsoc ? qvec.data() : nullptr, settings);
+    
     if (exit != 0) throw std::runtime_error("Failed to initialize QOCO solver");
     std::free(settings);
 }
 
 void QocoSolver::updateQocoSolver(real_t dt, real_t theta) {
-    qoco_cleanup(m_qoco_solver);
+    m_qoco_cleanup(m_qoco_solver);
     initQocoSolver(dt, theta, false);
 
     // Not working as sparsity pattern changes with time, need to re-setup the solver
@@ -86,13 +173,12 @@ void QocoSolver::updateQocoSolver(real_t dt, real_t theta) {
 }
 
 VectorXr QocoSolver::solve(real_t dt, real_t theta)  {
-    auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoSolve); 
-
     m_dyn.updateStateDependentTerms();
     if(!m_qoco_solver) initQocoSolver(dt, theta); 
     else updateQocoSolver(dt, theta);
 
-    QOCOInt exit = qoco_solve(m_qoco_solver);
+    auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoSolve); 
+    QOCOInt exit = m_qoco_solve(m_qoco_solver);
 
     if (exit != QOCO_SOLVED) {
         auto exit_str = (exit == QOCO_UNSOLVED) ? "Unsolved" :

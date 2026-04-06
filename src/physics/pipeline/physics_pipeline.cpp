@@ -96,8 +96,8 @@ void PhysicsPipeline::step(real_t dt) {
     // Update progress bar if present
     if (m_pbar) {
         int iters = m_solver->lastIterations();
-        m_pbar->update(1);
         if (iters >= 0) m_pbar->set_postfix("iters=" + std::to_string(iters) + "        ");
+        m_pbar->update(1);
     }
 
     if (m_total_steps > 0 && m_current_step >= m_total_steps) {

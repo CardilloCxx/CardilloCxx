@@ -19,6 +19,7 @@ public:
         CollisionNarrowphase,
         BuildAndFactorS,
         RebuildConstraintJacobians,
+        RebuildContactJacobians,
         Integration,
         ProjectedJacobi,
         QocoSolve,
@@ -26,6 +27,8 @@ public:
         DisableCollisionPairs,
         CollisionNarrowphaseCollide,
         CollisionMakeContactPatch,
+        QocoAssembly,
+        QocoSetup,
         OutputWrite,
         DynamicsAssembler_RefreshState,
         Total,
@@ -198,12 +201,15 @@ private:
             case TimerId::OutputWrite: return "Output Write"; 
             case TimerId::BuildAndFactorS: return "Build & Factor S";
             case TimerId::RebuildConstraintJacobians: return "Rebuild Constraints";
+            case TimerId::RebuildContactJacobians: return "Rebuild Contacts";
             case TimerId::CollisionNarrowphaseCollide: return "Narrowphase Collide";
             case TimerId::Integration: return "Integration"; 
             case TimerId::CollisionMakeContactPatch: return "Collision Make Patches";
             case TimerId::CollisionMakeContact: return "Collision Make Contact";
             case TimerId::ProjectedJacobi: return "Projected Jacobi"; 
             case TimerId::QocoSolve: return "QOCO Solve";
+            case TimerId::QocoAssembly: return "QOCO Assembly";
+            case TimerId::QocoSetup: return "QOCO Setup";
             case TimerId::DisableCollisionPairs: return "Disable Collision Pairs";
             case TimerId::DynamicsAssembler_RefreshState: return "DA Refresh State"; 
             case TimerId::Total: return "Total (all)"; 

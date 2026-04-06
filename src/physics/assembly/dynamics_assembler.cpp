@@ -43,7 +43,7 @@ void DynamicsAssembler::updateContactsFromSystem() {
     if (!m_collision_mgr) throw std::runtime_error("DynamicsAssembler::updateContactsFromSystem: no CollisionCoal provided");
     if (m_world.consumeStructureDirty()) m_collision_mgr->rebuild();
     m_collision_mgr->applyTransforms();
-        m_contacts_ptr = &m_collision_mgr->detectAll();
+    m_contacts_ptr = &m_collision_mgr->detectAll();
 }
 
 void DynamicsAssembler::setLambda_g(const VectorXr& lam) {
@@ -202,6 +202,8 @@ void DynamicsAssembler::assignDofs() {
 }
 
 void DynamicsAssembler::rebuildW_() {
+    auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::RebuildContactJacobians);
+
     const int C_all = (int)m_contacts_ptr->size();
     const int Nb = m_world.numBodies();
         // m_contact_index_orig removed; contact row mapping is stored per-contact

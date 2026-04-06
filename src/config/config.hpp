@@ -70,6 +70,14 @@ struct Config {
     bool   pj_rdiag_true_delassus{false};             // pj.rdiag_true_delassus
     std::string pj_convergence_csv_dir{""};          // pj.convergence_csv_dir (empty to disable)
 
+    // QOCO solver settings
+    // qoco.backend: one of [auto, cpu, cuda]
+    // Note: current QOCO integration selects algebra backend at build time.
+    std::string qoco_backend{"auto"};
+    real_t qoco_kkt_static_reg{(real_t)1e-8}; // qoco.kkt_static_reg
+    real_t qoco_kkt_dynamic_reg{(real_t)1e-8}; // qoco.kkt_dynamic_reg
+    int    qoco_iter_ref_iters{0}; // qoco.iter_ref_iters
+
     // Presence flags for precedence handling (e.g., pj.alpha overrides alpha if both set)
     bool has_pj_alpha{false};
     bool has_pj_max_iterations{false};

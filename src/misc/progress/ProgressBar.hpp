@@ -28,8 +28,8 @@ public:
                          bool enabled)
         : ProgressBar(total, os, (std::size_t)24, enabled) {}
 
-    void set_description(const std::string& desc) { m_desc = desc; maybeDraw(); }
-    void set_postfix(const std::string& postfix) { m_postfix = postfix; maybeDraw(); }
+    void set_description(const std::string& desc) { m_desc = desc; }
+    void set_postfix(const std::string& postfix) { m_postfix = postfix; }
 
     void update(std::size_t n = 1) { m_current += n; maybeDraw(); }
     void advance_to(std::size_t n) { m_current = n; maybeDraw(); }

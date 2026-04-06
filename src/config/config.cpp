@@ -103,6 +103,23 @@ Config ConfigReader::fromFile(const std::string& path) {
             else if (v == "ip" || v == "interior_point" || v == "interior point"  || v == "qoco" || v == "qoco_solver") cfg.solver = SolverType::Qoco;
             else cfg.solver = SolverType::ProjectedJacobi;
         }
+        else if (key == "qoco.backend") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+            if (v == "auto" || v == "cpu" || v == "builtin" || v == "cuda") {
+                if (v == "builtin") v = "cpu";
+                cfg.qoco_backend = v;
+            }
+        }
+        else if (key == "qoco.kkt_static_reg") {
+            try { cfg.qoco_kkt_static_reg = static_cast<real_t>(std::stod(val)); } catch (...) {}
+        }
+        else if (key == "qoco.kkt_dynamic_reg") {
+            try { cfg.qoco_kkt_dynamic_reg = static_cast<real_t>(std::stod(val)); } catch (...) {}
+        }
+        else if (key == "qoco.iter_ref_iters") {
+            try { cfg.qoco_iter_ref_iters = std::max(0, std::stoi(val)); } catch (...) {}
+        }
         else if (key == "moreau.theta" || key == "solver.theta") {
             try { cfg.moreau_theta = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }

@@ -33,26 +33,24 @@ target_link_libraries(${PROJECT_NAME} INTERFACE coal)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC CARDILLO_HAVE_COAL=1)
 
-# If QOCO was installed by the top-level ExternalProject, link against it
-if(NOT DEFINED QOCO_INSTALL_DIR)
-    set(QOCO_INSTALL_DIR "${CMAKE_BINARY_DIR}/qoco-install")
+# If QOCO was installed by top-level ExternalProject targets, use CPU headers
+# and runtime-load either CPU/CUDA shared library from their install dirs.
+if(NOT DEFINED QOCO_INSTALL_DIR_CPU)
+    set(QOCO_INSTALL_DIR_CPU "${CMAKE_BINARY_DIR}/qoco-install-cpu")
 endif()
-# Add QOCO include dir (may be populated by ExternalProject at build time)
-target_include_directories(${PROJECT_NAME} PUBLIC "${QOCO_INSTALL_DIR}/include")
-target_include_directories(${PROJECT_NAME} PUBLIC "${QOCO_INSTALL_DIR}/include/qdldl")
-target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_BINARY_DIR}/_deps/qoco/src/qoco_project/include")
+if(NOT DEFINED QOCO_INSTALL_DIR_CUDA)
+    set(QOCO_INSTALL_DIR_CUDA "${CMAKE_BINARY_DIR}/qoco-install-cuda")
+endif()
 
-message(STATUS "Linking QOCO from ${QOCO_INSTALL_DIR}")
-target_link_libraries(${PROJECT_NAME} PUBLIC "${QOCO_INSTALL_DIR}/lib/libqoco.so")
+target_include_directories(${PROJECT_NAME} PUBLIC "${QOCO_INSTALL_DIR_CPU}/include")
+target_include_directories(${PROJECT_NAME} PUBLIC "${QOCO_INSTALL_DIR_CPU}/include/qdldl")
+target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_BINARY_DIR}/_deps/qoco-cpu/src/qoco_project_cpu/include")
+
 target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_QOCO=1)
+target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CPU_LIB_PATH="${QOCO_INSTALL_DIR_CPU}/lib/libqoco.so")
 
-if(DEFINED QOCO_CUDSS_LIBRARY_DIR AND NOT "${QOCO_CUDSS_LIBRARY_DIR}" STREQUAL "")
-    target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CUDSS_LIBRARY_DIR="${QOCO_CUDSS_LIBRARY_DIR}")
-endif()
-if(DEFINED QOCO_CUDA_LIBRARY_DIR_RESOLVED AND NOT "${QOCO_CUDA_LIBRARY_DIR_RESOLVED}" STREQUAL "")
-    target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CUDA_LIBRARY_DIR="${QOCO_CUDA_LIBRARY_DIR_RESOLVED}")
-elseif(DEFINED CUDAToolkit_LIBRARY_DIR AND NOT "${CUDAToolkit_LIBRARY_DIR}" STREQUAL "")
-    target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CUDA_LIBRARY_DIR="${CUDAToolkit_LIBRARY_DIR}")
+if(EXISTS "${QOCO_INSTALL_DIR_CUDA}/lib/libqoco.so")
+    target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CUDA_LIB_PATH="${QOCO_INSTALL_DIR_CUDA}/lib/libqoco.so")
 endif()
 
 # Optional: enable EXR loading via tinyexr (header-only). Define CARDILLO_USE_TINYEXR to turn it on if header is provided.
