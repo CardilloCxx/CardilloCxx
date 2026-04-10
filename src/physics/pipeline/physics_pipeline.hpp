@@ -2,29 +2,51 @@
 
 #include <memory>
 
-#include "../world.hpp"
-#include "../../io/csv_writer.hpp"
 #include "../../config/config.hpp"
+#include "../../io/csv_writer.hpp"
+#include "../world.hpp"
 
 // Forward declarations to avoid heavy includes in the header
-namespace cardillo { namespace physics { class DynamicsAssembler; } }
-namespace cardillo { namespace integration { class IntegrationBase; } }
-namespace cardillo { namespace solver { class SolverBase; class WarmstartProvider; } }
-namespace cardillo { namespace io { class VtkWriterBinary; } }
-namespace cardillo { namespace misc { class ProgressBar; } }
-namespace cardillo { namespace collision { class CollisionCoal; } }
+namespace cardillo {
+namespace physics {
+class DynamicsAssembler;
+}
+}  // namespace cardillo
+namespace cardillo {
+namespace integration {
+class IntegrationBase;
+}
+}  // namespace cardillo
+namespace cardillo {
+namespace solver {
+class SolverBase;
+class WarmstartProvider;
+}  // namespace solver
+}  // namespace cardillo
+namespace cardillo {
+namespace io {
+class VtkWriterBinary;
+}
+}  // namespace cardillo
+namespace cardillo {
+namespace misc {
+class ProgressBar;
+}
+}  // namespace cardillo
+namespace cardillo {
+namespace collision {
+class CollisionCoal;
+}
+}  // namespace cardillo
 
 namespace cardillo {
 namespace physics {
 namespace pipeline {
 
 class PhysicsPipeline {
-public:
+   public:
     // Construct pipeline with references/pointers to the world and owned subsystems
-    PhysicsPipeline(World& world,
-                    config::Config& cfg,
-                    cardillo::collision::CollisionCoal* collision_mgr,
-                    cardillo::misc::TimingManager* timings);
+    PhysicsPipeline(World& world, config::Config& cfg, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings);
 
     // Advance the pipeline by one step given dt; pipeline tracks current step/time internally
     void step(real_t dt);
@@ -37,17 +59,15 @@ public:
     cardillo::integration::IntegrationBase& integrator() { return *m_integrator; }
     cardillo::io::VtkWriterBinary* vtkWriter() { return m_vtk_writer.get(); }
     cardillo::collision::CollisionCoal& collisionManager() { return *m_collision_mgr; }
-    
 
     ~PhysicsPipeline();
 
-private:
+   private:
     World& m_world;
     config::Config& m_cfg;
     cardillo::collision::CollisionCoal* m_collision_mgr{nullptr};
     cardillo::misc::TimingManager* m_timings;
-    
-    
+
     // Owned pipeline components
     std::unique_ptr<cardillo::physics::DynamicsAssembler> m_dyn;
     std::unique_ptr<cardillo::integration::IntegrationBase> m_integrator;
@@ -64,6 +84,6 @@ private:
     bool m_finished{false};
 };
 
-} // namespace pipeline
-} // namespace physics
-} // namespace cardillo
+}  // namespace pipeline
+}  // namespace physics
+}  // namespace cardillo

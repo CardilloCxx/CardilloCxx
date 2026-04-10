@@ -1,18 +1,17 @@
 #include "constraints.hpp"
 
-namespace cardillo { namespace physics {
+namespace cardillo {
+namespace physics {
 
 // ===================== ConstraintPattern base =====================
-ConstraintPattern::ConstraintPattern(entt::registry& reg,
-                                     entt::entity a,
-                                     entt::entity b,
-                                     const Vector3r& rA_local,
-                                     const Vector3r& rB_local)
+ConstraintPattern::ConstraintPattern(entt::registry& reg, entt::entity a, entt::entity b, const Vector3r& rA_local, const Vector3r& rB_local)
     : m_reg(&reg), m_a(a), m_b(b), m_rA_local(rA_local), m_rB_local(rB_local) {}
 
 bool ConstraintPattern::getAttachPointsWorld(Vector3r& xA, Vector3r& xB) const {
     auto wa = computeAttachments_();
-    xA = wa.xA; xB = wa.xB; return true;
+    xA = wa.xA;
+    xB = wa.xB;
+    return true;
 }
 
 ConstraintPattern::WorldAttachments ConstraintPattern::computeAttachments_() const {
@@ -47,7 +46,7 @@ ConstraintPattern::WorldAttachments ConstraintPattern::computeAttachments_() con
 real_t ConstraintPattern::stiffnessToCompliance(real_t k) {
     const real_t eps = (real_t)1e-12;
     if (std::isfinite(k)) return (k > eps) ? (real_t)1 / k : std::numeric_limits<real_t>::infinity();
-    return (real_t)0; // +inf stiffness -> zero compliance
+    return (real_t)0;  // +inf stiffness -> zero compliance
 }
 
 void ConstraintPattern::fillCompliance3(VectorXr& dst, int offset, const Vector3r& K) {
@@ -64,7 +63,9 @@ void ConstraintPattern::setCompliance1(VectorXr& dst, int idx, real_t k) {
 
 // ===================== LinearDistanceConstraint =====================
 ConstraintResult LinearDistanceConstraint::getConstraint() const {
-    ConstraintResult out; out.a = m_a; out.b = m_b;
+    ConstraintResult out;
+    out.a = m_a;
+    out.b = m_b;
 
     const auto wa = computeAttachments_();
     const Vector3r r = wa.xB - wa.xA;
@@ -80,7 +81,7 @@ ConstraintResult LinearDistanceConstraint::getConstraint() const {
     out.WgA.block(0, 0, 3, 1) = -n;
     out.WgA.block(3, 0, 3, 1) = -(m_rA_local.cross(wa.RA.transpose() * n));
     // d g / d vB = +n^T, d g / d wB = -(rBw x n)^T
-    out.WgB.block(0, 0, 3, 1) =  n;
+    out.WgB.block(0, 0, 3, 1) = n;
     out.WgB.block(3, 0, 3, 1) = (m_rB_local.cross(wa.RB.transpose() * n));
 
     out.WgammaA = out.WgA;
@@ -96,21 +97,9 @@ ConstraintResult LinearDistanceConstraint::getConstraint() const {
 
 // ===================== TranslationRotationConstraint =====================
 
-TranslationRotationConstraint::TranslationRotationConstraint(entt::registry& reg,
-                                                             entt::entity a,
-                                                             entt::entity b,
-                                                             const JointFrame& frame,
-                                                             const Vector3r& K_trans,
-                                                             const Vector3r& D_trans,
-                                                             const Vector3r& K_rot,
-                                                             const Vector3r& D_rot)
-    : ConstraintPattern(reg, a, b,Vector3r::Zero(), Vector3r::Zero())
-    , m_joint(JointProperties(reg, a, b, frame))
-    , m_K_trans(K_trans)
-    , m_D_trans(D_trans)
-    , m_K_rot(K_rot)
-    , m_D_rot(D_rot)
-{
+TranslationRotationConstraint::TranslationRotationConstraint(entt::registry& reg, entt::entity a, entt::entity b, const JointFrame& frame, const Vector3r& K_trans, const Vector3r& D_trans,
+                                                             const Vector3r& K_rot, const Vector3r& D_rot)
+    : ConstraintPattern(reg, a, b, Vector3r::Zero(), Vector3r::Zero()), m_joint(JointProperties(reg, a, b, frame)), m_K_trans(K_trans), m_D_trans(D_trans), m_K_rot(K_rot), m_D_rot(D_rot) {
     m_rA_local = m_joint.K1_r_S1J;
     m_rB_local = m_joint.K2_r_S2J;
 }
@@ -118,10 +107,7 @@ TranslationRotationConstraint::TranslationRotationConstraint(entt::registry& reg
 // Helper: build full 6x6 Jacobians for a joint between A and B using
 // the precomputed joint-frame geometry. This encodes a
 // fully locked 6-DOF joint; specialised constraints will mask DOFs via C/A.
-void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::WorldAttachments& wa,
-                                                       MatrixXXr& WgA,
-                                                       MatrixXXr& WgB) const {
-
+void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::WorldAttachments& wa, MatrixXXr& WgA, MatrixXXr& WgB) const {
     WgA = MatrixXXr::Zero(6, 6);
     WgB = MatrixXXr::Zero(6, 6);
 
@@ -129,22 +115,24 @@ void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::
     const auto& A_IK2 = wa.RB;
     const auto& A_K1J = m_joint.A_K1J;
     const Matrix33r A_IJ = A_IK1 * A_K1J;
-    const Matrix33r A_K2J =  A_IK2.transpose() * A_IJ;
+    const Matrix33r A_K2J = A_IK2.transpose() * A_IJ;
     const Matrix33r skew_g = skew_from_vector(m_joint.compute_g(wa.pA, wa.pB, wa.RA, wa.RB));
-    
+
     // translations
-    WgA.block<3,3>(0,0) = -A_IJ; 
-    WgA.block<3,3>(3,0) = -m_joint.K1_r_S1J_skew * A_K1J - A_K1J * skew_g;
-    WgB.block<3,3>(0,0) = A_IJ;
-    WgB.block<3,3>(3,0) = m_joint.K2_r_S2J_skew * A_K2J;
+    WgA.block<3, 3>(0, 0) = -A_IJ;
+    WgA.block<3, 3>(3, 0) = -m_joint.K1_r_S1J_skew * A_K1J - A_K1J * skew_g;
+    WgB.block<3, 3>(0, 0) = A_IJ;
+    WgB.block<3, 3>(3, 0) = m_joint.K2_r_S2J_skew * A_K2J;
 
     // orientations
-    WgA.block<3,3>(3,3) = A_K1J;
-    WgB.block<3,3>(3,3) = -A_K2J;
+    WgA.block<3, 3>(3, 3) = A_K1J;
+    WgB.block<3, 3>(3, 3) = -A_K2J;
 }
 
 ConstraintResult TranslationRotationConstraint::getConstraint() const {
-    ConstraintResult out; out.a = m_a; out.b = m_b;
+    ConstraintResult out;
+    out.a = m_a;
+    out.b = m_b;
 
     // Use standard attachment computation; joint is defined by m_rA_local/m_rB_local
     const auto wa = computeAttachments_();
@@ -172,14 +160,8 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
 }
 
 // ===================== BeamConstraint =====================
-BeamConstraint::BeamConstraint( entt::registry& reg,
-                                entt::entity a,
-                                entt::entity b,
-                                const cardillo::physics::BeamSpringParams& springs,
-                                const cardillo::physics::BeamCrossSection& section)
-        : ConstraintPattern(reg, a, b, Vector3r::Zero(), Vector3r::Zero()),
-            m_springs(springs), m_section(section)
-{
+BeamConstraint::BeamConstraint(entt::registry& reg, entt::entity a, entt::entity b, const cardillo::physics::BeamSpringParams& springs, const cardillo::physics::BeamCrossSection& section)
+    : ConstraintPattern(reg, a, b, Vector3r::Zero(), Vector3r::Zero()), m_springs(springs), m_section(section) {
     const auto wa = computeAttachments_();
     const Vector4r qMid = 0.5 * (wa.qA.coeffs() + wa.qB.coeffs());
     const Matrix33r A_mid = Quaternion4r(qMid).normalized().toRotationMatrix();
@@ -187,30 +169,32 @@ BeamConstraint::BeamConstraint( entt::registry& reg,
     l_0 = m_delta0.norm();
 
     const Vector4r dQ = wa.qB.coeffs() - wa.qA.coeffs();
-    const real_t   factor = (real_t)2.0 / qMid.squaredNorm();
-    const real_t   Qmid_w = qMid(3);
+    const real_t factor = (real_t)2.0 / qMid.squaredNorm();
+    const real_t Qmid_w = qMid(3);
     const Vector3r Qmid_q = qMid.head<3>();
-    m_kappa0 =  factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
+    m_kappa0 = factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
 }
 
 ConstraintResult BeamConstraint::getConstraint() const {
-    ConstraintResult out; out.a = m_a; out.b = m_b;
+    ConstraintResult out;
+    out.a = m_a;
+    out.b = m_b;
     const auto wa = computeAttachments_();
 
     // Mid-orientation and strains (robust): enforce quaternion hemisphere continuity and use slerp
     Quaternion4r qA = wa.qA;
     Quaternion4r qB = wa.qB;
-    if (qA.coeffs().dot(qB.coeffs()) < (real_t)0.0) { 
+    if (qA.coeffs().dot(qB.coeffs()) < (real_t)0.0) {
         qB.coeffs() = -qB.coeffs();
     }
-    const Quaternion4r qMidQ(0.5 * (qA.coeffs() + qB.coeffs()));   // 0.5*(qA + qB) 
+    const Quaternion4r qMidQ(0.5 * (qA.coeffs() + qB.coeffs()));  // 0.5*(qA + qB)
     const Matrix33r A_mid = qMidQ.normalized().toRotationMatrix();
-    const Vector3r gamma = A_mid.transpose() * (wa.xB - wa.xA);   // axial + shear strain
+    const Vector3r gamma = A_mid.transpose() * (wa.xB - wa.xA);  // axial + shear strain
     const Matrix33r gamma_skew = skew_from_vector(gamma);
 
     const Vector4r dQ = qB.coeffs() - qA.coeffs();
-    const real_t   factor = (real_t)2.0 / qMidQ.coeffs().squaredNorm();
-    const real_t   Qmid_w = qMidQ.coeffs()(3);
+    const real_t factor = (real_t)2.0 / qMidQ.coeffs().squaredNorm();
+    const real_t Qmid_w = qMidQ.coeffs()(3);
     const Vector3r Qmid_q = qMidQ.coeffs().head<3>();
     const Vector3r kappa = factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));  // bending + twisting strain
 
@@ -218,13 +202,13 @@ ConstraintResult BeamConstraint::getConstraint() const {
 
     out.WgA = MatrixXXr::Zero(6, 6);
     out.WgA.block<3, 3>(0, 0) = -A_mid;
-    out.WgA.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
-    out.WgA.block<3, 3>(3, 3) = -Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
+    out.WgA.block<3, 3>(3, 0) = (real_t)-0.5 * gamma_skew;
+    out.WgA.block<3, 3>(3, 3) = -Matrix33r::Identity() - (real_t)0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
     out.WgB = MatrixXXr::Zero(6, 6);
     out.WgB.block<3, 3>(0, 0) = A_mid;
-    out.WgB.block<3, 3>(3, 0) = (real_t) -0.5 * gamma_skew;
-    out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() - (real_t) 0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
+    out.WgB.block<3, 3>(3, 0) = (real_t)-0.5 * gamma_skew;
+    out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() - (real_t)0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
     out.WgammaA = out.WgA;
     out.WgammaB = out.WgB;
@@ -247,4 +231,5 @@ ConstraintResult BeamConstraint::getConstraint() const {
     return out;
 }
 
-}} // namespace cardillo::physics
+}  // namespace physics
+}  // namespace cardillo

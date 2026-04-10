@@ -1,10 +1,10 @@
 #include "rigid_body_factory.hpp"
 
+#include <coal/shape/geometric_shapes.h>
 #include <algorithm>
 #include <limits>
 #include <optional>
 #include <type_traits>
-#include <coal/shape/geometric_shapes.h>
 
 namespace cardillo::physics {
 namespace {
@@ -33,59 +33,61 @@ bool meshAabbFromAsset(const MeshAsset& asset, Vector3r& center_out, Vector3r& h
 }
 
 inline real_t computeVolume(const RigidShape& shape, const World* system = nullptr) {
-    return std::visit([system](auto&& s) -> real_t {
-        using T = std::decay_t<decltype(s)>;
-        if constexpr (std::is_same_v<T, CubeShape>) {
-            return 8.0 * s.halfExtents.x() * s.halfExtents.y() * s.halfExtents.z();
-        } else if constexpr (std::is_same_v<T, SphereShape>) {
-            return (4.0 / 3.0) * M_PI * s.radius * s.radius * s.radius;
-        } else if constexpr (std::is_same_v<T, CylinderShape>) {
-            return M_PI * s.radius * s.radius * (2.0 * s.halfLength);
-        } else if constexpr (std::is_same_v<T, CapsuleShape>) {
-            return M_PI * s.radius * s.radius * (2.0 * s.halfLength + (4.0/3.0)*s.radius);
-        } else if constexpr (std::is_same_v<T, ConeShape>) {
-            return (1.0/3.0) * M_PI * s.radius * s.radius * s.height;
-        } else if constexpr (std::is_same_v<T, PlaneShape>) {
-            return 0.0;
-        } else if constexpr (std::is_same_v<T, MeshShape>) {
-            if (!system) return 0.0;
-            return system->assets().getMesh(s.path, s.scale, true).volume;
-        }
-    }, shape);
+    return std::visit(
+        [system](auto&& s) -> real_t {
+            using T = std::decay_t<decltype(s)>;
+            if constexpr (std::is_same_v<T, CubeShape>) {
+                return 8.0 * s.halfExtents.x() * s.halfExtents.y() * s.halfExtents.z();
+            } else if constexpr (std::is_same_v<T, SphereShape>) {
+                return (4.0 / 3.0) * M_PI * s.radius * s.radius * s.radius;
+            } else if constexpr (std::is_same_v<T, CylinderShape>) {
+                return M_PI * s.radius * s.radius * (2.0 * s.halfLength);
+            } else if constexpr (std::is_same_v<T, CapsuleShape>) {
+                return M_PI * s.radius * s.radius * (2.0 * s.halfLength + (4.0 / 3.0) * s.radius);
+            } else if constexpr (std::is_same_v<T, ConeShape>) {
+                return (1.0 / 3.0) * M_PI * s.radius * s.radius * s.height;
+            } else if constexpr (std::is_same_v<T, PlaneShape>) {
+                return 0.0;
+            } else if constexpr (std::is_same_v<T, MeshShape>) {
+                if (!system) return 0.0;
+                return system->assets().getMesh(s.path, s.scale, true).volume;
+            }
+        },
+        shape);
 }
 
 inline Vector3r computeUnitInertia(const RigidShape& shape, const World* system) {
-    return std::visit([system](auto&& s) -> Vector3r {
-        using T = std::decay_t<decltype(s)>;
-        if constexpr (std::is_same_v<T, CubeShape>) {
-            return Vector3r(
-                (s.halfExtents.y()*s.halfExtents.y() + s.halfExtents.z()*s.halfExtents.z()) / 3.0,
-                (s.halfExtents.x()*s.halfExtents.x() + s.halfExtents.z()*s.halfExtents.z()) / 3.0,
-                (s.halfExtents.x()*s.halfExtents.x() + s.halfExtents.y()*s.halfExtents.y()) / 3.0
-            );
-        } else if constexpr (std::is_same_v<T, SphereShape>) {
-            const real_t c = 2.0/5.0 * s.radius*s.radius;
-            return Vector3r(c,c,c);
-        } else if constexpr (std::is_same_v<T, CylinderShape>) {
-            const real_t h = 2.0*s.halfLength;
-            const real_t r2 = s.radius*s.radius;
-            const real_t Izz = 0.5*r2;
-            const real_t Ixx = (3.0*r2 + h*h)/12.0;
-            return Vector3r(Ixx,Ixx,Izz);
-        } else if constexpr (std::is_same_v<T, CapsuleShape>) {
-            coal::Capsule capsule((coal::CoalScalar)s.radius, (coal::CoalScalar)(2.0*s.halfLength));
-            auto Iunit = capsule.computeMomentofInertia(); // convert to unit inertia
-            return Vector3r(Iunit(0,0), Iunit(1,1), Iunit(2,2)) / ((real_t)computeVolume(s, system)); 
-        } else if constexpr (std::is_same_v<T, ConeShape>) {
-            coal::Cone cone((coal::CoalScalar)s.radius, (coal::CoalScalar)s.height);
-            auto Iunit = cone.computeMomentofInertia(); // convert to unit inertia
-            return Vector3r(Iunit(0,0), Iunit(1,1), Iunit(2,2)) / ((real_t)computeVolume(s, system));
-        } else if constexpr (std::is_same_v<T, PlaneShape>) {
-            return Vector3r::Zero();
-        } else if constexpr (std::is_same_v<T, MeshShape>) {
-            return system->assets().getMesh(s.path, s.scale, true).inertia_diag_unit / ((real_t)computeVolume(s, system));
-        }
-    }, shape);
+    return std::visit(
+        [system](auto&& s) -> Vector3r {
+            using T = std::decay_t<decltype(s)>;
+            if constexpr (std::is_same_v<T, CubeShape>) {
+                return Vector3r((s.halfExtents.y() * s.halfExtents.y() + s.halfExtents.z() * s.halfExtents.z()) / 3.0,
+                                (s.halfExtents.x() * s.halfExtents.x() + s.halfExtents.z() * s.halfExtents.z()) / 3.0,
+                                (s.halfExtents.x() * s.halfExtents.x() + s.halfExtents.y() * s.halfExtents.y()) / 3.0);
+            } else if constexpr (std::is_same_v<T, SphereShape>) {
+                const real_t c = 2.0 / 5.0 * s.radius * s.radius;
+                return Vector3r(c, c, c);
+            } else if constexpr (std::is_same_v<T, CylinderShape>) {
+                const real_t h = 2.0 * s.halfLength;
+                const real_t r2 = s.radius * s.radius;
+                const real_t Izz = 0.5 * r2;
+                const real_t Ixx = (3.0 * r2 + h * h) / 12.0;
+                return Vector3r(Ixx, Ixx, Izz);
+            } else if constexpr (std::is_same_v<T, CapsuleShape>) {
+                coal::Capsule capsule((coal::CoalScalar)s.radius, (coal::CoalScalar)(2.0 * s.halfLength));
+                auto Iunit = capsule.computeMomentofInertia();  // convert to unit inertia
+                return Vector3r(Iunit(0, 0), Iunit(1, 1), Iunit(2, 2)) / ((real_t)computeVolume(s, system));
+            } else if constexpr (std::is_same_v<T, ConeShape>) {
+                coal::Cone cone((coal::CoalScalar)s.radius, (coal::CoalScalar)s.height);
+                auto Iunit = cone.computeMomentofInertia();  // convert to unit inertia
+                return Vector3r(Iunit(0, 0), Iunit(1, 1), Iunit(2, 2)) / ((real_t)computeVolume(s, system));
+            } else if constexpr (std::is_same_v<T, PlaneShape>) {
+                return Vector3r::Zero();
+            } else if constexpr (std::is_same_v<T, MeshShape>) {
+                return system->assets().getMesh(s.path, s.scale, true).inertia_diag_unit / ((real_t)computeVolume(s, system));
+            }
+        },
+        shape);
 }
 
 inline real_t getMass(const RigidShape& shape, const physics::RigidProps& props, const World* system) {
@@ -102,16 +104,12 @@ inline real_t getMass(const RigidShape& shape, const physics::RigidProps& props,
 
 inline Vector3r getInertia(const RigidShape& shape, real_t mass, const World* system) {
     const Vector3r unitInertia = computeUnitInertia(shape, system);
-    return unitInertia * mass; // scale unit inertia by mass
+    return unitInertia * mass;  // scale unit inertia by mass
 }
 
-} // namespace
+}  // namespace
 
-entt::entity RigidBodyFactory::create(World& system,
-                                      const physics::RigidShape& shape,
-                                      const physics::RigidState& state,
-                                      const physics::RigidProps& props)
-{
+entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& shape, const physics::RigidState& state, const physics::RigidProps& props) {
     auto& reg = system.ecs();
     const auto& cfg = system.config();
 
@@ -125,19 +123,13 @@ entt::entity RigidBodyFactory::create(World& system,
     reg.emplace<cardillo::C_LinearAcceleration3>(e, Vector3r::Zero());
     reg.emplace<cardillo::C_AngularAcceleration3>(e, Vector3r::Zero());
 
-    const bool wantsColliderVisual =
-        std::holds_alternative<MeshShape>(shape) &&
-        std::get<MeshShape>(shape).show_collider;
+    const bool wantsColliderVisual = std::holds_alternative<MeshShape>(shape) && std::get<MeshShape>(shape).show_collider;
 
-    if (props.visual || wantsColliderVisual)
-        reg.emplace<cardillo::C_VisualObject>(e);
+    if (props.visual || wantsColliderVisual) reg.emplace<cardillo::C_VisualObject>(e);
 
-    if (props.collidable && !cfg.collision_disable_all)
-        reg.emplace<cardillo::C_Collidable>(e);
+    if (props.collidable && !cfg.collision_disable_all) reg.emplace<cardillo::C_Collidable>(e);
 
-    const real_t mu = (props.friction >= (real_t)0)
-                          ? props.friction
-                          : cfg.friction_default_mu;
+    const real_t mu = (props.friction >= (real_t)0) ? props.friction : cfg.friction_default_mu;
     reg.emplace<cardillo::C_Friction>(e, mu);
 
     // --- Helper for adding dynamic tags of rigid body ---
@@ -161,8 +153,7 @@ entt::entity RigidBodyFactory::create(World& system,
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<cardillo::C_CubeVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all)
-                reg.emplace<cardillo::C_RB_Cube>(e, Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity());
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<cardillo::C_RB_Cube>(e, Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity());
             reg.emplace<cardillo::C_Cube>(e, Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity());
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
@@ -182,8 +173,7 @@ entt::entity RigidBodyFactory::create(World& system,
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<cardillo::C_CylinderVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all)
-                reg.emplace<cardillo::C_RB_Cylinder>(e, s.radius, s.halfLength);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<cardillo::C_RB_Cylinder>(e, s.radius, s.halfLength);
             reg.emplace<cardillo::C_Cylinder>(e, s.radius, s.halfLength);
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
@@ -193,8 +183,7 @@ entt::entity RigidBodyFactory::create(World& system,
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<cardillo::C_CapsuleVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all)
-                reg.emplace<cardillo::C_RB_Capsule>(e, s.radius, s.halfLength);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<cardillo::C_RB_Capsule>(e, s.radius, s.halfLength);
             reg.emplace<cardillo::C_Capsule>(e, s.radius, s.halfLength);
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
@@ -204,8 +193,7 @@ entt::entity RigidBodyFactory::create(World& system,
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<cardillo::C_ConeVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all)
-                reg.emplace<cardillo::C_RB_Cone>(e, s.radius, s.height);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<cardillo::C_RB_Cone>(e, s.radius, s.height);
             reg.emplace<cardillo::C_Cone>(e, s.radius, s.height);
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
@@ -213,8 +201,7 @@ entt::entity RigidBodyFactory::create(World& system,
 
         void operator()(const PlaneShape& s) const {
             if (props.visual) reg.emplace<cardillo::C_PlaneVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all)
-                reg.emplace<cardillo::C_RB_Plane>(e, s.normal, s.up, s.sizeX, s.sizeY);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<cardillo::C_RB_Plane>(e, s.normal, s.up, s.sizeX, s.sizeY);
             reg.emplace<cardillo::C_Plane>(e, s.normal, s.up, s.sizeX, s.sizeY);
         }
 
@@ -260,4 +247,4 @@ entt::entity RigidBodyFactory::create(World& system,
     return e;
 }
 
-} // namespace cardillo::physics
+}  // namespace cardillo::physics

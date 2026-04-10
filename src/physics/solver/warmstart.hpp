@@ -1,24 +1,22 @@
 #pragma once
 
-#include <vector>
 #include <optional>
-#include "misc/types.hpp"
+#include <vector>
 #include "../../collision/types.hpp"
 #include "../assembly/dynamics_assembler.hpp"
+#include "misc/types.hpp"
 
 namespace cardillo::solver {
 
 // WarmstartProvider: abstract interface for warmstart strategies.
 class WarmstartProvider {
-public:
+   public:
     WarmstartProvider() = default;
     ~WarmstartProvider() = default;
 
     // Apply a warmstart hint using per-contact stored impulses in `contactsAll`.
-    static void applyWarmstart(cardillo::VectorXr& p,
-                                       cardillo::physics::DynamicsAssembler& dyn)
-    {   
-        const auto& contacts  = dyn.contacts();
+    static void applyWarmstart(cardillo::VectorXr& p, cardillo::physics::DynamicsAssembler& dyn) {
+        const auto& contacts = dyn.contacts();
         for (const auto& c : contacts) {
             if (c.impulse_base_index < 0) continue;
             const int base = c.impulse_base_index;
@@ -31,10 +29,9 @@ public:
         }
     }
 
-    // Extract per-contact impulses and store them into contactsAll (by reference to underlying contacts)
-    static void storeImpulse(const cardillo::VectorXr& p,
-                                    cardillo::physics::DynamicsAssembler& dyn)
-    {
+    // Extract per-contact impulses and store them into contactsAll (by reference to underlying
+    // contacts)
+    static void storeImpulse(const cardillo::VectorXr& p, cardillo::physics::DynamicsAssembler& dyn) {
         // Iterate contacts and write last_impulse directly into the assembler's contact storage
         const auto& contacts = dyn.contacts();
         for (const auto& c : contacts) {
@@ -52,4 +49,4 @@ public:
     }
 };
 
-} // namespace cardillo::solver
+}  // namespace cardillo::solver

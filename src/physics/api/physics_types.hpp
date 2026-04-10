@@ -25,38 +25,15 @@ struct RigidState {
     explicit RigidState(const Vector3r& p) : position(p) {}
     RigidState(const Vector3r& p, const Vector3r& v) : position(p), linearVelocity(v) {}
     RigidState(const Vector3r& p, const Quaternion4r& q) : position(p), orientation(q) {}
-    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q)
-        : position(p), orientation(q), linearVelocity(v) {}
-    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q, const Vector3r& w)
-        : position(p), orientation(q), linearVelocity(v), angularVelocity(w) {}
-    RigidState(const Vector3r& p, const Vector3r& v, const Vector3r& w)
-        : position(p), linearVelocity(v), angularVelocity(w) {}
+    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q) : position(p), orientation(q), linearVelocity(v) {}
+    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q, const Vector3r& w) : position(p), orientation(q), linearVelocity(v), angularVelocity(w) {}
+    RigidState(const Vector3r& p, const Vector3r& v, const Vector3r& w) : position(p), linearVelocity(v), angularVelocity(w) {}
 
-    RigidState(const Vector3r& p_local,
-               const Vector3r& v_local,
-               const Quaternion4r& q_local,
-               const Vector3r& w_local,
-               entt::entity refEntity,
-               entt::registry& reg);
+    RigidState(const Vector3r& p_local, const Vector3r& v_local, const Quaternion4r& q_local, const Vector3r& w_local, entt::entity refEntity, entt::registry& reg);
 
-    RigidState(const Vector3r& p_local,
-               entt::entity refEntity,
-               entt::registry& reg)
-        : RigidState(p_local,
-                     Vector3r::Zero(),
-                     Quaternion4r::Identity(),
-                     Vector3r::Zero(),
-                     refEntity,
-                     reg) {}
+    RigidState(const Vector3r& p_local, entt::entity refEntity, entt::registry& reg) : RigidState(p_local, Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
 
-    RigidState(entt::entity refEntity,
-               entt::registry& reg)
-        : RigidState(Vector3r::Zero(),
-                     Vector3r::Zero(),
-                     Quaternion4r::Identity(),
-                     Vector3r::Zero(),
-                     refEntity,
-                     reg) {}
+    RigidState(entt::entity refEntity, entt::registry& reg) : RigidState(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
 };
 
 struct CubeShape {
@@ -71,8 +48,7 @@ struct PlaneShape {
     real_t sizeX{5};
     real_t sizeY{5};
     PlaneShape() = default;
-    PlaneShape(const Vector3r& n, const Vector3r& u, real_t sx, real_t sy)
-        : normal(n), up(u), sizeX(sx), sizeY(sy) {}
+    PlaneShape(const Vector3r& n, const Vector3r& u, real_t sx, real_t sy) : normal(n), up(u), sizeX(sx), sizeY(sy) {}
 };
 
 struct CapsuleShape {
@@ -108,10 +84,8 @@ struct MeshShape {
     bool use_bbox_collider{false};
     bool show_collider{false};
     MeshShape() = default;
-    explicit MeshShape(const std::string& p, bool bbox = false, bool showCol = false)
-        : path(p), use_bbox_collider(bbox), show_collider(showCol) {}
-    MeshShape(const std::string& p, const Vector3r& s, bool bbox = false, bool showCol = false)
-        : path(p), scale(s), use_bbox_collider(bbox), show_collider(showCol) {}
+    explicit MeshShape(const std::string& p, bool bbox = false, bool showCol = false) : path(p), use_bbox_collider(bbox), show_collider(showCol) {}
+    MeshShape(const std::string& p, const Vector3r& s, bool bbox = false, bool showCol = false) : path(p), scale(s), use_bbox_collider(bbox), show_collider(showCol) {}
 };
 
 using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape>;
@@ -125,8 +99,7 @@ struct RigidProps {
 
     RigidProps() = default;
     explicit RigidProps(real_t m) : mass(m) {}
-    RigidProps(real_t m, real_t fric, bool vis = true, bool coll = true)
-        : mass(m), friction(fric), collidable(coll), visual(vis) {}
+    RigidProps(real_t m, real_t fric, bool vis = true, bool coll = true) : mass(m), friction(fric), collidable(coll), visual(vis) {}
 
     static RigidProps withDensity(real_t rho) {
         RigidProps p;
@@ -143,8 +116,7 @@ struct BeamCrossSection {
     BeamBodyType type{BeamBodyType::Cube};
 
     BeamCrossSection() = default;
-    BeamCrossSection(real_t w, real_t h, BeamBodyType t = BeamBodyType::Cube)
-        : width(w), height(h), type(t) {}
+    BeamCrossSection(real_t w, real_t h, BeamBodyType t = BeamBodyType::Cube) : width(w), height(h), type(t) {}
 
     real_t area() const {
         if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
@@ -195,10 +167,7 @@ struct BeamSpringParams {
 
     BeamSpringParams() = default;
 
-    BeamSpringParams(const Vector3r& Ke_in,
-                     const Vector3r& Kf_in,
-                     real_t dampingFactor_in = 0.0)
-        : Ke_direct(Ke_in), Kf_direct(Kf_in), dampingFactor(dampingFactor_in) {}
+    BeamSpringParams(const Vector3r& Ke_in, const Vector3r& Kf_in, real_t dampingFactor_in = 0.0) : Ke_direct(Ke_in), Kf_direct(Kf_in), dampingFactor(dampingFactor_in) {}
 
     Vector3r Ke(real_t segLen, const BeamCrossSection& sec) const {
         if (Ke_direct.has_value()) return *Ke_direct;
@@ -217,14 +186,8 @@ struct BeamSpringParams {
 
     void setDampingFromFactor(real_t d) { dampingFactor = d; }
 
-    static BeamSpringParams fromMaterial(real_t E_in,
-                                         real_t nu_in,
-                                         real_t axialScale = (real_t)1,
-                                         real_t shearScale = (real_t)1,
-                                         real_t torsionScale = (real_t)1,
-                                         real_t bendYScale = (real_t)1,
-                                         real_t bendZScale = (real_t)1,
-                                         real_t dampingFactor_in = (real_t)0) {
+    static BeamSpringParams fromMaterial(real_t E_in, real_t nu_in, real_t axialScale = (real_t)1, real_t shearScale = (real_t)1, real_t torsionScale = (real_t)1, real_t bendYScale = (real_t)1,
+                                         real_t bendZScale = (real_t)1, real_t dampingFactor_in = (real_t)0) {
         BeamSpringParams p;
         p.E = E_in;
         p.nu = nu_in;
@@ -235,4 +198,4 @@ struct BeamSpringParams {
     }
 };
 
-} // namespace cardillo::physics
+}  // namespace cardillo::physics

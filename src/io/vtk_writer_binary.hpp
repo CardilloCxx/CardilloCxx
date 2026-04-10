@@ -1,32 +1,40 @@
 #pragma once
 
-#include <string>
-#include <vector>
 #include <filesystem>
 #include <fstream>
-#include "misc/types.hpp"
+#include <string>
+#include <vector>
 #include "../physics/world.hpp"
 #include "mesh_generator.hpp"
+#include "misc/types.hpp"
 
 namespace fs = std::filesystem;
 
-namespace cardillo { namespace collision { struct Contact; } }
-namespace cardillo { namespace physics { class DynamicsAssembler; } }
+namespace cardillo {
+namespace collision {
+struct Contact;
+}
+}  // namespace cardillo
+namespace cardillo {
+namespace physics {
+class DynamicsAssembler;
+}
+}  // namespace cardillo
 
 namespace cardillo::io {
 
 class VtkWriterBinary {
-public:
-    VtkWriterBinary(const cardillo::config::Config& cfg) : m_cfg(cfg) 
-    , m_outputDir(cfg.output_folder)
-    , m_baseName(cfg.output_filename_prefix)
-    , m_frequency(cfg.output_interval_steps) 
-    , m_hfStride(cfg.output_heightfield_stride)
-    , m_writeContacts(cfg.output_write_contacts)
-    , m_contactsBase(cfg.output_filename_prefix + std::string("_contacts"))
-    , m_writeSprings(true)
-    , m_springsBase(cfg.output_filename_prefix + std::string("_springs"))
-    {
+   public:
+    VtkWriterBinary(const cardillo::config::Config& cfg)
+        : m_cfg(cfg),
+          m_outputDir(cfg.output_folder),
+          m_baseName(cfg.output_filename_prefix),
+          m_frequency(cfg.output_interval_steps),
+          m_hfStride(cfg.output_heightfield_stride),
+          m_writeContacts(cfg.output_write_contacts),
+          m_contactsBase(cfg.output_filename_prefix + std::string("_contacts")),
+          m_writeSprings(true),
+          m_springsBase(cfg.output_filename_prefix + std::string("_springs")) {
         if (m_frequency < 1) m_frequency = 1;
         if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
     }
@@ -36,24 +44,26 @@ public:
     void setFrequency(int freq);
     void setHeightFieldStride(int s) { m_hfStride = s > 0 ? s : 1; }
 
-    void maybeWrite(int step, real_t time, const cardillo::World& sys,
-                    cardillo::collision::CollisionCoal* collision_mgr,
-                    cardillo::misc::TimingManager* timings,
+    void maybeWrite(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
                     cardillo::physics::DynamicsAssembler* dyn = nullptr);
-    void write(int step, real_t time, const cardillo::World& sys,
-               cardillo::collision::CollisionCoal* collision_mgr,
-               cardillo::misc::TimingManager* timings,
+    void write(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
                cardillo::physics::DynamicsAssembler* dyn = nullptr);
 
-    void enableContactsOutput(bool enable, const std::string& baseName) { m_writeContacts = enable; m_contactsBase = baseName; }
-    void enableSpringsOutput(bool enable, const std::string& baseName) { m_writeSprings = enable; m_springsBase = baseName; }
+    void enableContactsOutput(bool enable, const std::string& baseName) {
+        m_writeContacts = enable;
+        m_contactsBase = baseName;
+    }
+    void enableSpringsOutput(bool enable, const std::string& baseName) {
+        m_writeSprings = enable;
+        m_springsBase = baseName;
+    }
 
-private:
+   private:
     const cardillo::config::Config& m_cfg;
     std::string m_outputDir;
     std::string m_baseName;
     int m_frequency{1};
-    int m_hfStride{8}; 
+    int m_hfStride{8};
     bool m_writeContacts{false};
     std::string m_contactsBase{"contacts"};
     bool m_writeSprings{false};
@@ -63,9 +73,7 @@ private:
     using EntityMesh = MeshGenerator::EntityMesh;
 
     // Helpers
-    void enrichPressure(std::vector<EntityMesh>& meshes,
-                        const cardillo::World& sys,
-                        const std::vector<cardillo::collision::Contact>& contacts) const;
+    void enrichPressure(std::vector<EntityMesh>& meshes, const cardillo::World& sys, const std::vector<cardillo::collision::Contact>& contacts) const;
 
     // Binary (big-endian) write helpers
     static inline uint32_t bswap32(uint32_t v);
@@ -81,9 +89,7 @@ private:
     void writePolygonsBlock(std::ofstream& out, const std::vector<EntityMesh>& meshes) const;
     void writePointDataGeo(std::ofstream& out, const std::vector<EntityMesh>& meshes) const;
     void writeMeshTextureCoordinates(std::ofstream& out, const std::vector<EntityMesh>& meshes) const;
-    void writeGeometryMeshList(const std::string& path,
-                               const std::vector<EntityMesh>& meshes,
-                               const char* title) const;
+    void writeGeometryMeshList(const std::string& path, const std::vector<EntityMesh>& meshes, const char* title) const;
 
     void writeContacts(int step, const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const;
     void writeStaticGeometry(const std::vector<EntityMesh>& meshes) const;
@@ -91,4 +97,4 @@ private:
     void writeSprings(int step, const cardillo::World& sys) const;
 };
 
-} // namespace cardillo::io
+}  // namespace cardillo::io

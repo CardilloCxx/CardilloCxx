@@ -20,9 +20,7 @@ void PhysicsEngine::initFromConfig(const config::Config& cfg) {
     if (!m_world) m_world = std::make_unique<World>(m_cfg);
     m_timings = std::make_unique<cardillo::misc::TimingManager>();
     m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>(*m_world, m_timings.get(), m_cfg);
-    m_pipeline = std::make_unique<cardillo::physics::pipeline::PhysicsPipeline>(*m_world, m_cfg,
-                                                                               m_collision_mgr.get(),
-                                                                               m_timings.get());
+    m_pipeline = std::make_unique<cardillo::physics::pipeline::PhysicsPipeline>(*m_world, m_cfg, m_collision_mgr.get(), m_timings.get());
 }
 
 void PhysicsEngine::step(real_t dt) {
@@ -51,5 +49,5 @@ void PhysicsEngine::disableCollisionBetween(entt::entity a, entt::entity b) {
     if (m_collision_mgr) m_collision_mgr->disablePair(a, b);
 }
 
-} // namespace physics
-} // namespace cardillo
+}  // namespace physics
+}  // namespace cardillo

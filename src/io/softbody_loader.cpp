@@ -1,8 +1,8 @@
 #include "softbody_loader.hpp"
 
-#include <unordered_set>
-#include <coal/mesh_loader/loader.h>
 #include <coal/BVH/BVH_model.h>
+#include <coal/mesh_loader/loader.h>
+#include <unordered_set>
 
 namespace cardillo::io {
 
@@ -10,14 +10,11 @@ namespace {
 inline uint64_t edge_key(int a, int b) {
     int i = a < b ? a : b;
     int j = a < b ? b : a;
-    return (static_cast<uint64_t>(static_cast<uint32_t>(i)) << 32) |
-           static_cast<uint32_t>(j);
+    return (static_cast<uint64_t>(static_cast<uint32_t>(i)) << 32) | static_cast<uint32_t>(j);
 }
-}
+}  // namespace
 
-bool load_obj_softbody(const std::string& path,
-                       SoftBodyMesh& out,
-                       const cardillo::Vector3r& scale) {
+bool load_obj_softbody(const std::string& path, SoftBodyMesh& out, const cardillo::Vector3r& scale) {
     out.positions.clear();
     out.edges.clear();
     out.triangles.clear();
@@ -31,10 +28,7 @@ bool load_obj_softbody(const std::string& path,
         const auto& V = *bvh->vertices;
         out.positions.reserve(V.size());
         for (const auto& v : V) {
-            out.positions.emplace_back(
-                (real_t)v[0] * scale.x(),
-                (real_t)v[1] * scale.y(),
-                (real_t)v[2] * scale.z());
+            out.positions.emplace_back((real_t)v[0] * scale.x(), (real_t)v[1] * scale.y(), (real_t)v[2] * scale.z());
         }
     }
 
@@ -47,9 +41,9 @@ bool load_obj_softbody(const std::string& path,
             const int a = tri[0];
             const int b = tri[1];
             const int c = tri[2];
-            if (a >= 0 && b >= 0) Eset.insert(edge_key(a,b));
-            if (b >= 0 && c >= 0) Eset.insert(edge_key(b,c));
-            if (c >= 0 && a >= 0) Eset.insert(edge_key(c,a));
+            if (a >= 0 && b >= 0) Eset.insert(edge_key(a, b));
+            if (b >= 0 && c >= 0) Eset.insert(edge_key(b, c));
+            if (c >= 0 && a >= 0) Eset.insert(edge_key(c, a));
             // triangles
             if (a >= 0 && b >= 0 && c >= 0) {
                 out.triangles.emplace_back(a, b, c);
@@ -65,4 +59,4 @@ bool load_obj_softbody(const std::string& path,
     return !out.positions.empty();
 }
 
-} // namespace cardillo::io
+}  // namespace cardillo::io

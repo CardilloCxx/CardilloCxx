@@ -3,20 +3,16 @@
 
 namespace cardillo::io {
 
-void MeshGenerator::generateUVSphere(int latSegments,
-                      int lonSegments,
-                      std::vector<Vector3r>& outVertices,
-                      std::vector<Eigen::Vector3i>& outTriangles)
-{
+void MeshGenerator::generateUVSphere(int latSegments, int lonSegments, std::vector<Vector3r>& outVertices, std::vector<Eigen::Vector3i>& outTriangles) {
     if (latSegments < 3) latSegments = 3;
     if (lonSegments < 3) lonSegments = 3;
     outVertices.clear();
     outTriangles.clear();
     // Top pole
-    outVertices.emplace_back(0,0,1);
+    outVertices.emplace_back(0, 0, 1);
     // Rings
     for (int i = 1; i < latSegments; ++i) {
-        const real_t phi = (real_t)M_PI * (real_t)i / (real_t)latSegments; // (0,pi)
+        const real_t phi = (real_t)M_PI * (real_t)i / (real_t)latSegments;  // (0,pi)
         const real_t z = std::cos(phi);
         const real_t r = std::sin(phi);
         for (int j = 0; j < lonSegments; ++j) {
@@ -28,27 +24,25 @@ void MeshGenerator::generateUVSphere(int latSegments,
     }
     // Bottom pole
     const int bottomIndex = (int)outVertices.size();
-    outVertices.emplace_back(0,0,-1);
+    outVertices.emplace_back(0, 0, -1);
 
     // Helper to index ring vertices
-    auto ringIndex = [&](int ring, int seg) -> int {
-        return 1 + ring * lonSegments + (seg % lonSegments);
-    };
+    auto ringIndex = [&](int ring, int seg) -> int { return 1 + ring * lonSegments + (seg % lonSegments); };
 
     // Top cap triangles
     for (int j = 0; j < lonSegments; ++j) {
-        int a = 0; // top pole
+        int a = 0;  // top pole
         int b = ringIndex(0, j);
-        int c = ringIndex(0, j+1);
+        int c = ringIndex(0, j + 1);
         outTriangles.emplace_back(a, b, c);
     }
     // Middle quads split into triangles
-    for (int i = 0; i < latSegments-2; ++i) {
+    for (int i = 0; i < latSegments - 2; ++i) {
         for (int j = 0; j < lonSegments; ++j) {
             int v00 = ringIndex(i, j);
-            int v01 = ringIndex(i, j+1);
-            int v10 = ringIndex(i+1, j);
-            int v11 = ringIndex(i+1, j+1);
+            int v01 = ringIndex(i, j + 1);
+            int v10 = ringIndex(i + 1, j);
+            int v11 = ringIndex(i + 1, j + 1);
             outTriangles.emplace_back(v00, v10, v11);
             outTriangles.emplace_back(v00, v11, v01);
         }
@@ -58,20 +52,13 @@ void MeshGenerator::generateUVSphere(int latSegments,
     for (int j = 0; j < lonSegments; ++j) {
         int a = ringIndex(lastRing, j);
         int b = bottomIndex;
-        int c = ringIndex(lastRing, j+1);
+        int c = ringIndex(lastRing, j + 1);
         outTriangles.emplace_back(a, b, c);
     }
 }
 
-
-void MeshGenerator::generateCapsuleMesh(int segmentsCircumference,
-                         int segmentsHemisphere,
-                         int segmentsCylinder,
-                         real_t radius,
-                         real_t halfLength,
-                         std::vector<Vector3r>& vertices,
-                         std::vector<Eigen::Vector3i>& triangles)
-{
+void MeshGenerator::generateCapsuleMesh(int segmentsCircumference, int segmentsHemisphere, int segmentsCylinder, real_t radius, real_t halfLength, std::vector<Vector3r>& vertices,
+                                        std::vector<Eigen::Vector3i>& triangles) {
     vertices.clear();
     triangles.clear();
     if (radius <= (real_t)0) return;
@@ -157,12 +144,7 @@ void MeshGenerator::generateCapsuleMesh(int segmentsCircumference,
     }
 }
 
-void MeshGenerator::generateCylinderMesh(int segmentsCircumference,
-                          real_t radius,
-                          real_t halfLength,
-                          std::vector<Vector3r>& vertices,
-                          std::vector<Eigen::Vector3i>& triangles)
-{
+void MeshGenerator::generateCylinderMesh(int segmentsCircumference, real_t radius, real_t halfLength, std::vector<Vector3r>& vertices, std::vector<Eigen::Vector3i>& triangles) {
     vertices.clear();
     triangles.clear();
     if (radius <= (real_t)0) return;
@@ -215,12 +197,7 @@ void MeshGenerator::generateCylinderMesh(int segmentsCircumference,
     }
 }
 
-void MeshGenerator::generateConeMesh(int segmentsCircumference,
-                      real_t radius,
-                      real_t height,
-                      std::vector<Vector3r>& vertices,
-                      std::vector<Eigen::Vector3i>& triangles)
-{
+void MeshGenerator::generateConeMesh(int segmentsCircumference, real_t radius, real_t height, std::vector<Vector3r>& vertices, std::vector<Eigen::Vector3i>& triangles) {
     vertices.clear();
     triangles.clear();
     if (radius <= (real_t)0 || height <= (real_t)0) return;
@@ -262,18 +239,7 @@ void MeshGenerator::generateConeMesh(int segmentsCircumference,
 
 namespace {
 
-enum class MeshKind {
-    Unsupported,
-    SoftBody,
-    Plane,
-    Cube,
-    Capsule,
-    Cylinder,
-    Cone,
-    MeshAsset,
-    HeightField,
-    Sphere
-};
+enum class MeshKind { Unsupported, SoftBody, Plane, Cube, Capsule, Cylinder, Cone, MeshAsset, HeightField, Sphere };
 
 MeshKind detectMeshKind(const entt::registry& reg, entt::entity e) {
     if (reg.any_of<cardillo::C_SoftBodySurface>(e)) return MeshKind::SoftBody;
@@ -368,22 +334,13 @@ bool buildPlaneMeshTriangles(const entt::registry& reg, entt::entity e, cardillo
     a.normalize();
     const Vector3r b = n.cross(a);
 
-    out.vertices = {
-        pos + (-pl.sizeX) * a + (-pl.sizeY) * b,
-        pos + ( pl.sizeX) * a + (-pl.sizeY) * b,
-        pos + ( pl.sizeX) * a + ( pl.sizeY) * b,
-        pos + (-pl.sizeX) * a + ( pl.sizeY) * b
-    };
+    out.vertices = {pos + (-pl.sizeX) * a + (-pl.sizeY) * b, pos + (pl.sizeX) * a + (-pl.sizeY) * b, pos + (pl.sizeX) * a + (pl.sizeY) * b, pos + (-pl.sizeX) * a + (pl.sizeY) * b};
     out.triangles.emplace_back(0, 1, 2);
     out.triangles.emplace_back(0, 2, 3);
 
     out.hasUV = true;
-    out.uvs = {
-        Eigen::Vector2f(0.f, 0.f),
-        Eigen::Vector2f(static_cast<float>(2 * pl.sizeX), 0.f),
-        Eigen::Vector2f(static_cast<float>(2 * pl.sizeX), static_cast<float>(2 * pl.sizeY)),
-        Eigen::Vector2f(0.f, static_cast<float>(2 * pl.sizeY))
-    };
+    out.uvs = {Eigen::Vector2f(0.f, 0.f), Eigen::Vector2f(static_cast<float>(2 * pl.sizeX), 0.f), Eigen::Vector2f(static_cast<float>(2 * pl.sizeX), static_cast<float>(2 * pl.sizeY)),
+               Eigen::Vector2f(0.f, static_cast<float>(2 * pl.sizeY))};
     return true;
 }
 
@@ -400,33 +357,19 @@ bool buildCubeMeshTriangles(const entt::registry& reg, entt::entity e, cardillo:
     const Vector3r vx = ex * c.halfExtents.x();
     const Vector3r vy = ey * c.halfExtents.y();
     const Vector3r vz = ez * c.halfExtents.z();
-    out.vertices = {
-        out.center - vx - vy - vz,
-        out.center + vx - vy - vz,
-        out.center + vx + vy - vz,
-        out.center - vx + vy - vz,
-        out.center - vx - vy + vz,
-        out.center + vx - vy + vz,
-        out.center + vx + vy + vz,
-        out.center - vx + vy + vz
-    };
+    out.vertices = {out.center - vx - vy - vz, out.center + vx - vy - vz, out.center + vx + vy - vz, out.center - vx + vy - vz,
+                    out.center - vx - vy + vz, out.center + vx - vy + vz, out.center + vx + vy + vz, out.center - vx + vy + vz};
 
-    out.triangles = {
-        Eigen::Vector3i(0, 1, 2), Eigen::Vector3i(0, 2, 3),
-        Eigen::Vector3i(4, 6, 5), Eigen::Vector3i(4, 7, 6),
-        Eigen::Vector3i(0, 3, 7), Eigen::Vector3i(0, 7, 4),
-        Eigen::Vector3i(1, 5, 6), Eigen::Vector3i(1, 6, 2),
-        Eigen::Vector3i(0, 4, 5), Eigen::Vector3i(0, 5, 1),
-        Eigen::Vector3i(3, 2, 6), Eigen::Vector3i(3, 6, 7)
-    };
+    out.triangles = {Eigen::Vector3i(0, 1, 2), Eigen::Vector3i(0, 2, 3), Eigen::Vector3i(4, 6, 5), Eigen::Vector3i(4, 7, 6), Eigen::Vector3i(0, 3, 7), Eigen::Vector3i(0, 7, 4),
+                     Eigen::Vector3i(1, 5, 6), Eigen::Vector3i(1, 6, 2), Eigen::Vector3i(0, 4, 5), Eigen::Vector3i(0, 5, 1), Eigen::Vector3i(3, 2, 6), Eigen::Vector3i(3, 6, 7)};
 
     out.hasUV = true;
     out.uvs.resize(8);
     const float hx = static_cast<float>(c.halfExtents.x());
     const float hy = static_cast<float>(c.halfExtents.y());
     for (int i = 0; i < 8; ++i) {
-        float lx = (i==1||i==2||i==5||i==6) ? hx : -hx;
-        float ly = (i==2||i==3||i==6||i==7) ? hy : -hy;
+        float lx = (i == 1 || i == 2 || i == 5 || i == 6) ? hx : -hx;
+        float ly = (i == 2 || i == 3 || i == 6 || i == 7) ? hy : -hy;
         out.uvs[(size_t)i] = Eigen::Vector2f(lx + hx, ly + hy);
     }
     return true;
@@ -484,10 +427,7 @@ bool buildMeshAssetTriangles(const cardillo::World& sys, entt::entity e, cardill
     }
 }
 
-bool buildHeightFieldTriangles(const cardillo::World& sys,
-                               entt::entity e,
-                               int heightFieldStride,
-                               cardillo::io::MeshGenerator::EntityMesh& out) {
+bool buildHeightFieldTriangles(const cardillo::World& sys, entt::entity e, int heightFieldStride, cardillo::io::MeshGenerator::EntityMesh& out) {
     try {
         const auto& asset = sys.getHeightFieldAsset(e);
         if (!asset.hf) return false;
@@ -562,13 +502,9 @@ bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, cardill
     return true;
 }
 
-} // namespace
+}  // namespace
 
-bool MeshGenerator::buildEntityMesh(const cardillo::World& sys,
-                                    entt::entity e,
-                                    int heightFieldStride,
-                                    EntityMesh& out)
-{
+bool MeshGenerator::buildEntityMesh(const cardillo::World& sys, entt::entity e, int heightFieldStride, EntityMesh& out) {
     const auto& reg = sys.ecs();
     if (!reg.valid(e) || !reg.any_of<cardillo::C_VisualObject>(e)) {
         return false;
@@ -577,18 +513,28 @@ bool MeshGenerator::buildEntityMesh(const cardillo::World& sys,
     fillCommonEntityData(reg, e, out);
 
     switch (detectMeshKind(reg, e)) {
-        case MeshKind::SoftBody:   return buildSoftBodyMesh(reg, e, out);
-        case MeshKind::Plane:      return buildPlaneMeshTriangles(reg, e, out);
-        case MeshKind::Cube:       return buildCubeMeshTriangles(reg, e, out);
-        case MeshKind::Capsule:    return buildCapsuleMeshTriangles(reg, e, out);
-        case MeshKind::Cylinder:   return buildCylinderMeshTriangles(reg, e, out);
-        case MeshKind::Cone:       return buildConeMeshTriangles(reg, e, out);
-        case MeshKind::MeshAsset:  return buildMeshAssetTriangles(sys, e, out);
-        case MeshKind::HeightField:return buildHeightFieldTriangles(sys, e, heightFieldStride, out);
-        case MeshKind::Sphere:     return buildSphereMeshTriangles(reg, e, out);
+        case MeshKind::SoftBody:
+            return buildSoftBodyMesh(reg, e, out);
+        case MeshKind::Plane:
+            return buildPlaneMeshTriangles(reg, e, out);
+        case MeshKind::Cube:
+            return buildCubeMeshTriangles(reg, e, out);
+        case MeshKind::Capsule:
+            return buildCapsuleMeshTriangles(reg, e, out);
+        case MeshKind::Cylinder:
+            return buildCylinderMeshTriangles(reg, e, out);
+        case MeshKind::Cone:
+            return buildConeMeshTriangles(reg, e, out);
+        case MeshKind::MeshAsset:
+            return buildMeshAssetTriangles(sys, e, out);
+        case MeshKind::HeightField:
+            return buildHeightFieldTriangles(sys, e, heightFieldStride, out);
+        case MeshKind::Sphere:
+            return buildSphereMeshTriangles(reg, e, out);
         case MeshKind::Unsupported:
-        default:                   return false;
+        default:
+            return false;
     }
 }
 
-} // namespace cardillo::io
+}  // namespace cardillo::io

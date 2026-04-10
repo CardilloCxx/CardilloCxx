@@ -1,62 +1,57 @@
 // COAL-based collision manager implementation (persistent, broadphase-backed)
 #include "collision_coal.hpp"
-#include "types.hpp"
+#include "../config/config.hpp"
 #include "../misc/timings/TimingManager.hpp"
 #include "../physics/world.hpp"
-#include "../config/config.hpp"
+#include "types.hpp"
 
-#include <coal/math/transform.h>
-#include <coal/shape/geometric_shapes.h>
+#include <coal/broadphase/broadphase.h>
+#include <coal/broadphase/default_broadphase_callbacks.h>
 #include <coal/collision.h>
 #include <coal/collision_data.h>
 #include <coal/contact_patch.h>
-#include <coal/broadphase/broadphase.h>
-#include <coal/broadphase/default_broadphase_callbacks.h>
+#include <coal/math/transform.h>
+#include <coal/shape/geometric_shapes.h>
 // HeightField
 #include <coal/hfield.h>
 
-#include <memory>
-#include <optional>
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
-#include <algorithm>
+#include <map>
+#include <memory>
+#include <optional>
 #include "tangent_frame.hpp"
 #include "transform_utils.hpp"
-#include <chrono>
-#include <map>
 
 namespace cardillo::collision {
 
 CollisionCoal::CollisionCoal(cardillo::World& world, cardillo::misc::TimingManager* timings, cardillo::config::Config& cfg)
-    : m_world(&world), m_timings(timings), m_cfg(cfg), m_contactTracker(cfg, timings)
-{
+    : m_world(&world), m_timings(timings), m_cfg(cfg), m_contactTracker(cfg, timings) {
     ensureBroadphaseFromConfig_();
 }
 CollisionCoal::~CollisionCoal() = default;
 
 namespace {
-inline coal::Quatf toCoalQuat(const Quaternion4r& q)
-{
+inline coal::Quatf toCoalQuat(const Quaternion4r& q) {
     return coal::Quatf(q.w(), q.x(), q.y(), q.z());
 }
-inline coal::Vec3s toCoalVec3(const Vector3r& v)
-{
+inline coal::Vec3s toCoalVec3(const Vector3r& v) {
     return coal::Vec3s(v.x(), v.y(), v.z());
 }
-inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e)
-{
-    coal::Transform3s X; X.setIdentity();
+inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e) {
+    coal::Transform3s X;
+    X.setIdentity();
     Vector3r x = Vector3r::Zero();
     Quaternion4r q = Quaternion4r::Identity();
-    if (reg.any_of<cardillo::C_Position3>(e))
-        x = reg.get<cardillo::C_Position3>(e).value;
-    if (reg.any_of<cardillo::C_Orientation>(e))
-        q = reg.get<cardillo::C_Orientation>(e).value;
+    if (reg.any_of<cardillo::C_Position3>(e)) x = reg.get<cardillo::C_Position3>(e).value;
+    if (reg.any_of<cardillo::C_Orientation>(e)) q = reg.get<cardillo::C_Orientation>(e).value;
     if (reg.any_of<cardillo::C_RB_Cube>(e)) {
         const auto& cb = reg.get<cardillo::C_RB_Cube>(e);
         // Apply local cube orientation on top of body orientation
         q = q * cb.q;
-        x += q * cb.center; // center expressed in cube-local frame
+        x += q * cb.center;  // center expressed in cube-local frame
     } else if (reg.any_of<cardillo::C_Cube>(e)) {
         // If only visual cube exists, still honor its center/q
         const auto& cb = reg.get<cardillo::C_Cube>(e);
@@ -77,14 +72,18 @@ static inline void dedupeContactsForPair(ContactList& list, real_t minDist) {
     // Sort indices by penetration descending (keep deeper contacts first)
     std::vector<std::size_t> idx(list.size());
     for (std::size_t i = 0; i < list.size(); ++i) idx[i] = i;
-    std::sort(idx.begin(), idx.end(), [&](std::size_t a, std::size_t b){ return list[a].penetration > list[b].penetration; });
-    std::vector<Contact> kept; kept.reserve(list.size());
+    std::sort(idx.begin(), idx.end(), [&](std::size_t a, std::size_t b) { return list[a].penetration > list[b].penetration; });
+    std::vector<Contact> kept;
+    kept.reserve(list.size());
     for (std::size_t k = 0; k < idx.size(); ++k) {
         const Contact& c = list[idx[k]];
         bool tooClose = false;
         for (const auto& sel : kept) {
             const Vector3r d = c.point - sel.point;
-            if (d.squaredNorm() <= min2) { tooClose = true; break; }
+            if (d.squaredNorm() <= min2) {
+                tooClose = true;
+                break;
+            }
         }
         if (!tooClose) kept.emplace_back(c);
     }
@@ -92,9 +91,8 @@ static inline void dedupeContactsForPair(ContactList& list, real_t minDist) {
 }
 
 // Helper to populate a Contact from world data and entities
-static inline real_t combineFrictionMu(const entt::registry& reg, entt::entity a, entt::entity b, const std::string& method)
-{
-    auto getMu = [&](entt::entity e)->real_t{
+static inline real_t combineFrictionMu(const entt::registry& reg, entt::entity a, entt::entity b, const std::string& method) {
+    auto getMu = [&](entt::entity e) -> real_t {
         if (reg.any_of<cardillo::C_Friction>(e)) {
             return std::max<real_t>((real_t)0, reg.get<cardillo::C_Friction>(e).mu);
         }
@@ -103,40 +101,33 @@ static inline real_t combineFrictionMu(const entt::registry& reg, entt::entity a
     const real_t muA = getMu(a);
     const real_t muB = getMu(b);
     if (method == "arith") return (muA + muB) * (real_t)0.5;
-    if (method == "geom")  return (real_t)std::sqrt(std::max<real_t>((real_t)0, muA * muB));
-    return std::min(muA, muB); // default: min
+    if (method == "geom") return (real_t)std::sqrt(std::max<real_t>((real_t)0, muA * muB));
+    return std::min(muA, muB);  // default: min
 }
 
 // Helper to populate a Contact from world data and entities
-inline Contact makeContact(const entt::registry& reg,
-                           entt::entity ea,
-                           entt::entity eb,
-                           Vector3r p1W,
-                           Vector3r p2W,
-                           Vector3r nN,
-                           real_t depth,
-                           const std::string& frictionCombine)
-{
+inline Contact makeContact(const entt::registry& reg, entt::entity ea, entt::entity eb, Vector3r p1W, Vector3r p2W, Vector3r nN, real_t depth, const std::string& frictionCombine) {
     Vector3r a_pos = reg.get<cardillo::C_Position3>(ea).value;
     Vector3r b_pos = reg.get<cardillo::C_Position3>(eb).value;
 
-
-    Contact c{}; c.a = ea; c.b = eb;
+    Contact c{};
+    c.a = ea;
+    c.b = eb;
     // Precompute transforms for both bodies once
     const cardillo::collision::BodyXform XA = cardillo::collision::BodyXform::fromEcs(reg, c.a);
     const cardillo::collision::BodyXform XB = cardillo::collision::BodyXform::fromEcs(reg, c.b);
-    
+
     // Normalize normal and construct stable tangent frame
     real_t nlen = nN.norm();
     if (nlen > (real_t)0) nN /= nlen;
 
-    c.normal = nN; // convention: from A -> B
+    c.normal = nN;  // convention: from A -> B
     cardillo::collision::tangentFrameFromNormal(nN, c.tangent1, c.tangent2);
     c.point = (p1W + p2W) * (real_t)0.5;
     c.penetration = std::max<real_t>(0.0, depth);
-    c.pointA_body  = XA.worldPointToBody(c.point);
+    c.pointA_body = XA.worldPointToBody(c.point);
     c.normalA_body = XA.worldVecToBody(c.normal);
-    c.pointB_body  = XB.worldPointToBody(c.point);
+    c.pointB_body = XB.worldPointToBody(c.point);
     c.normalB_body = XB.worldVecToBody(c.normal);
     // Tangents in body frames
     c.tangent1A_body = XA.worldVecToBody(c.tangent1);
@@ -160,15 +151,8 @@ inline void addContactToMap(ContactMap& cmap, const Contact& c) {
 }
 
 // Append contacts for a pair into a map: prefer patch expansion; fall back to raw contacts
-inline std::size_t appendContactsFromPair(const entt::registry& reg,
-                                   entt::entity ea,
-                                   entt::entity eb,
-                                   const coal::CollisionResult& cres,
-                                   const coal::ContactPatchResult& patch_res,
-                                   ContactMap& outMap,
-                                   const std::string& frictionCombine,
-                                   bool usePatchVertices)
-{
+inline std::size_t appendContactsFromPair(const entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res, ContactMap& outMap,
+                                          const std::string& frictionCombine, bool usePatchVertices) {
     std::size_t appended = 0;
     if (usePatchVertices && patch_res.numContactPatches() > 0) {
         for (std::size_t ip = 0; ip < patch_res.numContactPatches(); ++ip) {
@@ -199,13 +183,16 @@ inline std::size_t appendContactsFromPair(const entt::registry& reg,
     }
     return appended;
 }
-}
+}  // namespace
 
 void CollisionCoal::ensureBroadphaseFromConfig_() {
     if (m_broadphase) return;
     // Select based on config
     std::string bp = m_world ? m_cfg.collision_broadphase : std::string("dynamic_aabb");
-    auto toLower = [](std::string s){ for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; };
+    auto toLower = [](std::string s) {
+        for (auto& c : s) c = (char)std::tolower((unsigned char)c);
+        return s;
+    };
     bp = toLower(bp);
     if (bp == "dynamic_aabb" || bp == "daabb" || bp == "default") {
         m_broadphase = std::make_unique<coal::DynamicAABBTreeCollisionManager>();
@@ -241,7 +228,7 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
     switch (kind) {
         case ColliderKind::Box: {
             const auto& he = reg.get<cardillo::C_RB_Cube>(e).halfExtents;
-            return std::make_shared<coal::Box>(he.x()*2.0, he.y()*2.0, he.z()*2.0);
+            return std::make_shared<coal::Box>(he.x() * 2.0, he.y() * 2.0, he.z() * 2.0);
         }
         case ColliderKind::Halfspace: {
             const auto& plane = reg.get<cardillo::C_RB_Plane>(e);
@@ -256,18 +243,15 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
         }
         case ColliderKind::Capsule: {
             const auto& cap = reg.get<cardillo::C_RB_Capsule>(e);
-            return std::make_shared<coal::Capsule>((coal::CoalScalar)cap.radius,
-                                                   (coal::CoalScalar)(cap.halfLength * 2));
+            return std::make_shared<coal::Capsule>((coal::CoalScalar)cap.radius, (coal::CoalScalar)(cap.halfLength * 2));
         }
         case ColliderKind::Cylinder: {
             const auto& cyl = reg.get<cardillo::C_RB_Cylinder>(e);
-            return std::make_shared<coal::Cylinder>((coal::CoalScalar)cyl.radius,
-                                                    (coal::CoalScalar)(cyl.halfLength * 2));
+            return std::make_shared<coal::Cylinder>((coal::CoalScalar)cyl.radius, (coal::CoalScalar)(cyl.halfLength * 2));
         }
         case ColliderKind::Cone: {
             const auto& cone = reg.get<cardillo::C_RB_Cone>(e);
-            return std::make_shared<coal::Cone>((coal::CoalScalar)cone.radius,
-                                                (coal::CoalScalar)cone.height);
+            return std::make_shared<coal::Cone>((coal::CoalScalar)cone.radius, (coal::CoalScalar)cone.height);
         }
         case ColliderKind::Mesh: {
             const auto& asset = m_world->getMeshAsset(e);
@@ -318,8 +302,8 @@ void CollisionCoal::rebuild() {
         obj->computeAABB();
 
         // set stable indices as user data for fast reverse mapping
-        const std::size_t idx = m_objects.size(); // index after previous pushes
-        geom->setUserData(reinterpret_cast<void*>(static_cast<uintptr_t>(idx + 1))); // +1 to avoid null
+        const std::size_t idx = m_objects.size();                                     // index after previous pushes
+        geom->setUserData(reinterpret_cast<void*>(static_cast<uintptr_t>(idx + 1)));  // +1 to avoid null
         obj->setUserData(reinterpret_cast<void*>(static_cast<uintptr_t>(idx + 1)));
 
         raw.push_back(obj.get());
@@ -339,7 +323,8 @@ void CollisionCoal::applyTransforms() {
         rebuild();
         if (!m_broadphase) return;
     }
-    std::vector<coal::CollisionObject*> updated; updated.reserve(m_objects.size());
+    std::vector<coal::CollisionObject*> updated;
+    updated.reserve(m_objects.size());
     for (std::size_t i = 0; i < m_objects.size(); ++i) {
         entt::entity e = m_entities[i];
         auto* obj = m_objects[i].get();
@@ -348,9 +333,12 @@ void CollisionCoal::applyTransforms() {
             // Static objects: transform was set at rebuild; no need to recompute each step
             continue;
         }
-        // Do NOT apply object transform to halfspaces; their plane is encoded directly in the geometry.
+        // Do NOT apply object transform to halfspaces; their plane is encoded directly in the
+        // geometry.
         if (m_kinds[i] == ColliderKind::Halfspace) {
-            coal::Transform3s X; X.setIdentity(); obj->setTransform(X);
+            coal::Transform3s X;
+            X.setIdentity();
+            obj->setTransform(X);
         } else {
             obj->setTransform(makeTfFromEcs(m_world->ecs(), e));
         }
@@ -389,7 +377,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
     mapCurr.reserve(pairs.size());
 
     if (pairs.empty()) {
-        if( m_world && m_cfg.debug_rb) {
+        if (m_world && m_cfg.debug_rb) {
             std::printf("[Collision] no potential collision pairs found in broadphase.\n");
         }
         // clear previous/current buffers
@@ -400,8 +388,9 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
     // Prepare reusable request/result for collide and patch computation
     coal::CollisionRequest creq;
-    creq.num_max_contacts = m_world ? m_cfg.collision_max_raw_contacts : 1024;      // per pair cap
-    // Use configurable security margin (>=0). A small positive value improves robustness for thin triangles
+    creq.num_max_contacts = m_world ? m_cfg.collision_max_raw_contacts : 1024;  // per pair cap
+    // Use configurable security margin (>=0). A small positive value improves robustness for thin
+    // triangles
     creq.security_margin = m_world ? m_cfg.collision_security_margin : (real_t)1e-5;
     creq.enable_contact = true;
     coal::CollisionResult cres;
@@ -424,7 +413,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
         entt::entity ea, eb;
         {
             auto sc_c = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionNarrowphaseCollide);
-            
+
             // Identify indices/entities back from user data
             auto idx1p = reinterpret_cast<std::uintptr_t>(o1->getUserData());
             auto idx2p = reinterpret_cast<std::uintptr_t>(o2->getUserData());
@@ -482,7 +471,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
             mapCurr[key][i].global_out_index = m_flattened.back().global_out_index;
         }
     }
-    
+
     if (m_cfg.pj_warmstart) {
         m_contactTracker.registerNextContacts(mapCurr);
         m_contactTracker.applyPrevImpulses(m_flattened, m_prev_flattened);
@@ -512,4 +501,4 @@ bool CollisionCoal::isPairDisabled(entt::entity a, entt::entity b) const {
     return m_disabledPairs.find(ContactPairKey::make(a, b)) != m_disabledPairs.end();
 }
 
-} // namespace cardillo::collision
+}  // namespace cardillo::collision

@@ -1,30 +1,30 @@
 #pragma once
 
-#include <entt/entt.hpp>
-#include <optional>
 #include <cmath>
+#include <entt/entt.hpp>
+#include <iostream>
 #include <limits>
+#include <optional>
 #include "../../misc/types.hpp"
 #include "../world.hpp"
-#include <iostream>
 
 namespace cardillo {
 namespace physics {
 
 // Aliases for compact Jacobian rows (1 x 6 per body)
-using Row6r = Matrixr<1,6>;
+using Row6r = Matrixr<1, 6>;
 
 // Multi-row constraint result with dense row-storage for cleaner assembly
 struct ConstraintResult {
     entt::entity a{entt::null};
     entt::entity b{entt::null};
     // Each W* is N x 6 (rows = scalar constraint rows)
-    MatrixXXr WgA;     
-    MatrixXXr WgB;     
-    MatrixXXr WgammaA; 
-    MatrixXXr WgammaB; 
-    VectorXr Crows;    // size N (compliances per spring row)
-    VectorXr Arows;    // size N (compliances per damper row)
+    MatrixXXr WgA;
+    MatrixXXr WgB;
+    MatrixXXr WgammaA;
+    MatrixXXr WgammaB;
+    VectorXr Crows;  // size N (compliances per spring row)
+    VectorXr Arows;  // size N (compliances per damper row)
 };
 
 // Reference for a joint frame: position/orientation expressed in a frame entity
@@ -35,12 +35,9 @@ struct JointFrame {
     std::optional<entt::entity> ref{std::nullopt};
 
     JointFrame() = default;
-    JointFrame(entt::entity ref_)
-        : ref(ref_) {}
+    JointFrame(entt::entity ref_) : ref(ref_) {}
 
-    static JointFrame fromAxis(const Vector3r& p, const Vector3r& xAxis,
-                               std::optional<entt::entity> ref = std::nullopt)
-    {
+    static JointFrame fromAxis(const Vector3r& p, const Vector3r& xAxis, std::optional<entt::entity> ref = std::nullopt) {
         JointFrame jf;
         jf.r_refJ = p;
         jf.ref = ref;
@@ -58,40 +55,33 @@ struct JointFrame {
         jf.A_refJ = R;
         return jf;
     }
-    JointFrame(const Vector3r& p, const Matrix33r& R = Matrix33r::Identity(),
-               std::optional<entt::entity> ref_ = std::nullopt)
-        : r_refJ(p), A_refJ(R), ref(ref_) {}
+    JointFrame(const Vector3r& p, const Matrix33r& R = Matrix33r::Identity(), std::optional<entt::entity> ref_ = std::nullopt) : r_refJ(p), A_refJ(R), ref(ref_) {}
 };
 
 // Joint-frame description shared by all constraints; attachment data for A/B.
 struct JointProperties {
     JointProperties() = default;
 
-    explicit JointProperties(entt::registry& reg,
-                             entt::entity A,
-                             entt::entity B,
-                             const JointFrame& jf)
-        : entityA(A), entityB(B)
-    {
-        Vector3r  r_ORef;
+    explicit JointProperties(entt::registry& reg, entt::entity A, entt::entity B, const JointFrame& jf) : entityA(A), entityB(B) {
+        Vector3r r_ORef;
         Matrix33r A_Ref;
 
         if (jf.ref.has_value()) {
             r_ORef = reg.get<cardillo::C_Position3>(*jf.ref).value;
-            A_Ref  = reg.get<cardillo::C_Orientation>(*jf.ref).value.toRotationMatrix();
+            A_Ref = reg.get<cardillo::C_Orientation>(*jf.ref).value.toRotationMatrix();
         } else {
             r_ORef = Vector3r::Zero();
-            A_Ref  = Matrix33r::Identity();
+            A_Ref = Matrix33r::Identity();
         }
 
         Vector3r r_OJ_world = r_ORef + A_Ref * jf.r_refJ;
 
         const auto& r_OA = reg.get<cardillo::C_Position3>(A).value;
-        const auto& A_A  = reg.get<cardillo::C_Orientation>(A).value.toRotationMatrix();
+        const auto& A_A = reg.get<cardillo::C_Orientation>(A).value.toRotationMatrix();
         K1_r_S1J = A_A.transpose() * (r_OJ_world - r_OA);
 
         const auto& r_OB = reg.get<cardillo::C_Position3>(B).value;
-        const auto& A_B  = reg.get<cardillo::C_Orientation>(B).value.toRotationMatrix();
+        const auto& A_B = reg.get<cardillo::C_Orientation>(B).value.toRotationMatrix();
         K2_r_S2J = A_B.transpose() * (r_OJ_world - r_OB);
 
         const auto& A_IJ = A_Ref * jf.A_refJ;
@@ -103,8 +93,8 @@ struct JointProperties {
     }
 
     // Joint position and orientation in the chosen reference frame
-    Vector3r K1_r_S1J{Vector3r::Zero()}; // Joint pos in body A frame from S1
-    Vector3r K2_r_S2J{Vector3r::Zero()}; // Joint pos in body B frame from S2
+    Vector3r K1_r_S1J{Vector3r::Zero()};     // Joint pos in body A frame from S1
+    Vector3r K2_r_S2J{Vector3r::Zero()};     // Joint pos in body B frame from S2
     Matrix33r A_K1J{Matrix33r::Identity()};  // Joint orientation that maps J -> A
     Matrix33r K1_r_S1J_skew{Matrix33r::Zero()};
     Matrix33r K2_r_S2J_skew{Matrix33r::Zero()};
@@ -125,12 +115,8 @@ struct JointProperties {
 
 // Base pattern: stores registry, entities and attachment points and shared helpers
 class ConstraintPattern {
-public:
-    ConstraintPattern(entt::registry& reg,
-                      entt::entity a,
-                      entt::entity b,
-                      const Vector3r& rA_local = Vector3r::Zero(),
-                      const Vector3r& rB_local = Vector3r::Zero());
+   public:
+    ConstraintPattern(entt::registry& reg, entt::entity a, entt::entity b, const Vector3r& rA_local = Vector3r::Zero(), const Vector3r& rB_local = Vector3r::Zero());
 
     virtual ~ConstraintPattern() = default;
 
@@ -142,7 +128,7 @@ public:
 
     bool getAttachPointsWorld(Vector3r& xA, Vector3r& xB) const;
 
-protected:
+   protected:
     // Helper to fetch world transforms and attachment points
     struct WorldAttachments {
         Vector3r xA{Vector3r::Zero()};
@@ -171,19 +157,14 @@ protected:
 };
 
 class LinearDistanceConstraint : public ConstraintPattern {
-public:
-    LinearDistanceConstraint(entt::registry& reg,
-                             entt::entity a,
-                             entt::entity b,
-                             const Vector3r& rA_local = Vector3r::Zero(),
-                             const Vector3r& rB_local = Vector3r::Zero(),
-                             real_t stiffness = std::numeric_limits<real_t>::infinity(),
-                             real_t damping = (real_t)0)
+   public:
+    LinearDistanceConstraint(entt::registry& reg, entt::entity a, entt::entity b, const Vector3r& rA_local = Vector3r::Zero(), const Vector3r& rB_local = Vector3r::Zero(),
+                             real_t stiffness = std::numeric_limits<real_t>::infinity(), real_t damping = (real_t)0)
         : ConstraintPattern(reg, a, b, rA_local, rB_local), m_k(stiffness), m_d(damping) {}
 
     ConstraintResult getConstraint() const override;
 
-private:
+   private:
     real_t m_k{(real_t)0};
     real_t m_d{(real_t)0};
 };
@@ -192,22 +173,16 @@ private:
 // Specialised constraints (hinge, planar, spherical, translational, rigid)
 // configure stiffness and damping in translation/rotation directions via K and D.
 class TranslationRotationConstraint : public ConstraintPattern {
-public:
-    TranslationRotationConstraint(entt::registry& reg,
-                                  entt::entity a,
-                                  entt::entity b,
-                                  const JointFrame& frame,
-                                  const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
-                                  const Vector3r& D_trans = Vector3r::Zero(),
-                                  const Vector3r& K_rot   = Vector3r::Zero(),
-                                  const Vector3r& D_rot   = Vector3r::Zero());
+   public:
+    TranslationRotationConstraint(entt::registry& reg, entt::entity a, entt::entity b, const JointFrame& frame, const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
+                                  const Vector3r& D_trans = Vector3r::Zero(), const Vector3r& K_rot = Vector3r::Zero(), const Vector3r& D_rot = Vector3r::Zero());
 
     ConstraintResult getConstraint() const override;
 
     // Access joint-frame description for visualization/debugging
     const JointProperties& jointProperties() const { return m_joint; }
 
-protected:
+   protected:
     JointProperties m_joint;
     Vector3r m_K_trans{Vector3r::Zero()};
     Vector3r m_D_trans{Vector3r::Zero()};
@@ -222,23 +197,19 @@ protected:
 // Ke: [E1, E2, E3] stiffnesses for generalized stretch/shear
 // Kf: [F1, F2, F3] stiffnesses for torsion/bending
 class BeamConstraint : public ConstraintPattern {
-public:
-    BeamConstraint(entt::registry& reg,
-                   entt::entity a,
-                   entt::entity b,
-                   const cardillo::physics::BeamSpringParams& springs,
-                   const cardillo::physics::BeamCrossSection& section);
+   public:
+    BeamConstraint(entt::registry& reg, entt::entity a, entt::entity b, const cardillo::physics::BeamSpringParams& springs, const cardillo::physics::BeamCrossSection& section);
 
     // Fill W and compliance vectors for 6 beam rows
     ConstraintResult getConstraint() const override;
 
-private:
+   private:
     cardillo::physics::BeamSpringParams m_springs{};
     cardillo::physics::BeamCrossSection m_section{};
     Vector3r m_delta0{Vector3r::Zero()};
     Vector3r m_kappa0{Vector3r::Zero()};
-    real_t   l_0{ 0 };
+    real_t l_0{0};
 };
 
-} // namespace physics
-} // namespace cardillo
+}  // namespace physics
+}  // namespace cardillo

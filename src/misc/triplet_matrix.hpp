@@ -1,14 +1,14 @@
 #pragma once
 #include <Eigen/Sparse>
-#include <vector>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 #include "types.hpp"
 
 namespace cardillo {
 
 class TripletMatrix {
-public:
+   public:
     using Triplet = Eigen::Triplet<real_t>;
     using ColSparse = Eigen::SparseMatrix<real_t, Eigen::ColMajor>;
     using RowSparse = Eigen::SparseMatrix<real_t, Eigen::RowMajor>;
@@ -18,20 +18,12 @@ public:
 
     TripletMatrix(int rows, int cols) : n_rows_(rows), n_cols_(cols) {}
 
-    TripletMatrix(int rows, int cols, std::shared_ptr<std::vector<Triplet>> data)
-        : n_rows_(rows), n_cols_(cols)
-    {
-        blocks_.push_back({0, 0, 1.0, false, data});
-    }
+    TripletMatrix(int rows, int cols, std::shared_ptr<std::vector<Triplet>> data) : n_rows_(rows), n_cols_(cols) { blocks_.push_back({0, 0, 1.0, false, data}); }
 
     // Static constructors
-    static TripletMatrix zero(int rows, int cols) {
-        return TripletMatrix(rows, cols);
-    }
+    static TripletMatrix zero(int rows, int cols) { return TripletMatrix(rows, cols); }
 
-    static TripletMatrix zeroLike(const TripletMatrix& other) {
-        return TripletMatrix(other.n_rows_, other.n_cols_);
-    }
+    static TripletMatrix zeroLike(const TripletMatrix& other) { return TripletMatrix(other.n_rows_, other.n_cols_); }
 
     static TripletMatrix fromDiag(const VectorXr& diag) {
         std::vector<Triplet> trips;
@@ -39,13 +31,10 @@ public:
         for (int i = 0; i < diag.size(); ++i) {
             trips.emplace_back(i, i, diag[i]);
         }
-        return TripletMatrix((int)diag.size(), (int)diag.size(),
-                             std::make_shared<std::vector<Triplet>>(std::move(trips)));
+        return TripletMatrix((int)diag.size(), (int)diag.size(), std::make_shared<std::vector<Triplet>>(std::move(trips)));
     }
 
-    TripletMatrix zeroLike() const {
-        return TripletMatrix(n_rows_, n_cols_);
-    }
+    TripletMatrix zeroLike() const { return TripletMatrix(n_rows_, n_cols_); }
 
     // Horizontal concatenation
     TripletMatrix operator|(const TripletMatrix& other) const {
@@ -81,8 +70,7 @@ public:
 
     // Scale rows: returns a copy with rows scaled by the given vector
     TripletMatrix scaleRows(const VectorXr& rowScales) const {
-        if (rowScales.size() != n_rows_)
-            throw std::runtime_error("Row scale vector size mismatch");
+        if (rowScales.size() != n_rows_) throw std::runtime_error("Row scale vector size mismatch");
 
         TripletMatrix result = *this;
         if (result.rowScales_.empty()) {
@@ -123,7 +111,7 @@ public:
     int nRows() const { return n_rows_; }
     int nCols() const { return n_cols_; }
 
-private:
+   private:
     struct Block {
         int row_offset = 0;
         int col_offset = 0;
@@ -172,10 +160,8 @@ private:
 
     // Shared concat logic
     TripletMatrix concat(const TripletMatrix& other, bool horizontal) const {
-        if (horizontal && n_rows_ != other.n_rows_)
-            throw std::runtime_error("Row mismatch for horizontal concat");
-        if (!horizontal && n_cols_ != other.n_cols_)
-            throw std::runtime_error("Column mismatch for vertical concat");
+        if (horizontal && n_rows_ != other.n_rows_) throw std::runtime_error("Row mismatch for horizontal concat");
+        if (!horizontal && n_cols_ != other.n_cols_) throw std::runtime_error("Column mismatch for vertical concat");
 
         TripletMatrix result;
         result.n_rows_ = horizontal ? n_rows_ : n_rows_ + other.n_rows_;
@@ -187,8 +173,10 @@ private:
         auto otherBlocks = other.transformedBlocks_();
         for (const auto& b : otherBlocks) {
             Block shifted = b;
-            if (horizontal) shifted.col_offset += n_cols_;
-            else shifted.row_offset += n_rows_;
+            if (horizontal)
+                shifted.col_offset += n_cols_;
+            else
+                shifted.row_offset += n_rows_;
             result.blocks_.push_back(shifted);
         }
 
@@ -240,4 +228,4 @@ private:
     }
 };
 
-} // namespace cardillo
+}  // namespace cardillo

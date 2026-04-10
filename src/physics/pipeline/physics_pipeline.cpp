@@ -4,14 +4,14 @@
 
 #include "../../collision/collision_coal.hpp"
 
+#include "../../io/csv_writer.hpp"
+#include "../../io/vtk_writer_binary.hpp"
+#include "../../misc/progress/ProgressBar.hpp"
 #include "../assembly/dynamics_assembler.hpp"
 #include "../integration/moreau.hpp"
-#include "../../io/vtk_writer_binary.hpp"
-#include "../../io/csv_writer.hpp"
-#include "../../misc/progress/ProgressBar.hpp"
+#include "../solver/clarabel_solver.hpp"
 #include "../solver/projected_jacobi.hpp"
 #include "../solver/qoco_solver.hpp"
-#include "../solver/clarabel_solver.hpp"
 
 namespace cardillo {
 namespace physics {
@@ -19,10 +19,7 @@ namespace pipeline {
 
 PhysicsPipeline::~PhysicsPipeline() = default;
 
-PhysicsPipeline::PhysicsPipeline(cardillo::World& world,
-                                 cardillo::config::Config& cfg,
-                                 cardillo::collision::CollisionCoal* collision_mgr,
-                                 cardillo::misc::TimingManager* timings)
+PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Config& cfg, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings)
     : m_world(world), m_cfg(cfg), m_collision_mgr(collision_mgr), m_timings(timings) {
     // Use engine-owned collision manager (passed-in)
     // Create owned components
@@ -55,7 +52,8 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world,
         m_vtk_writer = std::make_unique<cardillo::io::VtkWriterBinary>(cfg);
     }
 
-    // Create tracked CSV writer object but do not open file yet; CsvWriter will open lazily on first write
+    // Create tracked CSV writer object but do not open file yet; CsvWriter will open lazily on
+    // first write
     m_tracked_writer = std::make_unique<cardillo::io::CsvWriter>(m_cfg);
 
     // Create progress bar if sim parameters are available
@@ -85,10 +83,7 @@ void PhysicsPipeline::step(real_t dt) {
 
     // Output VTK if present
     if (m_vtk_writer) {
-        m_vtk_writer->maybeWrite(m_current_step, m_current_time, m_world,
-             m_collision_mgr,
-             m_timings,
-             m_dyn.get());
+        m_vtk_writer->maybeWrite(m_current_step, m_current_time, m_world, m_collision_mgr, m_timings, m_dyn.get());
     }
 
     // Write tracked state to CSV
@@ -109,8 +104,6 @@ void PhysicsPipeline::step(real_t dt) {
     }
 }
 
-
-
-} // namespace pipeline
-} // namespace physics
-} // namespace cardillo
+}  // namespace pipeline
+}  // namespace physics
+}  // namespace cardillo

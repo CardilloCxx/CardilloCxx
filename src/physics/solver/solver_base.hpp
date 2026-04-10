@@ -1,12 +1,13 @@
 #pragma once
 
-#include "../../misc/types.hpp"
 #include <Eigen/Dense>
+#include "../../misc/types.hpp"
 
-namespace cardillo { namespace solver {
+namespace cardillo {
+namespace solver {
 
 class SolverBase {
-public:
+   public:
     virtual ~SolverBase() = default;
 
     // Solve the system in-place or return a result vector. Signature mirrors ProjectedJacobi.
@@ -18,8 +19,9 @@ public:
 
     virtual const char* name() const { return "SolverBase"; }
 
-protected:
+   protected:
     int m_last_iters{-1};
 };
 
-}} // namespace cardillo::solver
+}  // namespace solver
+}  // namespace cardillo

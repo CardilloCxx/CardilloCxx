@@ -1,33 +1,33 @@
 #pragma once
 
+#include <Eigen/SparseCore>
 #include <optional>
 #include <vector>
-#include <Eigen/SparseCore>
 
-#include "../../misc/types.hpp"
-#include "../../misc/triplet_matrix.hpp"
-#include "../world.hpp"
-#include "../synchronization/derived_entity_sync.hpp"
 #include "../../collision/types.hpp"
 #include "../../misc/math_helper.hpp"
+#include "../../misc/triplet_matrix.hpp"
+#include "../../misc/types.hpp"
+#include "../synchronization/derived_entity_sync.hpp"
+#include "../world.hpp"
 
 namespace cardillo::physics {
 
 class DynamicsAssembler {
-public:
-    explicit DynamicsAssembler(World& sys, cardillo::collision::CollisionCoal* collision_mgr,
-                               cardillo::misc::TimingManager* timings, const cardillo::config::Config& cfg)
+   public:
+    explicit DynamicsAssembler(World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings, const cardillo::config::Config& cfg)
 
         : m_world(sys), m_collision_mgr(collision_mgr), m_timings(timings), m_cfg(cfg) {}
 
     // Cached getters (rebuild on demand) as concatenated global vectors
-    const VectorXr& qVec();   // stacked positions
-    const VectorXr& vVec();   // stacked velocities
-    const VectorXr& fVec();   // stacked external forces
-    const VectorXr& fVecExternal();   // stacked external forces (gravity + applied forces) only
-    const VectorXr& fVecGyroscopic(); // stacked gyroscopic forces/torques only
+    const VectorXr& qVec();            // stacked positions
+    const VectorXr& vVec();            // stacked velocities
+    const VectorXr& fVec();            // stacked external forces
+    const VectorXr& fVecExternal();    // stacked external forces (gravity + applied forces) only
+    const VectorXr& fVecGyroscopic();  // stacked gyroscopic forces/torques only
 
-    // Columns correspond to stacked body velocity DOFs in body order, laid out contiguously per body
+    // Columns correspond to stacked body velocity DOFs in body order, laid out contiguously per
+    // body
     const TripletMatrix& W() const { return m_W; }
 
     // Body b occupies columns [bodyVelOffsets()[b], bodyVelOffsets()[b+1])
@@ -37,7 +37,7 @@ public:
     // Diagonal of block-diagonal Minv (size = total velocity dofs)
     const VectorXr& MinvDiag() const { return m_Minv_diag; }
     const VectorXr& MDiag() const { return m_M_diag; }
-    
+
     // Access underlying system (for debug / diagnostics)
     const World& system() const { return m_world; }
     // Expose current contacts (includes penetration and points)
@@ -49,7 +49,7 @@ public:
     // DOF queries owned by the assembler (scan ECS indices)
     index_t numQ() const { return m_numQ; }
     index_t numV() const { return m_numV; }
-    
+
     // Explicit state IO
     void loadStateFromSystem();
     void writePositionToSystem(const VectorXr& q);
@@ -68,7 +68,7 @@ public:
     cardillo::misc::TimingManager* timings() const { return m_timings; }
     cardillo::collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
 
-     // Accessors for newly added matrices
+    // Accessors for newly added matrices
     const TripletMatrix& Wg() const { return m_Wg; }
     const TripletMatrix& Wgamma() const { return m_Wgamma; }
 
@@ -104,7 +104,7 @@ public:
     void rebuildW_();
     void rebuildInteractionW_();
 
-private:
+   private:
     World& m_world;
     // Non-owning pointers to external subsystems (moved out of World)
     cardillo::collision::CollisionCoal* m_collision_mgr{nullptr};
@@ -116,29 +116,29 @@ private:
     VectorXr m_q_vec;
     VectorXr m_v_vec;
     VectorXr m_f_vec;
-    VectorXr m_f_vec_external;   // gravity + external forces/torques only
-    VectorXr m_f_vec_gyroscopic; // gyroscopic forces/torques only
+    VectorXr m_f_vec_external;    // gravity + external forces/torques only
+    VectorXr m_f_vec_gyroscopic;  // gyroscopic forces/torques only
 
     // Contact Jacobian and supporting mappings
-    TripletMatrix m_W; // (C_dynamic x totalV)
+    TripletMatrix m_W;  // (C_dynamic x totalV)
     int m_numFrictionalContacts{0};
     int m_numFrictionlessContacts{0};
 
-    std::vector<int> m_body_vel_offsets;    // size Nb+1, prefix sums for body velocity columns
-    std::vector<int> m_body_pos_offsets;    // size Nb+1, prefix sums for body position columns
-    VectorXr m_Minv_diag;                   // size totalV, diagonal of Minv
-    VectorXr m_M_diag;                      // size totalV, diagonal of M (non-inverted)
+    std::vector<int> m_body_vel_offsets;  // size Nb+1, prefix sums for body velocity columns
+    std::vector<int> m_body_pos_offsets;  // size Nb+1, prefix sums for body position columns
+    VectorXr m_Minv_diag;                 // size totalV, diagonal of Minv
+    VectorXr m_M_diag;                    // size totalV, diagonal of M (non-inverted)
 
     // per-contact/block matrices used by solvers
     TripletMatrix m_Wg;
     TripletMatrix m_Wgamma;
 
-    VectorXr m_Cdiag; // Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)
-    VectorXr m_Adiag; //Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)
+    VectorXr m_Cdiag;  // Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)
+    VectorXr m_Adiag;  // Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)
 
     // Store Lagrange multipliers (they are being integrated)
     VectorXr m_Lambda_g;
     VectorXr m_Lambda_gamma;
 };
 
-} // namespace cardillo::physics
+}  // namespace cardillo::physics

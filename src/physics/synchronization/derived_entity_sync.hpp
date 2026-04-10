@@ -8,10 +8,10 @@ namespace cardillo {
 namespace physics {
 
 class DerivedEntitySync {
-public:
+   public:
     static void updateBeamElementEntity(World& world, entt::entity e);
     static void updateEntities(World& world);
 };
 
-} // namespace physics
-} // namespace cardillo
+}  // namespace physics
+}  // namespace cardillo

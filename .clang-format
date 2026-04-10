@@ -1,0 +1,14 @@
+BasedOnStyle: Google
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 200
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: Inline
+BinPackArguments: true
+BinPackParameters: true
+AllowAllArgumentsOnNextLine: false
+PointerAlignment: Left
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+Standard: c++20

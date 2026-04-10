@@ -4,18 +4,17 @@
 #pragma once
 
 #include <optional>
-#include "../../misc/types.hpp"
-#include "../../misc/triplet_matrix.hpp"
 #include "../../config/config.hpp"
+#include "../../misc/triplet_matrix.hpp"
+#include "../../misc/types.hpp"
 #include "dynamics_assembler.hpp"
 
 namespace cardillo::physics::assembly {
 class PjAssembler
 
 {
-public:
-    PjAssembler( cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg)
-        : m_dyn(&dyn), m_cfg(cfg) {}
+   public:
+    PjAssembler(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
     ~PjAssembler();
 
     bool buildAndFactorS(real_t dt, real_t theta, bool implicitGyro = false, bool lambdaTheta = false);
@@ -23,13 +22,13 @@ public:
     VectorXr solveS(const VectorXr& rhs_ext) const;
     const TripletMatrix& S() const { return m_S; }
 
-private:
+   private:
     TripletMatrix m_S;
     std::optional<Eigen::SparseLU<CscMatrix>> m_S_sparse_lu;
     cardillo::physics::DynamicsAssembler* m_dyn{nullptr};
     cardillo::config::Config m_cfg;
 };
 
-} // namespace cardillo::physics::assembly
+}  // namespace cardillo::physics::assembly
 
 #endif

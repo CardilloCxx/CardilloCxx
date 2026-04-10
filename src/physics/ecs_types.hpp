@@ -1,33 +1,69 @@
 #pragma once
 
 #include <Eigen/Dense>
-#include <vector>
-#include <string>
-#include <optional>
 #include <entt/entt.hpp>
+#include <optional>
+#include <string>
+#include <vector>
 #include "../misc/types.hpp"
 
 // Public ECS component/tag types
 namespace cardillo {
 
-struct C_Mass { real_t m; };
-struct C_Position3 { Vector3r value; };
-struct C_LinearVelocity3 { Vector3r value; };
-struct C_AngularVelocity3 { Vector3r value; };
-struct C_LinearAcceleration3 { Vector3r value; };
-struct C_AngularAcceleration3 { Vector3r value; };
-struct C_Orientation { Quaternion4r value; };
-struct C_DirectorTriad { Matrix33r value; };
+struct C_Mass {
+    real_t m;
+};
+struct C_Position3 {
+    Vector3r value;
+};
+struct C_LinearVelocity3 {
+    Vector3r value;
+};
+struct C_AngularVelocity3 {
+    Vector3r value;
+};
+struct C_LinearAcceleration3 {
+    Vector3r value;
+};
+struct C_AngularAcceleration3 {
+    Vector3r value;
+};
+struct C_Orientation {
+    Quaternion4r value;
+};
+struct C_DirectorTriad {
+    Matrix33r value;
+};
 struct C_PhysicsObject {};
 struct C_PointMassTag {};
 struct C_RigidBodyTag {};
 struct C_RigidBodyDirectorTag {};
-struct C_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
-struct C_Cube { Vector3r center{Vector3r::Zero()}; Vector3r halfExtents; Quaternion4r q{Quaternion4r::Identity()}; };
-struct C_Capsule { real_t radius; real_t halfLength; };
-struct C_Cylinder { real_t radius; real_t halfLength; };
-struct C_Cone { real_t radius; real_t height; };
-struct C_Friction { real_t mu; };
+struct C_Plane {
+    Vector3r normal;
+    Vector3r up;
+    real_t sizeX;
+    real_t sizeY;
+};
+struct C_Cube {
+    Vector3r center{Vector3r::Zero()};
+    Vector3r halfExtents;
+    Quaternion4r q{Quaternion4r::Identity()};
+};
+struct C_Capsule {
+    real_t radius;
+    real_t halfLength;
+};
+struct C_Cylinder {
+    real_t radius;
+    real_t halfLength;
+};
+struct C_Cone {
+    real_t radius;
+    real_t height;
+};
+struct C_Friction {
+    real_t mu;
+};
 struct C_VisualObject {};
 struct C_PointVisualTag {};
 struct C_PlaneVisualTag {};
@@ -36,7 +72,9 @@ struct C_CapsuleVisualTag {};
 struct C_CylinderVisualTag {};
 struct C_ConeVisualTag {};
 struct C_Collidable {};
-struct C_Radius { real_t r; };
+struct C_Radius {
+    real_t r;
+};
 
 struct C_SoftBodyVisualTag {};
 struct C_SoftBodySurface {
@@ -51,27 +89,63 @@ struct C_BeamElement {
     real_t l{(real_t)0};
 };
 
-struct C_Mesh { std::string path; Vector3r scale{1,1,1}; };
+struct C_Mesh {
+    std::string path;
+    Vector3r scale{1, 1, 1};
+};
 struct C_MeshVisualTag {};
-struct C_HeightField { std::string path; real_t x_dim{1}, y_dim{1}; real_t z_scale{1}; real_t min_height{0}; };
+struct C_HeightField {
+    std::string path;
+    real_t x_dim{1}, y_dim{1};
+    real_t z_scale{1};
+    real_t min_height{0};
+};
 struct C_HeightFieldVisualTag {};
-struct C_RB_HeightField { };
+struct C_RB_HeightField {};
 
-struct C_RB_Cube { Vector3r center{Vector3r::Zero()}; Vector3r halfExtents; Quaternion4r q{Quaternion4r::Identity()}; };
-struct C_RB_Plane { Vector3r normal; Vector3r up; real_t sizeX; real_t sizeY; };
-struct C_RB_Mesh { };
-struct C_RB_Sphere { };
-struct C_RB_Capsule { real_t radius; real_t halfLength; };
-struct C_RB_Cylinder { real_t radius; real_t halfLength; };
-struct C_RB_Cone { real_t radius; real_t height; };
+struct C_RB_Cube {
+    Vector3r center{Vector3r::Zero()};
+    Vector3r halfExtents;
+    Quaternion4r q{Quaternion4r::Identity()};
+};
+struct C_RB_Plane {
+    Vector3r normal;
+    Vector3r up;
+    real_t sizeX;
+    real_t sizeY;
+};
+struct C_RB_Mesh {};
+struct C_RB_Sphere {};
+struct C_RB_Capsule {
+    real_t radius;
+    real_t halfLength;
+};
+struct C_RB_Cylinder {
+    real_t radius;
+    real_t halfLength;
+};
+struct C_RB_Cone {
+    real_t radius;
+    real_t height;
+};
 
-struct C_ExternalForce { Vector3r f; };
-struct C_ExternalTorque { Vector3r tau; };
+struct C_ExternalForce {
+    Vector3r f;
+};
+struct C_ExternalTorque {
+    Vector3r tau;
+};
 
-struct C_TrackTag {std::string name;};
-struct C_BodyIndex { int b; };
+struct C_TrackTag {
+    std::string name;
+};
+struct C_BodyIndex {
+    int b;
+};
 
 // Optional inertia component for rigid bodies (body-frame diagonal inertia)
-struct C_InertiaDiag { Vector3r I; };
+struct C_InertiaDiag {
+    Vector3r I;
+};
 
-} // namespace cardillo
+}  // namespace cardillo

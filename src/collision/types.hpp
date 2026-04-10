@@ -1,36 +1,36 @@
 #pragma once
 
-#include <vector>
-#include <unordered_map>
 #include <entt/entt.hpp>
-#include "misc/types.hpp"
+#include <unordered_map>
+#include <vector>
 #include "../physics/world.hpp"
+#include "misc/types.hpp"
 
 namespace cardillo::collision {
 
 // Contact information for a pairwise collision
 struct Contact {
-    entt::entity a;       // entity id of first colliding object
-    entt::entity b;       // entity id of second colliding object
-    Vector3r point;       // contact point (on surface or midpoint between)
-    Vector3r normal;      // normal pointing from a to b
+    entt::entity a;   // entity id of first colliding object
+    entt::entity b;   // entity id of second colliding object
+    Vector3r point;   // contact point (on surface or midpoint between)
+    Vector3r normal;  // normal pointing from a to b
     // An orthonormal tangent frame spanning the contact plane (world space)
     // The pair (tangent1, tangent2, normal) forms a right-handed ONB.
-    Vector3r tangent1;    // first tangent (world)
-    Vector3r tangent2;    // second tangent (world)
+    Vector3r tangent1;  // first tangent (world)
+    Vector3r tangent2;  // second tangent (world)
     // Body-space contact info (expressed in each body's local frame)
-    // For rigid bodies: normal_body = R^T * normal_world, point_body = R^T * (point_world - center_world)
-    // For point masses: identical to world (R = I, center at origin)
+    // For rigid bodies: normal_body = R^T * normal_world, point_body = R^T * (point_world -
+    // center_world) For point masses: identical to world (R = I, center at origin)
     Vector3r pointA_body;
     Vector3r pointB_body;
     Vector3r normalA_body;
     Vector3r normalB_body;
-    Vector3r tangent1A_body; // first tangent in body A frame
-    Vector3r tangent2A_body; // second tangent in body A frame
-    Vector3r tangent1B_body; // first tangent in body B frame
-    Vector3r tangent2B_body; // second tangent in body B frame
-    real_t penetration;   // overlap distance (> 0 means interpenetration)
-    real_t friction_mu{0}; // combined friction coefficient for the pair at this contact
+    Vector3r tangent1A_body;  // first tangent in body A frame
+    Vector3r tangent2A_body;  // second tangent in body A frame
+    Vector3r tangent1B_body;  // first tangent in body B frame
+    Vector3r tangent2B_body;  // second tangent in body B frame
+    real_t penetration;       // overlap distance (> 0 means interpenetration)
+    real_t friction_mu{0};    // combined friction coefficient for the pair at this contact
     // Last solved impulse for this contact (pn, pt1, pt2) stored in contact for warmstarting
     Vector3r last_impulse{Vector3r::Zero()};
     // Base index into dynamic solver rows for this contact (-1 if not dynamic)
@@ -38,7 +38,8 @@ struct Contact {
     // Number of rows allocated for this contact in solver (1 or 3)
     int impulse_size{0};
     // Global indices in the flattened contacts vector
-    // Index of this contact in the previous generation's flattened output; -1 if none (for warmstarting)
+    // Index of this contact in the previous generation's flattened output; -1 if none (for
+    // warmstarting)
     int prev_global_out_index{-1};
     // Index of this contact in the current generation's flattened output (set during flatten)
     int global_out_index{-1};
@@ -52,9 +53,7 @@ struct ContactPairKey {
         if (entt::to_integral(ea) <= entt::to_integral(eb)) return {ea, eb};
         return {eb, ea};
     }
-    bool operator==(const ContactPairKey& other) const noexcept {
-        return a == other.a && b == other.b;
-    }
+    bool operator==(const ContactPairKey& other) const noexcept { return a == other.a && b == other.b; }
 };
 
 struct ContactPairKeyHash {
@@ -71,7 +70,11 @@ using ContactList = std::vector<Contact>;
 using ContactMap = std::unordered_map<ContactPairKey, ContactList, ContactPairKeyHash>;
 
 // Collider shapes resolved from ECS
-struct SphereCollider { entt::entity e; Vector3r center; real_t radius; };
+struct SphereCollider {
+    entt::entity e;
+    Vector3r center;
+    real_t radius;
+};
 
 struct PlaneCollider {
     entt::entity e;
@@ -83,8 +86,17 @@ struct PlaneCollider {
     real_t hy;        // half extent along V
 };
 
-struct AabbCollider { entt::entity e; Vector3r center; Vector3r halfExtents; };
+struct AabbCollider {
+    entt::entity e;
+    Vector3r center;
+    Vector3r halfExtents;
+};
 
-struct ObbCollider { entt::entity e; Vector3r center; Vector3r halfExtents; Matrix33r R; };
+struct ObbCollider {
+    entt::entity e;
+    Vector3r center;
+    Vector3r halfExtents;
+    Matrix33r R;
+};
 
-}
+}  // namespace cardillo::collision

@@ -14,19 +14,20 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
     auto& be = reg.get<cardillo::C_BeamElement>(e);
     real_t newLen = be.l0;
 
-    auto getDesiredLengthBetween = [&](entt::entity a, entt::entity b)->real_t {
+    auto getDesiredLengthBetween = [&](entt::entity a, entt::entity b) -> real_t {
         if (!(reg.valid(a) && reg.valid(b))) {
             std::cout << "Beam length: invalid entities a=" << (int)a << " b=" << (int)b << "\\eaen";
         }
         if (!reg.any_of<cardillo::C_Position3>(a) || !reg.any_of<cardillo::C_Position3>(b)) {
-            std::cout << "Beam length: missing positions a=" << reg.any_of<cardillo::C_Position3>(a) << " b=" << reg.any_of<cardillo::C_Position3>(b) << " for entities a=" << (int)a << " b=" << (int)b << "\\n";
+            std::cout << "Beam length: missing positions a=" << reg.any_of<cardillo::C_Position3>(a) << " b=" << reg.any_of<cardillo::C_Position3>(b) << " for entities a=" << (int)a << " b=" << (int)b
+                      << "\\n";
         }
         if (!reg.any_of<cardillo::C_Orientation>(a) || !reg.any_of<cardillo::C_Orientation>(b)) {
-            std::cout << "Beam length: missing orientations a=" << reg.any_of<cardillo::C_Orientation>(a) << " b=" << reg.any_of<cardillo::C_Orientation>(b) << " for entities a=" << (int)a << " b=" << (int)b << "\\n";
+            std::cout << "Beam length: missing orientations a=" << reg.any_of<cardillo::C_Orientation>(a) << " b=" << reg.any_of<cardillo::C_Orientation>(b) << " for entities a=" << (int)a
+                      << " b=" << (int)b << "\\n";
         }
-        if (reg.valid(a) && reg.valid(b) &&
-            reg.any_of<cardillo::C_Position3>(a) && reg.any_of<cardillo::C_Position3>(b) &&
-            reg.any_of<cardillo::C_Orientation>(a) && reg.any_of<cardillo::C_Orientation>(b)) {
+        if (reg.valid(a) && reg.valid(b) && reg.any_of<cardillo::C_Position3>(a) && reg.any_of<cardillo::C_Position3>(b) && reg.any_of<cardillo::C_Orientation>(a) &&
+            reg.any_of<cardillo::C_Orientation>(b)) {
             const auto& pa = reg.get<cardillo::C_Position3>(a).value;
             const auto& pb = reg.get<cardillo::C_Position3>(b).value;
             auto r_AB = pb - pa;
@@ -80,32 +81,50 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
         if (reg.any_of<cardillo::C_Cube>(e)) {
             auto& cb = reg.get<cardillo::C_Cube>(e);
             const real_t newHalfX = be.l * (real_t)0.5;
-            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) { cb.halfExtents.x() = newHalfX; shapeChanged = true; }
+            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) {
+                cb.halfExtents.x() = newHalfX;
+                shapeChanged = true;
+            }
         }
         if (reg.any_of<cardillo::C_Capsule>(e)) {
             auto& cap = reg.get<cardillo::C_Capsule>(e);
             const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cap.halfLength - newHalf) > eps) { cap.halfLength = newHalf; shapeChanged = true; }
+            if (std::abs(cap.halfLength - newHalf) > eps) {
+                cap.halfLength = newHalf;
+                shapeChanged = true;
+            }
         }
         if (reg.any_of<cardillo::C_Cylinder>(e)) {
             auto& cyl = reg.get<cardillo::C_Cylinder>(e);
             const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cyl.halfLength - newHalf) > eps) { cyl.halfLength = newHalf; shapeChanged = true; }
+            if (std::abs(cyl.halfLength - newHalf) > eps) {
+                cyl.halfLength = newHalf;
+                shapeChanged = true;
+            }
         }
         if (reg.any_of<cardillo::C_RB_Cube>(e)) {
             auto& cb = reg.get<cardillo::C_RB_Cube>(e);
             const real_t newHalfX = be.l * (real_t)0.5;
-            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) { cb.halfExtents.x() = newHalfX; shapeChanged = true; }
+            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) {
+                cb.halfExtents.x() = newHalfX;
+                shapeChanged = true;
+            }
         }
         if (reg.any_of<cardillo::C_RB_Capsule>(e)) {
             auto& cap = reg.get<cardillo::C_RB_Capsule>(e);
             const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cap.halfLength - newHalf) > eps) { cap.halfLength = newHalf; shapeChanged = true; }
+            if (std::abs(cap.halfLength - newHalf) > eps) {
+                cap.halfLength = newHalf;
+                shapeChanged = true;
+            }
         }
         if (reg.any_of<cardillo::C_RB_Cylinder>(e)) {
             auto& cyl = reg.get<cardillo::C_RB_Cylinder>(e);
             const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cyl.halfLength - newHalf) > eps) { cyl.halfLength = newHalf; shapeChanged = true; }
+            if (std::abs(cyl.halfLength - newHalf) > eps) {
+                cyl.halfLength = newHalf;
+                shapeChanged = true;
+            }
         }
         if (shapeChanged) {
             world.markStructureDirty();
@@ -123,5 +142,5 @@ void DerivedEntitySync::updateEntities(World& world) {
     }
 }
 
-} // namespace physics
-} // namespace cardillo
+}  // namespace physics
+}  // namespace cardillo

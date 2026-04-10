@@ -1,10 +1,10 @@
 #pragma once
 
+#include <petsc.h>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <Eigen/SparseCore>
 #include <vector>
-#include <petsc.h>
 
 namespace cardillo {
 
@@ -39,12 +39,10 @@ using SkewSymmetricMatrix3r = Eigen::Matrix<real_t, 3, 3>;
 using Vector4r = Eigen::Matrix<real_t, 4, 1>;
 using Matrix44r = Eigen::Matrix<real_t, 4, 4>;
 
-inline SkewSymmetricMatrix3r skew_from_vector(const Vector3r &v) {
-	SkewSymmetricMatrix3r m;
-	m << 0, -v(2), v(1),
-		 v(2), 0, -v(0),
-		-v(1), v(0), 0;
-	return m;
+inline SkewSymmetricMatrix3r skew_from_vector(const Vector3r& v) {
+    SkewSymmetricMatrix3r m;
+    m << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
+    return m;
 }
 
 using AngleAxis3r = Eigen::AngleAxis<real_t>;

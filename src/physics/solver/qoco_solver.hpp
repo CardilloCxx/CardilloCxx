@@ -1,24 +1,23 @@
 #pragma once
 
-#include "solver_base.hpp"
 #include "../../config/config.hpp"
 #include "../assembly/dynamics_assembler.hpp"
 #include "../assembly/qoco_assembler.hpp"
+#include "solver_base.hpp"
 #include "warmstart.hpp"
 
 namespace cardillo::solver {
 
 class QocoSolver : public SolverBase {
-public:
-    explicit QocoSolver(cardillo::physics::DynamicsAssembler& dyn,
-                        const cardillo::config::Config& cfg);
+   public:
+    explicit QocoSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg);
     ~QocoSolver() override;
 
-    VectorXr solve(real_t dt, real_t theta)  override;
+    VectorXr solve(real_t dt, real_t theta) override;
 
     const char* name() const override { return "QocoSolver"; }
 
-private:
+   private:
     void initQocoSolver(real_t dt, real_t theta, bool first_init = true);
     void updateQocoSolver(real_t dt, real_t theta);
     void ensureQocoApiLoaded(bool first_init);
@@ -33,10 +32,8 @@ private:
     std::string m_loaded_backend{"uninitialized"};
 
     using SetDefaultSettingsFn = void (*)(QOCOSettings*);
-    using QocoSetupFn = QOCOInt (*)(QOCOSolver*, QOCOInt, QOCOInt, QOCOInt,
-                                    QOCOCscMatrix*, QOCOFloat*, QOCOCscMatrix*,
-                                    QOCOFloat*, QOCOCscMatrix*, QOCOFloat*, QOCOInt,
-                                    QOCOInt, QOCOInt*, QOCOSettings*);
+    using QocoSetupFn = QOCOInt (*)(QOCOSolver*, QOCOInt, QOCOInt, QOCOInt, QOCOCscMatrix*, QOCOFloat*, QOCOCscMatrix*, QOCOFloat*, QOCOCscMatrix*, QOCOFloat*, QOCOInt, QOCOInt, QOCOInt*,
+                                    QOCOSettings*);
     using QocoSolveFn = QOCOInt (*)(QOCOSolver*);
     using QocoCleanupFn = QOCOInt (*)(QOCOSolver*);
 
@@ -46,4 +43,4 @@ private:
     QocoCleanupFn m_qoco_cleanup{nullptr};
 };
 
-} // namespace cardillo::solver
+}  // namespace cardillo::solver

@@ -35,16 +35,9 @@ Matrix33r makeFrameFromTangentLocal(const Vector3r& tangent) {
     return M;
 }
 
-std::pair<entt::entity, entt::entity> buildBeamFromSamples(
-    World& sys,
-    const std::vector<BeamSample>& samples,
-    bool loop,
-    const BeamCrossSection& section,
-    const BeamSpringParams& springs,
-    const RigidState& stateDefaults,
-    const RigidProps& propsDefaults,
-    const Vector3r& splineCOMWorld,
-    cardillo::collision::CollisionCoal* collision_mgr) {
+std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std::vector<BeamSample>& samples, bool loop, const BeamCrossSection& section, const BeamSpringParams& springs,
+                                                           const RigidState& stateDefaults, const RigidProps& propsDefaults, const Vector3r& splineCOMWorld,
+                                                           cardillo::collision::CollisionCoal* collision_mgr) {
     if (samples.empty()) return {entt::null, entt::null};
 
     real_t totalLen = (real_t)0;
@@ -52,8 +45,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
     if (totalLen <= (real_t)0) totalLen = (real_t)1;
 
     Matrix33r Rshape = Matrix33r::Identity();
-    if (section.type == BeamBodyType::Capsule ||
-        section.type == BeamBodyType::Cylinder) {
+    if (section.type == BeamBodyType::Capsule || section.type == BeamBodyType::Cylinder) {
         Rshape = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), Vector3r::UnitX()).toRotationMatrix();
     }
 
@@ -73,8 +65,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
 
         RigidShape shape;
         if (section.type == BeamBodyType::Cube) {
-            shape = CubeShape(
-                Vector3r(segLen * (real_t)0.5, section.width * (real_t)0.5, section.height * (real_t)0.5));
+            shape = CubeShape(Vector3r(segLen * (real_t)0.5, section.width * (real_t)0.5, section.height * (real_t)0.5));
         } else if (section.type == BeamBodyType::Cylinder) {
             const real_t r = std::min(section.width, section.height) * (real_t)0.5;
             shape = CylinderShape(r, segLen * (real_t)0.5);
@@ -146,7 +137,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
         end = cur;
     }
 
-        if (loop && root != entt::null && end != entt::null && end != root) {
+    if (loop && root != entt::null && end != entt::null && end != root) {
         ConstraintFactory::addBeamConstraint(sys, end, root, springs, section);
         if (collision_mgr) collision_mgr->disablePair(end, root);
         if (sys.ecs().any_of<cardillo::C_BeamElement>(end)) {
@@ -160,17 +151,10 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(
     return {root, end};
 }
 
-} // namespace
+}  // namespace
 
-std::pair<entt::entity, entt::entity> BeamFactory::createBeam(
-    World& system,
-    const misc::SplinePattern& spline,
-    const BeamCrossSection& section,
-    const BeamSpringParams& springs,
-    const RigidState& stateDefaults,
-    const RigidProps& propsDefaults,
-    size_t segments,
-    cardillo::collision::CollisionCoal* collision_mgr) {
+std::pair<entt::entity, entt::entity> BeamFactory::createBeam(World& system, const misc::SplinePattern& spline, const BeamCrossSection& section, const BeamSpringParams& springs,
+                                                              const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments, cardillo::collision::CollisionCoal* collision_mgr) {
     const real_t totalLen = spline.totalLength();
     const real_t segLen = totalLen / (real_t)segments;
     const bool endsOnSpline = true;
@@ -206,27 +190,11 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeam(
     }
 
     const Vector3r splineCOMWorld = spline.centerOfMass();
-    return buildBeamFromSamples(
-        system,
-        samples,
-        spline.isLoop(),
-        section,
-        springs,
-        stateDefaults,
-        propsDefaults,
-        splineCOMWorld,
-        collision_mgr);
+    return buildBeamFromSamples(system, samples, spline.isLoop(), section, springs, stateDefaults, propsDefaults, splineCOMWorld, collision_mgr);
 }
 
-std::pair<entt::entity, entt::entity> BeamFactory::createBeams(
-    World& system,
-    const std::vector<const misc::SplinePattern*>& splines,
-    const BeamCrossSection& section,
-    const BeamSpringParams& springs,
-    const RigidState& stateDefaults,
-    const RigidProps& propsDefaults,
-    size_t segments,
-    cardillo::collision::CollisionCoal* collision_mgr) {
+std::pair<entt::entity, entt::entity> BeamFactory::createBeams(World& system, const std::vector<const misc::SplinePattern*>& splines, const BeamCrossSection& section, const BeamSpringParams& springs,
+                                                               const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments, cardillo::collision::CollisionCoal* collision_mgr) {
     real_t totalLen = (real_t)0;
     for (const auto* sp : splines) {
         if (sp) totalLen += sp->totalLength();
@@ -237,20 +205,11 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(
     entt::entity prevEnd = entt::null;
 
     for (size_t i = 0; i < splines.size(); ++i) {
-        const auto pair = createBeam(
-            system,
-            *splines[i],
-            section,
-            springs,
-            stateDefaults,
-            propsDefaults,
-            (size_t)(segments * (splines[i]->totalLength() / totalLen)),
-            collision_mgr);
+        const auto pair = createBeam(system, *splines[i], section, springs, stateDefaults, propsDefaults, (size_t)(segments * (splines[i]->totalLength() / totalLen)), collision_mgr);
 
         if (first == entt::null) first = pair.first;
         if (prevEnd != entt::null && pair.first != entt::null) {
-            if (system.ecs().any_of<cardillo::C_Orientation>(prevEnd) &&
-                system.ecs().any_of<cardillo::C_Orientation>(pair.first)) {
+            if (system.ecs().any_of<cardillo::C_Orientation>(prevEnd) && system.ecs().any_of<cardillo::C_Orientation>(pair.first)) {
                 auto& qNext = system.ecs().get<cardillo::C_Orientation>(pair.first).value;
                 const auto& qPrev = system.ecs().get<cardillo::C_Orientation>(prevEnd).value;
                 qNext = MathHelper::alignQuaternionTo(qNext, qPrev);
@@ -265,4 +224,4 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(
     return {first, second};
 }
 
-} // namespace cardillo::physics
+}  // namespace cardillo::physics

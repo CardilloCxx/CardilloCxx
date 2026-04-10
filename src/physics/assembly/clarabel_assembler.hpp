@@ -4,19 +4,19 @@
 
 #include <Eigen/SparseCore>
 
-#include "../../misc/types.hpp"
-#include "../../misc/triplet_matrix.hpp"
 #include <clarabel.hpp>
+#include "../../misc/triplet_matrix.hpp"
+#include "../../misc/types.hpp"
 
 namespace cardillo::physics {
 class World;
 class DynamicsAssembler;
-}
+}  // namespace cardillo::physics
 
 namespace cardillo::physics::assembly {
 
 class ClarabelAssembler {
-public:
+   public:
     explicit ClarabelAssembler(cardillo::physics::DynamicsAssembler& dyn) : m_dyn(&dyn) {}
 
     const SparseMatrix<Eigen::ColMajor>& P(real_t dt, real_t theta);
@@ -30,7 +30,7 @@ public:
 
     VectorXr computeSmu() const;
 
-private:
+   private:
     cardillo::physics::DynamicsAssembler* m_dyn{nullptr};
 
     SparseMatrix<Eigen::ColMajor> m_P_cache;
@@ -40,4 +40,4 @@ private:
     std::vector<clarabel::SupportedConeT<double>> m_cones_cache;
 };
 
-} // namespace cardillo::physics::assembly
+}  // namespace cardillo::physics::assembly

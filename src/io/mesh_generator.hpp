@@ -2,13 +2,13 @@
 
 #include <entt/entt.hpp>
 #include <vector>
-#include "misc/types.hpp"
 #include "../physics/world.hpp"
+#include "misc/types.hpp"
 
 namespace cardillo::io {
 
 class MeshGenerator {
-public:
+   public:
     struct EntityMesh {
         entt::entity entity{entt::null};
         bool isDynamic{false};
@@ -35,37 +35,18 @@ public:
     };
 
     // Generate a unit UV-sphere triangulation.
-    static void generateUVSphere(int latSegments,
-                                 int lonSegments,
-                                 std::vector<Vector3r>& outVertices,
-                                 std::vector<Eigen::Vector3i>& outTriangles);
+    static void generateUVSphere(int latSegments, int lonSegments, std::vector<Vector3r>& outVertices, std::vector<Eigen::Vector3i>& outTriangles);
 
-    static void generateCapsuleMesh(int segmentsCircumference,
-                                    int segmentsHemisphere,
-                                    int segmentsCylinder,
-                                    real_t radius,
-                                    real_t halfLength,
-                                    std::vector<Vector3r>& vertices,
+    static void generateCapsuleMesh(int segmentsCircumference, int segmentsHemisphere, int segmentsCylinder, real_t radius, real_t halfLength, std::vector<Vector3r>& vertices,
                                     std::vector<Eigen::Vector3i>& triangles);
 
-    static void generateCylinderMesh(int segmentsCircumference,
-                                     real_t radius,
-                                     real_t halfLength,
-                                     std::vector<Vector3r>& vertices,
-                                     std::vector<Eigen::Vector3i>& triangles);
+    static void generateCylinderMesh(int segmentsCircumference, real_t radius, real_t halfLength, std::vector<Vector3r>& vertices, std::vector<Eigen::Vector3i>& triangles);
 
-    static void generateConeMesh(int segmentsCircumference,
-                                 real_t radius,
-                                 real_t height,
-                                 std::vector<Vector3r>& vertices,
-                                 std::vector<Eigen::Vector3i>& triangles);
+    static void generateConeMesh(int segmentsCircumference, real_t radius, real_t height, std::vector<Vector3r>& vertices, std::vector<Eigen::Vector3i>& triangles);
 
     // Extract a renderable mesh for a visual entity in world coordinates.
     // Returns false if the entity has no supported visual geometry.
-    static bool buildEntityMesh(const cardillo::World& sys,
-                                entt::entity e,
-                                int heightFieldStride,
-                                EntityMesh& out);
+    static bool buildEntityMesh(const cardillo::World& sys, entt::entity e, int heightFieldStride, EntityMesh& out);
 };
 
-}
+}  // namespace cardillo::io

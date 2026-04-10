@@ -10,27 +10,38 @@ namespace {
 
 const char* statusToString(clarabel::SolverStatus status) {
     switch (status) {
-        case clarabel::SolverStatus::Unsolved: return "Unsolved";
-        case clarabel::SolverStatus::Solved: return "Solved";
-        case clarabel::SolverStatus::PrimalInfeasible: return "Primal Infeasible";
-        case clarabel::SolverStatus::DualInfeasible: return "Dual Infeasible";
-        case clarabel::SolverStatus::AlmostSolved: return "Almost Solved";
-        case clarabel::SolverStatus::AlmostPrimalInfeasible: return "Almost Primal Infeasible";
-        case clarabel::SolverStatus::AlmostDualInfeasible: return "Almost Dual Infeasible";
-        case clarabel::SolverStatus::MaxIterations: return "Maximum Iterations";
-        case clarabel::SolverStatus::MaxTime: return "Maximum Time";
-        case clarabel::SolverStatus::NumericalError: return "Numerical Error";
-        case clarabel::SolverStatus::InsufficientProgress: return "Insufficient Progress";
-        case clarabel::SolverStatus::CallbackTerminated: return "Callback Terminated";
-        default: return "Unknown";
+        case clarabel::SolverStatus::Unsolved:
+            return "Unsolved";
+        case clarabel::SolverStatus::Solved:
+            return "Solved";
+        case clarabel::SolverStatus::PrimalInfeasible:
+            return "Primal Infeasible";
+        case clarabel::SolverStatus::DualInfeasible:
+            return "Dual Infeasible";
+        case clarabel::SolverStatus::AlmostSolved:
+            return "Almost Solved";
+        case clarabel::SolverStatus::AlmostPrimalInfeasible:
+            return "Almost Primal Infeasible";
+        case clarabel::SolverStatus::AlmostDualInfeasible:
+            return "Almost Dual Infeasible";
+        case clarabel::SolverStatus::MaxIterations:
+            return "Maximum Iterations";
+        case clarabel::SolverStatus::MaxTime:
+            return "Maximum Time";
+        case clarabel::SolverStatus::NumericalError:
+            return "Numerical Error";
+        case clarabel::SolverStatus::InsufficientProgress:
+            return "Insufficient Progress";
+        case clarabel::SolverStatus::CallbackTerminated:
+            return "Callback Terminated";
+        default:
+            return "Unknown";
     }
 }
 
-} // namespace
+}  // namespace
 
-ClarabelSolver::ClarabelSolver(cardillo::physics::DynamicsAssembler& dyn,
-                               const cardillo::config::Config& cfg)
-    : m_dyn(dyn), m_assembler(m_dyn), m_cfg(cfg) {}
+ClarabelSolver::ClarabelSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(dyn), m_assembler(m_dyn), m_cfg(cfg) {}
 
 ClarabelSolver::~ClarabelSolver() = default;
 
@@ -76,12 +87,33 @@ void ClarabelSolver::initSolver(real_t dt, real_t theta, bool first_init) {
 void ClarabelSolver::updateSolver(real_t dt, real_t theta) {
     m_solver.reset();
     initSolver(dt, theta, false);
+
+    //     VectorXr* q = nullptr;
+    //     const SparseMatrix<Eigen::ColMajor>* A = nullptr;
+    //     VectorXr* b = nullptr;
+    //     const std::vector<clarabel::SupportedConeT<double>>* cones = nullptr;
+    //     {
+    //         auto sc =
+    //         m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ClarabelAssembly); q =
+    //         &m_assembler.q(dt, theta); A = &m_assembler.A(dt, theta); b = &m_assembler.b(dt,
+    //         theta); cones = &m_assembler.cones();
+    //     }
+    //
+    //     // m_solver->update_P(m_assembler.P(dt, theta)); // P is constant in our formulation, so
+    //     we don't update it after the first initialization auto setup_scope =
+    //     m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ClarabelSetup);
+    //     m_solver->update_q(*q);
+    //     m_solver->update_A(*A);
+    //     m_solver->update_b(*b);
+    //     m_solver->update_cones(*cones); // This method does not seem to exist in Carabel :(
 }
 
 VectorXr ClarabelSolver::solve(real_t dt, real_t theta) {
     m_dyn.updateStateDependentTerms();
-    if (!m_solver) initSolver(dt, theta, true);
-    else updateSolver(dt, theta);
+    if (!m_solver)
+        initSolver(dt, theta, true);
+    else
+        updateSolver(dt, theta);
 
     auto solve_scope = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ClarabelSolve);
     m_solver->solve();
@@ -129,4 +161,4 @@ VectorXr ClarabelSolver::solve(real_t dt, real_t theta) {
     return x_vec.segment(0, nV);
 }
 
-} // namespace cardillo::solver
+}  // namespace cardillo::solver

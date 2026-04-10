@@ -1,9 +1,10 @@
 #pragma once
 
-#include "misc/types.hpp"
 #include <cmath>
+#include "misc/types.hpp"
 
-namespace cardillo { namespace collision {
+namespace cardillo {
+namespace collision {
 
 // Build an orthonormal basis (t1, t2, n) from a unit-length normal n
 // Uses a numerically stable, branchless variant based on Frisvad (2012).
@@ -18,7 +19,7 @@ inline void tangentFrameFromNormal(const Vector3r& n_in, Vector3r& t1, Vector3r&
         return;
     }
     n /= len;
-    
+
     if (n.z() < (real_t)-0.9999999) {
         // Near south pole: choose fixed basis
         t1 = Vector3r(0, -1, 0);
@@ -31,7 +32,8 @@ inline void tangentFrameFromNormal(const Vector3r& n_in, Vector3r& t1, Vector3r&
     t2 = Vector3r(b, (real_t)1 - n.y() * n.y() * a, -n.y());
     // Optional: normalize to guard against accumulated error
     t1.normalize();
-    t2 = n.cross(t1); // ensure right-handed ONB
+    t2 = n.cross(t1);  // ensure right-handed ONB
 }
 
-}} // namespace cardillo::collision
+}  // namespace collision
+}  // namespace cardillo

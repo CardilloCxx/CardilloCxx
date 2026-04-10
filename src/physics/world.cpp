@@ -1,20 +1,21 @@
-#include <optional>
 #include "world.hpp"
-#include "assets/assets.hpp"
-#include "constraints/constraints.hpp"
-#include "constraints/constraint_factory.hpp"
-#include "synchronization/derived_entity_sync.hpp"
-#include "../collision/collision_coal.hpp"
-#include "solver/warmstart.hpp"
-#include <sstream>
-#include <iomanip>
 #include <fstream>
+#include <iomanip>
+#include <optional>
+#include <sstream>
+#include "../collision/collision_coal.hpp"
+#include "assets/assets.hpp"
+#include "constraints/constraint_factory.hpp"
+#include "constraints/constraints.hpp"
+#include "solver/warmstart.hpp"
+#include "synchronization/derived_entity_sync.hpp"
 
 namespace cardillo {
 
 // namespace {
 
-// Vector3r worldPointFromLocal(const entt::registry& reg, entt::entity e, const Vector3r& r_local) {
+// Vector3r worldPointFromLocal(const entt::registry& reg, entt::entity e, const Vector3r& r_local)
+// {
 //     Vector3r p = r_local;
 //     if (reg.valid(e) && reg.all_of<C_Position3>(e)) {
 //         p = reg.get<C_Position3>(e).value;
@@ -29,7 +30,6 @@ namespace cardillo {
 
 // } // namespace
 
-
 World::~World() = default;
 
 World::World(const config::Config& cfg) {
@@ -37,7 +37,10 @@ World::World(const config::Config& cfg) {
     setGravity(m_cfg.sim_gravity);
 }
 
-void World::setGravity(const Vector3r& g) { m_gravity = g; m_forces_dirty = true; }
+void World::setGravity(const Vector3r& g) {
+    m_gravity = g;
+    m_forces_dirty = true;
+}
 
 // Assets access ----------------------------------
 PhysicsAssets& World::assets() {
@@ -52,8 +55,7 @@ const PhysicsAssets& World::assets() const {
 // const config::Config& World::config() const { return m_cfg; }
 // config::Config& World::config() { return m_cfg; }
 
-void World::track(entt::entity e, const std::string& name)
-{
+void World::track(entt::entity e, const std::string& name) {
     if (!m_reg.valid(e)) return;
     if (!m_reg.any_of<C_TrackTag>(e)) {
         m_reg.emplace<C_TrackTag>(e, C_TrackTag{name});
@@ -65,29 +67,30 @@ void World::track(entt::entity e, const std::string& name)
 // ---------- Dynamics getters ----------
 
 MatrixXXr World::getMass(entt::entity e) const {
-
     // Rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass, C_InertiaDiag>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
         const Vector3r Idiag = m_reg.get<C_InertiaDiag>(e).I;
-        MatrixXXr M = MatrixXXr::Zero(6,6);
+        MatrixXXr M = MatrixXXr::Zero(6, 6);
 
-        M(0,0) = m; M(1,1) = m; M(2,2) = m;
-        M(3,3) = Idiag.x();
-        M(4,4) = Idiag.y();
-        M(5,5) = Idiag.z();
+        M(0, 0) = m;
+        M(1, 1) = m;
+        M(2, 2) = m;
+        M(3, 3) = Idiag.x();
+        M(4, 4) = Idiag.y();
+        M(5, 5) = Idiag.z();
         return M;
     }
 
     // Point mass
     if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
-        MatrixXXr M = MatrixXXr::Zero(3,3);
+        MatrixXXr M = MatrixXXr::Zero(3, 3);
         M.diagonal().setConstant(m);
         return M;
     }
     std::cout << "Warning: getMass() called on entity without known mass.\n";
-    return MatrixXXr(0,0);
+    return MatrixXXr(0, 0);
 }
 
 VectorXr World::getMassInverseDiag(entt::entity e) const {
@@ -118,7 +121,8 @@ VectorXr World::getPosition(entt::entity e) const {
     // Point mass
     if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Position3>(e)) {
         const auto& x = m_reg.get<C_Position3>(e).value;
-        VectorXr q(3); q << x[0], x[1], x[2];
+        VectorXr q(3);
+        q << x[0], x[1], x[2];
         return q;
     }
     return VectorXr(0);
@@ -128,7 +132,7 @@ VectorXr World::getVelocity(entt::entity e) const {
     // Prefer rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_LinearVelocity3, C_AngularVelocity3>(e)) {
         const auto& v = m_reg.get<C_LinearVelocity3>(e).value;
-        const auto& w = m_reg.get<C_AngularVelocity3>(e).value; // body-frame angular velocity
+        const auto& w = m_reg.get<C_AngularVelocity3>(e).value;  // body-frame angular velocity
         VectorXr out(6);
         out << v[0], v[1], v[2], w[0], w[1], w[2];
         return out;
@@ -136,7 +140,8 @@ VectorXr World::getVelocity(entt::entity e) const {
     // Point mass
     if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_LinearVelocity3>(e)) {
         const auto& v = m_reg.get<C_LinearVelocity3>(e).value;
-        VectorXr out(3); out << v[0], v[1], v[2];
+        VectorXr out(3);
+        out << v[0], v[1], v[2];
         return out;
     }
     return VectorXr(0);
@@ -155,9 +160,14 @@ VectorXr World::getForceExternal(entt::entity e) const {
         if (m_reg.any_of<C_ExternalTorque>(e)) {
             tau += m_reg.get<C_ExternalTorque>(e).tau;
         }
-        VectorXr out(6); out.setZero();
-        out[0] = fg[0]; out[1] = fg[1]; out[2] = fg[2];
-        out[3] = tau[0]; out[4] = tau[1]; out[5] = tau[2];
+        VectorXr out(6);
+        out.setZero();
+        out[0] = fg[0];
+        out[1] = fg[1];
+        out[2] = fg[2];
+        out[3] = tau[0];
+        out[4] = tau[1];
+        out[5] = tau[2];
         return out;
     }
     // Point mass
@@ -167,7 +177,8 @@ VectorXr World::getForceExternal(entt::entity e) const {
         if (m_reg.any_of<C_ExternalForce>(e)) {
             fg += m_reg.get<C_ExternalForce>(e).f;
         }
-        VectorXr out(3); out << fg[0], fg[1], fg[2];
+        VectorXr out(3);
+        out << fg[0], fg[1], fg[2];
         return out;
     }
     return VectorXr(0);
@@ -178,12 +189,13 @@ VectorXr World::getForceGyroscopic(entt::entity e) const {
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass>(e)) {
         Vector3r tau = Vector3r::Zero();
         if (m_reg.all_of<C_InertiaDiag>(e)) {
-            const Vector3r w = m_reg.get<C_AngularVelocity3>(e).value; // body-frame
+            const Vector3r w = m_reg.get<C_AngularVelocity3>(e).value;  // body-frame
             Vector3r Idiag = m_reg.get<C_InertiaDiag>(e).I;
             const Vector3r Iw = Idiag.cwiseProduct(w);
             tau = -w.cross(Iw);
         }
-        VectorXr out(6); out.setZero();
+        VectorXr out(6);
+        out.setZero();
         out.tail<3>() = tau;
         return out;
     }
@@ -206,7 +218,7 @@ Vector3r World::getInertiaDiag(entt::entity e) const {
     if (m_reg.all_of<C_InertiaDiag>(e)) {
         return m_reg.get<C_InertiaDiag>(e).I;
     }
-   
+
     // Default: zero
     return Vector3r::Zero();
 }
@@ -218,7 +230,7 @@ real_t World::getKineticEnergy(entt::entity e) const {
         const real_t m = m_reg.get<C_Mass>(e).m;
         const Vector3r Idiag = m_reg.get<C_InertiaDiag>(e).I;
         const Vector3r v = m_reg.get<C_LinearVelocity3>(e).value;
-        const Vector3r w = m_reg.get<C_AngularVelocity3>(e).value; // body-frame
+        const Vector3r w = m_reg.get<C_AngularVelocity3>(e).value;  // body-frame
         KE += (real_t)0.5 * m * v.squaredNorm();
         Vector3r Iw = Idiag.cwiseProduct(w);
         KE += (real_t)0.5 * w.dot(Iw);
@@ -252,12 +264,16 @@ int World::numBodies() const {
 void World::applyForce(entt::entity e, const Vector3r& force_world, const Vector3r& torque_body) {
     if (!m_reg.valid(e)) return;
     if (force_world.allFinite() && !force_world.isZero()) {
-        if (m_reg.any_of<C_ExternalForce>(e)) m_reg.get<C_ExternalForce>(e).f += force_world;
-        else m_reg.emplace<C_ExternalForce>(e, C_ExternalForce{force_world});
+        if (m_reg.any_of<C_ExternalForce>(e))
+            m_reg.get<C_ExternalForce>(e).f += force_world;
+        else
+            m_reg.emplace<C_ExternalForce>(e, C_ExternalForce{force_world});
     }
     if (torque_body.allFinite() && !torque_body.isZero()) {
-        if (m_reg.any_of<C_ExternalTorque>(e)) m_reg.get<C_ExternalTorque>(e).tau += torque_body;
-        else m_reg.emplace<C_ExternalTorque>(e, C_ExternalTorque{torque_body});
+        if (m_reg.any_of<C_ExternalTorque>(e))
+            m_reg.get<C_ExternalTorque>(e).tau += torque_body;
+        else
+            m_reg.emplace<C_ExternalTorque>(e, C_ExternalTorque{torque_body});
     }
     m_forces_dirty = true;
 }
@@ -268,7 +284,7 @@ void World::applyInertialTorque(entt::entity e, const Vector3r& torque_world) {
     if (!torque_world.allFinite() || torque_world.isZero()) return;
     if (!m_reg.any_of<C_Orientation>(e)) return;
     const Quaternion4r q = m_reg.get<C_Orientation>(e).value;
-    const Vector3r torque_body = q.conjugate() * torque_world; // R^T * tau_world
+    const Vector3r torque_body = q.conjugate() * torque_world;  // R^T * tau_world
     applyForce(e, Vector3r::Zero(), torque_body);
 }
 
@@ -297,7 +313,10 @@ void World::makeStatic(entt::entity e) {
 
 void World::setPosition(entt::entity e, const Vector3r& p) {
     if (!m_reg.valid(e)) return;
-    if (m_reg.any_of<C_Position3>(e)) m_reg.get<C_Position3>(e).value = p; else m_reg.emplace<C_Position3>(e, C_Position3{p});
+    if (m_reg.any_of<C_Position3>(e))
+        m_reg.get<C_Position3>(e).value = p;
+    else
+        m_reg.emplace<C_Position3>(e, C_Position3{p});
     markStateDirty();
 }
 
@@ -307,7 +326,8 @@ void World::setOrientation(entt::entity e, const Quaternion4r& q_in) {
         const Quaternion4r q_ref = m_reg.get<C_Orientation>(e).value;
         m_reg.get<C_Orientation>(e).value = MathHelper::alignQuaternionTo(q_in, q_ref);
     } else {
-        Quaternion4r q = q_in; q.normalize();
+        Quaternion4r q = q_in;
+        q.normalize();
         m_reg.emplace<C_Orientation>(e, C_Orientation{q});
     }
     markStateDirty();
@@ -315,22 +335,31 @@ void World::setOrientation(entt::entity e, const Quaternion4r& q_in) {
 
 void World::setLinearVelocity(entt::entity e, const Vector3r& v) {
     if (!m_reg.valid(e)) return;
-    if (m_reg.any_of<C_LinearVelocity3>(e)) m_reg.get<C_LinearVelocity3>(e).value = v; else m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{v});
-    if (m_reg.any_of<C_LinearAcceleration3>(e)) m_reg.get<C_LinearAcceleration3>(e).value = Vector3r::Zero();
-    else m_reg.emplace<C_LinearAcceleration3>(e, C_LinearAcceleration3{Vector3r::Zero()});
+    if (m_reg.any_of<C_LinearVelocity3>(e))
+        m_reg.get<C_LinearVelocity3>(e).value = v;
+    else
+        m_reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{v});
+    if (m_reg.any_of<C_LinearAcceleration3>(e))
+        m_reg.get<C_LinearAcceleration3>(e).value = Vector3r::Zero();
+    else
+        m_reg.emplace<C_LinearAcceleration3>(e, C_LinearAcceleration3{Vector3r::Zero()});
     markStateDirty();
 }
 
 void World::setAngularVelocity(entt::entity e, const Vector3r& w) {
     if (!m_reg.valid(e)) return;
-    if (m_reg.any_of<C_AngularVelocity3>(e)) m_reg.get<C_AngularVelocity3>(e).value = w; else m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{w});
-    if (m_reg.any_of<C_AngularAcceleration3>(e)) m_reg.get<C_AngularAcceleration3>(e).value = Vector3r::Zero();
-    else m_reg.emplace<C_AngularAcceleration3>(e, C_AngularAcceleration3{Vector3r::Zero()});
+    if (m_reg.any_of<C_AngularVelocity3>(e))
+        m_reg.get<C_AngularVelocity3>(e).value = w;
+    else
+        m_reg.emplace<C_AngularVelocity3>(e, C_AngularVelocity3{w});
+    if (m_reg.any_of<C_AngularAcceleration3>(e))
+        m_reg.get<C_AngularAcceleration3>(e).value = Vector3r::Zero();
+    else
+        m_reg.emplace<C_AngularAcceleration3>(e, C_AngularAcceleration3{Vector3r::Zero()});
     markStateDirty();
 }
 
-void World::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w)
-{
+void World::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w) {
     if (!m_reg.valid(e)) return;
 
     Vector3r currentV = Vector3r::Zero();
@@ -363,4 +392,4 @@ const ::cardillo::HeightFieldAsset& World::getHeightFieldAsset(entt::entity e) c
     const auto& ch = m_reg.get<C_HeightField>(e);
     return assets().getHeightField(ch.path, ch.x_dim, ch.y_dim, ch.z_scale, ch.min_height);
 }
-} // namespace cardillo::physics
+}  // namespace cardillo

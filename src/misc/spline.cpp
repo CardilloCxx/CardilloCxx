@@ -4,36 +4,44 @@
 #include <fstream>
 #include <limits>
 
-namespace cardillo { namespace misc {
+namespace cardillo {
+namespace misc {
 
-static inline Matrix33r makeFrameFromTangent(const Vector3r &tangent) {
+static inline Matrix33r makeFrameFromTangent(const Vector3r& tangent) {
     Vector3r T = tangent.normalized();
-    Vector3r up = std::abs(T.z()) < (real_t)0.9 ? Vector3r(0,0,1) : Vector3r(0,1,0);
+    Vector3r up = std::abs(T.z()) < (real_t)0.9 ? Vector3r(0, 0, 1) : Vector3r(0, 1, 0);
     Vector3r N = up.cross(T).normalized();
     if (N.squaredNorm() < (real_t)1e-12) {
-        up = Vector3r(1,0,0);
+        up = Vector3r(1, 0, 0);
         N = up.cross(T).normalized();
     }
     Vector3r B = T.cross(N).normalized();
-    Matrix33r M; M.col(0)=T; M.col(1)=N; M.col(2)=B; return M;
+    Matrix33r M;
+    M.col(0) = T;
+    M.col(1) = N;
+    M.col(2) = B;
+    return M;
 }
 
 // LinearSpline ---------------------------------------------------------------
-LinearSpline::LinearSpline(const Vector3r &p0, const Vector3r &p1)
-: m_p0(p0), m_p1(p1) {
+LinearSpline::LinearSpline(const Vector3r& p0, const Vector3r& p1) : m_p0(p0), m_p1(p1) {
     m_len = (m_p1 - m_p0).norm();
-    m_T = (m_len > (real_t)0) ? (m_p1 - m_p0) / m_len : Vector3r(1,0,0);
+    m_T = (m_len > (real_t)0) ? (m_p1 - m_p0) / m_len : Vector3r(1, 0, 0);
 }
 
-real_t LinearSpline::totalLength() const { return m_len; }
+real_t LinearSpline::totalLength() const {
+    return m_len;
+}
 
-bool LinearSpline::isLoop() const { return false; }
+bool LinearSpline::isLoop() const {
+    return false;
+}
 
 SplineSample LinearSpline::sample(real_t alpha) const {
     alpha = std::min((real_t)1, std::max((real_t)0, alpha));
     Vector3r pos = (1 - alpha) * m_p0 + alpha * m_p1;
     Matrix33r F = makeFrameFromTangent(m_T);
-    return { pos, F.col(0), F.col(1), F.col(2) };
+    return {pos, F.col(0), F.col(1), F.col(2)};
 }
 
 Vector3r LinearSpline::centerOfMass() const {
@@ -41,27 +49,31 @@ Vector3r LinearSpline::centerOfMass() const {
 }
 
 // CircleSpline ---------------------------------------------------------------
-CircleSpline::CircleSpline(const Vector3r &center, real_t radius, const Vector3r &normal, const Vector3r &dir0, real_t thetaStart, real_t thetaSpan)
-: m_c(center), m_r(radius), m_n(normal.normalized()), m_theta0(thetaStart), m_thetaSpan(thetaSpan) {
-    Vector3r d = dir0 - dir0.dot(m_n) * m_n; // project onto plane
-    if (d.squaredNorm() < (real_t)1e-10) d = Vector3r::UnitX() - Vector3r::UnitX().dot(m_n)*m_n;
+CircleSpline::CircleSpline(const Vector3r& center, real_t radius, const Vector3r& normal, const Vector3r& dir0, real_t thetaStart, real_t thetaSpan)
+    : m_c(center), m_r(radius), m_n(normal.normalized()), m_theta0(thetaStart), m_thetaSpan(thetaSpan) {
+    Vector3r d = dir0 - dir0.dot(m_n) * m_n;  // project onto plane
+    if (d.squaredNorm() < (real_t)1e-10) d = Vector3r::UnitX() - Vector3r::UnitX().dot(m_n) * m_n;
     m_u = d.normalized();
     m_v = m_n.cross(m_u).normalized();
 }
 
-real_t CircleSpline::totalLength() const { return std::abs(m_thetaSpan) * m_r; }
+real_t CircleSpline::totalLength() const {
+    return std::abs(m_thetaSpan) * m_r;
+}
 
-bool CircleSpline::isLoop() const { return std::abs(std::abs(m_thetaSpan) - (real_t)(2*M_PI)) < (real_t)1e-8; }
+bool CircleSpline::isLoop() const {
+    return std::abs(std::abs(m_thetaSpan) - (real_t)(2 * M_PI)) < (real_t)1e-8;
+}
 
 SplineSample CircleSpline::sample(real_t alpha) const {
     alpha = std::min((real_t)1, std::max((real_t)0, alpha));
     real_t theta = m_theta0 + m_thetaSpan * alpha;
-    Vector3r radial = std::cos(theta) * m_u + std::sin(theta) * m_v; // outward in plane
+    Vector3r radial = std::cos(theta) * m_u + std::sin(theta) * m_v;  // outward in plane
     Vector3r tangent = (-std::sin(theta) * m_u + std::cos(theta) * m_v).normalized();
     Vector3r normal = radial.normalized();
-    Vector3r binormal = tangent.cross(normal).normalized(); // aligns with m_n up to sign
+    Vector3r binormal = tangent.cross(normal).normalized();  // aligns with m_n up to sign
     Vector3r pos = m_c + m_r * radial;
-    return { pos, tangent, normal, binormal };
+    return {pos, tangent, normal, binormal};
 }
 
 Vector3r CircleSpline::centerOfMass() const {
@@ -69,10 +81,10 @@ Vector3r CircleSpline::centerOfMass() const {
 }
 
 // HelixSpline ----------------------------------------------------------------
-HelixSpline::HelixSpline(const Vector3r &center, const Vector3r &axisDir, real_t radius, real_t pitch, real_t turns, const Vector3r &dir0)
-: m_c(center), m_d(axisDir.normalized()), m_r(radius), m_pitch(pitch), m_turns(turns) {
+HelixSpline::HelixSpline(const Vector3r& center, const Vector3r& axisDir, real_t radius, real_t pitch, real_t turns, const Vector3r& dir0)
+    : m_c(center), m_d(axisDir.normalized()), m_r(radius), m_pitch(pitch), m_turns(turns) {
     // Build a stable orthonormal basis {u,v} orthogonal to axis m_d using a robust fallback
-    Vector3r d = dir0 - dir0.dot(m_d) * m_d; // remove axis component from dir0
+    Vector3r d = dir0 - dir0.dot(m_d) * m_d;  // remove axis component from dir0
     if (d.squaredNorm() < (real_t)1e-12) {
         // dir0 nearly parallel to axis; pick a canonical axis least aligned with m_d
         Vector3r cand = (std::abs(m_d.x()) < (real_t)0.9) ? Vector3r::UnitX() : Vector3r::UnitY();
@@ -83,22 +95,24 @@ HelixSpline::HelixSpline(const Vector3r &center, const Vector3r &axisDir, real_t
 }
 
 real_t HelixSpline::totalLength() const {
-    real_t perRev = std::sqrt((real_t)(2*M_PI*m_r)*(2*M_PI*m_r) + m_pitch*m_pitch);
+    real_t perRev = std::sqrt((real_t)(2 * M_PI * m_r) * (2 * M_PI * m_r) + m_pitch * m_pitch);
     return m_turns * perRev;
 }
 
-bool HelixSpline::isLoop() const { return false; }
+bool HelixSpline::isLoop() const {
+    return false;
+}
 
 SplineSample HelixSpline::sample(real_t alpha) const {
     alpha = std::min((real_t)1, std::max((real_t)0, alpha));
     real_t theta = (real_t)2 * M_PI * m_turns * alpha;
-    Vector3r radial = std::cos(theta) * m_u + std::sin(theta) * m_v; // outward, |radial|=1
-    Vector3r dpos_dtheta = -m_r * std::sin(theta) * m_u + m_r * std::cos(theta) * m_v + (m_pitch / ((real_t)2*M_PI)) * m_d;
+    Vector3r radial = std::cos(theta) * m_u + std::sin(theta) * m_v;  // outward, |radial|=1
+    Vector3r dpos_dtheta = -m_r * std::sin(theta) * m_u + m_r * std::cos(theta) * m_v + (m_pitch / ((real_t)2 * M_PI)) * m_d;
     Vector3r tangent = dpos_dtheta.normalized();
     Vector3r normal = radial;
     Vector3r binormal = tangent.cross(normal).normalized();
-    Vector3r pos = m_c + m_r * radial + (m_pitch * theta / ((real_t)2*M_PI)) * m_d;
-    return { pos, tangent, normal, binormal };
+    Vector3r pos = m_c + m_r * radial + (m_pitch * theta / ((real_t)2 * M_PI)) * m_d;
+    return {pos, tangent, normal, binormal};
 }
 
 Vector3r HelixSpline::centerOfMass() const {
@@ -107,13 +121,12 @@ Vector3r HelixSpline::centerOfMass() const {
     const real_t sT = std::sin(Theta);
     const real_t cT = std::cos(Theta);
     Vector3r avg_radial = m_r * ((sT / Theta) * m_u + ((1 - cT) / Theta) * m_v);
-    Vector3r avg_axial  = ((m_pitch * m_turns) * (real_t)0.5) * m_d; // (pitch*turns)/2
+    Vector3r avg_axial = ((m_pitch * m_turns) * (real_t)0.5) * m_d;  // (pitch*turns)/2
     return m_c + avg_radial + avg_axial;
 }
 
 // CatmullRomSpline -----------------------------------------------------------
-CatmullRomSpline::CatmullRomSpline(std::vector<Vector3r> controlPoints, bool loop)
-: m_cp(std::move(controlPoints)), m_loop(loop) {
+CatmullRomSpline::CatmullRomSpline(std::vector<Vector3r> controlPoints, bool loop) : m_cp(std::move(controlPoints)), m_loop(loop) {
     if (m_cp.size() < 2) {
         m_len = (real_t)0;
     } else {
@@ -121,9 +134,13 @@ CatmullRomSpline::CatmullRomSpline(std::vector<Vector3r> controlPoints, bool loo
     }
 }
 
-real_t CatmullRomSpline::totalLength() const { return m_len; }
+real_t CatmullRomSpline::totalLength() const {
+    return m_len;
+}
 
-bool CatmullRomSpline::isLoop() const { return m_loop; }
+bool CatmullRomSpline::isLoop() const {
+    return m_loop;
+}
 
 Vector3r CatmullRomSpline::controlPoint(int idx) const {
     const int n = static_cast<int>(m_cp.size());
@@ -146,10 +163,7 @@ Vector3r CatmullRomSpline::segmentPosition(int seg, real_t t) const {
 
     const real_t t2 = t * t;
     const real_t t3 = t2 * t;
-    return (real_t)0.5 * ((real_t)2 * p1
-        + (-p0 + p2) * t
-        + ((real_t)2 * p0 - (real_t)5 * p1 + (real_t)4 * p2 - p3) * t2
-        + (-p0 + (real_t)3 * p1 - (real_t)3 * p2 + p3) * t3);
+    return (real_t)0.5 * ((real_t)2 * p1 + (-p0 + p2) * t + ((real_t)2 * p0 - (real_t)5 * p1 + (real_t)4 * p2 - p3) * t2 + (-p0 + (real_t)3 * p1 - (real_t)3 * p2 + p3) * t3);
 }
 
 Vector3r CatmullRomSpline::segmentTangent(int seg, real_t t) const {
@@ -159,9 +173,7 @@ Vector3r CatmullRomSpline::segmentTangent(int seg, real_t t) const {
     const Vector3r p3 = controlPoint(seg + 2);
 
     const real_t t2 = t * t;
-    Vector3r deriv = (real_t)0.5 * ((-p0 + p2)
-        + ((real_t)2 * ((real_t)2 * p0 - (real_t)5 * p1 + (real_t)4 * p2 - p3)) * t
-        + ((real_t)3 * (-p0 + (real_t)3 * p1 - (real_t)3 * p2 + p3)) * t2);
+    Vector3r deriv = (real_t)0.5 * ((-p0 + p2) + ((real_t)2 * ((real_t)2 * p0 - (real_t)5 * p1 + (real_t)4 * p2 - p3)) * t + ((real_t)3 * (-p0 + (real_t)3 * p1 - (real_t)3 * p2 + p3)) * t2);
     const real_t nrm = deriv.norm();
     if (nrm <= (real_t)0) return Vector3r::UnitX();
     return deriv / nrm;
@@ -170,18 +182,18 @@ Vector3r CatmullRomSpline::segmentTangent(int seg, real_t t) const {
 SplineSample CatmullRomSpline::sample(real_t alpha) const {
     if (m_cp.empty()) {
         Matrix33r F = makeFrameFromTangent(Vector3r::UnitX());
-        return { Vector3r::Zero(), F.col(0), F.col(1), F.col(2) };
+        return {Vector3r::Zero(), F.col(0), F.col(1), F.col(2)};
     }
     if (m_cp.size() == 1) {
         Matrix33r F = makeFrameFromTangent(Vector3r::UnitX());
-        return { m_cp.front(), F.col(0), F.col(1), F.col(2) };
+        return {m_cp.front(), F.col(0), F.col(1), F.col(2)};
     }
 
     alpha = std::min((real_t)1, std::max((real_t)0, alpha));
     const int segCount = m_loop ? static_cast<int>(m_cp.size()) : static_cast<int>(m_cp.size()) - 1;
     if (segCount <= 0) {
         Matrix33r F = makeFrameFromTangent(Vector3r::UnitX());
-        return { m_cp.front(), F.col(0), F.col(1), F.col(2) };
+        return {m_cp.front(), F.col(0), F.col(1), F.col(2)};
     }
 
     real_t u = alpha * (real_t)segCount;
@@ -212,7 +224,7 @@ SplineSample CatmullRomSpline::sample(real_t alpha) const {
     Vector3r pos = segmentPosition(seg, t);
     Vector3r tangent = segmentTangent(seg, t);
     Matrix33r F = makeFrameFromTangent(tangent);
-    return { pos, F.col(0), F.col(1), F.col(2) };
+    return {pos, F.col(0), F.col(1), F.col(2)};
 }
 
 real_t CatmullRomSpline::approximateLength(int samplesPerSegment) const {
@@ -305,8 +317,7 @@ struct BCCHeader {
 };
 #pragma pack(pop)
 
-std::vector<std::shared_ptr<SplinePattern>> loadSplinesFromBCC(const std::string &filePath,
-                                                               real_t scale) {
+std::vector<std::shared_ptr<SplinePattern>> loadSplinesFromBCC(const std::string& filePath, real_t scale) {
     std::vector<std::shared_ptr<SplinePattern>> splines;
     std::ifstream in(filePath, std::ios::binary);
     if (!in) return splines;
@@ -316,8 +327,8 @@ std::vector<std::shared_ptr<SplinePattern>> loadSplinesFromBCC(const std::string
     if (!in) return splines;
 
     if (header.sign[0] != 'B' || header.sign[1] != 'C' || header.sign[2] != 'C') return splines;
-    if (header.byteCount != 0x44) return splines; // Only supporting 4-byte integers and floats
-    if (header.curveType[0] != 'C' || header.curveType[1] != '0') return splines; // Catmull-Rom, uniform
+    if (header.byteCount != 0x44) return splines;                                  // Only supporting 4-byte integers and floats
+    if (header.curveType[0] != 'C' || header.curveType[1] != '0') return splines;  // Catmull-Rom, uniform
     if (header.dimensions != 3) return splines;
 
     if (header.curveCount > (std::uint64_t)std::numeric_limits<std::size_t>::max()) return splines;
@@ -342,9 +353,7 @@ std::vector<std::shared_ptr<SplinePattern>> loadSplinesFromBCC(const std::string
             in.read(reinterpret_cast<char*>(raw.data()), sizeof(float) * raw.size());
             if (!in) break;
             for (std::size_t j = 0; j < count; ++j) {
-                cps.emplace_back((real_t)raw[3*j + 0] * scale,
-                                 (real_t)raw[3*j + 1] * scale,
-                                 (real_t)raw[3*j + 2] * scale);
+                cps.emplace_back((real_t)raw[3 * j + 0] * scale, (real_t)raw[3 * j + 1] * scale, (real_t)raw[3 * j + 2] * scale);
             }
         }
 
@@ -354,4 +363,5 @@ std::vector<std::shared_ptr<SplinePattern>> loadSplinesFromBCC(const std::string
     return splines;
 }
 
-}} // namespace cardillo::misc
+}  // namespace misc
+}  // namespace cardillo

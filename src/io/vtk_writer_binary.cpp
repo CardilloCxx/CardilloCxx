@@ -1,12 +1,12 @@
 #include "vtk_writer_binary.hpp"
 #include "../collision/collision_coal.hpp"
-#include "mesh_generator.hpp"
-#include "../physics/solver/warmstart.hpp"
 #include "../physics/constraints/constraints.hpp"
+#include "../physics/solver/warmstart.hpp"
+#include "mesh_generator.hpp"
 
 #include <algorithm>
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <iomanip>
@@ -17,7 +17,9 @@ namespace cardillo::io {
 
 namespace {
 
-static inline float f32(real_t v) { return static_cast<float>(v); }
+static inline float f32(real_t v) {
+    return static_cast<float>(v);
+}
 
 static inline std::uint32_t entityKey(entt::entity e) {
     return static_cast<std::uint32_t>(entt::to_integral(e));
@@ -27,26 +29,26 @@ static real_t triangleArea(const Vector3r& a, const Vector3r& b, const Vector3r&
     return static_cast<real_t>(0.5) * ((b - a).cross(c - a)).norm();
 }
 
-} // namespace
+}  // namespace
 
 void VtkWriterBinary::setOutputDir(const std::string& dir) {
     m_outputDir = dir;
     if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
 }
 
-void VtkWriterBinary::setBaseName(const std::string& name) { m_baseName = name; }
-void VtkWriterBinary::setFrequency(int freq) { m_frequency = std::max(1, freq); }
+void VtkWriterBinary::setBaseName(const std::string& name) {
+    m_baseName = name;
+}
+void VtkWriterBinary::setFrequency(int freq) {
+    m_frequency = std::max(1, freq);
+}
 
-void VtkWriterBinary::maybeWrite(int step, real_t time, const cardillo::World& sys,
-                                 cardillo::collision::CollisionCoal* collision_mgr,
-                                 cardillo::misc::TimingManager* timings,
+void VtkWriterBinary::maybeWrite(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
                                  cardillo::physics::DynamicsAssembler* dyn) {
     if (step % m_frequency == 0) write(step, time, sys, collision_mgr, timings, dyn);
 }
 
-void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sys,
-                            cardillo::collision::CollisionCoal* collision_mgr,
-                            cardillo::misc::TimingManager* timings,
+void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
                             cardillo::physics::DynamicsAssembler* dyn) {
     auto sc = timings->scope(cardillo::misc::TimingManager::TimerId::OutputWrite);
 
@@ -82,13 +84,9 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
     }
 }
 
-void VtkWriterBinary::enrichPressure(std::vector<EntityMesh>& meshes,
-                                     const cardillo::World& sys,
-                                     const std::vector<cardillo::collision::Contact>& contacts) const {
+void VtkWriterBinary::enrichPressure(std::vector<EntityMesh>& meshes, const cardillo::World& sys, const std::vector<cardillo::collision::Contact>& contacts) const {
     const auto& reg = sys.ecs();
-    const real_t invDt = (m_cfg.sim_dt > (real_t)0)
-                       ? ((real_t)1 / m_cfg.sim_dt)
-                       : (real_t)1;
+    const real_t invDt = (m_cfg.sim_dt > (real_t)0) ? ((real_t)1 / m_cfg.sim_dt) : (real_t)1;
     constexpr real_t kMinArea = (real_t)1e-12;
 
     std::unordered_map<std::uint32_t, real_t> compressiveForce;
@@ -128,8 +126,7 @@ void VtkWriterBinary::enrichPressure(std::vector<EntityMesh>& meshes,
 }
 
 inline uint32_t VtkWriterBinary::bswap32(uint32_t v) {
-    return ((v & 0x000000FFu) << 24) | ((v & 0x0000FF00u) << 8)
-         | ((v & 0x00FF0000u) >> 8)  | ((v & 0xFF000000u) >> 24);
+    return ((v & 0x000000FFu) << 24) | ((v & 0x0000FF00u) << 8) | ((v & 0x00FF0000u) >> 8) | ((v & 0xFF000000u) >> 24);
 }
 
 inline void VtkWriterBinary::writeBE(std::ofstream& out, uint32_t v) {
@@ -215,7 +212,9 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const std::vector<En
                 const Vector3r omegaWorld = m.R * m.omega;
                 v = m.vlin + omegaWorld.cross(rWorld);
             }
-            writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
+            writeBE(out, f32(v.x()));
+            writeBE(out, f32(v.y()));
+            writeBE(out, f32(v.z()));
         }
     }
 
@@ -232,7 +231,9 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const std::vector<En
                 const Vector3r rWorld = m.vertices[i] - m.center;
                 a = m.alin + alphaWorld.cross(rWorld) + omegaWorld.cross(omegaWorld.cross(rWorld));
             }
-            writeBE(out, f32(a.x())); writeBE(out, f32(a.y())); writeBE(out, f32(a.z()));
+            writeBE(out, f32(a.x()));
+            writeBE(out, f32(a.y()));
+            writeBE(out, f32(a.z()));
         }
     }
 
@@ -240,7 +241,9 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const std::vector<En
     for (const auto& m : meshes) {
         const Vector3r omega = m.hasKinematics ? m.omega : Vector3r::Zero();
         for (std::size_t i = 0; i < m.vertices.size(); ++i) {
-            writeBE(out, f32(omega.x())); writeBE(out, f32(omega.y())); writeBE(out, f32(omega.z()));
+            writeBE(out, f32(omega.x()));
+            writeBE(out, f32(omega.y()));
+            writeBE(out, f32(omega.z()));
         }
     }
 
@@ -249,7 +252,9 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const std::vector<En
         const bool usePV = m.perVertexVelocity.size() == m.vertices.size();
         for (std::size_t i = 0; i < m.vertices.size(); ++i) {
             Vector3r v = usePV ? m.perVertexVelocity[i] : (m.hasKinematics ? m.vlin : Vector3r::Zero());
-            writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
+            writeBE(out, f32(v.x()));
+            writeBE(out, f32(v.y()));
+            writeBE(out, f32(v.z()));
         }
     }
 
@@ -293,9 +298,7 @@ void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const std:
     }
 }
 
-void VtkWriterBinary::writeGeometryMeshList(const std::string& path,
-                                            const std::vector<EntityMesh>& meshes,
-                                            const char* title) const {
+void VtkWriterBinary::writeGeometryMeshList(const std::string& path, const std::vector<EntityMesh>& meshes, const char* title) const {
     std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!out) return;
 
@@ -340,43 +343,98 @@ void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collis
     // Header and points
     writeHeader(out, "Collision contacts (binary)");
     out << "POINTS " << n << " float\n";
-    for (const auto& c : contacts) { writeBE(out, f32(c.point.x())); writeBE(out, f32(c.point.y())); writeBE(out, f32(c.point.z())); }
+    for (const auto& c : contacts) {
+        writeBE(out, f32(c.point.x()));
+        writeBE(out, f32(c.point.y()));
+        writeBE(out, f32(c.point.z()));
+    }
     // Vertices section for points visibility
-    out << "\nVERTICES " << n << ' ' << (2*n) << "\n";
-    for (std::size_t i = 0; i < n; ++i) { writeBE(out, int32_t(1)); writeBE(out, int32_t(i)); }
+    out << "\nVERTICES " << n << ' ' << (2 * n) << "\n";
+    for (std::size_t i = 0; i < n; ++i) {
+        writeBE(out, int32_t(1));
+        writeBE(out, int32_t(i));
+    }
     // Point data
     out << "\nPOINT_DATA " << n << "\n";
     out << "VECTORS normal float\n";
-    for (const auto& c : contacts) { writeBE(out, f32(c.normal.x())); writeBE(out, f32(c.normal.y())); writeBE(out, f32(c.normal.z())); }
+    for (const auto& c : contacts) {
+        writeBE(out, f32(c.normal.x()));
+        writeBE(out, f32(c.normal.y()));
+        writeBE(out, f32(c.normal.z()));
+    }
     out << "VECTORS tangent1 float\n";
-    for (const auto& c : contacts) { writeBE(out, f32(c.tangent1.x())); writeBE(out, f32(c.tangent1.y())); writeBE(out, f32(c.tangent1.z())); }
+    for (const auto& c : contacts) {
+        writeBE(out, f32(c.tangent1.x()));
+        writeBE(out, f32(c.tangent1.y()));
+        writeBE(out, f32(c.tangent1.z()));
+    }
     out << "VECTORS tangent2 float\n";
-    for (const auto& c : contacts) { writeBE(out, f32(c.tangent2.x())); writeBE(out, f32(c.tangent2.y())); writeBE(out, f32(c.tangent2.z())); }
+    for (const auto& c : contacts) {
+        writeBE(out, f32(c.tangent2.x()));
+        writeBE(out, f32(c.tangent2.y()));
+        writeBE(out, f32(c.tangent2.z()));
+    }
     if (writeBodyVectors) {
         out << "VECTORS normalA_body float\n";
-        for (const auto& c : contacts) { writeBE(out, f32(c.normalA_body.x())); writeBE(out, f32(c.normalA_body.y())); writeBE(out, f32(c.normalA_body.z())); }
+        for (const auto& c : contacts) {
+            writeBE(out, f32(c.normalA_body.x()));
+            writeBE(out, f32(c.normalA_body.y()));
+            writeBE(out, f32(c.normalA_body.z()));
+        }
         out << "VECTORS normalB_body float\n";
-        for (const auto& c : contacts) { writeBE(out, f32(c.normalB_body.x())); writeBE(out, f32(c.normalB_body.y())); writeBE(out, f32(c.normalB_body.z())); }
+        for (const auto& c : contacts) {
+            writeBE(out, f32(c.normalB_body.x()));
+            writeBE(out, f32(c.normalB_body.y()));
+            writeBE(out, f32(c.normalB_body.z()));
+        }
         out << "VECTORS pointA_body float\n";
-        for (const auto& c : contacts) { writeBE(out, f32(c.pointA_body.x())); writeBE(out, f32(c.pointA_body.y())); writeBE(out, f32(c.pointA_body.z())); }
+        for (const auto& c : contacts) {
+            writeBE(out, f32(c.pointA_body.x()));
+            writeBE(out, f32(c.pointA_body.y()));
+            writeBE(out, f32(c.pointA_body.z()));
+        }
         out << "VECTORS pointB_body float\n";
-        for (const auto& c : contacts) { writeBE(out, f32(c.pointB_body.x())); writeBE(out, f32(c.pointB_body.y())); writeBE(out, f32(c.pointB_body.z())); }
+        for (const auto& c : contacts) {
+            writeBE(out, f32(c.pointB_body.x()));
+            writeBE(out, f32(c.pointB_body.y()));
+            writeBE(out, f32(c.pointB_body.z()));
+        }
         out << "VECTORS tangent1A_body float\n";
-        for (const auto& c : contacts) { writeBE(out, f32(c.tangent1A_body.x())); writeBE(out, f32(c.tangent1A_body.y())); writeBE(out, f32(c.tangent1A_body.z())); }
+        for (const auto& c : contacts) {
+            writeBE(out, f32(c.tangent1A_body.x()));
+            writeBE(out, f32(c.tangent1A_body.y()));
+            writeBE(out, f32(c.tangent1A_body.z()));
+        }
         out << "VECTORS tangent2A_body float\n";
-        for (const auto& c : contacts) { writeBE(out, f32(c.tangent2A_body.x())); writeBE(out, f32(c.tangent2A_body.y())); writeBE(out, f32(c.tangent2A_body.z())); }
+        for (const auto& c : contacts) {
+            writeBE(out, f32(c.tangent2A_body.x()));
+            writeBE(out, f32(c.tangent2A_body.y()));
+            writeBE(out, f32(c.tangent2A_body.z()));
+        }
         out << "VECTORS tangent1B_body float\n";
-        for (const auto& c : contacts) { writeBE(out, f32(c.tangent1B_body.x())); writeBE(out, f32(c.tangent1B_body.y())); writeBE(out, f32(c.tangent1B_body.z())); }
+        for (const auto& c : contacts) {
+            writeBE(out, f32(c.tangent1B_body.x()));
+            writeBE(out, f32(c.tangent1B_body.y()));
+            writeBE(out, f32(c.tangent1B_body.z()));
+        }
         out << "VECTORS tangent2B_body float\n";
-        for (const auto& c : contacts) { writeBE(out, f32(c.tangent2B_body.x())); writeBE(out, f32(c.tangent2B_body.y())); writeBE(out, f32(c.tangent2B_body.z())); }
+        for (const auto& c : contacts) {
+            writeBE(out, f32(c.tangent2B_body.x()));
+            writeBE(out, f32(c.tangent2B_body.y()));
+            writeBE(out, f32(c.tangent2B_body.z()));
+        }
     }
     out << "SCALARS penetration float 1\nLOOKUP_TABLE default\n";
     for (const auto& c : contacts) writeBE(out, f32(c.penetration));
 
-    // Emit percussion data (pn, tangential magnitude, and vector) if any contact has a non-zero last_impulse
+    // Emit percussion data (pn, tangential magnitude, and vector) if any contact has a non-zero
+    // last_impulse
     bool hasImpulse = false;
-    for (const auto &c : contacts) {
-        if (c.last_impulse.squaredNorm() > (real_t)1e-12) { hasImpulse = true; break; }
+    for (const auto& c : contacts) {
+        if (c.last_impulse.squaredNorm() > (real_t)1e-12) {
+            hasImpulse = true;
+            break;
+        }
     }
     if (hasImpulse) {
         // normal impulse magnitude
@@ -399,7 +457,9 @@ void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collis
         out << "VECTORS percussion float\n";
         for (const auto& c : contacts) {
             Vector3r pvec = (real_t)c.last_impulse(0) * c.normal + (real_t)c.last_impulse(1) * c.tangent1 + (real_t)c.last_impulse(2) * c.tangent2;
-            writeBE(out, f32(pvec.x())); writeBE(out, f32(pvec.y())); writeBE(out, f32(pvec.z()));
+            writeBE(out, f32(pvec.x()));
+            writeBE(out, f32(pvec.y()));
+            writeBE(out, f32(pvec.z()));
         }
     }
     out << "SCALARS id_a int 1\nLOOKUP_TABLE default\n";
@@ -417,8 +477,10 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
     // Gather generic spring visuals (attachment B position, toAtoB) and
     // translation-rotation joint visuals (jointPos at B, frame, toAtoB)
     const auto& patterns = sys.constraintPatterns();
-    std::vector<Vector3r> positions; positions.reserve(patterns.size());
-    std::vector<Vector3r> toAtoB;   toAtoB.reserve(patterns.size());
+    std::vector<Vector3r> positions;
+    positions.reserve(patterns.size());
+    std::vector<Vector3r> toAtoB;
+    toAtoB.reserve(patterns.size());
 
     std::vector<Vector3r> tr_jointPos;
     std::vector<Vector3r> tr_toA;
@@ -438,7 +500,8 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
             toAtoB.push_back(xA - xB);
         }
 
-        // Translation-rotation style springs: extract joint frame from TranslationRotationConstraint
+        // Translation-rotation style springs: extract joint frame from
+        // TranslationRotationConstraint
         if (auto* tr = dynamic_cast<const cardillo::physics::TranslationRotationConstraint*>(uptr.get())) {
             // Use the same attachment points: joint position is at xB,
             // and toA/toB are expressed from that point.
@@ -453,7 +516,7 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
             const Matrix33r A_IK1 = qA.toRotationMatrix();
 
             const cardillo::physics::JointProperties& jp = tr->jointProperties();
-            const Matrix33r A_IJ = A_IK1 * jp.A_K1J; // concat frame
+            const Matrix33r A_IJ = A_IK1 * jp.A_K1J;  // concat frame
 
             tr_jointPos.push_back(jointPos);
             tr_toA.push_back(xA - jointPos);
@@ -477,12 +540,23 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
     // Points: first generic springs (attachment B), then TR joint positions (also at B)
     const std::size_t totalPoints = n + n_tr;
     out << "POINTS " << totalPoints << " float\n";
-    for (const auto& p : positions) { writeBE(out, f32(p.x())); writeBE(out, f32(p.y())); writeBE(out, f32(p.z())); }
-    for (const auto& p : tr_jointPos) { writeBE(out, f32(p.x())); writeBE(out, f32(p.y())); writeBE(out, f32(p.z())); }
+    for (const auto& p : positions) {
+        writeBE(out, f32(p.x()));
+        writeBE(out, f32(p.y()));
+        writeBE(out, f32(p.z()));
+    }
+    for (const auto& p : tr_jointPos) {
+        writeBE(out, f32(p.x()));
+        writeBE(out, f32(p.y()));
+        writeBE(out, f32(p.z()));
+    }
 
     // Vertices for visibility: one vertex per point
-    out << "\nVERTICES " << totalPoints << ' ' << (2*totalPoints) << "\n";
-    for (std::size_t i = 0; i < totalPoints; ++i) { writeBE(out, int32_t(1)); writeBE(out, int32_t(i)); }
+    out << "\nVERTICES " << totalPoints << ' ' << (2 * totalPoints) << "\n";
+    for (std::size_t i = 0; i < totalPoints; ++i) {
+        writeBE(out, int32_t(1));
+        writeBE(out, int32_t(i));
+    }
 
     // Point data
     out << "\nPOINT_DATA " << totalPoints << "\n";
@@ -490,28 +564,40 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
     // Generic toAtoB vectors (from attachment B to attachment A) for the
     // first n points; zeros for the translation-rotation-only points.
     out << "VECTORS toAtoB float\n";
-    for (const auto& v : toAtoB) { writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z())); }
-    for (std::size_t i = 0; i < n_tr; ++i) { writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f); }
+    for (const auto& v : toAtoB) {
+        writeBE(out, f32(v.x()));
+        writeBE(out, f32(v.y()));
+        writeBE(out, f32(v.z()));
+    }
+    for (std::size_t i = 0; i < n_tr; ++i) {
+        writeBE(out, 0.f);
+        writeBE(out, 0.f);
+        writeBE(out, 0.f);
+    }
 
     // Translation-rotation joint data for the last n_tr points; zeros for the first n
     auto writeVecField = [&](const char* name, const std::vector<Vector3r>& tail) {
         out << name << "\n";
         for (std::size_t i = 0; i < n; ++i) {
-            writeBE(out, 0.f); writeBE(out, 0.f); writeBE(out, 0.f);
+            writeBE(out, 0.f);
+            writeBE(out, 0.f);
+            writeBE(out, 0.f);
         }
         for (const auto& v : tail) {
-            writeBE(out, f32(v.x())); writeBE(out, f32(v.y())); writeBE(out, f32(v.z()));
+            writeBE(out, f32(v.x()));
+            writeBE(out, f32(v.y()));
+            writeBE(out, f32(v.z()));
         }
     };
 
     if (n_tr > 0) {
         writeVecField("VECTORS toA float", tr_toA);
         writeVecField("VECTORS toB float", tr_toB);
-        writeVecField("VECTORS ex float",  tr_ex);
-        writeVecField("VECTORS ey float",  tr_ey);
-        writeVecField("VECTORS ez float",  tr_ez);
+        writeVecField("VECTORS ex float", tr_ex);
+        writeVecField("VECTORS ey float", tr_ey);
+        writeVecField("VECTORS ez float", tr_ez);
     }
     out.close();
 }
 
-} // namespace cardillo::io
+}  // namespace cardillo::io

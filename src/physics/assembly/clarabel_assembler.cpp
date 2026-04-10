@@ -35,21 +35,13 @@ const SparseMatrix<Eigen::ColMajor>& ClarabelAssembler::A(real_t dt, real_t thet
 
     const int n_contact = m_dyn->numContactRows();
     const int n_var = m_dyn->numV() + m_dyn->numSprings() + m_dyn->numDampers();
-
-    TripletMatrix Aeq = (m_dyn->Wg() | (C * -1.0) | TripletMatrix::zero(C.nRows(), A_diag.nCols())).vConcat(
-        m_dyn->Wgamma() | TripletMatrix::zero(A_diag.nRows(), C.nCols()) | (A_diag * -1.0));
-
     VectorXr Smu = computeSmu();
-    TripletMatrix G = ((m_dyn->W().scaleRows(Smu) * -1.0) |
-                       TripletMatrix::zero(n_contact, m_dyn->numSprings() + m_dyn->numDampers()));
 
-    TripletMatrix Aall = TripletMatrix::zero(0, n_var);
-    if (Aeq.nRows() > 0) Aall = Aeq;
-    if (G.nRows() > 0) {
-        Aall = (Aall.nRows() > 0) ? Aall.vConcat(G) : G;
-    }
+    TripletMatrix A = (m_dyn->Wg() | (C * -1.0) | TripletMatrix::zero(C.nRows(), A_diag.nCols()))
+                          .vConcat(m_dyn->Wgamma() | TripletMatrix::zero(A_diag.nRows(), C.nCols()) | (A_diag * -1.0))
+                          .vConcat(m_dyn->W().scaleRows(Smu) * -1.0 | TripletMatrix::zero(n_contact, m_dyn->numSprings() + m_dyn->numDampers()));
 
-    m_A_cache = Aall.asSparse();
+    m_A_cache = A.asSparse();
     return m_A_cache;
 }
 
@@ -59,8 +51,7 @@ VectorXr& ClarabelAssembler::b(real_t dt, real_t theta) {
         lambda_g = VectorXr::Zero(m_dyn->Cdiag().size());
     }
 
-    auto b_top = -(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(lambda_g)
-               - ((1.0 - theta) / theta) * m_dyn->Wg().asSparse() * m_dyn->vVec();
+    auto b_top = -(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(lambda_g) - ((1.0 - theta) / theta) * m_dyn->Wg().asSparse() * m_dyn->vVec();
     auto b_mid = -((1.0 - theta) / theta) * m_dyn->Wgamma().asSparse() * m_dyn->vVec();
     auto b_contact = VectorXr::Zero(m_dyn->numContactRows());
 
@@ -102,4 +93,4 @@ VectorXr ClarabelAssembler::computeSmu() const {
     return Smu;
 }
 
-} // namespace cardillo::physics::assembly
+}  // namespace cardillo::physics::assembly

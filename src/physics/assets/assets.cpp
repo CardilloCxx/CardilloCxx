@@ -1,20 +1,24 @@
 #include "assets.hpp"
-#include "../../io/heightmap_loader.hpp"
-#include <sstream>
-#include <iomanip>
-#include <fstream>
 #include <coal/mesh_loader/loader.h>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include "../../io/heightmap_loader.hpp"
 
 namespace cardillo {
 
 // Key helpers ------------------------------------------------------
 std::string PhysicsAssets::meshKey_(const std::string& path, const Vector3r& s, bool normalized) {
-    std::ostringstream ss; ss.setf(std::ios::fixed); ss<<std::setprecision(6);
-    ss << path << "|" << (double)s.x() << "," << (double)s.y() << "," << (double)s.z() << "|norm=" << (normalized?1:0);
+    std::ostringstream ss;
+    ss.setf(std::ios::fixed);
+    ss << std::setprecision(6);
+    ss << path << "|" << (double)s.x() << "," << (double)s.y() << "," << (double)s.z() << "|norm=" << (normalized ? 1 : 0);
     return ss.str();
 }
 std::string PhysicsAssets::hfKey_(const std::string& path, real_t xd, real_t yd, real_t zs, real_t minh) {
-    std::ostringstream ss; ss.setf(std::ios::fixed); ss<<std::setprecision(6);
+    std::ostringstream ss;
+    ss.setf(std::ios::fixed);
+    ss << std::setprecision(6);
     ss << path << "|xd=" << (double)xd << ",yd=" << (double)yd << ",zs=" << (double)zs << ",min=" << (double)minh;
     return ss.str();
 }
@@ -22,11 +26,11 @@ std::string PhysicsAssets::hfKey_(const std::string& path, real_t xd, real_t yd,
 // Internal utilities (duplicated logic from physics_system.cpp) ----
 namespace {
 struct MeshNormalizationResult {
-    coal::BVHModelPtr_t bvh;          // normalized (if requested)
+    coal::BVHModelPtr_t bvh;  // normalized (if requested)
     cardillo::Vector3r inertia_diag_unit{cardillo::Vector3r::Zero()};
     real_t volume{(real_t)0.0};
     cardillo::Matrix33r Rpa{cardillo::Matrix33r::Identity()};
-    coal::Vec3s com{0,0,0};
+    coal::Vec3s com{0, 0, 0};
 };
 
 // Normalize mesh: scale, center at COM, rotate to principal axes
@@ -39,40 +43,50 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardill
     std::vector<coal::Vec3s> Vscaled;
     std::vector<coal::Triangle> F;
     if (bvh->vertices) Vscaled = *bvh->vertices;
-    if (bvh->tri_indices) F     = *bvh->tri_indices;
+    if (bvh->tri_indices) F = *bvh->tri_indices;
     for (auto& v : Vscaled) {
         v[0] *= (coal::CoalScalar)scale.x();
         v[1] *= (coal::CoalScalar)scale.y();
         v[2] *= (coal::CoalScalar)scale.z();
     }
     // COM & volume
-    coal::Vec3s com(0,0,0);
+    coal::Vec3s com(0, 0, 0);
     real_t vol = (real_t)0.0;
     if (!Vscaled.empty()) {
         auto temp0 = std::make_shared<coal::BVHModel<coal::AABB>>();
         temp0->beginModel();
-        if (!F.empty()) temp0->addSubModel(Vscaled, F); else temp0->addSubModel(Vscaled);
+        if (!F.empty())
+            temp0->addSubModel(Vscaled, F);
+        else
+            temp0->addSubModel(Vscaled);
         temp0->endModel();
         com = temp0->computeCOM();
         vol = (real_t)temp0->computeVolume();
     }
-    out.volume = vol; out.com = com;
+    out.volume = vol;
+    out.com = com;
 
     // Center
     std::vector<coal::Vec3s> Vcentered = Vscaled;
-    for (auto& v : Vcentered) { v[0]-=com[0]; v[1]-=com[1]; v[2]-=com[2]; }
+    for (auto& v : Vcentered) {
+        v[0] -= com[0];
+        v[1] -= com[1];
+        v[2] -= com[2];
+    }
 
     // Inertia about COM
     cardillo::Matrix33r Icom = cardillo::Matrix33r::Zero();
     if (!Vcentered.empty()) {
         auto temp1 = std::make_shared<coal::BVHModel<coal::AABB>>();
         temp1->beginModel();
-        if (!F.empty()) temp1->addSubModel(Vcentered, F); else temp1->addSubModel(Vcentered);
+        if (!F.empty())
+            temp1->addSubModel(Vcentered, F);
+        else
+            temp1->addSubModel(Vcentered);
         temp1->endModel();
         const auto Icoal = temp1->computeMomentofInertia();
-        Icom << (real_t)Icoal(0,0), (real_t)Icoal(0,1), (real_t)Icoal(0,2),
-                (real_t)Icoal(1,0), (real_t)Icoal(1,1), (real_t)Icoal(1,2),
-                (real_t)Icoal(2,0), (real_t)Icoal(2,1), (real_t)Icoal(2,2);
+        Icom << (real_t)Icoal(0, 0), (real_t)Icoal(0, 1), (real_t)Icoal(0, 2), (real_t)Icoal(1, 0), (real_t)Icoal(1, 1), (real_t)Icoal(1, 2), (real_t)Icoal(2, 0), (real_t)Icoal(2, 1),
+            (real_t)Icoal(2, 2);
     }
     // Principal axes
     cardillo::Matrix33r Rpa = cardillo::Matrix33r::Identity();
@@ -85,10 +99,12 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardill
             Idiag = es.eigenvalues();
         }
     }
-    out.Rpa = Rpa; out.inertia_diag_unit = Idiag;
+    out.Rpa = Rpa;
+    out.inertia_diag_unit = Idiag;
 
     // Rotate to principal axes
-    std::vector<coal::Vec3s> Vnorm; Vnorm.reserve(Vcentered.size());
+    std::vector<coal::Vec3s> Vnorm;
+    Vnorm.reserve(Vcentered.size());
     for (const auto& v : Vcentered) {
         cardillo::Vector3r vc((real_t)v[0], (real_t)v[1], (real_t)v[2]);
         cardillo::Vector3r vp = Rpa.transpose() * vc;
@@ -96,8 +112,12 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardill
     }
     auto temp = std::make_shared<coal::BVHModel<coal::AABB>>();
     temp->beginModel();
-    if (!F.empty()) temp->addSubModel(Vnorm, F); else temp->addSubModel(Vnorm);
-    temp->endModel(); temp->computeLocalAABB();
+    if (!F.empty())
+        temp->addSubModel(Vnorm, F);
+    else
+        temp->addSubModel(Vnorm);
+    temp->endModel();
+    temp->computeLocalAABB();
     out.bvh = temp;
     return out;
 }
@@ -111,17 +131,21 @@ coal::BVHModelPtr_t buildScaledBVH(const std::string& meshPath, const cardillo::
     if (bvh->vertices) V = *bvh->vertices;
     if (bvh->tri_indices) F = *bvh->tri_indices;
     // Scale about AABB center
-    real_t min_x=std::numeric_limits<real_t>::max(), min_y=min_x, min_z=min_x;
-    real_t max_x=std::numeric_limits<real_t>::lowest(), max_y=max_x, max_z=max_x;
+    real_t min_x = std::numeric_limits<real_t>::max(), min_y = min_x, min_z = min_x;
+    real_t max_x = std::numeric_limits<real_t>::lowest(), max_y = max_x, max_z = max_x;
     for (const auto& v : V) {
-        min_x = std::min(min_x, (real_t)v[0]); max_x = std::max(max_x, (real_t)v[0]);
-        min_y = std::min(min_y, (real_t)v[1]); max_y = std::max(max_y, (real_t)v[1]);
-        min_z = std::min(min_z, (real_t)v[2]); max_z = std::max(max_z, (real_t)v[2]);
+        min_x = std::min(min_x, (real_t)v[0]);
+        max_x = std::max(max_x, (real_t)v[0]);
+        min_y = std::min(min_y, (real_t)v[1]);
+        max_y = std::max(max_y, (real_t)v[1]);
+        min_z = std::min(min_z, (real_t)v[2]);
+        max_z = std::max(max_z, (real_t)v[2]);
     }
     real_t cx = (min_x + max_x) * (real_t)0.5;
     real_t cy = (min_y + max_y) * (real_t)0.5;
     real_t cz = (min_z + max_z) * (real_t)0.5;
-    std::vector<coal::Vec3s> Vscaled; Vscaled.reserve(V.size());
+    std::vector<coal::Vec3s> Vscaled;
+    Vscaled.reserve(V.size());
     for (const auto& v : V) {
         coal::CoalScalar dx = (coal::CoalScalar)scale.x() * (v[0] - cx);
         coal::CoalScalar dy = (coal::CoalScalar)scale.y() * (v[1] - cy);
@@ -130,34 +154,47 @@ coal::BVHModelPtr_t buildScaledBVH(const std::string& meshPath, const cardillo::
     }
     auto temp = std::make_shared<coal::BVHModel<coal::AABB>>();
     temp->beginModel();
-    if (!F.empty()) temp->addSubModel(Vscaled, F); else temp->addSubModel(Vscaled);
-    temp->endModel(); temp->computeLocalAABB();
+    if (!F.empty())
+        temp->addSubModel(Vscaled, F);
+    else
+        temp->addSubModel(Vscaled);
+    temp->endModel();
+    temp->computeLocalAABB();
     return temp;
 }
 
 std::pair<std::vector<Eigen::Vector2f>, bool> parseOBJUVs(const std::string& meshPath, std::size_t vertexCount) {
-    std::vector<Eigen::Vector2f> uvs(vertexCount, Eigen::Vector2f(0.f,0.f));
+    std::vector<Eigen::Vector2f> uvs(vertexCount, Eigen::Vector2f(0.f, 0.f));
     bool hasUV = false;
     std::ifstream in(meshPath);
     if (!in) return {uvs, hasUV};
-    std::vector<Eigen::Vector2f> vt; vt.reserve(1024);
-    std::vector<int> vtIndexPerV; vtIndexPerV.assign((int)vertexCount, -1);
+    std::vector<Eigen::Vector2f> vt;
+    vt.reserve(1024);
+    std::vector<int> vtIndexPerV;
+    vtIndexPerV.assign((int)vertexCount, -1);
     std::string line;
     while (std::getline(in, line)) {
         if (line.size() >= 2 && line[0] == 'v' && line[1] == 't') {
-            std::istringstream ss(line.substr(2)); float u=0.f, v=0.f; ss >> u >> v; vt.emplace_back(u,v);
+            std::istringstream ss(line.substr(2));
+            float u = 0.f, v = 0.f;
+            ss >> u >> v;
+            vt.emplace_back(u, v);
         } else if (!line.empty() && line[0] == 'f') {
-            std::istringstream ss(line.substr(1)); std::string tok;
+            std::istringstream ss(line.substr(1));
+            std::string tok;
             while (ss >> tok) {
-                int vi=-1, vti=-1; size_t p1 = tok.find('/');
-                if (p1 == std::string::npos) { vi = std::stoi(tok); }
-                else {
+                int vi = -1, vti = -1;
+                size_t p1 = tok.find('/');
+                if (p1 == std::string::npos) {
+                    vi = std::stoi(tok);
+                } else {
                     vi = std::stoi(tok.substr(0, p1));
-                    size_t p2 = tok.find('/', p1+1);
-                    std::string vts = (p2 == std::string::npos) ? tok.substr(p1+1) : tok.substr(p1+1, p2-(p1+1));
+                    size_t p2 = tok.find('/', p1 + 1);
+                    std::string vts = (p2 == std::string::npos) ? tok.substr(p1 + 1) : tok.substr(p1 + 1, p2 - (p1 + 1));
                     if (!vts.empty()) vti = std::stoi(vts);
                 }
-                if (vi <= 0) continue; int idx0 = vi - 1;
+                if (vi <= 0) continue;
+                int idx0 = vi - 1;
                 if (vti > 0 && idx0 >= 0 && idx0 < (int)vtIndexPerV.size()) {
                     if (vtIndexPerV[idx0] == -1) vtIndexPerV[idx0] = vti - 1;
                 }
@@ -166,11 +203,14 @@ std::pair<std::vector<Eigen::Vector2f>, bool> parseOBJUVs(const std::string& mes
     }
     for (size_t i = 0; i < vtIndexPerV.size(); ++i) {
         int uvi = vtIndexPerV[i];
-        if (uvi >= 0 && uvi < (int)vt.size()) { uvs[(int)i] = vt[(size_t)uvi]; hasUV = true; }
+        if (uvi >= 0 && uvi < (int)vt.size()) {
+            uvs[(int)i] = vt[(size_t)uvi];
+            hasUV = true;
+        }
     }
     return {uvs, hasUV};
 }
-} // namespace
+}  // namespace
 
 // Mesh builder -----------------------------------------------------
 MeshAsset PhysicsAssets::buildMeshAsset_(const std::string& path, const Vector3r& scale, bool normalized) const {
@@ -188,7 +228,7 @@ MeshAsset PhysicsAssets::buildMeshAsset_(const std::string& path, const Vector3r
             asset.bvh = buildScaledBVH(path, scale);
         }
         // UVs only for OBJ
-        if (path.size() >= 4 && (path.rfind(".obj") == path.size()-4 || path.rfind(".OBJ") == path.size()-4)) {
+        if (path.size() >= 4 && (path.rfind(".obj") == path.size() - 4 || path.rfind(".OBJ") == path.size() - 4)) {
             std::size_t vcount = 0;
             if (asset.bvh && asset.bvh->vertices) vcount = asset.bvh->vertices->size();
             auto uvres = parseOBJUVs(path, vcount);
@@ -202,20 +242,28 @@ MeshAsset PhysicsAssets::buildMeshAsset_(const std::string& path, const Vector3r
 }
 
 HeightFieldAsset PhysicsAssets::buildHFAsset_(const std::string& path, real_t xd, real_t yd, real_t zs, real_t minh) const {
-    HeightFieldAsset asset; asset.path = path; asset.x_dim = xd; asset.y_dim = yd; asset.z_scale = zs; asset.min_height = minh;
+    HeightFieldAsset asset;
+    asset.path = path;
+    asset.x_dim = xd;
+    asset.y_dim = yd;
+    asset.z_scale = zs;
+    asset.min_height = minh;
     try {
         Eigen::Matrix<coal::CoalScalar, Eigen::Dynamic, Eigen::Dynamic> H;
-        int rows=0, cols=0;
-    if (io::load_exr_heightmap(path, H, rows, cols)) {
+        int rows = 0, cols = 0;
+        if (io::load_exr_heightmap(path, H, rows, cols)) {
             if (zs != (real_t)1.0) H *= (coal::CoalScalar)zs;
         } else {
-            rows = cols = 2; H = Eigen::Matrix<coal::CoalScalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(rows, cols);
+            rows = cols = 2;
+            H = Eigen::Matrix<coal::CoalScalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(rows, cols);
             std::printf("[Assets] HeightField fallback flat 2x2 for: %s\n", path.c_str());
         }
         if (rows >= 2 && cols >= 2) {
             auto hf = std::make_shared<coal::HeightField<coal::AABB>>((coal::CoalScalar)xd, (coal::CoalScalar)yd, H, (coal::CoalScalar)minh);
             hf->computeLocalAABB();
-            asset.hf = hf; asset.rows = rows; asset.cols = cols;
+            asset.hf = hf;
+            asset.rows = rows;
+            asset.cols = cols;
         }
     } catch (...) {
         std::printf("[Assets] Warning: heightfield build failed: %s\n", path.c_str());
@@ -229,18 +277,18 @@ const MeshAsset& PhysicsAssets::getMesh(const std::string& path, const Vector3r&
     auto it = m_meshCache.find(key);
     if (it != m_meshCache.end()) return it->second;
     MeshAsset asset = buildMeshAsset_(path, scale, normalized);
-    auto [it2, ok] = m_meshCache.emplace(key, std::move(asset)); (void)ok;
+    auto [it2, ok] = m_meshCache.emplace(key, std::move(asset));
+    (void)ok;
     return it2->second;
 }
 
-const HeightFieldAsset& PhysicsAssets::getHeightField(const std::string& exrPath,
-                                                      real_t x_dim, real_t y_dim,
-                                                      real_t z_scale, real_t min_height) const {
+const HeightFieldAsset& PhysicsAssets::getHeightField(const std::string& exrPath, real_t x_dim, real_t y_dim, real_t z_scale, real_t min_height) const {
     const std::string key = hfKey_(exrPath, x_dim, y_dim, z_scale, min_height);
     auto it = m_hfCache.find(key);
     if (it != m_hfCache.end()) return it->second;
     HeightFieldAsset asset = buildHFAsset_(exrPath, x_dim, y_dim, z_scale, min_height);
-    auto [it2, ok] = m_hfCache.emplace(key, std::move(asset)); (void)ok;
+    auto [it2, ok] = m_hfCache.emplace(key, std::move(asset));
+    (void)ok;
     return it2->second;
 }
 
@@ -249,4 +297,4 @@ void PhysicsAssets::clear() {
     m_hfCache.clear();
 }
 
-} // namespace cardillo
+}  // namespace cardillo

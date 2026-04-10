@@ -56,8 +56,7 @@ void IntegrationBase::linearImplicitPositionUpdate(World& world, real_t h) {
 
         orientation.value = MathHelper::alignQuaternionTo(orientation.value, q_prev);
     }
-
 }
 
-} // namespace integration
-} // namespace cardillo
+}  // namespace integration
+}  // namespace cardillo
