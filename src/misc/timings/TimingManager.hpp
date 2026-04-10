@@ -23,12 +23,15 @@ public:
         Integration,
         ProjectedJacobi,
         QocoSolve,
+        ClarabelSolve,
         CollisionMakeContact,
         DisableCollisionPairs,
         CollisionNarrowphaseCollide,
         CollisionMakeContactPatch,
         QocoAssembly,
         QocoSetup,
+        ClarabelAssembly,
+        ClarabelSetup,
         OutputWrite,
         DynamicsAssembler_RefreshState,
         Total,
@@ -208,8 +211,11 @@ private:
             case TimerId::CollisionMakeContact: return "Collision Make Contact";
             case TimerId::ProjectedJacobi: return "Projected Jacobi"; 
             case TimerId::QocoSolve: return "QOCO Solve";
+            case TimerId::ClarabelSolve: return "Clarabel Solve";
             case TimerId::QocoAssembly: return "QOCO Assembly";
             case TimerId::QocoSetup: return "QOCO Setup";
+            case TimerId::ClarabelAssembly: return "Clarabel Assembly";
+            case TimerId::ClarabelSetup: return "Clarabel Setup";
             case TimerId::DisableCollisionPairs: return "Disable Collision Pairs";
             case TimerId::DynamicsAssembler_RefreshState: return "DA Refresh State"; 
             case TimerId::Total: return "Total (all)"; 

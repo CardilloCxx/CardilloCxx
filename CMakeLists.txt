@@ -111,6 +111,22 @@ include_directories( ${PYTHON3_INCLUDE_DIRS})
 
 include(ExternalProject)
 
+# Clarabel.rs build toolchain check (used by Clarabel.cpp rust_wrapper).
+# Clarabel's CMake uses plain `cargo` in custom commands, so ensure PATH for build tools.
+find_program(CARGO_EXECUTABLE cargo HINTS "$ENV{HOME}/.cargo/bin")
+if(NOT CARGO_EXECUTABLE)
+    message(WARNING
+        "Cargo was not found in PATH. Clarabel build requires Rust/Cargo.\n"
+        "Install with rustup: curl https://sh.rustup.rs -sSf | sh\n"
+        "Then source ~/.cargo/env and reconfigure/build.")
+else()
+    message(STATUS "Found Cargo: ${CARGO_EXECUTABLE}")
+
+    get_filename_component(CARGO_BIN_DIR "${CARGO_EXECUTABLE}" DIRECTORY)
+    set(_cargo_rule_launcher "${CMAKE_COMMAND} -E env \"PATH=${CARGO_BIN_DIR}:$ENV{PATH}\"")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_CUSTOM "${_cargo_rule_launcher}")
+endif()
+
 # Build both QOCO backends to allow runtime backend selection.
 option(QOCO_USE_CUDA_BACKEND "Build QOCO CUDA backend variant" ON)
 
@@ -236,6 +252,17 @@ add_dependencies(qoco_project qoco_project_cpu)
 if(TARGET qoco_project_cuda)
     add_dependencies(qoco_project qoco_project_cuda)
 endif()
+
+# Clarabel via FetchContent. This reuses Eigen3::Eigen from parent CMake and
+# exposes libclarabel_c_shared for direct linking.
+FetchContent_Declare(
+    Clarabel_cpp
+    GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+    GIT_SUBMODULES_RECURSE TRUE
+)
+FetchContent_MakeAvailable(Clarabel_cpp)
 
 # If PETSc was discovered via pkg-config, expose a macro and include dirs
 if(PETSC_FOUND)

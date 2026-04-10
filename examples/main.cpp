@@ -45,6 +45,7 @@
 #include "scenes/fabric/FabricScene.hpp"
 #include "scenes/heightmap/HeightmapScene.hpp"
 #include "scenes/double_pendulum/DoublePendulumScene.hpp"
+#include "scenes/sphere_packing/SpherePackingScene.hpp"
 
 using namespace cardillo;
 
@@ -102,6 +103,7 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<FabricScene>());
     scenes.emplace_back(std::make_unique<HeightmapScene>());
     scenes.emplace_back(std::make_unique<DoublePendulumScene>());
+    scenes.emplace_back(std::make_unique<SpherePackingScene>());
 
     SceneBase* selected = nullptr;
     for (auto& s : scenes) {

@@ -101,6 +101,7 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val; std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c){ return (char)std::tolower(c); });
             if (v == "projected_jacobi" || v == "projectedjacobi" || v == "pj") cfg.solver = SolverType::ProjectedJacobi;
             else if (v == "ip" || v == "interior_point" || v == "interior point"  || v == "qoco" || v == "qoco_solver") cfg.solver = SolverType::Qoco;
+            else if (v == "clarabel" || v == "clarabel_solver" || v == "clarabelcpp") cfg.solver = SolverType::Clarabel;
             else cfg.solver = SolverType::ProjectedJacobi;
         }
         else if (key == "qoco.backend") {
@@ -111,14 +112,14 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.qoco_backend = v;
             }
         }
-        else if (key == "qoco.kkt_static_reg") {
-            try { cfg.qoco_kkt_static_reg = static_cast<real_t>(std::stod(val)); } catch (...) {}
+        else if (key == "solver.kkt_static_reg" || key == "ip.kkt_static_reg" || key == "qoco.kkt_static_reg" || key == "clarabel.static_regularization_constant") {
+            try { cfg.ip_kkt_static_reg = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }
-        else if (key == "qoco.kkt_dynamic_reg") {
-            try { cfg.qoco_kkt_dynamic_reg = static_cast<real_t>(std::stod(val)); } catch (...) {}
+        else if (key == "solver.kkt_dynamic_reg" || key == "ip.kkt_dynamic_reg" || key == "qoco.kkt_dynamic_reg" || key == "clarabel.dynamic_regularization_delta") {
+            try { cfg.ip_kkt_dynamic_reg = static_cast<real_t>(std::stod(val)); } catch (...) {}
         }
-        else if (key == "qoco.iter_ref_iters") {
-            try { cfg.qoco_iter_ref_iters = std::max(0, std::stoi(val)); } catch (...) {}
+        else if (key == "solver.iter_ref_iters" || key == "ip.iter_ref_iters" || key == "qoco.iter_ref_iters" || key == "clarabel.iterative_refinement_max_iter") {
+            try { cfg.ip_iter_ref_iters = std::max(0, std::stoi(val)); } catch (...) {}
         }
         else if (key == "moreau.theta" || key == "solver.theta") {
             try { cfg.moreau_theta = static_cast<real_t>(std::stod(val)); } catch (...) {}

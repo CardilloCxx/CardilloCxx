@@ -7,6 +7,7 @@
 // SpherePacking scene (from collisions_demo.cpp logic)
 class SpherePackingScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "sphere_packing"; }
     SpherePackingScene() = default;
     ~SpherePackingScene() override = default;
 
@@ -15,12 +16,12 @@ public:
 
     // Ground plane (static)
     physics::PlaneShape groundShape{Vector3r(0,0,1), Vector3r(0,1,0), (real_t)6.0, (real_t)6.0};
-    physics::RigidState groundState; groundState.position = Vector3r(0,0,0); groundState.orientation = Quaternion4r::Identity();
+    physics::RigidState groundState;
     engine.addStaticBody(groundShape, groundState);
 
         const real_t r = 0.075;
         const real_t dia = 2.0 * r;
-        const int rows = 8; // reduced for quick runs
+        const int rows = 16; 
         const Vector3r base_center(0.0, 0.0, 0.0 + r);
 
         for (int k = 0; k < rows; ++k) {
@@ -58,7 +59,18 @@ public:
             physics::RigidProps wall3Props; engine.addRigidBody(wall3Shape, wall3State, wall3Props);
         }
 
-        // Add a heavy point mass above to drop into pyramid
-        engine.addPointMass(10000.0, base_center + Vector3r(r * rows, rows * r / std::sqrt(3.0), 5.0), Vector3r(0.0, 0.0, -10.0), 10*r);
+        // // Add a heavy point mass above to drop into pyramid
+        // engine.addPointMass(10000.0, base_center + Vector3r(r * rows, rows * r / std::sqrt(3.0), 5.0), Vector3r(0.0, 0.0, -10.0), 10*r);
+
+        // add cube that flies in from the side with rotation
+        engine.addRigidBody(
+            physics::CubeShape{Vector3r(0.25, 0.25, 0.25)},
+            physics::RigidState{
+                Vector3r(-2.0, 0.0, 1.25),
+                Vector3r(10.0, 0.0, 0.0),
+                Quaternion4r::Identity(),
+                Vector3r(40.0, 10.0, 70.0)
+            },
+            physics::RigidProps::withDensity(2000.0));
     }
 };

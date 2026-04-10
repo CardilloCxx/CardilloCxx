@@ -48,9 +48,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_BINARY_DIR}/_deps/qoc
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_QOCO=1)
 target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CPU_LIB_PATH="${QOCO_INSTALL_DIR_CPU}/lib/libqoco.so")
+target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CUDA_LIB_PATH="${QOCO_INSTALL_DIR_CUDA}/lib/libqoco.so")
 
-if(EXISTS "${QOCO_INSTALL_DIR_CUDA}/lib/libqoco.so")
-    target_compile_definitions(${PROJECT_NAME} PUBLIC QOCO_CUDA_LIB_PATH="${QOCO_INSTALL_DIR_CUDA}/lib/libqoco.so")
+target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_CLARABEL=1)
+if(TARGET libclarabel_c_shared)
+    target_link_libraries(${PROJECT_NAME} PUBLIC libclarabel_c_shared)
 endif()
 
 # Optional: enable EXR loading via tinyexr (header-only). Define CARDILLO_USE_TINYEXR to turn it on if header is provided.

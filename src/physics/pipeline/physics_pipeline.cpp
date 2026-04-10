@@ -11,6 +11,7 @@
 #include "../../misc/progress/ProgressBar.hpp"
 #include "../solver/projected_jacobi.hpp"
 #include "../solver/qoco_solver.hpp"
+#include "../solver/clarabel_solver.hpp"
 
 namespace cardillo {
 namespace physics {
@@ -33,6 +34,8 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world,
         m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);
     } else if (cfg.solver == cardillo::config::SolverType::Qoco) {
         m_solver = std::make_unique<QocoSolver>(*m_dyn, m_cfg);
+    } else if (cfg.solver == cardillo::config::SolverType::Clarabel) {
+        m_solver = std::make_unique<ClarabelSolver>(*m_dyn, m_cfg);
     } else {
         std::cerr << "Warning: Unrecognized solver type in config; defaulting to ProjectedJacobi.\n";
         m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);

@@ -9,7 +9,7 @@ public:
     ~StackedSpheresScene() override = default;
     void populate(cardillo::physics::PhysicsEngine& engine) override {
         // Tube dimensions
-        size_t nSpheres = 5;
+        size_t nSpheres = 10;
         double sphereRadius = 0.05;
         double sphereSpacing = 0.0;
 
@@ -60,7 +60,7 @@ public:
 private:
     double amplitude = 0.5;
     double frequency = 0.3;
-    double bottomMass = 1e14;
+    double bottomMass = 1e10;
     std::vector<entt::entity> sphereIds;
     entt::entity bottomSphere{entt::null};
 };
