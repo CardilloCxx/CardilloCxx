@@ -6,6 +6,8 @@
 #include <limits>
 #include <optional>
 #include "../../misc/types.hpp"
+#include "../../rigid_body/rigid_body.hpp"
+#include "../../rigid_body/transformations.hpp"
 #include "../world.hpp"
 
 namespace cardillo {
@@ -25,6 +27,8 @@ struct ConstraintResult {
     MatrixXXr WgammaB;
     VectorXr Crows;  // size N (compliances per spring row)
     VectorXr Arows;  // size N (compliances per damper row)
+
+    VectorXr velocitySource;  // size N (velocity offsets for constraint rows, e.g. for motors)
 };
 
 // Reference for a joint frame: position/orientation expressed in a frame entity
@@ -63,29 +67,16 @@ struct JointProperties {
     JointProperties() = default;
 
     explicit JointProperties(entt::registry& reg, entt::entity A, entt::entity B, const JointFrame& jf) : entityA(A), entityB(B) {
-        Vector3r r_ORef;
-        Matrix33r A_Ref;
+        const auto inertial = cardillo::RigidBody::RigidState::inertial();
+        const auto refState = jf.ref.has_value() ? cardillo::RigidBody::getState(reg, *jf.ref) : inertial;
 
-        if (jf.ref.has_value()) {
-            r_ORef = reg.get<cardillo::C_Position3>(*jf.ref).value;
-            A_Ref = reg.get<cardillo::C_Orientation>(*jf.ref).value.toRotationMatrix();
-        } else {
-            r_ORef = Vector3r::Zero();
-            A_Ref = Matrix33r::Identity();
-        }
+        const auto stateA = cardillo::RigidBody::getState(reg, A);
+        const auto stateB = cardillo::RigidBody::getState(reg, B);
 
-        Vector3r r_OJ_world = r_ORef + A_Ref * jf.r_refJ;
+        K1_r_S1J = cardillo::transform::point(jf.r_refJ, refState, stateA);
+        K2_r_S2J = cardillo::transform::point(jf.r_refJ, refState, stateB);
 
-        const auto& r_OA = reg.get<cardillo::C_Position3>(A).value;
-        const auto& A_A = reg.get<cardillo::C_Orientation>(A).value.toRotationMatrix();
-        K1_r_S1J = A_A.transpose() * (r_OJ_world - r_OA);
-
-        const auto& r_OB = reg.get<cardillo::C_Position3>(B).value;
-        const auto& A_B = reg.get<cardillo::C_Orientation>(B).value.toRotationMatrix();
-        K2_r_S2J = A_B.transpose() * (r_OJ_world - r_OB);
-
-        const auto& A_IJ = A_Ref * jf.A_refJ;
-        A_K1J = A_A.transpose() * A_IJ;  // J -> Ref -> I -> A ==== J -> A
+        A_K1J = cardillo::transform::rotation(jf.A_refJ, refState, stateA);
 
         // Precompute local skew matrices
         K1_r_S1J_skew = skew_from_vector(K1_r_S1J);

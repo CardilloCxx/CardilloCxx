@@ -4,6 +4,8 @@
 #include <cmath>
 #include <iostream>
 
+#include "../../rigid_body/rigid_body.hpp"
+
 namespace cardillo {
 namespace physics {
 
@@ -133,13 +135,20 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
 }
 
 void DerivedEntitySync::updateEntities(World& world) {
-    auto& reg = world.ecs();
+        auto& reg = world.ecs();
+
+    // Centralized rigid-state refresh for this step.
+    auto poseView = reg.view<const cardillo::C_Position3>();
+    for (auto e : poseView) {
+        cardillo::RigidBody::updateState(reg, e);
+    }
+
     auto view = reg.view<cardillo::C_BeamElement, const cardillo::C_Position3>();
     for (auto [e, be, pos] : view.each()) {
         (void)be;
         (void)pos;
         updateBeamElementEntity(world, e);
-    }
+        }
 }
 
 }  // namespace physics

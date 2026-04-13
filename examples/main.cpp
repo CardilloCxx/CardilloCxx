@@ -57,8 +57,6 @@ void printTimingsAtExit(int sig) {
 }
 
 int main(int argc, char** argv) {
-    PetscInitialize(&argc, &argv, nullptr, nullptr);
-
     std::signal(SIGINT, printTimingsAtExit);
     Eigen::setNbThreads(1);
 
@@ -121,7 +119,6 @@ int main(int argc, char** argv) {
         }
         std::cerr << "Unknown scene_name '" << cfg.scene_name << "'" << std::endl;
 
-        PetscFinalize();
         return EXIT_FAILURE;
     }
     
@@ -143,6 +140,5 @@ int main(int argc, char** argv) {
     }
     engine.timings().printBreakdown(std::cout);
 
-    PetscFinalize();
     return 0;
 }

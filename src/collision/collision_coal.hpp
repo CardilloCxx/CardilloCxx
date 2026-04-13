@@ -43,7 +43,7 @@ class CollisionCoal {
     coal::Transform3s makeTransformFromQ_(const VectorXr& q) const;
 
     // Backrefs
-    const cardillo::World* m_world = nullptr;            // not owned
+    cardillo::World* m_world = nullptr;                  // not owned
     cardillo::misc::TimingManager* m_timings = nullptr;  // optional timings pointer
     cardillo::config::Config& m_cfg;                     // reference to global config for easy access
 

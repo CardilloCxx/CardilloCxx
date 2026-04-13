@@ -1,5 +1,6 @@
 #include "mesh_generator.hpp"
 #include <cmath>
+#include "../rigid_body/rigid_body.hpp"
 
 namespace cardillo::io {
 
@@ -265,12 +266,14 @@ void fillCommonEntityData(const entt::registry& reg, entt::entity e, cardillo::i
         out.beamLengthRatio = (be.l0 > (real_t)0) ? (be.l / be.l0) : (real_t)1;
     }
 
+    const auto state = cardillo::RigidBody::getState(reg, e);
+
     if (reg.any_of<cardillo::C_LinearVelocity3>(e)) {
-        out.vlin = reg.get<cardillo::C_LinearVelocity3>(e).value;
+        out.vlin = state.linearVelocity;
         out.hasKinematics = true;
     }
     if (reg.any_of<cardillo::C_AngularVelocity3>(e)) {
-        out.omega = reg.get<cardillo::C_AngularVelocity3>(e).value;
+        out.omega = state.angularVelocity;
         out.hasKinematics = true;
     }
     if (reg.any_of<cardillo::C_LinearAcceleration3>(e)) {
@@ -280,14 +283,8 @@ void fillCommonEntityData(const entt::registry& reg, entt::entity e, cardillo::i
         out.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
     }
 
-    if (reg.any_of<cardillo::C_Position3>(e)) {
-        out.center = reg.get<cardillo::C_Position3>(e).value;
-    }
-    if (reg.any_of<cardillo::C_Orientation>(e)) {
-        Quaternion4r q = reg.get<cardillo::C_Orientation>(e).value;
-        q.normalize();
-        out.R = q.toRotationMatrix();
-    }
+    out.center = state.position;
+    out.R = state.rotation;
 }
 
 bool buildSoftBodyMesh(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
@@ -323,7 +320,8 @@ bool buildSoftBodyMesh(const entt::registry& reg, entt::entity e, cardillo::io::
 
 bool buildPlaneMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
     const auto& pl = reg.get<cardillo::C_Plane>(e);
-    const auto& pos = reg.get<cardillo::C_Position3>(e).value;
+    const auto state = cardillo::RigidBody::getState(reg, e);
+    const auto& pos = state.position;
     out.center = pos;
 
     Vector3r n = pl.normal.normalized();

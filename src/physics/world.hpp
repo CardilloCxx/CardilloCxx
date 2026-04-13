@@ -4,7 +4,6 @@
 #include <coal/broadphase/broadphase.h>
 #include <coal/collision_object.h>
 #include <coal/hfield.h>
-#include <petscsys.h>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <entt/entt.hpp>

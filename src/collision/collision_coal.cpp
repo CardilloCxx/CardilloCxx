@@ -2,6 +2,7 @@
 #include "collision_coal.hpp"
 #include "../config/config.hpp"
 #include "../misc/timings/TimingManager.hpp"
+#include "../rigid_body/transformations.hpp"
 #include "../physics/world.hpp"
 #include "types.hpp"
 
@@ -23,7 +24,6 @@
 #include <memory>
 #include <optional>
 #include "tangent_frame.hpp"
-#include "transform_utils.hpp"
 
 namespace cardillo::collision {
 
@@ -106,16 +106,10 @@ static inline real_t combineFrictionMu(const entt::registry& reg, entt::entity a
 }
 
 // Helper to populate a Contact from world data and entities
-inline Contact makeContact(const entt::registry& reg, entt::entity ea, entt::entity eb, Vector3r p1W, Vector3r p2W, Vector3r nN, real_t depth, const std::string& frictionCombine) {
-    Vector3r a_pos = reg.get<cardillo::C_Position3>(ea).value;
-    Vector3r b_pos = reg.get<cardillo::C_Position3>(eb).value;
-
+inline Contact makeContact(entt::registry& reg, entt::entity ea, entt::entity eb, Vector3r p1W, Vector3r p2W, Vector3r nN, real_t depth, const std::string& frictionCombine) {
     Contact c{};
     c.a = ea;
     c.b = eb;
-    // Precompute transforms for both bodies once
-    const cardillo::collision::BodyXform XA = cardillo::collision::BodyXform::fromEcs(reg, c.a);
-    const cardillo::collision::BodyXform XB = cardillo::collision::BodyXform::fromEcs(reg, c.b);
 
     // Normalize normal and construct stable tangent frame
     real_t nlen = nN.norm();
@@ -125,15 +119,18 @@ inline Contact makeContact(const entt::registry& reg, entt::entity ea, entt::ent
     cardillo::collision::tangentFrameFromNormal(nN, c.tangent1, c.tangent2);
     c.point = (p1W + p2W) * (real_t)0.5;
     c.penetration = std::max<real_t>(0.0, depth);
-    c.pointA_body = XA.worldPointToBody(c.point);
-    c.normalA_body = XA.worldVecToBody(c.normal);
-    c.pointB_body = XB.worldPointToBody(c.point);
-    c.normalB_body = XB.worldVecToBody(c.normal);
+    const cardillo::RigidBody::RigidState inertial = cardillo::RigidBody::RigidState::inertial();
+    const cardillo::RigidBody::RigidState stateA = cardillo::RigidBody::getState(reg, c.a);
+    const cardillo::RigidBody::RigidState stateB = cardillo::RigidBody::getState(reg, c.b);
+    c.pointA_body = cardillo::transform::point(c.point, inertial, stateA);
+    c.normalA_body = cardillo::transform::direction(c.normal, inertial, stateA);
+    c.pointB_body = cardillo::transform::point(c.point, inertial, stateB);
+    c.normalB_body = cardillo::transform::direction(c.normal, inertial, stateB);
     // Tangents in body frames
-    c.tangent1A_body = XA.worldVecToBody(c.tangent1);
-    c.tangent2A_body = XA.worldVecToBody(c.tangent2);
-    c.tangent1B_body = XB.worldVecToBody(c.tangent1);
-    c.tangent2B_body = XB.worldVecToBody(c.tangent2);
+    c.tangent1A_body = cardillo::transform::direction(c.tangent1, inertial, stateA);
+    c.tangent2A_body = cardillo::transform::direction(c.tangent2, inertial, stateA);
+    c.tangent1B_body = cardillo::transform::direction(c.tangent1, inertial, stateB);
+    c.tangent2B_body = cardillo::transform::direction(c.tangent2, inertial, stateB);
     // Friction coefficient combination (entity components optional)
     c.friction_mu = combineFrictionMu(reg, c.a, c.b, frictionCombine);
     return c;
@@ -151,7 +148,7 @@ inline void addContactToMap(ContactMap& cmap, const Contact& c) {
 }
 
 // Append contacts for a pair into a map: prefer patch expansion; fall back to raw contacts
-inline std::size_t appendContactsFromPair(const entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res, ContactMap& outMap,
+inline std::size_t appendContactsFromPair(entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res, ContactMap& outMap,
                                           const std::string& frictionCombine, bool usePatchVertices) {
     std::size_t appended = 0;
     if (usePatchVertices && patch_res.numContactPatches() > 0) {
@@ -272,7 +269,7 @@ void CollisionCoal::rebuild() {
     auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
     clear();
     ensureBroadphaseFromConfig_();
-    const auto& reg = m_world->ecs();
+    auto& reg = m_world->ecs();
 
     // Gather all collidable entities in a single pass
     m_entities.clear();
@@ -360,7 +357,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
         rebuild();
     }
 
-    const auto& reg = m_world->ecs();
+    auto& reg = m_world->ecs();
 
     std::vector<coal::CollisionCallBackCollect::CollisionPair> pairs;
     {

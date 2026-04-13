@@ -2,6 +2,7 @@
 #include "../collision/collision_coal.hpp"
 #include "../physics/constraints/constraints.hpp"
 #include "../physics/solver/warmstart.hpp"
+#include "../rigid_body/rigid_body.hpp"
 #include "mesh_generator.hpp"
 
 #include <algorithm>
@@ -244,6 +245,16 @@ void VtkWriterBinary::writePointDataGeo(std::ofstream& out, const std::vector<En
             writeBE(out, f32(omega.x()));
             writeBE(out, f32(omega.y()));
             writeBE(out, f32(omega.z()));
+        }
+    }
+
+    out << "VECTORS angular_velocity_world float\n";
+    for (const auto& m : meshes) {
+        const Vector3r omegaWorld = m.R * m.omega;
+        for (std::size_t i = 0; i < m.vertices.size(); ++i) {
+            writeBE(out, f32(omegaWorld.x()));
+            writeBE(out, f32(omegaWorld.y()));
+            writeBE(out, f32(omegaWorld.z()));
         }
     }
 
@@ -512,8 +523,8 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
             const auto& reg = sys.ecs();
             const entt::entity a = tr->entityA();
             if (a == entt::null || !reg.all_of<cardillo::C_Orientation>(a)) continue;
-            const auto& qA = reg.get<cardillo::C_Orientation>(a).value;
-            const Matrix33r A_IK1 = qA.toRotationMatrix();
+            const auto stateA = cardillo::RigidBody::getState(reg, a);
+            const Matrix33r A_IK1 = stateA.rotation;
 
             const cardillo::physics::JointProperties& jp = tr->jointProperties();
             const Matrix33r A_IJ = A_IK1 * jp.A_K1J;  // concat frame

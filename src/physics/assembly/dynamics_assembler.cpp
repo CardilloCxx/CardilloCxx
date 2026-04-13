@@ -469,7 +469,10 @@ void DynamicsAssembler::refreshState() {
 }
 
 void DynamicsAssembler::updateStateDependentTerms() {
-    DerivedEntitySync::updateEntities(m_world);
+    {
+        auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::UpdateEntities);
+        DerivedEntitySync::updateEntities(m_world);
+    }
     updateContactsFromSystem();
     rebuildW_();
     rebuildInteractionW_();

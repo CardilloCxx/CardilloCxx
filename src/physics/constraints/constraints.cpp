@@ -17,28 +17,19 @@ bool ConstraintPattern::getAttachPointsWorld(Vector3r& xA, Vector3r& xB) const {
 ConstraintPattern::WorldAttachments ConstraintPattern::computeAttachments_() const {
     WorldAttachments wa;
     if (m_reg) {
-        Vector3r pA = Vector3r::Zero();
-        Vector3r pB = Vector3r::Zero();
-        Quaternion4r qA = Quaternion4r::Identity();
-        Quaternion4r qB = Quaternion4r::Identity();
-        if (m_a != entt::null) {
-            if (m_reg->all_of<cardillo::C_Position3>(m_a)) pA = m_reg->get<cardillo::C_Position3>(m_a).value;
-            if (m_reg->all_of<cardillo::C_Orientation>(m_a)) qA = m_reg->get<cardillo::C_Orientation>(m_a).value;
-        }
-        if (m_b != entt::null) {
-            if (m_reg->all_of<cardillo::C_Position3>(m_b)) pB = m_reg->get<cardillo::C_Position3>(m_b).value;
-            if (m_reg->all_of<cardillo::C_Orientation>(m_b)) qB = m_reg->get<cardillo::C_Orientation>(m_b).value;
-        }
-        wa.qA = qA;
-        wa.qB = qB;
-        wa.RA = qA.toRotationMatrix();
-        wa.RB = qB.toRotationMatrix();
+        const auto stateA = cardillo::RigidBody::getState(*m_reg, m_a);
+        const auto stateB = cardillo::RigidBody::getState(*m_reg, m_b);
+
+        wa.qA = stateA.orientation;
+        wa.qB = stateB.orientation;
+        wa.RA = stateA.rotation;
+        wa.RB = stateB.rotation;
         wa.rA_world = wa.RA * m_rA_local;
         wa.rB_world = wa.RB * m_rB_local;
-        wa.pA = pA;
-        wa.pB = pB;
-        wa.xA = pA + wa.rA_world;
-        wa.xB = pB + wa.rB_world;
+        wa.pA = stateA.position;
+        wa.pB = stateB.position;
+        wa.xA = wa.pA + wa.rA_world;
+        wa.xB = wa.pB + wa.rB_world;
     }
     return wa;
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <petsc.h>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <Eigen/SparseCore>
@@ -8,9 +7,6 @@
 
 namespace cardillo {
 
-// TODO: Can we control PetscReal and PetscInt via CMake?
-// #define real_t PetscReal
-// #define index_t PetscInt
 #define real_t double
 #define index_t int
 
@@ -96,8 +92,7 @@ using StlVectorXi = std::vector<index_t>;
 using StlVectorStlVectorXi = std::vector<std::vector<index_t>>;
 using StlVectorVectorXr = std::vector<VectorXr>;
 
-// sparse matrices (see https://petsc.org/release/developers/matrices/)
-// TODO: Use the best suited PETSc sparse matrix formats here
+// sparse matrices
 // // TODO: do we want CooMatrixXXr, Tripletr, SparseMatrixXXr, CscMatrixXXr,
 // // CsrMatrixXXr?
 // using CooMatrix = miscellaneous::CooMatrix<real_t>;

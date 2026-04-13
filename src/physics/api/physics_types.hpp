@@ -18,15 +18,18 @@ namespace cardillo::physics {
 struct RigidState {
     Vector3r position = Vector3r::Zero();
     Quaternion4r orientation = Quaternion4r::Identity();
+    Matrix33r rotation = Matrix33r::Identity();
     Vector3r linearVelocity = Vector3r::Zero();
     Vector3r angularVelocity = Vector3r::Zero();
+
+    static RigidState inertial() { return RigidState{}; }
 
     RigidState() = default;
     explicit RigidState(const Vector3r& p) : position(p) {}
     RigidState(const Vector3r& p, const Vector3r& v) : position(p), linearVelocity(v) {}
-    RigidState(const Vector3r& p, const Quaternion4r& q) : position(p), orientation(q) {}
-    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q) : position(p), orientation(q), linearVelocity(v) {}
-    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q, const Vector3r& w) : position(p), orientation(q), linearVelocity(v), angularVelocity(w) {}
+    RigidState(const Vector3r& p, const Quaternion4r& q) : position(p), orientation(q), rotation(q.toRotationMatrix()) {}
+    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q) : position(p), orientation(q), rotation(q.toRotationMatrix()), linearVelocity(v) {}
+    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q, const Vector3r& w) : position(p), orientation(q), rotation(q.toRotationMatrix()), linearVelocity(v), angularVelocity(w) {}
     RigidState(const Vector3r& p, const Vector3r& v, const Vector3r& w) : position(p), linearVelocity(v), angularVelocity(w) {}
 
     RigidState(const Vector3r& p_local, const Vector3r& v_local, const Quaternion4r& q_local, const Vector3r& w_local, entt::entity refEntity, entt::registry& reg);

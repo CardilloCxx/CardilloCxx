@@ -13,9 +13,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Eigen3::Eigen
-        PkgConfig::PETSC
         dl
-    MPI::MPI_CXX
 )
 
 add_dependencies(${PROJECT_NAME} coal_project)

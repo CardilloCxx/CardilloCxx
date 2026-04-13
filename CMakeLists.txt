@@ -3,8 +3,10 @@ project(cardillo LANGUAGES C CXX)
 
 add_compile_options(-w)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY TRUE)
 
 # Optional: gprof profiling support
 option(ENABLE_GPROF "Enable gprof instrumentation (-pg)" OFF)
@@ -84,15 +86,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(EnTT)
 
-# MPI
-find_package(MPI REQUIRED)
-
-# PETSc via pkg-config (optional)
-find_package(PkgConfig REQUIRED)
-pkg_search_module(PETSC QUIET IMPORTED_TARGET PETSc>=3.15 petsc>=3.15)
-if(NOT PETSC_FOUND)
-    message(WARNING "PETSc not found. Building without PETSc integration. If you need PETSc, install it or set PKG_CONFIG_PATH so pkg-config can find PETSc.")
-endif()
 
 # # Try to find locally-built COAL via pkg-config (coal.pc is provided in coal's build/)
 # pkg_search_module(COAL QUIET IMPORTED_TARGET coal)
@@ -264,18 +257,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Clarabel_cpp)
 
-# If PETSc was discovered via pkg-config, expose a macro and include dirs
-if(PETSC_FOUND)
-    message(STATUS "Found PETSc via pkg-config; enabling HAVE_PETSC")
-    add_compile_definitions(HAVE_PETSC)
-    include_directories(${PETSC_INCLUDE_DIRS})
-    link_directories(${PETSC_LIBRARY_DIRS})
-endif()
-
 # Add subdirs
 add_subdirectory(src)
 if(TARGET qoco_project)
     add_dependencies(cardillo qoco_project)
 endif()
 add_subdirectory(examples)
-add_subdirectory(benchmarks/matrix_bench)

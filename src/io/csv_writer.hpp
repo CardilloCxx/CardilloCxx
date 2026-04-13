@@ -7,6 +7,7 @@
 #include "../config/config.hpp"
 #include "../misc/types.hpp"
 #include "../physics/ecs_types.hpp"
+#include "../rigid_body/rigid_body.hpp"
 
 namespace cardillo {
 namespace io {
@@ -61,11 +62,10 @@ class CsvWriter {
         auto view = reg.view<cardillo::C_TrackTag, cardillo::C_Position3, cardillo::C_LinearVelocity3, cardillo::C_AngularVelocity3, cardillo::C_Orientation>();
         for (auto e : view) {
             const auto& tag = view.get<cardillo::C_TrackTag>(e);
-            const auto& pos = view.get<cardillo::C_Position3>(e).value;
-            const auto& v = view.get<cardillo::C_LinearVelocity3>(e).value;
-            const auto& w = view.get<cardillo::C_AngularVelocity3>(e).value;
-            const auto& euler = view.get<cardillo::C_Orientation>(e).value.toRotationMatrix().eulerAngles(0, 1, 2);
-            writeRow(t, tag.name, pos.x(), pos.y(), pos.z(), v.x(), v.y(), v.z(), w.x(), w.y(), w.z(), euler.x(), euler.y(), euler.z());
+            const auto state = cardillo::RigidBody::getState(reg, e);
+            const auto& euler = state.rotation.eulerAngles(0, 1, 2);
+            writeRow(t, tag.name, state.position.x(), state.position.y(), state.position.z(), state.linearVelocity.x(), state.linearVelocity.y(), state.linearVelocity.z(), state.angularVelocity.x(),
+                     state.angularVelocity.y(), state.angularVelocity.z(), euler.x(), euler.y(), euler.z());
         }
     }
 

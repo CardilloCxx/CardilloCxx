@@ -18,15 +18,13 @@ Required on Linux:
 - CMake 3.16+
 - C++17 compiler (GCC/Clang)
 - Python 3
-- MPI
-- PETSc (optional but recommended)
 
 Typical Ubuntu packages:
 
 ```bash
 sudo apt update
 sudo apt install -y build-essential cmake ninja-build git curl pkg-config \
-   python3 python3-dev python3-pip libopenmpi-dev openmpi-bin libeigen3-dev
+   python3 python3-dev python3-pip libeigen3-dev
 ```
 
 ## Install Rust/Cargo (needed for Clarabel)

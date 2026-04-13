@@ -17,6 +17,7 @@ class TimingManager {
         CollisionBroadphase,
         CollisionMatching,
         CollisionNarrowphase,
+        UpdateEntities,
         BuildAndFactorS,
         RebuildConstraintJacobians,
         RebuildContactJacobians,
@@ -216,6 +217,8 @@ class TimingManager {
                 return "Collision Narrowphase";
             case TimerId::OutputWrite:
                 return "Output Write";
+            case TimerId::UpdateEntities:
+                return "Update Entities";
             case TimerId::BuildAndFactorS:
                 return "Build & Factor S";
             case TimerId::RebuildConstraintJacobians:

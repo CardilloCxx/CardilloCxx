@@ -1,7 +1,9 @@
 build/
 myvenv/
 .vscode/
+.cache/
 literature/
 vtk_out*
 domino_*
 lib/qoco*
+compile_commands.json

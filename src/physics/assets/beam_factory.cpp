@@ -1,5 +1,7 @@
 #include "beam_factory.hpp"
 
+#include "../../rigid_body/rigid_body.hpp"
+#include "../../rigid_body/transformations.hpp"
 #include "../assets/body_factory.hpp"
 #include "../constraints/constraint_factory.hpp"
 #include "../constraints/constraints.hpp"
@@ -35,6 +37,70 @@ Matrix33r makeFrameFromTangentLocal(const Vector3r& tangent) {
     return M;
 }
 
+Matrix33r makeStableFrameFromSample(const BeamSample& s, const Matrix33r* prevFrame) {
+    constexpr real_t eps2 = (real_t)1e-16;
+
+    Vector3r T = s.tangent;
+    if (!T.allFinite() || T.squaredNorm() <= eps2) {
+        if (prevFrame != nullptr) {
+            T = prevFrame->col(0);
+        } else {
+            T = Vector3r::UnitX();
+        }
+    }
+    T.normalize();
+
+    Vector3r N = s.normal;
+    if (!N.allFinite() || N.squaredNorm() <= eps2) {
+        if (prevFrame != nullptr) {
+            N = prevFrame->col(1);
+        } else {
+            N = Vector3r::Zero();
+        }
+    }
+    N -= T * T.dot(N);
+
+    if (!N.allFinite() || N.squaredNorm() <= eps2) {
+        Vector3r Bcand = s.binormal;
+        if (!Bcand.allFinite() || Bcand.squaredNorm() <= eps2) {
+            if (prevFrame != nullptr) {
+                Bcand = prevFrame->col(2);
+            } else {
+                Bcand = Vector3r::Zero();
+            }
+        }
+        Bcand -= T * T.dot(Bcand);
+        if (Bcand.allFinite() && Bcand.squaredNorm() > eps2) {
+            Bcand.normalize();
+            N = Bcand.cross(T);
+        }
+    }
+
+    if (!N.allFinite() || N.squaredNorm() <= eps2) {
+        return makeFrameFromTangentLocal(T);
+    }
+
+    N.normalize();
+    Vector3r B = T.cross(N);
+    if (!B.allFinite() || B.squaredNorm() <= eps2) {
+        return makeFrameFromTangentLocal(T);
+    }
+    B.normalize();
+    N = B.cross(T).normalized();
+
+    // Keep the normal/binormal orientation continuous along the beam.
+    if (prevFrame != nullptr && N.dot(prevFrame->col(1)) < (real_t)0) {
+        N = -N;
+        B = -B;
+    }
+
+    Matrix33r M;
+    M.col(0) = T;
+    M.col(1) = N;
+    M.col(2) = B;
+    return M;
+}
+
 std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std::vector<BeamSample>& samples, bool loop, const BeamCrossSection& section, const BeamSpringParams& springs,
                                                            const RigidState& stateDefaults, const RigidProps& propsDefaults, const Vector3r& splineCOMWorld,
                                                            cardillo::collision::CollisionCoal* collision_mgr) {
@@ -53,12 +119,10 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
     entt::entity prev = entt::null;
     entt::entity end = entt::null;
 
-    const Matrix33r Rbody = stateDefaults.orientation.toRotationMatrix();
-    const Vector3r worldCOM = splineCOMWorld + stateDefaults.position;
-    const Vector3r v_body_world = Rbody * stateDefaults.linearVelocity;
-    const Vector3r w_body_world = Rbody * stateDefaults.angularVelocity;
+    const auto inertial = cardillo::RigidBody::RigidState::inertial();
 
-    Quaternion4r q_prev = Quaternion4r::Identity();
+    bool hasPrevFrame = false;
+    Matrix33r prevFrame = Matrix33r::Identity();
 
     for (const auto& s : samples) {
         const real_t segLen = s.segLen;
@@ -83,31 +147,19 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         }
         segProps.mass = (massPerSegment > (real_t)0) ? std::optional<real_t>(massPerSegment) : std::nullopt;
 
-        Matrix33r Rlocal;
-        if (s.normal.squaredNorm() > (real_t)0 && s.binormal.squaredNorm() > (real_t)0) {
-            Rlocal.col(0) = s.tangent.normalized();
-            Rlocal.col(1) = s.normal.normalized();
-            Rlocal.col(2) = s.binormal.normalized();
-        } else {
-            Rlocal = makeFrameFromTangentLocal(s.tangent);
-        }
+        const Matrix33r Rlocal = makeStableFrameFromSample(s, hasPrevFrame ? &prevFrame : nullptr);
+        prevFrame = Rlocal;
+        hasPrevFrame = true;
 
-        const Matrix33r Rworld = Rbody * Rlocal * Rshape;
-        Quaternion4r qworld(Rworld);
-        qworld.normalize();
+        Quaternion4r qlocal(Rlocal * Rshape);
+        qlocal.normalize();
 
-        qworld = MathHelper::alignQuaternionTo(qworld, q_prev);
-        q_prev = qworld;
+        cardillo::RigidBody::RigidState segLocal;
+        segLocal.position = s.position - splineCOMWorld;
+        segLocal.orientation = qlocal;
+        segLocal.rotation = qlocal.toRotationMatrix();
 
-        const Vector3r worldPos = splineCOMWorld + stateDefaults.position + Rbody * (s.position - splineCOMWorld);
-        const Vector3r v_world = v_body_world + w_body_world.cross(worldPos - worldCOM);
-
-        RigidState segState;
-        segState.position = worldPos;
-        segState.orientation = qworld;
-        segState.linearVelocity = v_world;
-        segState.angularVelocity = Rlocal.transpose() * stateDefaults.angularVelocity;
-
+        RigidState segState = cardillo::transform::rigidState(segLocal, stateDefaults, inertial);
         const entt::entity cur = BodyFactory::addRigidBody(sys, shape, segState, segProps);
 
         cardillo::C_BeamElement be_cur;
@@ -177,8 +229,18 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeam(World& system, con
             if (local_segLen <= minSegLen) continue;
 
             const Vector3r midTangent = (si1.position - si0.position) / local_segLen;
-            const Vector3r midNormal = (si0.normal + si1.normal).normalized();
-            const Vector3r midBinormal = (si0.binormal + si1.binormal).normalized();
+            Vector3r midNormal = si0.normal + si1.normal;
+            Vector3r midBinormal = si0.binormal + si1.binormal;
+            if (midNormal.allFinite() && midNormal.squaredNorm() > minSegLen * minSegLen) {
+                midNormal.normalize();
+            } else {
+                midNormal = Vector3r::Zero();
+            }
+            if (midBinormal.allFinite() && midBinormal.squaredNorm() > minSegLen * minSegLen) {
+                midBinormal.normalize();
+            } else {
+                midBinormal = Vector3r::Zero();
+            }
             samples.push_back(BeamSample{midPos, midTangent, midNormal, midBinormal, local_segLen});
         }
     } else {
@@ -211,7 +273,8 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(World& system, co
         if (prevEnd != entt::null && pair.first != entt::null) {
             if (system.ecs().any_of<cardillo::C_Orientation>(prevEnd) && system.ecs().any_of<cardillo::C_Orientation>(pair.first)) {
                 auto& qNext = system.ecs().get<cardillo::C_Orientation>(pair.first).value;
-                const auto& qPrev = system.ecs().get<cardillo::C_Orientation>(prevEnd).value;
+                const auto prevState = cardillo::RigidBody::getState(system.ecs(), prevEnd);
+                const auto& qPrev = prevState.orientation;
                 qNext = MathHelper::alignQuaternionTo(qNext, qPrev);
             }
             ConstraintFactory::addRigidConstraint(system, prevEnd, pair.first);
