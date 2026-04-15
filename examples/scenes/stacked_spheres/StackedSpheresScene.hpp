@@ -55,9 +55,9 @@ public:
     }
 
 private:
-    double amplitude = 0.5;
-    double frequency = 0.6;
-    double bottomMass = 1.0;
-    entt::entity bottomCube{entt::null};
-    index_t cube_constraint{-1};
+ double amplitude = 0.01;
+ double frequency = 10.0;
+ double bottomMass = 1.0;
+ entt::entity bottomCube{entt::null};
+ index_t cube_constraint{-1};
 };

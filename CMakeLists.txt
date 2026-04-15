@@ -148,6 +148,11 @@ if(QOCO_USE_CUDA_BACKEND)
             ${CUDAToolkit_LIBRARY_DIR}
         )
 
+        # On WSL, prefer the Microsoft-provided CUDA driver shim location.
+        if(EXISTS "/usr/lib/wsl/lib/libcuda.so.1")
+            list(PREPEND QOCO_RUNTIME_DIRS /usr/lib/wsl/lib)
+        endif()
+
         list(REMOVE_DUPLICATES QOCO_RUNTIME_DIRS)
 
         message(STATUS "QOCO CUDA backend variant enabled")
@@ -222,6 +227,7 @@ endif()
 
 ExternalProject_Add(qoco_project_cpu
     GIT_REPOSITORY https://github.com/qoco-org/qoco.git
+    # GIT_REPOSITORY https://github.com/41pha1/qoco.git
     GIT_TAG v0.2.6
     PREFIX ${CMAKE_BINARY_DIR}/_deps/qoco-cpu
     GIT_SHALLOW TRUE
@@ -232,6 +238,7 @@ ExternalProject_Add(qoco_project_cpu
 if(QOCO_HAVE_CUDA_BACKEND)
     ExternalProject_Add(qoco_project_cuda
         GIT_REPOSITORY https://github.com/qoco-org/qoco.git
+        # GIT_REPOSITORY https://github.com/41pha1/qoco.git
         GIT_TAG v0.2.6
         PREFIX ${CMAKE_BINARY_DIR}/_deps/qoco-cuda
         GIT_SHALLOW TRUE
