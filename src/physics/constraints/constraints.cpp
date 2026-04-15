@@ -4,8 +4,7 @@ namespace cardillo {
 namespace physics {
 
 // ===================== ConstraintPattern base =====================
-ConstraintPattern::ConstraintPattern(entt::registry& reg, entt::entity a, entt::entity b, const Vector3r& rA_local, const Vector3r& rB_local)
-    : m_reg(&reg), m_a(a), m_b(b), m_rA_local(rA_local), m_rB_local(rB_local) {}
+ConstraintPattern::ConstraintPattern(entt::registry& reg, entt::entity a, entt::entity b, index_t numRows) : m_reg(&reg), m_a(a), m_b(b), m_numRows(numRows) {}
 
 bool ConstraintPattern::getAttachPointsWorld(Vector3r& xA, Vector3r& xB) const {
     auto wa = computeAttachments_();
@@ -90,7 +89,7 @@ ConstraintResult LinearDistanceConstraint::getConstraint() const {
 
 TranslationRotationConstraint::TranslationRotationConstraint(entt::registry& reg, entt::entity a, entt::entity b, const JointFrame& frame, const Vector3r& K_trans, const Vector3r& D_trans,
                                                              const Vector3r& K_rot, const Vector3r& D_rot)
-    : ConstraintPattern(reg, a, b, Vector3r::Zero(), Vector3r::Zero()), m_joint(JointProperties(reg, a, b, frame)), m_K_trans(K_trans), m_D_trans(D_trans), m_K_rot(K_rot), m_D_rot(D_rot) {
+    : ConstraintPattern(reg, a, b, 6), m_joint(JointProperties(reg, a, b, frame)), m_K_trans(K_trans), m_D_trans(D_trans), m_K_rot(K_rot), m_D_rot(D_rot) {
     m_rA_local = m_joint.K1_r_S1J;
     m_rB_local = m_joint.K2_r_S2J;
 }
@@ -152,7 +151,7 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
 
 // ===================== BeamConstraint =====================
 BeamConstraint::BeamConstraint(entt::registry& reg, entt::entity a, entt::entity b, const cardillo::physics::BeamSpringParams& springs, const cardillo::physics::BeamCrossSection& section)
-    : ConstraintPattern(reg, a, b, Vector3r::Zero(), Vector3r::Zero()), m_springs(springs), m_section(section) {
+    : ConstraintPattern(reg, a, b, 6), m_springs(springs), m_section(section) {
     const auto wa = computeAttachments_();
     const Vector4r qMid = 0.5 * (wa.qA.coeffs() + wa.qB.coeffs());
     const Matrix33r A_mid = Quaternion4r(qMid).normalized().toRotationMatrix();

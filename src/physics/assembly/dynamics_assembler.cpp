@@ -352,9 +352,10 @@ void DynamicsAssembler::rebuildInteractionW_() {
 
     // Per-row diagonals for C and A
     std::vector<real_t> Crows;
-    Crows.reserve(256);
     std::vector<real_t> Arows;
-    Arows.reserve(256);
+    std::vector<real_t> C_vel;
+    std::vector<real_t> A_vel;
+
     int springRowCounter = 0;
     int damperRowCounter = 0;
     const real_t EPS_C = (real_t)1e-10;
@@ -380,12 +381,15 @@ void DynamicsAssembler::rebuildInteractionW_() {
     for (const auto& uptr : patterns) {
         if (!uptr) continue;
         auto crN = uptr->getConstraint();
+        auto vel = uptr->getSource();
+
         const int nrows = (int)crN.Crows.size();
         // Spring rows
         for (int i = 0; i < nrows; ++i) {
             const real_t Ci = crN.Crows[i];
             if (Ci < 1 / EPS_C) {
                 Crows.push_back(Ci);
+                C_vel.push_back(vel[i]);
                 const int row = springRowCounter++;
                 if (i < crN.WgA.cols()) emitRowRef(tripsWg, row, crN.a, crN.WgA.col(i));
                 if (i < crN.WgB.cols()) emitRowRef(tripsWg, row, crN.b, crN.WgB.col(i));
@@ -397,6 +401,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
             const real_t Ai = crN.Arows[i];
             if (Ai < 1 / EPS_A) {
                 Arows.push_back(Ai);
+                A_vel.push_back(vel[i]);
                 const int row = damperRowCounter++;
                 if (i < crN.WgammaA.cols()) emitRowRef(tripsWgamma, row, crN.a, crN.WgammaA.col(i));
                 if (i < crN.WgammaB.cols()) emitRowRef(tripsWgamma, row, crN.b, crN.WgammaB.col(i));
@@ -412,13 +417,17 @@ void DynamicsAssembler::rebuildInteractionW_() {
 
     // Store C (per-spring) and A (per-damper) diagonals
     m_Cdiag = VectorXr::Zero((index_t)nSprings);
+    m_C_v_vec = VectorXr::Zero((index_t)nSprings);
     for (int i = 0; i < nSprings; ++i) {
         m_Cdiag[i] = Crows[(size_t)i];
+        m_C_v_vec[i] = C_vel[(size_t)i];
     }
 
     m_Adiag = VectorXr::Zero((index_t)nDampers);
+    m_A_v_vec = VectorXr::Zero((index_t)nDampers);
     for (int i = 0; i < nDampers; ++i) {
         m_Adiag[i] = Arows[(size_t)i];
+        m_A_v_vec[i] = A_vel[(size_t)i];
     }
 }
 

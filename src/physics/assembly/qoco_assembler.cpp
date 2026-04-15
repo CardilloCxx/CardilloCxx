@@ -83,8 +83,8 @@ QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
         Lambda_g = VectorXr::Zero(m_dyn->Cdiag().size());
     }
 
-    auto bTop = -(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) * m_dyn->Wg().asSparse() * m_dyn->vVec();
-    auto bBot = -((1.0 - theta) / theta) * m_dyn->Wgamma().asSparse() * m_dyn->vVec();
+    auto bTop = -(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) * (m_dyn->Wg().asSparse() * m_dyn->vVec()) + m_dyn->C_v_vec();
+    auto bBot = -((1.0 - theta) / theta) * (m_dyn->Wgamma().asSparse() * m_dyn->vVec()) + m_dyn->A_v_vec();
 
     m_b_cache.resize(bTop.size() + bBot.size());
     m_b_cache << bTop, bBot;

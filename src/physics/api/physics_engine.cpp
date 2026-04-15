@@ -49,5 +49,28 @@ void PhysicsEngine::disableCollisionBetween(entt::entity a, entt::entity b) {
     if (m_collision_mgr) m_collision_mgr->disablePair(a, b);
 }
 
+void PhysicsEngine::setConstraintScalarVelocity(size_t constraintIndex, real_t v) {
+    if (constraintIndex < 0 || constraintIndex >= m_world->constraintPatterns().size()) {
+        std::cerr << "Warning: setConstraintScalarVelocity: constraintIndex " << constraintIndex << " out of bounds" << std::endl;
+        return;
+    }
+    m_world->constraintPatterns()[constraintIndex]->setScalarVelocity(v);
+}
+
+void PhysicsEngine::setConstraintLinearVelocity(size_t constraintIndex, const Vector3r& v) {
+    if (constraintIndex < 0 || constraintIndex >= m_world->constraintPatterns().size()) {
+        std::cerr << "Warning: setConstraintLinearVelocity: constraintIndex " << constraintIndex << " out of bounds" << std::endl;
+        return;
+    }
+    m_world->constraintPatterns()[constraintIndex]->setLinearVelocity(v);
+}
+
+void PhysicsEngine::setConstraintAngularVelocity(size_t constraintIndex, const Vector3r& w) {
+    if (constraintIndex < 0 || constraintIndex >= m_world->constraintPatterns().size()) {
+        std::cerr << "Warning: setConstraintAngularVelocity: constraintIndex " << constraintIndex << " out of bounds" << std::endl;
+        return;
+    }
+    m_world->constraintPatterns()[constraintIndex]->setAngularVelocity(w);
+}
 }  // namespace physics
 }  // namespace cardillo

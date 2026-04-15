@@ -27,8 +27,6 @@ struct ConstraintResult {
     MatrixXXr WgammaB;
     VectorXr Crows;  // size N (compliances per spring row)
     VectorXr Arows;  // size N (compliances per damper row)
-
-    VectorXr velocitySource;  // size N (velocity offsets for constraint rows, e.g. for motors)
 };
 
 // Reference for a joint frame: position/orientation expressed in a frame entity
@@ -107,7 +105,7 @@ struct JointProperties {
 // Base pattern: stores registry, entities and attachment points and shared helpers
 class ConstraintPattern {
    public:
-    ConstraintPattern(entt::registry& reg, entt::entity a, entt::entity b, const Vector3r& rA_local = Vector3r::Zero(), const Vector3r& rB_local = Vector3r::Zero());
+    ConstraintPattern(entt::registry& reg, entt::entity a, entt::entity b, index_t numRows);
 
     virtual ~ConstraintPattern() = default;
 
@@ -116,6 +114,11 @@ class ConstraintPattern {
 
     // Compute the constraint data ready for assembly
     virtual ConstraintResult getConstraint() const = 0;
+
+    virtual VectorXr getSource() const { return VectorXr::Zero(m_numRows); }
+    virtual void setScalarVelocity(real_t v) { std::cerr << "Warning: setScalarVelocity not implemented for this constraint pattern" << std::endl; }
+    virtual void setLinearVelocity(const Vector3r& v) { std::cerr << "Warning: setLinearVelocity not implemented for this constraint pattern" << std::endl; }
+    virtual void setAngularVelocity(const Vector3r& w) { std::cerr << "Warning: setAngularVelocity not implemented for this constraint pattern" << std::endl; }
 
     bool getAttachPointsWorld(Vector3r& xA, Vector3r& xB) const;
 
@@ -143,19 +146,29 @@ class ConstraintPattern {
     entt::registry* m_reg{nullptr};
     entt::entity m_a{entt::null};
     entt::entity m_b{entt::null};
+
+    // Local attachment points for the joint
     Vector3r m_rA_local{Vector3r::Zero()};
     Vector3r m_rB_local{Vector3r::Zero()};
+
+    index_t m_numRows{0};
 };
 
 class LinearDistanceConstraint : public ConstraintPattern {
    public:
     LinearDistanceConstraint(entt::registry& reg, entt::entity a, entt::entity b, const Vector3r& rA_local = Vector3r::Zero(), const Vector3r& rB_local = Vector3r::Zero(),
                              real_t stiffness = std::numeric_limits<real_t>::infinity(), real_t damping = (real_t)0)
-        : ConstraintPattern(reg, a, b, rA_local, rB_local), m_k(stiffness), m_d(damping) {}
+        : ConstraintPattern(reg, a, b, 1), m_k(stiffness), m_d(damping) {
+        m_rA_local = rA_local;
+        m_rB_local = rB_local;
+    }
 
     ConstraintResult getConstraint() const override;
+    VectorXr getSource() const override { return VectorXr::Constant(1, scalarVelocity); }
+    void setScalarVelocity(real_t v) override { scalarVelocity = v; }
 
    private:
+    real_t scalarVelocity = (real_t)0;
     real_t m_k{(real_t)0};
     real_t m_d{(real_t)0};
 };
@@ -169,6 +182,14 @@ class TranslationRotationConstraint : public ConstraintPattern {
                                   const Vector3r& D_trans = Vector3r::Zero(), const Vector3r& K_rot = Vector3r::Zero(), const Vector3r& D_rot = Vector3r::Zero());
 
     ConstraintResult getConstraint() const override;
+    VectorXr getSource() const override {
+        VectorXr src(6);
+        src.head<3>() = m_translational_velocity;
+        src.tail<3>() = m_angular_velocity;
+        return src;
+    }
+    void setLinearVelocity(const Vector3r& v) override { m_translational_velocity = v; }
+    void setAngularVelocity(const Vector3r& w) override { m_angular_velocity = w; }
 
     // Access joint-frame description for visualization/debugging
     const JointProperties& jointProperties() const { return m_joint; }
@@ -179,6 +200,9 @@ class TranslationRotationConstraint : public ConstraintPattern {
     Vector3r m_D_trans{Vector3r::Zero()};
     Vector3r m_K_rot{Vector3r::Zero()};
     Vector3r m_D_rot{Vector3r::Zero()};
+
+    Vector3r m_translational_velocity{Vector3r::Zero()};
+    Vector3r m_angular_velocity{Vector3r::Zero()};
 
     // Build full 6x6 Jacobians for a rigid joint using world attachments.
     void buildJointJacobian(const WorldAttachments& wa, MatrixXXr& WgA, MatrixXXr& WgB) const;

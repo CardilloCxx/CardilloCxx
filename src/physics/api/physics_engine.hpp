@@ -78,7 +78,7 @@ class PhysicsEngine {
         return ConstraintFactory::addLinearDistanceConstraint(*m_world, a, b, rA_local, rB_local, stiffness, damping);
     }
 
-    inline size_t addRigidConstraint(entt::entity a, entt::entity b) { return ConstraintFactory::addRigidConstraint(*m_world, a, b); }
+    inline size_t addRigidConstraint(entt::entity a, entt::entity b = entt::null) { return ConstraintFactory::addRigidConstraint(*m_world, a, b); }
 
     inline size_t addTranslationRotationConstraint(entt::entity a, entt::entity b, const JointFrame& frame, const Vector3r& K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity()),
                                                    const Vector3r& D_trans = Vector3r::Zero(), const Vector3r& K_rot = Vector3r::Zero(), const Vector3r& D_rot = Vector3r::Zero()) {
@@ -103,6 +103,10 @@ class PhysicsEngine {
     inline size_t addBeamConstraint(entt::entity a, entt::entity b, const BeamSpringParams& springs, const BeamCrossSection& section) {
         return ConstraintFactory::addBeamConstraint(*m_world, a, b, springs, section);
     }
+
+    void setConstraintScalarVelocity(size_t constraintIndex, real_t v);
+    void setConstraintLinearVelocity(size_t constraintIndex, const Vector3r& v);
+    void setConstraintAngularVelocity(size_t constraintIndex, const Vector3r& w);
 
     entt::registry& ecs() { return m_world->ecs(); }
     const entt::registry& ecs() const { return m_world->ecs(); }

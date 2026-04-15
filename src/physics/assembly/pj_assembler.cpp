@@ -108,6 +108,8 @@ VectorXr PjAssembler::rhs(real_t dt, real_t theta) const {
     const int nDampers = (int)m_dyn->Adiag().size();
     const int extV = totalV + nSprings + nDampers;
     const auto& Cdiag = m_dyn->Cdiag();
+    const auto& C_v_vec = m_dyn->C_v_vec();
+    const auto& A_v_vec = m_dyn->A_v_vec();
 
     // Lambda vectors may be uninitialized on first step; copy locally and ensure correct sizes
     VectorXr Lambda_g = m_dyn->Lambda_g();
@@ -125,8 +127,10 @@ VectorXr PjAssembler::rhs(real_t dt, real_t theta) const {
         if (nDampers > 0) corr.noalias() += Wgamma.transpose() * Lambda_gamma;
         rhs.segment(0, totalV).noalias() -= (1.0 - theta) * corr;
     }
-    if (nSprings > 0) rhs.segment(totalV, nSprings) = -(1.0 / (theta * dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - (1.0 - theta) / theta * Wg * vn;
-    if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -(1.0 - theta) / theta * Wgamma * vn;
+    if (nSprings > 0)
+        rhs.segment(totalV, nSprings) = -(1.0 / (theta * dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) * (Wg * vn) + C_v_vec;
+    if (nDampers > 0)
+        rhs.segment(totalV + nSprings, nDampers) = -((1.0 - theta) / theta) * (Wgamma * vn) + A_v_vec;
 
     return rhs;
 }
