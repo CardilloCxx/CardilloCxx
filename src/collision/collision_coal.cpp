@@ -325,7 +325,7 @@ void CollisionCoal::applyTransforms() {
     for (std::size_t i = 0; i < m_objects.size(); ++i) {
         entt::entity e = m_entities[i];
         auto* obj = m_objects[i].get();
-        const bool isDynamic = m_world->ecs().any_of<cardillo::C_PhysicsObject>(e);
+        const bool isDynamic = m_world->ecs().any_of<cardillo::C_PhysicsObject, cardillo::C_StaticTrajectory>(e);
         if (!isDynamic) {
             // Static objects: transform was set at rebuild; no need to recompute each step
             continue;

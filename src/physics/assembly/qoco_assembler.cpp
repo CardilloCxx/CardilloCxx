@@ -92,9 +92,8 @@ QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
 }
 
 QOCOFloat* QocoAssembler::h(real_t dt, real_t theta) {
-    // Smu missing, for w = 0
-    const int n = m_dyn->numContactRows();
-    m_h_cache = VectorXr::Zero(n);
+    VectorXr Smu = computeSmu();
+    m_h_cache = Smu.cwiseProduct(m_dyn->contactVVec());
     return toQocoVector(m_h_cache);
 }
 

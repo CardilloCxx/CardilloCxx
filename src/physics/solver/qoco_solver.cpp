@@ -174,7 +174,6 @@ void QocoSolver::updateQocoSolver(real_t dt, real_t theta) {
 }
 
 VectorXr QocoSolver::solve(real_t dt, real_t theta) {
-    m_dyn.updateStateDependentTerms();
     if (!m_qoco_solver)
         initQocoSolver(dt, theta);
     else

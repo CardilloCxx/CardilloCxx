@@ -109,7 +109,6 @@ void ClarabelSolver::updateSolver(real_t dt, real_t theta) {
 }
 
 VectorXr ClarabelSolver::solve(real_t dt, real_t theta) {
-    m_dyn.updateStateDependentTerms();
     if (!m_solver)
         initSolver(dt, theta, true);
     else

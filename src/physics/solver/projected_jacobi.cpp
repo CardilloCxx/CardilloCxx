@@ -41,6 +41,7 @@ struct PJIterContext {
     std::vector<real_t> groupMu;                     // same size as contactRowGroups: per-contact friction mu
     // Iteration runtime state and buffers
     VectorXr y_contact;   // contact-space buffer (size = #contacts)
+    VectorXr contactBias;  // static-side contact velocity contribution (size = #contacts)
     VectorXr tmp_concat;  // velocity-space buffer (size = concat dofs)
 
     // Dimensions
@@ -105,6 +106,7 @@ static inline PJIterContext build_context(cardillo::physics::DynamicsAssembler& 
     ctx.groupMu = cg.mu;
     // allocate buffers
     ctx.y_contact = VectorXr::Zero(C);
+    ctx.contactBias = dyn.contactVVec();
     ctx.tmp_concat = VectorXr::Zero(dofConcat);
     return ctx;
 }
@@ -114,6 +116,7 @@ static inline VectorXr provisional_step(PJIterContext& ctx, const VectorXr& u_in
     const auto& W = ctx.W;
     const auto& Rdiag = ctx.Rdiag;
     ctx.y_contact.noalias() = W * u_in;
+    ctx.y_contact += ctx.contactBias;
     VectorXr z = VectorXr::Zero(p_in.size());
     for (int cid = 0; cid < p_in.size(); ++cid) {
         z[cid] = p_in[cid] - Rdiag[cid] * ctx.y_contact[cid];
@@ -339,7 +342,6 @@ static inline void nesterov_loop(PJIterContext& ctx, VectorXr& u, VectorXr& p, d
 }
 
 VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
-    m_dyn.updateStateDependentTerms();
     m_assembler.buildAndFactorS(dt, theta);
 
     auto sc_solve = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobi);

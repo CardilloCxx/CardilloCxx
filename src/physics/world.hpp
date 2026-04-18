@@ -151,6 +151,8 @@ class World {
     void setLinearVelocity(entt::entity e, const Vector3r& v);
     void setAngularVelocity(entt::entity e, const Vector3r& w);
     void setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w);
+    void setTrajectory(entt::entity e, std::optional<std::function<TrajectoryPose(real_t)>> positionFunc, std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc);
+    void removeTrajectory(entt::entity e);
 
     void track(entt::entity e, const std::string& name);
 };

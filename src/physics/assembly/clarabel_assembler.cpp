@@ -53,7 +53,8 @@ VectorXr& ClarabelAssembler::b(real_t dt, real_t theta) {
 
     auto b_top = -(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(lambda_g) - ((1.0 - theta) / theta) * (m_dyn->Wg().asSparse() * m_dyn->vVec()) + m_dyn->C_v_vec();
     auto b_mid = -((1.0 - theta) / theta) * (m_dyn->Wgamma().asSparse() * m_dyn->vVec()) + m_dyn->A_v_vec();
-    auto b_contact = VectorXr::Zero(m_dyn->numContactRows());
+    VectorXr Smu = computeSmu();
+    auto b_contact = Smu.cwiseProduct(m_dyn->contactVVec());
 
     m_b_cache.resize(b_top.size() + b_mid.size() + b_contact.size());
     m_b_cache << b_top, b_mid, b_contact;

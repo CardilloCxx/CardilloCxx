@@ -259,7 +259,7 @@ void fillCommonEntityData(const entt::registry& reg, entt::entity e, cardillo::i
     out = cardillo::io::MeshGenerator::EntityMesh{};
     out.entity = e;
     out.entityId = static_cast<int>(entt::to_integral(e));
-    out.isDynamic = reg.any_of<cardillo::C_PhysicsObject>(e);
+    out.isDynamic = reg.any_of<cardillo::C_PhysicsObject, cardillo::C_StaticTrajectory>(e);
 
     if (reg.any_of<cardillo::C_BeamElement>(e)) {
         const auto& be = reg.get<cardillo::C_BeamElement>(e);

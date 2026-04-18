@@ -2,8 +2,10 @@
 
 #include <Eigen/Dense>
 #include <entt/entt.hpp>
+#include <functional>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 #include "../misc/types.hpp"
 
@@ -114,6 +116,18 @@ struct C_RB_Plane {
     real_t sizeX;
     real_t sizeY;
 };
+
+using TrajectoryPose = std::pair<Vector3r, Quaternion4r>;
+using TrajectoryTwist = std::pair<Vector3r, Vector3r>;
+
+struct C_StaticTrajectory {
+    std::optional<std::function<TrajectoryPose(real_t)>> positionFunc;
+    std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc;
+    real_t elapsed{(real_t)0};
+    bool initialized{false};
+    std::optional<TrajectoryPose> previousPosition;
+};
+
 struct C_RB_Mesh {};
 struct C_RB_Sphere {};
 struct C_RB_Capsule {

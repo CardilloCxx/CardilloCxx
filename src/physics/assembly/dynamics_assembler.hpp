@@ -29,6 +29,7 @@ class DynamicsAssembler {
     // Columns correspond to stacked body velocity DOFs in body order, laid out contiguously per
     // body
     const TripletMatrix& W() const { return m_W; }
+    const VectorXr& contactVVec() const { return m_contact_v_vec; }
 
     // Body b occupies columns [bodyVelOffsets()[b], bodyVelOffsets()[b+1])
     const std::vector<int>& bodyVelOffsets() const { return m_body_vel_offsets; }
@@ -63,7 +64,7 @@ class DynamicsAssembler {
 
     // Check system dirty flags and structural updates once per step and rebuild caches as needed
     void refreshState();
-    void updateStateDependentTerms();
+    void updateStateDependentTerms(real_t dt);
 
     cardillo::misc::TimingManager* timings() const { return m_timings; }
     cardillo::collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
@@ -123,6 +124,7 @@ class DynamicsAssembler {
 
     // Contact Jacobian and supporting mappings
     TripletMatrix m_W;  // (C_dynamic x totalV)
+    VectorXr m_contact_v_vec;  // velocity-space contact bias (size = num contact rows)
     int m_numFrictionalContacts{0};
     int m_numFrictionlessContacts{0};
 

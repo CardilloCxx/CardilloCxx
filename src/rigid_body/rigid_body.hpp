@@ -33,6 +33,11 @@ inline RigidState getState(const entt::registry& reg, entt::entity e) {
     return detail::readStateFromComponents(reg, e);
 }
 
+inline bool isStatic(const entt::registry& reg, entt::entity e) {
+    if (!reg.valid(e)) return true;  // Non-existent entities are considered static
+    return !(reg.any_of<C_BodyIndex, C_PhysicsObject>(e));
+}
+
 inline RigidState& updateState(entt::registry& reg, entt::entity e) {
     if (e == entt::null) {
         static RigidState inertial = RigidState::inertial();

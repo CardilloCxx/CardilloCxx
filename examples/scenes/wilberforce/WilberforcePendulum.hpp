@@ -40,19 +40,6 @@ public:
 
         engine.setGravity(Vector3r(0, 0, -9.81)); // no gravity
 
-        // real_t custom_mass = 0.5240569245269475;
-        // // real_t Ixx = 0.00013237;
-        // // real_t Iyy = Ixx; 
-        // // real_t Izz = 0.00016377;
-        // real_t Ixx = 0.00016377;
-        // real_t Iyy = 0.00013237;
-        // real_t Izz = Iyy; 
-        // // const real_t sizeZ = std::sqrt(6 / custom_mass * (Ixx + Iyy - Izz));
-        // // const real_t sizeZ = std::sqrt(6 / custom_mass * (Iyy + Izz - Ixx));
-        // const real_t sizeX = std::sqrt(6 / custom_mass * (Iyy + Izz - Ixx));
-        // const real_t sizeY = std::sqrt(6 / custom_mass * (Ixx + Izz - Iyy));
-        // const real_t sizeZ = std::sqrt(6 / custom_mass * (Ixx + Iyy - Izz));
-
         // Beam cross-section (capsule) used by createBeam
         physics::BeamCrossSection sec(wireDiameter, wireDiameter, physics::BeamBodyType::Capsule);
         auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
@@ -62,91 +49,33 @@ public:
         const real_t freeLength = static_cast<real_t>(turns) * pitch;
         // Build spring via CompoundSpline (single helix segment now, extensible for future pieces)
         auto helix = misc::HelixSpline(Vector3r::Zero(), -Vector3r::UnitZ(), coilRadius, pitch, static_cast<real_t>(turns), Vector3r::UnitX());
-        auto linear = misc::LinearSpline(Vector3r(coilRadius, 0, -freeLength), Vector3r(0, 0, -freeLength));
-        // auto linear2 = misc::LinearSpline( Vector3r(0, 0, -freeLength), Vector3r(0, 0, -freeLength -sizeX));
-        auto linear2 = misc::LinearSpline( Vector3r(0, 0, -freeLength), Vector3r(0, 0, -freeLength - 0.01));
 
         // Build sequence of splines; create beams per spline and connect with rigid constraints.
-        // std::vector<const misc::SplinePattern*> parts{&helix, &linear, &linear2};
-        // std::vector<const misc::SplinePattern*> parts{&helix, &linear};
         std::vector<const misc::SplinePattern*> parts{&helix};
         auto endpoints = engine.createBeams(parts, sec, springs, physics::RigidState{}, physics::RigidProps::withDensity(density), segments);
-        m_top = endpoints.first; engine.makeStatic(m_top);
+        m_top = endpoints.first;
+        // cube_constraint = engine.addRigidConstraint(m_top);
+        engine.makeStatic(m_top);
+        engine.addTrajectory(m_top,
+                             // [](real_t t) {
+                             //     TrajectoryPose pose;
+                             //     pose.first = Vector3r(0, 0, 0);
+                             //     pose.second = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 2, Vector3r::UnitY()));
+                             //     return pose;
+                             // },
+                             std::nullopt, [](real_t t) {
+                                 TrajectoryTwist twist;
+                                 twist.first = {0, 0.5 * std::sin(t), 0.0};
+                                 twist.second = Vector3r::Zero();
+                                 return twist;
+                             });
+
         m_bottom = endpoints.second;
-    
-        // // NEW: Modify mass and inertia of the bottom node
-        // engine.ecs().get<World::C_Mass>(m_bottom).m *= 0.5;
-        // engine.ecs().get<World::C_InertiaDiag>(m_bottom).I *= 0.5;
-    
-        // // NEW: Modify mass and inertia of the bottom node
-        // engine.ecs().get<World::C_Mass>(m_bottom).m = custom_mass;
-        
-        // // Set custom diagonal inertia for anisotropic behavior
-        // engine.ecs().get<World::C_InertiaDiag>(m_bottom).I = Vector3r(Ixx, Iyy, Izz);
 
-        // engine.ecs().remove<World::C_Capsule>(m_bottom);
-        // engine.ecs().remove<World::C_CapsuleVisualTag>(m_bottom);
-
-        // engine.ecs().emplace<World::C_CubeVisualTag>(m_bottom);
-        // Vector3r halfExtents(sizeX/2.0, sizeY/2.0, sizeZ/2.0);
-        // Quaternion4r orientation = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 2, Vector3r::UnitY()));
-        // // engine.ecs().emplace<World::C_Cube>(m_bottom, World::C_Cube{Vector3r(0, 0, -freeLength -sizeX/2), halfExtents, orientation});
-        // engine.ecs().emplace<World::C_Cube>(m_bottom, World::C_Cube{Vector3r(0, 0, 0), halfExtents, orientation});
-
-        // // // Add cube visual tag and component with appropriate dimensions
-        // // // (adjust halfExtents to match your beam's cross-section)
-        // // Vector3r halfExtents(beamLength/2.0, beamWidth/2.0, beamHeight/2.0);
-        // // engine.ecs().emplace<C_CubeVisualTag>(bottomBeamEntity);
-        // // engine.ecs().emplace<C_Cube>(bottomBeamEntity, 
-        // //     C_Cube{Vector3r::Zero(), halfExtents, Quaternion4r::Identity()});
-
-        // // track bob trajectory in csv file
-        // engine.ecs().emplace<World::C_TrackTag>(m_bottom, World::C_TrackTag{});
-
-        // // we want K / m = lambda / Iz
-        // const real_t d = wireDiameter;      // wire diameter
-        // const real_t D = coilRadius * 2.0;  // mean coil diameter
-        // const real_t n = static_cast<real_t>(turns); // number of active coils
-        // const real_t K =      (G * std::pow(d, 4)) / (8.0 * std::pow(D, 3) * n); // helix axial stiffness
-        // const real_t lambda = (G * std::pow(d, 4) )/ (32.0 * n * D);        // helix torsional stiffness
-        // const real_t tunedMass = 0.469;
-        // const real_t tunedMass = 0.95;
-        // const real_t Iz = lambda / (K / tunedMass);
-        //////////////////////////////////////////////////////////////////
-        // parameter marco
-        // mass = 0.5240569245269475
-        // Inertia = array([[0.00013237, 0.        , 0.        ],
-        //    [0.        , 0.00013237, 0.        ],
-        //    [0.        , 0.        , 0.00016377]])
-        //////////////////////////////////////////////////////////////////
         real_t tunedMass = 0.5240569245269475;
-        const real_t Ix = 0.00013237;
-        const real_t Iy = Ix;
-        const real_t Iz = 0.00016377;
-        // const real_t Iz = 0.0002;
-        // const real_t Iz = 0.00025;
-        const real_t sizeX = std::sqrt(6 / tunedMass * (Iy + Iz - Ix));
-        const real_t sizeY = std::sqrt(6 / tunedMass * (Ix + Iz - Iy));
-        const real_t sizeZ = std::sqrt(6 / tunedMass * (Ix + Iy - Iz));
 
-        // Ixx = 0.000104211, Iyy = 0.000122214, Izz = 0.000122214
-        // const real_t tunedSize = std::sqrt(6 * Iz / tunedMass); // Iz = 1 / 12 m (a^2 + a^2) = 1/6 m a^2 => a = sqrt(6 Iz / m)
-
-        // std::cout << "Tuning info: K = " << K << " N/m, lambda = " << lambda << " Nm/rad, m = " << tunedMass
-        //           << " kg, Iz = " << Iz << " kg m^2, cube size = " << tunedSize << " m" << "Expected frequencies: f_z = " << std::sqrt(K / tunedMass) / (2 * M_PI) << " Hz"
-        //           << " f_theta = " << std::sqrt(lambda / Iz) / (2 * M_PI) << " Hz, Spring mass: " << engine.getMass(m_bottom).col(0).row(0) * segments << " kg" << std::endl;
-
-        std::cout << "sizeX: " << sizeX << ", sizeY: " << sizeY << ", sizeZ: " << sizeZ << std::endl;
-
-        // m_bob = engine.addRigidBody(physics::CubeShape(Vector3r(tunedSize,tunedSize,tunedSize)),
-        // m_bob = engine.addRigidBody(physics::CubeShape(Vector3r(sizeX/2, sizeY/2, sizeZ/2)),
-        m_bob = engine.addRigidBody(physics::MeshShape("res/meshes/bob2.obj"),
-            // physics::RigidState(Vector3r(0,0,-tunedSize) + engine.getPosition(m_bottom).head<3>()),
-            // physics::RigidState(Vector3r(0,0,-sizeZ) + engine.getPosition(m_bottom).head<3>()),
-            physics::RigidState(Vector3r(0,0,-0.025 - static_cast<real_t>(turns) * pitch - wireDiameter), Vector3r(0, 0, 0)),
-            physics::RigidProps(tunedMass));
-
-        
+        m_bob = engine.addRigidBody(physics::MeshShape("res/meshes/bob2.obj"), physics::RigidState(Vector3r(0, 0, -0.025 - static_cast<real_t>(turns) * pitch - wireDiameter), Vector3r(0, 0, 0)),
+                                    physics::RigidProps(tunedMass));
 
         // Set inertia to match target Iz for cube
         engine.ecs().get<cardillo::C_InertiaDiag>(m_bob).I *= 0.75;
@@ -161,23 +90,14 @@ public:
         std::cout << "Bob inertia world frame:\n" << RotMat * Idiag.asDiagonal() * RotMat.transpose() << std::endl;
         std::cout << "Bob mass: " << engine.getMass(m_bob).col(0).row(0) << " kg" << std::endl;
 
-
         // Constraint the bob to only allow vertical and torsional motion
         // const real_t inf = std::numeric_limits<real_t>::infinity();
         // engine.addTranslationRotationConstraint(m_bob, m_top, physics::JointFrame{},
         //     Vector3r(inf, inf, 0), Vector3r::Zero(),
         //     Vector3r(inf, inf, 0), Vector3r::Zero());
-        
- 
-        // Pin bottom endpoint to bob using a rigid constraint
-        // engine.addRigidConstraint(m_bottom, m_bob, Vector3r::Zero(), Vector3r(0,0,tunedSize));
-        engine.addRigidConstraint(m_bottom, m_bob);
-        
-        // const real_t vz0 = 0.0; // m/s downward
-        // const real_t wz0 = 0.0;  // rad/s small spin around Z to couple torsion & vertical modes
 
-        // engine.setLinearVelocity(m_bob, Vector3r(0,0,vz0));
-        // engine.setAngularVelocity(m_bob, Vector3r(0,0,wz0));
+        // Pin bottom endpoint to bob using a rigid constraint
+        engine.addRigidConstraint(m_bottom, m_bob);
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override 
@@ -189,6 +109,7 @@ public:
             engine.setVelocityByForce(m_bob, Vector3r(0,0,vz0 * t / t0), Vector3r(0,0,0));
         }
 
+        // engine.setConstraintLinearVelocity(cube_constraint, Vector3r(0, 0, 0.5 * std::sin(t)));
     }
 
 private:
@@ -196,4 +117,5 @@ private:
     entt::entity m_bottom{entt::null};
     entt::entity m_bob{entt::null};
     bool m_reset{false};
+    index_t cube_constraint{-1};
 };

@@ -37,8 +37,12 @@ public:
         engine.disableCollisionBetween(bottomCube, w3);
         engine.disableCollisionBetween(bottomCube, w4);
 
-        auto& inf = Vector3r::Constant(std::numeric_limits<real_t>::infinity());
-        cube_constraint = engine.addTranslationRotationConstraint(entt::null, bottomCube, JointFrame(bottomCube), inf, inf, inf, inf);
+        // cube_constraint = engine.addRigidConstraint(bottomCube);
+
+        engine.addTrajectory(bottomCube, std::nullopt, std::make_optional<std::function<TrajectoryTwist(real_t)>>([=](real_t t) -> TrajectoryTwist {
+                                 double v = amplitude * std::sin(2 * M_PI * frequency * t);
+                                 return TrajectoryTwist{Vector3r(0, 0, v), Vector3r(5.0, 0, 0)};
+                             }));
 
         // Stack spheres above the bottom cube
         double z = bottomCubeHeight + sphereRadius;
@@ -50,8 +54,8 @@ public:
 
     void updateScene(PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         double v = amplitude * std::sin(2 * M_PI * frequency * t);
-        engine.setConstraintLinearVelocity(cube_constraint, Vector3r(0, 0, v));
-        engine.setConstraintAngularVelocity(cube_constraint, Vector3r(5.0, 0, 0));
+        // engine.setConstraintLinearVelocity(cube_constraint, Vector3r(0, 0, v));
+        // engine.setConstraintAngularVelocity(cube_constraint, Vector3r(5.0, 0, 0));
     }
 
 private:

@@ -127,6 +127,10 @@ class PhysicsEngine {
     void setLinearVelocity(entt::entity e, const Vector3r& v) { m_world->setLinearVelocity(e, v); }
     void setAngularVelocity(entt::entity e, const Vector3r& w) { m_world->setAngularVelocity(e, w); }
     void setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w) { m_world->setVelocityByForce(e, v, w); }
+    void addTrajectory(entt::entity e, std::optional<std::function<TrajectoryPose(real_t)>> positionFunc, std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc) {
+        m_world->setTrajectory(e, std::move(positionFunc), std::move(velocityFunc));
+    }
+    void removeTrajectory(entt::entity e) { m_world->removeTrajectory(e); }
 
     void setGravity(const Vector3r& g) { m_world->setGravity(g); }
     const Vector3r& gravity() const { return m_world->gravity(); }

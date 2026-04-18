@@ -9,30 +9,21 @@
 namespace cardillo::physics {
 
 namespace {
-// Build a 6-DoF W row for a rigid body side with sign s (+1 for B, -1 for A)
-static inline MatrixXXr buildWRowRigid(const Vector3r& n_world, const Vector3r& r_body, const Vector3r& n_body, real_t s) {
-    MatrixXXr w(1, 6);
-    w.setZero();
-    // Translational contribution: s * n
-    w(0, 0) = s * n_world.x();
-    w(0, 1) = s * n_world.y();
-    w(0, 2) = s * n_world.z();
-    // Rotational contribution in body frame: r_body x (s * n_body)
-    const Vector3r t_body = r_body.cross(s * n_body);
-    w(0, 3) = t_body.x();
-    w(0, 4) = t_body.y();
-    w(0, 5) = t_body.z();
-    return w;
-}
+static inline VectorXr buildContactRowByDof(int dof, const Vector3r& dir_world, const Vector3r& r_body, const Vector3r& dir_body, real_t s) {
+    VectorXr row = VectorXr::Zero(std::max(0, dof));
+    if (dof < 3) return row;
 
-// Build a 3-DoF W row for a point-mass side with sign s (+1 for B, -1 for A)
-static inline MatrixXXr buildWRowPoint(const Vector3r& n_world, real_t s) {
-    MatrixXXr w(1, 3);
-    w.setZero();
-    w(0, 0) = s * n_world.x();
-    w(0, 1) = s * n_world.y();
-    w(0, 2) = s * n_world.z();
-    return w;
+    row[0] = s * dir_world.x();
+    row[1] = s * dir_world.y();
+    row[2] = s * dir_world.z();
+
+    if (dof >= 6) {
+        const Vector3r t_body = r_body.cross(s * dir_body);
+        row[3] = t_body.x();
+        row[4] = t_body.y();
+        row[5] = t_body.z();
+    }
+    return row;
 }
 
 }  // anonymous namespace
@@ -258,6 +249,10 @@ void DynamicsAssembler::rebuildW_() {
     m_numFrictionalContacts = 0;
     m_numFrictionlessContacts = 0;
 
+    // Per-contact-row velocity contribution from static entities, using the same local Jacobian
+    // convention as W row assembly.
+    m_contact_v_vec = VectorXr::Zero((index_t)C_all * 3);
+
     for (bool frictionPass : {false, true}) {
         if (frictionPass && !frictionEnabled) break;
         for (int i = 0; i < C_all; ++i) {
@@ -268,31 +263,35 @@ void DynamicsAssembler::rebuildW_() {
                 if (!frictionPass && c.friction_mu > 0) continue;
             }
 
-            const bool aDyn = reg.any_of<cardillo::C_BodyIndex>(c.a);
-            const bool bDyn = reg.any_of<cardillo::C_BodyIndex>(c.b);
+            const bool aDyn = !RigidBody::isStatic(reg, c.a);
+            const bool bDyn = !RigidBody::isStatic(reg, c.b);
             // Skip static-static contacts
             if (!aDyn && !bDyn) continue;
 
-            auto emitDirForSide = [&](const Vector3r& dir_world, const Vector3r& r_body, const Vector3r& dir_body, entt::entity ent, bool dyn, real_t s, int rowId) {
-                if (!dyn) return;
-                const int b = reg.get<cardillo::C_BodyIndex>(ent).b;
-                if (b < 0 || b >= Nb) return;
-                const int col0 = m_body_vel_offsets[(size_t)b];
-                if (reg.any_of<cardillo::C_RigidBodyTag>(ent)) {
-                    MatrixXXr w = buildWRowRigid(dir_world, r_body, dir_body, s);
-                    // 6-DoF block
-                    for (int j = 0; j < w.cols(); ++j) {
-                        real_t val = w(0, j);
+            auto accumulateDirForSide = [&](const Vector3r& dir_world, const Vector3r& r_body, const Vector3r& dir_body, entt::entity ent, bool dyn, real_t s, int rowId) {
+                if (!reg.valid(ent)) return;
+
+                if (dyn) {
+                    if (!reg.any_of<cardillo::C_BodyIndex>(ent)) return;
+                    const int b = reg.get<cardillo::C_BodyIndex>(ent).b;
+                    if (b < 0 || b >= Nb) return;
+                    const int col0 = m_body_vel_offsets[(size_t)b];
+                    const int dof = m_body_vel_offsets[(size_t)b + 1] - col0;
+                    if (dof <= 0) return;
+
+                    const VectorXr row = buildContactRowByDof(dof, dir_world, r_body, dir_body, s);
+                    for (int j = 0; j < dof; ++j) {
+                        const real_t val = row[j];
                         if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
                     }
-                } else {
-                    MatrixXXr w = buildWRowPoint(dir_world, s);
-                    // 3-DoF block
-                    for (int j = 0; j < w.cols(); ++j) {
-                        real_t val = w(0, j);
-                        if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
-                    }
+                    return;
                 }
+
+                const VectorXr ve = m_world.getVelocity(ent);
+                const int dof = (int)ve.size();
+                if (dof <= 0) return;
+                const VectorXr row = buildContactRowByDof(dof, dir_world, r_body, dir_body, s);
+                m_contact_v_vec[rowId] += row.dot(ve);
             };
 
             // Row 0 for this contact: normal
@@ -300,20 +299,20 @@ void DynamicsAssembler::rebuildW_() {
             // record base index and default size for this contact
             c.impulse_base_index = rowN;
             c.impulse_size = 1;
-            emitDirForSide(c.normal, c.pointA_body, c.normalA_body, c.a, aDyn, (real_t)-1, rowN);
-            emitDirForSide(c.normal, c.pointB_body, c.normalB_body, c.b, bDyn, (real_t) + 1, rowN);
+            accumulateDirForSide(c.normal, c.pointA_body, c.normalA_body, c.a, aDyn, (real_t)-1, rowN);
+            accumulateDirForSide(c.normal, c.pointB_body, c.normalB_body, c.b, bDyn, (real_t) + 1, rowN);
             ++dynContactId;
 
             // Optional rows: two tangential directions if friction enabled and mu > 0
             if (frictionEnabled && c.friction_mu > (real_t)0) {
                 const int rowT1 = dynContactId;
-                emitDirForSide(c.tangent1, c.pointA_body, c.tangent1A_body, c.a, aDyn, (real_t)-1, rowT1);
-                emitDirForSide(c.tangent1, c.pointB_body, c.tangent1B_body, c.b, bDyn, (real_t) + 1, rowT1);
+                accumulateDirForSide(c.tangent1, c.pointA_body, c.tangent1A_body, c.a, aDyn, (real_t)-1, rowT1);
+                accumulateDirForSide(c.tangent1, c.pointB_body, c.tangent1B_body, c.b, bDyn, (real_t) + 1, rowT1);
                 ++dynContactId;
 
                 const int rowT2 = dynContactId;
-                emitDirForSide(c.tangent2, c.pointA_body, c.tangent2A_body, c.a, aDyn, (real_t)-1, rowT2);
-                emitDirForSide(c.tangent2, c.pointB_body, c.tangent2B_body, c.b, bDyn, (real_t) + 1, rowT2);
+                accumulateDirForSide(c.tangent2, c.pointA_body, c.tangent2A_body, c.a, aDyn, (real_t)-1, rowT2);
+                accumulateDirForSide(c.tangent2, c.pointB_body, c.tangent2B_body, c.b, bDyn, (real_t) + 1, rowT2);
                 ++dynContactId;
                 // update impulse_size to include tangential rows
                 c.impulse_size = 3;
@@ -329,6 +328,7 @@ void DynamicsAssembler::rebuildW_() {
     const int C_dyn = dynContactId;
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     m_W = TripletMatrix(C_dyn, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(trips)));
+    m_contact_v_vec.conservativeResize((index_t)C_dyn);
 }
 
 void DynamicsAssembler::setContactLastImpulse(int global_out_index, const cardillo::Vector3r& imp) {
@@ -363,9 +363,9 @@ void DynamicsAssembler::rebuildInteractionW_() {
 
     // Emit a single 1xN row into W triplets without temporaries
     auto emitRowRef = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const Eigen::Ref<const Eigen::Matrix<real_t, Eigen::Dynamic, 1>>& col) {
-        if (!reg.any_of<cardillo::C_BodyIndex>(ent)) return;
+        if (!reg.any_of<cardillo::C_BodyIndex>(ent)) return false;
         int b = reg.get<cardillo::C_BodyIndex>(ent).b;
-        if (b < 0 || b >= (int)m_body_vel_offsets.size() - 1) return;
+        if (b < 0 || b >= (int)m_body_vel_offsets.size() - 1) return false;
         int row0 = m_body_vel_offsets[(size_t)b];
         int nV = m_body_vel_offsets[(size_t)b + 1] - row0;
         int rows = (int)col.rows();
@@ -374,37 +374,55 @@ void DynamicsAssembler::rebuildInteractionW_() {
             real_t v = col(j);
             if (v != (real_t)0) trg.emplace_back(rowIndex, row0 + j, v);
         }
+        return true;
     };
 
     // 1) New constraint patterns (support multi-row constraints)
     const auto& patterns = m_world.constraintPatterns();
     for (const auto& uptr : patterns) {
         if (!uptr) continue;
-        auto crN = uptr->getConstraint();
-        auto vel = uptr->getSource();
+        auto constraint = uptr->getConstraint();
+        const auto velSrc = uptr->getSource();
+        auto velSpring = velSrc;
+        auto velDamper = velSrc;
+        const int nrows = (int)constraint.Crows.size();
 
-        const int nrows = (int)crN.Crows.size();
+        bool addA = !RigidBody::isStatic(reg, constraint.a);
+        bool addB = !RigidBody::isStatic(reg, constraint.b);
+
+        if (!addA && !addB) continue;
+        if (!addA) {
+            const VectorXr vA = m_world.getVelocity(constraint.a);
+            velSpring -= constraint.WgA.transpose() * vA;
+            velDamper -= constraint.WgammaA.transpose() * vA;
+        }
+        if (!addB) {
+            const VectorXr vB = m_world.getVelocity(constraint.b);
+            velSpring -= constraint.WgB.transpose() * vB;
+            velDamper -= constraint.WgammaB.transpose() * vB;
+        }
+
         // Spring rows
         for (int i = 0; i < nrows; ++i) {
-            const real_t Ci = crN.Crows[i];
+            const real_t Ci = constraint.Crows[i];
             if (Ci < 1 / EPS_C) {
                 Crows.push_back(Ci);
-                C_vel.push_back(vel[i]);
+                C_vel.push_back(velSpring[i]);
                 const int row = springRowCounter++;
-                if (i < crN.WgA.cols()) emitRowRef(tripsWg, row, crN.a, crN.WgA.col(i));
-                if (i < crN.WgB.cols()) emitRowRef(tripsWg, row, crN.b, crN.WgB.col(i));
+                if (addA && i < constraint.WgA.cols()) emitRowRef(tripsWg, row, constraint.a, constraint.WgA.col(i));
+                if (addB && i < constraint.WgB.cols()) emitRowRef(tripsWg, row, constraint.b, constraint.WgB.col(i));
             }
         }
         // Damper rows
-        const int ndamp = (int)crN.Arows.size();
+        const int ndamp = (int)constraint.Arows.size();
         for (int i = 0; i < ndamp; ++i) {
-            const real_t Ai = crN.Arows[i];
+            const real_t Ai = constraint.Arows[i];
             if (Ai < 1 / EPS_A) {
                 Arows.push_back(Ai);
-                A_vel.push_back(vel[i]);
+                A_vel.push_back(velDamper[i]);
                 const int row = damperRowCounter++;
-                if (i < crN.WgammaA.cols()) emitRowRef(tripsWgamma, row, crN.a, crN.WgammaA.col(i));
-                if (i < crN.WgammaB.cols()) emitRowRef(tripsWgamma, row, crN.b, crN.WgammaB.col(i));
+                if (addA && i < constraint.WgammaA.cols()) emitRowRef(tripsWgamma, row, constraint.a, constraint.WgammaA.col(i));
+                if (addB && i < constraint.WgammaB.cols()) emitRowRef(tripsWgamma, row, constraint.b, constraint.WgammaB.col(i));
             }
         }
     }
@@ -477,10 +495,10 @@ void DynamicsAssembler::refreshState() {
     }
 }
 
-void DynamicsAssembler::updateStateDependentTerms() {
+void DynamicsAssembler::updateStateDependentTerms(real_t dt) {
     {
         auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::UpdateEntities);
-        DerivedEntitySync::updateEntities(m_world);
+        DerivedEntitySync::updateEntities(m_world, dt);
     }
     updateContactsFromSystem();
     rebuildW_();

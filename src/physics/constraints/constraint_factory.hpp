@@ -18,10 +18,11 @@ class ConstraintFactory {
     }
 
     static size_t addRigidConstraint(World& world, entt::entity a, entt::entity b) {
-        const JointFrame frame(world.ecs().get<cardillo::C_Position3>(a).value);
+        const auto aState = RigidBody::getState(world.ecs(), a);
+        const JointFrame frame(aState.position, Matrix33r::Identity());
         const Vector3r K_trans = Vector3r::Constant(std::numeric_limits<real_t>::infinity());
         const Vector3r K_rot = Vector3r::Constant(std::numeric_limits<real_t>::infinity());
-        return insertPattern(world, std::unique_ptr<ConstraintPattern>(new TranslationRotationConstraint(world.ecs(), a, b, frame, K_trans, Vector3r::Zero(), K_rot, Vector3r::Zero())));
+        return insertPattern(world, std::unique_ptr<ConstraintPattern>(new TranslationRotationConstraint(world.ecs(), b, a, frame, K_trans, Vector3r::Zero(), K_rot, Vector3r::Zero())));
     }
 
     static size_t addTranslationRotationConstraint(World& world, entt::entity a, entt::entity b, const JointFrame& frame,

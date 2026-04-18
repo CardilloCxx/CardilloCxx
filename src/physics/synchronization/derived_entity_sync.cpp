@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "../../rigid_body/rigid_body.hpp"
+#include "trajectory.hpp"
 
 namespace cardillo {
 namespace physics {
@@ -134,8 +135,10 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
     }
 }
 
-void DerivedEntitySync::updateEntities(World& world) {
-        auto& reg = world.ecs();
+void DerivedEntitySync::updateEntities(World& world, real_t dt) {
+    auto& reg = world.ecs();
+
+    Trajectory::update(world, dt);
 
     // Centralized rigid-state refresh for this step.
     auto poseView = reg.view<const cardillo::C_Position3>();
@@ -148,7 +151,7 @@ void DerivedEntitySync::updateEntities(World& world) {
         (void)be;
         (void)pos;
         updateBeamElementEntity(world, e);
-        }
+    }
 }
 
 }  // namespace physics
