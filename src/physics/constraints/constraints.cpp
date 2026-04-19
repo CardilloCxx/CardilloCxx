@@ -172,9 +172,18 @@ VectorXr TranslationRotationConstraint::getPositionError(Vector3r g, ConstraintR
 // ===================== BeamConstraint =====================
 BeamConstraint::BeamConstraint(entt::registry& reg, entt::entity a, entt::entity b, const cardillo::physics::BeamSpringParams& springs, const cardillo::physics::BeamCrossSection& section)
     : ConstraintPattern(reg, a, b, 6), m_springs(springs), m_section(section) {
-    const auto res = getConstraint();
-    m_gamma0 = res.positionError.head<3>();
-    m_kappa0 = res.positionError.tail<3>();
+    const auto wa = computeAttachments_();
+    const Quaternion4r qMidQ(0.5 * (wa.qA.coeffs() + wa.qB.coeffs()));  // 0.5*(qA + qB)
+    const Matrix33r A_mid = qMidQ.normalized().toRotationMatrix();
+    m_gamma0 = A_mid.transpose() * (wa.xB - wa.xA);  // axial + shear strain
+
+    const Vector4r dQ = wa.qB.coeffs() - wa.qA.coeffs();
+    const real_t factor = (real_t)2.0 / qMidQ.coeffs().squaredNorm();
+    const real_t Qmid_w = qMidQ.coeffs()(3);
+    const Vector3r Qmid_q = qMidQ.coeffs().head<3>();
+    m_kappa0 = factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
+
+    l_0 = m_gamma0.norm();
 }
 
 ConstraintResult BeamConstraint::getConstraint() const {
@@ -232,5 +241,6 @@ ConstraintResult BeamConstraint::getConstraint() const {
 
     return out;
 }
+
 }  // namespace physics
 }  // namespace cardillo

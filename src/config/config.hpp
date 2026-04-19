@@ -68,7 +68,7 @@ struct Config {
     bool pj_rdiag_true_delassus{false};                // pj.rdiag_true_delassus
     std::string pj_convergence_csv_dir{""};            // pj.convergence_csv_dir (empty to disable)
 
-    real_t constraint_bias_factor{(real_t)0};  // constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)
+    real_t constraint_bias_factor{(real_t)0.005};  // constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)
 
     // Interior-point solver settings shared across QOCO and Clarabel
     std::string qoco_backend{"auto"};         // qoco.backend [auto, cpu, cuda]
