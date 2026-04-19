@@ -87,7 +87,7 @@ QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
     auto bBot = -((1.0 - theta) / theta) * (m_dyn->Wgamma().asSparse() * m_dyn->vVec()) + m_dyn->A_v_vec();
 
     auto beta = m_dyn->system().config().constraint_bias_factor;
-    if (beta > 0) bTop.noalias() -= (m_dyn->Cdiag().cwiseProduct(Lambda_g) + m_dyn->g_error_vec()) * (beta / dt);
+    if (beta > 0) bTop.noalias() -= (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()) * (beta / dt);
 
     m_b_cache.resize(bTop.size() + bBot.size());
     m_b_cache << bTop, bBot;

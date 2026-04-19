@@ -160,6 +160,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         segLocal.rotation = qlocal.toRotationMatrix();
 
         RigidState segState = cardillo::transform::rigidState(segLocal, stateDefaults, inertial);
+        segState.position += splineCOMWorld;
         const entt::entity cur = BodyFactory::addRigidBody(sys, shape, segState, segProps);
 
         cardillo::C_BeamElement be_cur;

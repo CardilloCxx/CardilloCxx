@@ -26,12 +26,13 @@ public:
 
         entt::entity top_step = entt::null;
         for (int i = 0; i < steps; ++i) {
-            real_t z = stairOrigin.z() + (real_t)i * rise;
+            real_t z = stairOrigin.z() + (real_t)i * rise * 1.2;
             real_t x = stairOrigin.x() + (real_t)i * run;
             Vector3r halfExtents(run * (real_t)0.5, width * (real_t)0.5, thickness * (real_t)0.5);
             Vector3r pos(x + halfExtents.x(), 0, z - thickness * (real_t)0.5);
             top_step = engine.addStaticBody(physics::CubeShape(halfExtents), physics::RigidState(pos));
-            engine.addStaticBody(physics::SphereShape(thickness * (real_t)0.9), physics::RigidState(pos + Vector3r(0, 0, halfExtents.z())));
+            // engine.addStaticBody(physics::SphereShape(thickness * (real_t)0.9), physics::RigidState(pos + Vector3r(0, 0, halfExtents.z())));
+            engine.addStaticBody(physics::ConeShape(thickness * 0.9, thickness * 1.5), physics::RigidState(pos + Vector3r(0, 0, thickness * 0.75 + halfExtents.z())));
         }
 
         // Slinky parameters (plastic-like)

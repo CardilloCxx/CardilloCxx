@@ -28,7 +28,7 @@ struct ConstraintResult {
     VectorXr Crows;  // size N (compliances per spring row)
     VectorXr Arows;  // size N (compliances per damper row)
 
-    VectorXr positionError{VectorXr::Zero(6)};
+    VectorXr positionError;
 };
 
 // Reference for a joint frame: position/orientation expressed in a frame entity

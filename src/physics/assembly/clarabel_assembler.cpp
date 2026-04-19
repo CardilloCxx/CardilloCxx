@@ -56,7 +56,7 @@ VectorXr& ClarabelAssembler::b(real_t dt, real_t theta) {
     VectorXr b_contact = Smu.cwiseProduct(m_dyn->contactVVec());
 
     auto beta = m_dyn->system().config().constraint_bias_factor;
-    if (beta > 0) b_top.noalias() -= (m_dyn->Cdiag().cwiseProduct(lambda_g) + m_dyn->g_error_vec()) * (beta / dt);
+    if (beta > 0) b_top.noalias() -= (-m_dyn->Cdiag().cwiseProduct(lambda_g) / dt + m_dyn->g_error_vec()) * (beta / dt);
 
     m_b_cache.resize(b_top.size() + b_mid.size() + b_contact.size());
     m_b_cache << b_top, b_mid, b_contact;

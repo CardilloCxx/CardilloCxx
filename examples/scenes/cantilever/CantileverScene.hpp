@@ -50,9 +50,18 @@ public:
         physics::RigidProps props = physics::RigidProps::withDensity(rho);
 
         auto beam_ends = engine.createBeam(spline, section, springs, stateDefaults, props, segments);
-        m_beamLeftEnd = beam_ends.first;
-        m_beamRightEnd = beam_ends.second;
-        engine.makeStatic(m_beamLeftEnd);
+        m_beamRightEnd1 = beam_ends.second;
+        engine.makeStatic(beam_ends.first);
+
+        stateDefaults.position += 0.1 * Vector3r::UnitY();  // small offset to avoid initial self-collision
+        beam_ends = engine.createBeam(spline, section, springs, stateDefaults, props, segments * 2);
+        m_beamRightEnd2 = beam_ends.second;
+        engine.makeStatic(beam_ends.first);
+
+        stateDefaults.position += 0.1 * Vector3r::UnitY();  // small offset to avoid initial self-collision
+        beam_ends = engine.createBeam(spline, section, springs, stateDefaults, props, segments * 4);
+        m_beamRightEnd3 = beam_ends.second;
+        engine.makeStatic(beam_ends.first);
 
         m_Kf = springs.Kf(L / segments, section);
         m_L = L;
@@ -66,26 +75,26 @@ public:
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        if (m_beamRightEnd != entt::null) {
-            real_t t1 = 5.0;
-            if (t < t1) {
-                // engine.applyForce(m_beamRightEnd, Vector3r(-0.5 * std::max(t1, t), -0.5 * std::max(t1, t), 1.5 * std::max(t1, t)), Vector3r::Zero());
-                Vector3r force(0.0, -0.1 * t / t1, 0.0);
-                Vector3r moment(0.0, -2 * M_PI * m_Kf(1) * m_L / m_segments / m_L * t / t1 / 2, 0.0);
-                engine.applyForce(m_beamRightEnd, force, moment);
-                // engine.applyForce(m_beamRightEnd, Vector3r(0, -0.5 * std::max(t1, t), 0), Vector3r(0, -1.0 * std::max(t1, t), 0));
-                // engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(-1.0 * std::max(t1, t), 0, 0));
-                // engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, -1.0 * std::max(t1, t), 0));
-                // engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, 0, -1.0 * std::max(t1, t)));
-            } else
-                engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r::Zero());
+        real_t t1 = 5.0;
+        if (t < t1) {
+            // engine.applyForce(m_beamRightEnd, Vector3r(-0.5 * std::max(t1, t), -0.5 * std::max(t1, t), 1.5 * std::max(t1, t)), Vector3r::Zero());
+            Vector3r force(0.0, -0.1 * t / t1, 0.0);
+            Vector3r moment(0.0, -2 * M_PI * m_Kf(1) * m_L / m_segments / m_L * t / t1 / 2, 0.0);
+            engine.applyForce(m_beamRightEnd1, force, moment);
+            engine.applyForce(m_beamRightEnd2, force, moment);
+            engine.applyForce(m_beamRightEnd3, force, moment);
+            // engine.applyForce(m_beamRightEnd, Vector3r(0, -0.5 * std::max(t1, t), 0), Vector3r(0, -1.0 * std::max(t1, t), 0));
+            // engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(-1.0 * std::max(t1, t), 0, 0));
+            // engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, -1.0 * std::max(t1, t), 0));
+            // engine.applyForce(m_beamRightEnd, Vector3r::Zero(), Vector3r(0, 0, -1.0 * std::max(t1, t)));
         }
     }
 
     private:
-        entt::entity m_beamLeftEnd{entt::null};
-        entt::entity m_beamRightEnd{entt::null};
-        Vector3r m_Kf{Vector3r::Zero()};
-        real_t m_L{0.0};
-        size_t m_segments{0};
+     entt::entity m_beamRightEnd1{entt::null};
+     entt::entity m_beamRightEnd2{entt::null};
+     entt::entity m_beamRightEnd3{entt::null};
+     Vector3r m_Kf{Vector3r::Zero()};
+     real_t m_L{0.0};
+     size_t m_segments{0};
 };
