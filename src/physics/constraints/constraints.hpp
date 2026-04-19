@@ -27,6 +27,8 @@ struct ConstraintResult {
     MatrixXXr WgammaB;
     VectorXr Crows;  // size N (compliances per spring row)
     VectorXr Arows;  // size N (compliances per damper row)
+
+    VectorXr positionError;  // size N
 };
 
 // Reference for a joint frame: position/orientation expressed in a frame entity
@@ -161,6 +163,8 @@ class LinearDistanceConstraint : public ConstraintPattern {
         : ConstraintPattern(reg, a, b, 1), m_k(stiffness), m_d(damping) {
         m_rA_local = rA_local;
         m_rB_local = rB_local;
+        WorldAttachments wa = computeAttachments_();
+        L0 = (wa.xB - wa.xA).norm();
     }
 
     ConstraintResult getConstraint() const override;
@@ -168,6 +172,7 @@ class LinearDistanceConstraint : public ConstraintPattern {
     void setScalarVelocity(real_t v) override { scalarVelocity = v; }
 
    private:
+    real_t L0{(real_t)0};  // rest length
     real_t scalarVelocity = (real_t)0;
     real_t m_k{(real_t)0};
     real_t m_d{(real_t)0};
@@ -204,8 +209,11 @@ class TranslationRotationConstraint : public ConstraintPattern {
     Vector3r m_translational_velocity{Vector3r::Zero()};
     Vector3r m_angular_velocity{Vector3r::Zero()};
 
+    VectorXr getPositionError(Vector3r g, ConstraintResult res) const;
+    VectorXr m_g0{VectorXr::Zero(6)};
+
     // Build full 6x6 Jacobians for a rigid joint using world attachments.
-    void buildJointJacobian(const WorldAttachments& wa, MatrixXXr& WgA, MatrixXXr& WgB) const;
+    void buildJointJacobian(const WorldAttachments& wa, Vector3r g, MatrixXXr& WgA, MatrixXXr& WgB) const;
 };
 
 // Beam constraint (6 scalar rows): stretch/shear (x,y,z) and torsion/bend (x,y,z)
@@ -221,7 +229,7 @@ class BeamConstraint : public ConstraintPattern {
    private:
     cardillo::physics::BeamSpringParams m_springs{};
     cardillo::physics::BeamCrossSection m_section{};
-    Vector3r m_delta0{Vector3r::Zero()};
+    Vector3r m_gamma0{Vector3r::Zero()};
     Vector3r m_kappa0{Vector3r::Zero()};
     real_t l_0{0};
 };

@@ -148,6 +148,12 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.ip_iter_ref_iters = std::max(0, std::stoi(val));
             } catch (...) {
             }
+        } else if (key == "solver.constraint_bias_factor" || key == "constraint_bias_factor" || key == "baumgarte_bias_factor" || key == "baumgarte_bias" || key == "baumgarte_factor" ||
+                   key == "constraint_bias") {
+            try {
+                cfg.constraint_bias_factor = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
         } else if (key == "moreau.theta" || key == "solver.theta") {
             try {
                 cfg.moreau_theta = static_cast<real_t>(std::stod(val));

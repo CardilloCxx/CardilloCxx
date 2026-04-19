@@ -7,8 +7,10 @@
 #include "../../misc/triplet_matrix.hpp"
 #include "../../misc/types.hpp"
 
-namespace cardillo::physics {
+namespace cardillo {
 class World;
+}
+namespace cardillo::physics {
 class DynamicsAssembler;
 }  // namespace cardillo::physics
 

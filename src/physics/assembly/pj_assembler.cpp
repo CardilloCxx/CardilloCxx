@@ -132,6 +132,9 @@ VectorXr PjAssembler::rhs(real_t dt, real_t theta) const {
     if (nDampers > 0)
         rhs.segment(totalV + nSprings, nDampers) = -((1.0 - theta) / theta) * (Wgamma * vn) + A_v_vec;
 
+    auto beta = m_dyn->system().config().constraint_bias_factor;
+    if (beta > 0) rhs.segment(0, totalV).noalias() -= (m_dyn->Cdiag().cwiseProduct(Lambda_g) + m_dyn->g_error_vec()) * (beta / dt);
+
     return rhs;
 }
 

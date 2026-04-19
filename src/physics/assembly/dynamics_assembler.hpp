@@ -78,6 +78,7 @@ class DynamicsAssembler {
     const VectorXr& Adiag() const { return m_Adiag; }
     const VectorXr& C_v_vec() const { return m_C_v_vec; }
     const VectorXr& A_v_vec() const { return m_A_v_vec; }
+    const VectorXr& g_error_vec() const { return m_g_error_vec; }
 
     // Counts
     // Number of spring rows (rows in m_Wg / length of m_Cdiag)
@@ -141,6 +142,7 @@ class DynamicsAssembler {
     VectorXr m_Adiag;  // Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)
     VectorXr m_C_v_vec;  // spring velocity source
     VectorXr m_A_v_vec;  // damper velocity source
+    VectorXr m_g_error_vec;  // spring position error source (size = numSprings)
 
     // Store Lagrange multipliers (they are being integrated)
     VectorXr m_Lambda_g;
