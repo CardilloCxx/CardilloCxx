@@ -424,6 +424,8 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
             ea = m_entities[iA];
             eb = m_entities[iB];
+
+            if (RigidBody::isStatic(reg, ea) && RigidBody::isStatic(reg, eb)) continue;
             if (isPairDisabled(ea, eb)) continue;
 
             cres.clear();

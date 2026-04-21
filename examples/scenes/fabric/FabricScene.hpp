@@ -114,7 +114,7 @@ public:
         physics::RigidProps props = physics::RigidProps::withDensity(density);
         auto rot = Quaternion4r(Eigen::AngleAxis<real_t>((real_t)M_PI_2 / 6.0, Vector3r::UnitX()));
 
-        physics::RigidState stateDefaults(offset, Vector3r(0, 0, 0), rot, Vector3r(0, 0, 10));
+        physics::RigidState stateDefaults(offset, Vector3r(0, 0, 0), rot, Vector3r(0, 0, 5));
 
         const float totalLength = std::accumulate(splines.begin(), splines.end(), 0.0f,
                                               [](float sum, const std::shared_ptr<SplinePattern>& sp) {

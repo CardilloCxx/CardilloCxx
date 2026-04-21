@@ -41,11 +41,14 @@
 // #include "scenes/pendulum/PendulumScene.hpp"
 #include "scenes/cantilever/CantileverScene.hpp"
 #include "scenes/constraintTest/ConstraintTestScene.hpp"
+#include "scenes/conveyor/ConveyorScene.hpp"
 #include "scenes/double_pendulum/DoublePendulumScene.hpp"
 #include "scenes/fabric/FabricScene.hpp"
 #include "scenes/heightmap/HeightmapScene.hpp"
 #include "scenes/leaningTower/LeaningTowerScene.hpp"
 #include "scenes/sphere_packing/SpherePackingScene.hpp"
+#include "scenes/stringTest/StringTestScene.hpp"
+#include "scenes/table/TableScene.hpp"
 #include "scenes/tube/TubeScene.hpp"
 
 using namespace cardillo;
@@ -104,6 +107,9 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<DoublePendulumScene>());
     scenes.emplace_back(std::make_unique<SpherePackingScene>());
     scenes.emplace_back(std::make_unique<TubeScene>());
+    scenes.emplace_back(std::make_unique<StringTestScene>());
+    scenes.emplace_back(std::make_unique<TableScene>());
+    scenes.emplace_back(std::make_unique<ConveyorScene>());
 
     SceneBase* selected = nullptr;
     for (auto& s : scenes) {

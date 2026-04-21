@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     # Clip time window for plotting
     start_time = 0.3
-    end_time = 8.0
+    end_time = 30.0
     mask = (t >= start_time) & (t <= end_time)
     if not np.any(mask):
         print(f"Warning: no data in [{start_time}, {end_time}]s — plotting full range")
