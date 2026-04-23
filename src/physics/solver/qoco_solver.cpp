@@ -133,7 +133,7 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
     settings->reltol = m_cfg.pj_tol_rel;
     settings->kkt_static_reg = m_cfg.ip_kkt_static_reg;
     settings->kkt_dynamic_reg = m_cfg.ip_kkt_dynamic_reg;
-    settings->iter_ref_iters = m_cfg.ip_iter_ref_iters;
+    // settings->iter_ref_iters = m_cfg.ip_iter_ref_iters;
     settings->max_iters = m_cfg.pj_max_iterations;
 
     if (first_init) {

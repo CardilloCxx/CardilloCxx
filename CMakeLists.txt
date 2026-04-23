@@ -227,8 +227,8 @@ endif()
 
 ExternalProject_Add(qoco_project_cpu
     GIT_REPOSITORY https://github.com/qoco-org/qoco.git
-    # GIT_REPOSITORY https://github.com/41pha1/qoco.git
-    GIT_TAG v0.2.6
+    # GIT_TAG gc/qoco-robustness
+    GIT_TAG v0.2.7
     PREFIX ${CMAKE_BINARY_DIR}/_deps/qoco-cpu
     GIT_SHALLOW TRUE
     UPDATE_DISCONNECTED TRUE
@@ -238,8 +238,8 @@ ExternalProject_Add(qoco_project_cpu
 if(QOCO_HAVE_CUDA_BACKEND)
     ExternalProject_Add(qoco_project_cuda
         GIT_REPOSITORY https://github.com/qoco-org/qoco.git
-        # GIT_REPOSITORY https://github.com/41pha1/qoco.git
-        GIT_TAG v0.2.6
+        # GIT_TAG gc/qoco-robustness
+        GIT_TAG v0.2.7
         PREFIX ${CMAKE_BINARY_DIR}/_deps/qoco-cuda
         GIT_SHALLOW TRUE
         UPDATE_DISCONNECTED TRUE

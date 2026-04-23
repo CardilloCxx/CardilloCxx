@@ -103,8 +103,8 @@ public:
 
         // String material properties
         const real_t diameter = (real_t)0.00175; // m
-        const real_t density  = (real_t)800.0; // kg/m^3 
-        const real_t E        = (real_t)5e6;    // Pa
+        const real_t density  = (real_t)800.0; // kg/m^3
+        const real_t E = (real_t)5e5;          // Pa
         const real_t nu       = (real_t)0.40;
 
         physics::BeamCrossSection section(diameter, diameter, physics::BeamBodyType::Capsule);

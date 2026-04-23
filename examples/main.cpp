@@ -39,6 +39,7 @@
 #include "scenes/strandbeest/StrandbeestScene.hpp"
 // #include "scenes/gears/GearsScene.hpp"         
 // #include "scenes/pendulum/PendulumScene.hpp"
+#include "scenes/3DPrinter/ThreeDPrinterScene.hpp"
 #include "scenes/cantilever/CantileverScene.hpp"
 #include "scenes/constraintTest/ConstraintTestScene.hpp"
 #include "scenes/conveyor/ConveyorScene.hpp"
@@ -110,6 +111,7 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<StringTestScene>());
     scenes.emplace_back(std::make_unique<TableScene>());
     scenes.emplace_back(std::make_unique<ConveyorScene>());
+    scenes.emplace_back(std::make_unique<ThreeDPrinterScene>());
 
     SceneBase* selected = nullptr;
     for (auto& s : scenes) {

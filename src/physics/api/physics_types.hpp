@@ -166,6 +166,10 @@ struct BeamSpringParams {
     Vector3r scaleKf{Vector3r::Ones()};
     std::optional<Vector3r> Ke_direct;
     std::optional<Vector3r> Kf_direct;
+    // Optional rest-shape terms for BeamConstraint. If unset, they are
+    // initialized from the current relative pose at constraint creation time.
+    std::optional<Vector3r> gamma0;
+    std::optional<Vector3r> kappa0;
     real_t dampingFactor = 0.0;
 
     BeamSpringParams() = default;

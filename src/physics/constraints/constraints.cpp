@@ -165,7 +165,8 @@ VectorXr TranslationRotationConstraint::getPositionError(Vector3r g, ConstraintR
     VectorXr posErr(6);
     posErr.head<3>() = g;
     const auto R = -(res.WgA.block<3, 3>(3, 3)).transpose() * res.WgB.block<3, 3>(3, 3);
-    posErr.tail<3>() = Vector3r(R(2, 1) - R(1, 2), R(0, 2) - R(2, 0), R(1, 0) - R(0, 1)) * (real_t)0.5;
+    // posErr.tail<3>() = Vector3r(R(2, 1) - R(1, 2), R(0, 2) - R(2, 0), R(1, 0) - R(0, 1)) * (real_t)0.5;
+    posErr.tail<3>() = Vector3r::Zero();
     return posErr - m_g0;
 }
 
@@ -175,15 +176,21 @@ BeamConstraint::BeamConstraint(entt::registry& reg, entt::entity a, entt::entity
     const auto wa = computeAttachments_();
     const Quaternion4r qMidQ(0.5 * (wa.qA.coeffs() + wa.qB.coeffs()));  // 0.5*(qA + qB)
     const Matrix33r A_mid = qMidQ.normalized().toRotationMatrix();
-    m_gamma0 = A_mid.transpose() * (wa.xB - wa.xA);  // axial + shear strain
+    const Vector3r gammaGeom = A_mid.transpose() * (wa.xB - wa.xA);  // axial + shear term from current pose
+    m_gamma0 = m_springs.gamma0.value_or(gammaGeom);
+
+    if (m_springs.gamma0) m_gamma0.x() = gammaGeom.x() + m_springs.gamma0->x();
 
     const Vector4r dQ = wa.qB.coeffs() - wa.qA.coeffs();
     const real_t factor = (real_t)2.0 / qMidQ.coeffs().squaredNorm();
     const real_t Qmid_w = qMidQ.coeffs()(3);
     const Vector3r Qmid_q = qMidQ.coeffs().head<3>();
-    m_kappa0 = factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
+    const Vector3r kappaGeom = factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
+    m_kappa0 = m_springs.kappa0.value_or(kappaGeom);
 
-    l_0 = m_gamma0.norm();
+    // Keep constitutive segment length tied to the geometric initialization to
+    // avoid singular stiffness when user-provided gamma0 is near zero.
+    l_0 = gammaGeom.norm();
 }
 
 ConstraintResult BeamConstraint::getConstraint() const {

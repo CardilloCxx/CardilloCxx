@@ -21,6 +21,43 @@ struct BeamSample {
     real_t segLen;
 };
 
+void appendSplineSamples(const misc::SplinePattern& spline, size_t segments, std::vector<BeamSample>& outSamples) {
+    if (segments == 0) return;
+
+    const real_t minSegLen = (real_t)1e-8;
+    const size_t segCount = segments;
+
+    for (size_t i = 0; i < segCount; ++i) {
+        real_t alpha0 = (real_t)i / (real_t)segCount;
+        real_t alpha1 = (real_t)(i + 1) / (real_t)segCount;
+        if (spline.isLoop() && i + 1 == segCount) alpha1 = (real_t)0;
+
+        const misc::SplineSample si0 = spline.sample(alpha0);
+        const misc::SplineSample si1 = spline.sample(alpha1);
+        const real_t localSegLen = (si1.position - si0.position).norm();
+        if (localSegLen <= minSegLen) continue;
+
+        const Vector3r midPos = (si0.position + si1.position) * (real_t)0.5;
+        const Vector3r midTangent = (si1.position - si0.position) / localSegLen;
+
+        Vector3r midNormal = si0.normal + si1.normal;
+        if (midNormal.allFinite() && midNormal.squaredNorm() > minSegLen * minSegLen) {
+            midNormal.normalize();
+        } else {
+            midNormal = Vector3r::Zero();
+        }
+
+        Vector3r midBinormal = si0.binormal + si1.binormal;
+        if (midBinormal.allFinite() && midBinormal.squaredNorm() > minSegLen * minSegLen) {
+            midBinormal.normalize();
+        } else {
+            midBinormal = Vector3r::Zero();
+        }
+
+        outSamples.push_back(BeamSample{midPos, midTangent, midNormal, midBinormal, localSegLen});
+    }
+}
+
 Matrix33r makeFrameFromTangentLocal(const Vector3r& tangent) {
     Vector3r T = tangent.normalized();
     Vector3r up = std::abs(T.z()) < (real_t)0.9 ? Vector3r(0, 0, 1) : Vector3r(0, 1, 0);
@@ -208,49 +245,10 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
 
 std::pair<entt::entity, entt::entity> BeamFactory::createBeam(World& system, const misc::SplinePattern& spline, const BeamCrossSection& section, const BeamSpringParams& springs,
                                                               const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments, cardillo::collision::CollisionCoal* collision_mgr) {
-    const real_t totalLen = spline.totalLength();
-    const real_t segLen = totalLen / (real_t)segments;
-    const bool endsOnSpline = true;
-
     std::vector<BeamSample> samples;
     samples.reserve(segments);
 
-    if (endsOnSpline) {
-        const real_t minSegLen = (real_t)1e-8;
-        const size_t segCount = segments;
-        for (size_t i = 0; i < segCount; ++i) {
-            real_t alpha0 = (real_t)i / (real_t)segments;
-            real_t alpha1 = (real_t)(i + 1) / (real_t)segments;
-            if (spline.isLoop() && i + 1 == segCount) alpha1 = (real_t)0;
-
-            const misc::SplineSample si0 = spline.sample(alpha0);
-            const misc::SplineSample si1 = spline.sample(alpha1);
-            const Vector3r midPos = (si0.position + si1.position) * (real_t)0.5;
-            const real_t local_segLen = (si1.position - si0.position).norm();
-            if (local_segLen <= minSegLen) continue;
-
-            const Vector3r midTangent = (si1.position - si0.position) / local_segLen;
-            Vector3r midNormal = si0.normal + si1.normal;
-            Vector3r midBinormal = si0.binormal + si1.binormal;
-            if (midNormal.allFinite() && midNormal.squaredNorm() > minSegLen * minSegLen) {
-                midNormal.normalize();
-            } else {
-                midNormal = Vector3r::Zero();
-            }
-            if (midBinormal.allFinite() && midBinormal.squaredNorm() > minSegLen * minSegLen) {
-                midBinormal.normalize();
-            } else {
-                midBinormal = Vector3r::Zero();
-            }
-            samples.push_back(BeamSample{midPos, midTangent, midNormal, midBinormal, local_segLen});
-        }
-    } else {
-        for (size_t i = 0; i <= segments; ++i) {
-            const real_t alpha = (real_t)i / (real_t)segments;
-            const misc::SplineSample si = spline.sample(alpha);
-            samples.push_back(BeamSample{si.position, si.tangent, si.normal, si.binormal, segLen});
-        }
-    }
+    appendSplineSamples(spline, segments, samples);
 
     const Vector3r splineCOMWorld = spline.centerOfMass();
     return buildBeamFromSamples(system, samples, spline.isLoop(), section, springs, stateDefaults, propsDefaults, splineCOMWorld, collision_mgr);
@@ -263,29 +261,32 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(World& system, co
         if (sp) totalLen += sp->totalLength();
     }
 
-    entt::entity first = entt::null;
-    entt::entity second = entt::null;
-    entt::entity prevEnd = entt::null;
-
-    for (size_t i = 0; i < splines.size(); ++i) {
-        const auto pair = createBeam(system, *splines[i], section, springs, stateDefaults, propsDefaults, (size_t)(segments * (splines[i]->totalLength() / totalLen)), collision_mgr);
-
-        if (first == entt::null) first = pair.first;
-        if (prevEnd != entt::null && pair.first != entt::null) {
-            if (system.ecs().any_of<cardillo::C_Orientation>(prevEnd) && system.ecs().any_of<cardillo::C_Orientation>(pair.first)) {
-                auto& qNext = system.ecs().get<cardillo::C_Orientation>(pair.first).value;
-                const auto prevState = cardillo::RigidBody::getState(system.ecs(), prevEnd);
-                const auto& qPrev = prevState.orientation;
-                qNext = MathHelper::alignQuaternionTo(qNext, qPrev);
-            }
-            ConstraintFactory::addRigidConstraint(system, prevEnd, pair.first);
-            if (collision_mgr) collision_mgr->disablePair(prevEnd, pair.first);
-        }
-        prevEnd = pair.second;
+    if (totalLen <= (real_t)0 || segments == 0) {
+        return {entt::null, entt::null};
     }
 
-    second = prevEnd;
-    return {first, second};
+    std::vector<BeamSample> allSamples;
+    allSamples.reserve(segments);
+
+    for (const auto* sp : splines) {
+        if (!sp) continue;
+
+        const real_t frac = sp->totalLength() / totalLen;
+        const size_t segCount = std::max((size_t)1, (size_t)std::round((real_t)segments * frac));
+
+        appendSplineSamples(*sp, segCount, allSamples);
+    }
+
+    if (allSamples.empty()) {
+        return {entt::null, entt::null};
+    }
+
+    // Treat stitched spline list as one chain so tangent/frame continuity is
+    // handled in a single pass without rigid joints between per-spline beams.
+    // Preserve previous loop behavior for the single-spline case.
+    const bool loop = (splines.size() == 1 && splines[0] != nullptr && splines[0]->isLoop());
+    const Vector3r splineCOMWorld = allSamples.front().position;
+    return buildBeamFromSamples(system, allSamples, loop, section, springs, stateDefaults, propsDefaults, splineCOMWorld, collision_mgr);
 }
 
 }  // namespace cardillo::physics
