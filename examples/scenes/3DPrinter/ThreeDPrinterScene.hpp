@@ -21,6 +21,8 @@ class ThreeDPrinterScene : public SceneBase {
     void populate(cardillo::physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
+        m_motor_constraints.clear();
+
         struct ObjectSpec {
             const char* name;
             real_t x;
@@ -81,11 +83,15 @@ class ThreeDPrinterScene : public SceneBase {
         };
 
         auto degToRad = [](real_t deg) { return deg * (real_t)M_PI / (real_t)180.0; };
+        auto rotX180Pos = [](const Vector3r& p) { return Vector3r(p.x(), -p.y(), -p.z()); };
+
         std::unordered_map<std::string, entt::entity> eByName;
         std::unordered_map<std::string, Vector3r> pByName;
         std::unordered_map<std::string, real_t> rByName;
+        std::unordered_map<std::string, const ObjectSpec*> specByName;
+        for (const auto& o : specs) specByName[o.name] = &o;
 
-        for (const auto& o : specs) {
+        auto addObject = [&](const ObjectSpec& o, const std::string& finalName, bool applyX180) {
             physics::RigidState rs;
             rs.position = Vector3r(o.x, o.y, o.z);
 
@@ -94,65 +100,76 @@ class ThreeDPrinterScene : public SceneBase {
             const Quaternion4r qz(Eigen::AngleAxis<real_t>(degToRad(o.rzDeg), Vector3r::UnitZ()));
             rs.orientation = qz * qy * qx;
 
+            if (applyX180) {
+                const Quaternion4r qRotX180(Eigen::AngleAxis<real_t>((real_t)M_PI, Vector3r::UnitX()));
+                rs.position = rotX180Pos(rs.position);
+                rs.orientation = qRotX180 * rs.orientation;
+            }
+
             if (o.isPin) {
                 const real_t radius = ((real_t)0.5) * (o.sx + o.sy);
-                rByName[o.name] = radius;
+                rByName[finalName] = radius;
                 const physics::CylinderShape shape(radius, o.sz);
                 if (o.isStatic) {
-                    eByName[o.name] = engine.addStaticBody(shape, rs);
+                    eByName[finalName] = engine.addStaticBody(shape, rs);
                 } else {
                     physics::RigidProps props = physics::RigidProps::withDensity(o.density);
                     props.friction = (real_t)0.7;
-                    eByName[o.name] = engine.addRigidBody(shape, rs, props);
+                    eByName[finalName] = engine.addRigidBody(shape, rs, props);
                 }
             } else {
                 const physics::CubeShape shape(Vector3r(o.sx, o.sy, o.sz));
                 if (o.isStatic) {
-                    eByName[o.name] = engine.addStaticBody(shape, rs);
+                    eByName[finalName] = engine.addStaticBody(shape, rs);
                 } else {
                     physics::RigidProps props = physics::RigidProps::withDensity(o.density);
                     props.friction = (real_t)0.7;
-                    eByName[o.name] = engine.addRigidBody(shape, rs, props);
+                    eByName[finalName] = engine.addRigidBody(shape, rs, props);
                 }
             }
 
-            pByName[o.name] = rs.position;
-            engine.track(eByName[o.name], o.name);
+            pByName[finalName] = rs.position;
+        };
+
+        // Build base scene objects from specs.
+        for (const auto& o : specs) addObject(o, o.name, false);
+
+        // Add mirrored CoreXY side: motor + pins only, rotated around world X by 180deg.
+        const std::vector<std::string> mirroredCoreXY = {"MotorR",         "MotorPinR",    "BackPinR",     "BackPinL",      "MiddlePinL",     "MiddlePinR",     "MotorPinR.001", "MiddlePinR.001",
+                                                         "MiddlePinL.001", "BackPinR.001", "BackPinL.001", "MotorPinR.002", "MiddlePinR.002", "MiddlePinL.002", "BackPinR.002",  "BackPinL.002"};
+        for (const auto& baseName : mirroredCoreXY) {
+            addObject(*specByName.at(baseName), baseName + "_X180", true);
         }
 
-        auto getE = [&](const char* name) { return eByName.at(std::string(name)); };
+        auto getE = [&](const std::string& name) { return eByName.at(name); };
 
-        // Rigid connectors between each base pin and its .001/.002 counterparts.
-        const std::array<std::array<const char*, 2>, 10> rigidPairs = {{
-            {{"MotorPinR.001", "MotorPinR"}},
-            {{"MotorPinR.002", "MotorPinR"}},
-            {{"MiddlePinR.001", "MiddlePinR"}},
-            {{"MiddlePinR.002", "MiddlePinR"}},
-            {{"MiddlePinL.001", "MiddlePinL"}},
-            {{"MiddlePinL.002", "MiddlePinL"}},
-            {{"BackPinR.001", "BackPinR"}},
-            {{"BackPinR.002", "BackPinR"}},
-            {{"BackPinL.001", "BackPinL"}},
-            {{"BackPinL.002", "BackPinL"}},
-        }};
-        for (const auto& p : rigidPairs) engine.addRigidConstraint(getE(p[0]), getE(p[1]));
+        struct AssemblyNames {
+            std::string motor;
+            std::string motorPin;
+            std::string backPinR;
+            std::string backPinL;
+            std::string middlePinR;
+            std::string middlePinL;
+            std::string motorPin001;
+            std::string motorPin002;
+            std::string middlePinR001;
+            std::string middlePinR002;
+            std::string middlePinL001;
+            std::string middlePinL002;
+            std::string backPinR001;
+            std::string backPinR002;
+            std::string backPinL001;
+            std::string backPinL002;
+            std::string beltStartTrack;
+            std::string beltEndTrack;
+        };
 
-        // Requested hinge constraints with axis Z.
-        m_motor_constraint = engine.addRigidConstraint(getE("MotorR"), getE("MotorPinR"));
+        auto makeAssembly = [](const std::string& suffix) {
+            return AssemblyNames{"MotorR" + suffix,        "MotorPinR" + suffix,     "BackPinR" + suffix,       "BackPinL" + suffix,       "MiddlePinR" + suffix,     "MiddlePinL" + suffix,
+                                 "MotorPinR.001" + suffix, "MotorPinR.002" + suffix, "MiddlePinR.001" + suffix, "MiddlePinR.002" + suffix, "MiddlePinL.001" + suffix, "MiddlePinL.002" + suffix,
+                                 "BackPinR.001" + suffix,  "BackPinR.002" + suffix,  "BackPinL.001" + suffix,   "BackPinL.002" + suffix,   "BeltStart" + suffix,      "BeltEnd" + suffix};
+        };
 
-        engine.addHingeConstraint(getE("BackPinR"), getE("BeamRight"), physics::JointFrame::fromAxis(Vector3r::Zero(), Vector3r::UnitZ(), getE("BackPinR")));
-        engine.addHingeConstraint(getE("BackPinL"), getE("BeamRight"), physics::JointFrame::fromAxis(Vector3r::Zero(), Vector3r::UnitZ(), getE("BackPinL")));
-        engine.addHingeConstraint(getE("MiddlePinL"), getE("MovingBeam"), physics::JointFrame::fromAxis(Vector3r::Zero(), Vector3r::UnitZ(), getE("MiddlePinL")));
-        engine.addHingeConstraint(getE("MiddlePinR"), getE("MovingBeam"), physics::JointFrame::fromAxis(Vector3r::Zero(), Vector3r::UnitZ(), getE("MiddlePinR")));
-
-        // Rigid attachments between bars/motor.
-        engine.addRigidConstraint(getE("MotorR"), getE("BeamRight"));
-        engine.addRigidConstraint(getE("BeamLeft"), getE("BeamRight"));
-        engine.addRigidConstraint(getE("BeamLeft"));
-
-        // Slider constraints using translation-rotation constraints:
-        // - MovingBeam relative to both side beams: free only in X
-        // - Gantry relative to MovingBeam: free only in Y
         const real_t inf = std::numeric_limits<real_t>::infinity();
         const Vector3r lockRot = Vector3r::Constant(inf);
         const Vector3r freeX((real_t)0.0, inf, inf);
@@ -160,139 +177,175 @@ class ThreeDPrinterScene : public SceneBase {
 
         engine.addTranslationRotationConstraint(getE("MovingBeam"), getE("BeamLeft"), physics::JointFrame(getE("MovingBeam")), freeX, Vector3r::Zero(), lockRot, Vector3r::Zero());
         engine.addTranslationRotationConstraint(getE("Gantry"), getE("MovingBeam"), physics::JointFrame(getE("Gantry")), freeY, Vector3r::Zero(), lockRot, Vector3r::Zero());
+        engine.addRigidConstraint(getE("BeamLeft"), getE("BeamRight"));
 
-        // Belt path (piecewise linear + circular) in absolute world coordinates.
-        const real_t beltZ = ((real_t)0.5) * (pByName.at("MotorPinR.001").z() + pByName.at("MotorPinR.002").z());
-        const Vector3r cMotor = pByName.at("MotorPinR");
-        const Vector3r cBackR = pByName.at("BackPinR");
-        const Vector3r cBackL = pByName.at("BackPinL");
-        const Vector3r cMidR = pByName.at("MiddlePinR");
-        const Vector3r cMidL = pByName.at("MiddlePinL");
-        const real_t pinR = rByName.at("MotorPinR");
-        const real_t beltBufferR = (real_t)0.0005;
-        const real_t beltR = pinR + beltBufferR;
+        auto attachAssembly = [&](const AssemblyNames& a, bool flippedX180) {
+            const std::array<std::array<std::string, 2>, 10> rigidPairs = {{
+                {{a.motorPin001, a.motorPin}},
+                {{a.motorPin002, a.motorPin}},
+                {{a.middlePinR001, a.middlePinR}},
+                {{a.middlePinR002, a.middlePinR}},
+                {{a.middlePinL001, a.middlePinL}},
+                {{a.middlePinL002, a.middlePinL}},
+                {{a.backPinR001, a.backPinR}},
+                {{a.backPinR002, a.backPinR}},
+                {{a.backPinL001, a.backPinL}},
+                {{a.backPinL002, a.backPinL}},
+            }};
+            for (const auto& p : rigidPairs) engine.addRigidConstraint(getE(p[0]), getE(p[1]));
 
-        const Vector3r cMotorB(cMotor.x(), cMotor.y(), beltZ);
-        const Vector3r cBackRB(cBackR.x(), cBackR.y(), beltZ);
-        const Vector3r cBackLB(cBackL.x(), cBackL.y(), beltZ);
-        const Vector3r cMidRB(cMidR.x(), cMidR.y(), beltZ);
-        const Vector3r cMidLB(cMidL.x(), cMidL.y(), beltZ);
+            m_motor_constraints.push_back(engine.addRigidConstraint(getE(a.motor), getE(a.motorPin)));
 
-        const Vector3r gantryC = pByName.at("Gantry");
-        const real_t gantryHalfY = (real_t)0.050000;
+            auto beamByY = [&](const std::string& pinName) {
+                const bool worldLeft = pByName.at(pinName).y() >= (real_t)0.0;
+                if (!flippedX180) return worldLeft ? std::string("BeamLeft") : std::string("BeamRight");
+                // Under 180deg rotation around X, local left/right is mirrored in world Y.
+                return worldLeft ? std::string("BeamRight") : std::string("BeamLeft");
+            };
 
-        // User convention: left/right along Y, top/bottom along X.
-        auto edgeTop = [&](const Vector3r& c) { return Vector3r(c.x() + beltR, c.y(), c.z()); };
-        auto edgeBottom = [&](const Vector3r& c) { return Vector3r(c.x() - beltR, c.y(), c.z()); };
-        auto edgeLeft = [&](const Vector3r& c) { return Vector3r(c.x(), c.y() + beltR, c.z()); };
-        auto edgeRight = [&](const Vector3r& c) { return Vector3r(c.x(), c.y() - beltR, c.z()); };
+            engine.addHingeConstraint(getE(a.backPinR), getE(beamByY(a.backPinR)), physics::JointFrame::fromAxis(Vector3r::Zero(), Vector3r::UnitZ(), getE(a.backPinR)));
+            engine.addHingeConstraint(getE(a.backPinL), getE(beamByY(a.backPinL)), physics::JointFrame::fromAxis(Vector3r::Zero(), Vector3r::UnitZ(), getE(a.backPinL)));
+            engine.addHingeConstraint(getE(a.middlePinL), getE("MovingBeam"), physics::JointFrame::fromAxis(Vector3r::Zero(), Vector3r::UnitZ(), getE(a.middlePinL)));
+            engine.addHingeConstraint(getE(a.middlePinR), getE("MovingBeam"), physics::JointFrame::fromAxis(Vector3r::Zero(), Vector3r::UnitZ(), getE(a.middlePinR)));
 
-        const Vector3r mrTop = edgeTop(cMidRB);
-        const Vector3r mrRight = edgeRight(cMidRB);
+            engine.addRigidConstraint(getE(a.motor), getE(beamByY(a.motor)));
 
-        const Vector3r motorLeft = edgeLeft(cMotorB);
-        const Vector3r motorRight = edgeRight(cMotorB);
+            const real_t beltZ = ((real_t)0.5) * (pByName.at(a.motorPin001).z() + pByName.at(a.motorPin002).z());
+            const Vector3r cMotor = pByName.at(a.motorPin);
+            const Vector3r cBackR = pByName.at(a.backPinR);
+            const Vector3r cBackL = pByName.at(a.backPinL);
+            const Vector3r cMidR = pByName.at(a.middlePinR);
+            const Vector3r cMidL = pByName.at(a.middlePinL);
+            const real_t pinR = rByName.at(a.motorPin);
+            const real_t beltBufferR = (real_t)0.0005;
+            const real_t beltR = pinR + beltBufferR;
 
-        const Vector3r backRRight = edgeRight(cBackRB);
-        const Vector3r backRTop = edgeTop(cBackRB);
+            const Vector3r cMotorB(cMotor.x(), cMotor.y(), beltZ);
+            const Vector3r cBackRB(cBackR.x(), cBackR.y(), beltZ);
+            const Vector3r cBackLB(cBackL.x(), cBackL.y(), beltZ);
+            const Vector3r cMidRB(cMidR.x(), cMidR.y(), beltZ);
+            const Vector3r cMidLB(cMidL.x(), cMidL.y(), beltZ);
 
-        const Vector3r backLTop = edgeTop(cBackLB);
-        const Vector3r backLLeft = edgeLeft(cBackLB);
+            const Vector3r gantryC = pByName.at("Gantry");
+            const real_t gantryHalfY = (real_t)0.050000;
 
-        const Vector3r midLLeft = edgeLeft(cMidLB);
-        const Vector3r midLBottom = edgeBottom(cMidLB);
+            auto edgeTop = [&](const Vector3r& c) { return Vector3r(c.x() + beltR, c.y(), c.z()); };
+            auto edgeBottom = [&](const Vector3r& c) { return Vector3r(c.x() - beltR, c.y(), c.z()); };
+            auto edgeLeft = [&](const Vector3r& c) { return !flippedX180 ? Vector3r(c.x(), c.y() + beltR, c.z()) : Vector3r(c.x(), c.y() - beltR, c.z()); };
+            auto edgeRight = [&](const Vector3r& c) { return !flippedX180 ? Vector3r(c.x(), c.y() - beltR, c.z()) : Vector3r(c.x(), c.y() + beltR, c.z()); };
 
-        // Start at gantry right edge with requested X anchor at moving-right top edge.
-        const Vector3r gantryRightAnchor(mrTop.x(), gantryC.y() - gantryHalfY, beltZ);
-        // End at gantry left edge; X differs after final winding around middle-left bottom.
-        const Vector3r gantryLeftAnchor(midLBottom.x(), gantryC.y() + gantryHalfY, beltZ);
+            const Vector3r mrTop = edgeTop(cMidRB);
+            const Vector3r mrRight = edgeRight(cMidRB);
+            const Vector3r motorLeft = edgeLeft(cMotorB);
+            const Vector3r motorRight = edgeRight(cMotorB);
+            const Vector3r backRRight = edgeRight(cBackRB);
+            const Vector3r backRTop = edgeTop(cBackRB);
+            const Vector3r backLTop = edgeTop(cBackLB);
+            const Vector3r backLLeft = edgeLeft(cBackLB);
+            const Vector3r midLLeft = edgeLeft(cMidLB);
+            const Vector3r midLBottom = edgeBottom(cMidLB);
 
-        std::vector<std::unique_ptr<misc::SplinePattern>> beltOwned;
-        std::vector<const misc::SplinePattern*> beltSegs;
-        auto addLine = [&](const Vector3r& a, const Vector3r& b) {
-            if ((b - a).norm() > (real_t)1e-10) {
-                beltOwned.push_back(std::make_unique<misc::LinearSpline>(a, b));
+            const Vector3r gantryRightAnchor(mrTop.x(), !flippedX180 ? (gantryC.y() - gantryHalfY) : (gantryC.y() + gantryHalfY), beltZ);
+            const Vector3r gantryLeftAnchor(midLBottom.x(), !flippedX180 ? (gantryC.y() + gantryHalfY) : (gantryC.y() - gantryHalfY), beltZ);
+
+            std::vector<std::unique_ptr<misc::SplinePattern>> beltOwned;
+            std::vector<const misc::SplinePattern*> beltSegs;
+            auto addLine = [&](const Vector3r& a0, const Vector3r& b0) {
+                if ((b0 - a0).norm() > (real_t)1e-10) {
+                    beltOwned.push_back(std::make_unique<misc::LinearSpline>(a0, b0));
+                    beltSegs.push_back(beltOwned.back().get());
+                }
+            };
+            auto addArc = [&](const Vector3r& c, real_t thetaStart, real_t thetaSpan, bool swapInsideOut) {
+                // Keep the rotated side consistent by flipping the base belt normal.
+                Vector3r n = Vector3r::UnitZ();
+                if (flippedX180) n = -n;
+                if (swapInsideOut) n = -n;
+                const real_t t0 = swapInsideOut ? -thetaStart : thetaStart;
+                const real_t ts = swapInsideOut ? -thetaSpan : thetaSpan;
+                beltOwned.push_back(std::make_unique<misc::CircleSpline>(c, beltR, n, Vector3r::UnitX(), t0, ts));
                 beltSegs.push_back(beltOwned.back().get());
+            };
+            auto addAxisAligned = [&](const Vector3r& a0, const Vector3r& b0, bool xFirst) {
+                if ((b0 - a0).norm() <= (real_t)1e-10) return;
+                if (xFirst) {
+                    const Vector3r mid(b0.x(), a0.y(), a0.z());
+                    addLine(a0, mid);
+                    addLine(mid, b0);
+                } else {
+                    const Vector3r mid(a0.x(), b0.y(), a0.z());
+                    addLine(a0, mid);
+                    addLine(mid, b0);
+                }
+            };
+
+            addAxisAligned(gantryRightAnchor, mrTop, false);
+            addArc(cMidRB, (real_t)0.0, (real_t)-M_PI_2, false);
+            addAxisAligned(mrRight, motorLeft, true);
+            addArc(cMotorB, (real_t)M_PI_2, (real_t)M_PI, true);
+            addAxisAligned(motorRight, backRRight, false);
+            addArc(cBackRB, (real_t)-M_PI_2, (real_t)M_PI_2, true);
+            addAxisAligned(backRTop, backLTop, true);
+            addArc(cBackLB, (real_t)0.0, (real_t)M_PI_2, true);
+            addAxisAligned(backLLeft, midLLeft, false);
+            addArc(cMidLB, (real_t)M_PI_2, (real_t)M_PI_2, true);
+            addAxisAligned(midLBottom, gantryLeftAnchor, false);
+
+            const physics::BeamCrossSection beltSection((real_t)0.0005, (real_t)0.01, physics::BeamBodyType::Cube);
+            physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, (real_t)4000, (real_t)4000, (real_t)0.4, (real_t)0.4, (real_t)0.5);
+            beltSprings.gamma0 = Vector3r::Zero();
+            beltSprings.gamma0->x() = (real_t)-1.0e-4;
+            beltSprings.kappa0 = Vector3r::Zero();
+            const physics::RigidProps beltProps = physics::RigidProps::withDensity((real_t)1100.0);
+            const physics::RigidState beltStateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero());
+
+            auto beltEnds = engine.createBeams(beltSegs, beltSection, beltSprings, beltStateDefaults, beltProps, (size_t)1040);
+            if (beltEnds.first != entt::null) {
+                engine.track(beltEnds.first, a.beltStartTrack);
+                engine.addRigidConstraint(beltEnds.first, getE("Gantry"));
+                engine.disableCollisionBetween(beltEnds.first, getE("Gantry"));
+            }
+            if (beltEnds.second != entt::null) {
+                engine.track(beltEnds.second, a.beltEndTrack);
+                engine.addRigidConstraint(beltEnds.second, getE("Gantry"));
+                engine.disableCollisionBetween(beltEnds.second, getE("Gantry"));
             }
         };
-        auto addArc = [&](const Vector3r& c, real_t thetaStart, real_t thetaSpan, bool swapInsideOut) {
-            Vector3r n = Vector3r::UnitZ();
-            if (swapInsideOut) n = -n;
-            // Negating angles while flipping the circle normal preserves geometric path
-            // endpoints but inverts local frame orientation (inside-out).
-            const real_t t0 = swapInsideOut ? -thetaStart : thetaStart;
-            const real_t ts = swapInsideOut ? -thetaSpan : thetaSpan;
-            beltOwned.push_back(std::make_unique<misc::CircleSpline>(c, beltR, n, Vector3r::UnitX(), t0, ts));
-            beltSegs.push_back(beltOwned.back().get());
-        };
-        auto addAxisAligned = [&](const Vector3r& a, const Vector3r& b, bool xFirst) {
-            if ((b - a).norm() <= (real_t)1e-10) return;
-            if (xFirst) {
-                const Vector3r mid(b.x(), a.y(), a.z());
-                addLine(a, mid);
-                addLine(mid, b);
-            } else {
-                const Vector3r mid(a.x(), b.y(), a.z());
-                addLine(a, mid);
-                addLine(mid, b);
-            }
-        };
 
-        // MiddleRight: top -> right
-        // MotorR: left -> right around bottom
-        // BackR: right -> top
-        // BackL: top -> left
-        // MiddleL: left -> bottom
-        addAxisAligned(gantryRightAnchor, mrTop, false);
-        addArc(cMidRB, (real_t)0.0, (real_t)-M_PI_2, false);
+        attachAssembly(makeAssembly(""), false);
+        attachAssembly(makeAssembly("_X180"), true);
 
-        addAxisAligned(mrRight, motorLeft, true);
-        addArc(cMotorB, (real_t)M_PI_2, (real_t)M_PI, true);
+        // Attach Printer frame to the world so it doesnt fall.
+        engine.addRigidConstraint(getE("BeamLeft"));
 
-        addAxisAligned(motorRight, backRRight, false);
-        addArc(cBackRB, (real_t)-M_PI_2, (real_t)M_PI_2, true);
-
-        addAxisAligned(backRTop, backLTop, true);
-        addArc(cBackLB, (real_t)0.0, (real_t)M_PI_2, true);
-
-        addAxisAligned(backLLeft, midLLeft, false);
-        addArc(cMidLB, (real_t)M_PI_2, (real_t)M_PI_2, true);
-
-        addAxisAligned(midLBottom, gantryLeftAnchor, false);
-
-        const physics::BeamCrossSection beltSection((real_t)0.0005, (real_t)0.01, physics::BeamBodyType::Cube);
-        physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, (real_t)400, (real_t)40, (real_t)0.4, (real_t)0.4, (real_t)5.0);
-        beltSprings.gamma0 = Vector3r::Zero();
-        beltSprings.gamma0->x() = (real_t)-1.0e-4;
-        beltSprings.kappa0 = Vector3r::Zero();
-        const physics::RigidProps beltProps = physics::RigidProps::withDensity((real_t)1100.0);
-        const physics::RigidState beltStateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero());
-
-        auto beltEnds = engine.createBeams(beltSegs, beltSection, beltSprings, beltStateDefaults, beltProps, (size_t)1040);
-        if (beltEnds.first != entt::null) {
-            engine.track(beltEnds.first, "BeltStart");
-            engine.addRigidConstraint(beltEnds.first, getE("Gantry"));
-            engine.disableCollisionBetween(beltEnds.first, getE("Gantry"));
-        }
-        if (beltEnds.second != entt::null) {
-            engine.track(beltEnds.second, "BeltEnd");
-            engine.addRigidConstraint(beltEnds.second, getE("Gantry"));
-            engine.disableCollisionBetween(beltEnds.second, getE("Gantry"));
-        }
-
-        // Collision disable between all parts
-        for (size_t i = 0; i < specs.size(); ++i) {
-            for (size_t j = i + 1; j < specs.size(); ++j) {
-                engine.disableCollisionBetween(getE(specs[i].name), getE(specs[j].name));
+        // Collision disable between all created parts.
+        std::vector<std::string> allNames;
+        allNames.reserve(eByName.size());
+        for (const auto& kv : eByName) allNames.push_back(kv.first);
+        for (size_t i = 0; i < allNames.size(); ++i) {
+            for (size_t j = i + 1; j < allNames.size(); ++j) {
+                engine.disableCollisionBetween(getE(allNames[i]), getE(allNames[j]));
             }
         }
+
+        engine.track(getE("Gantry"), "Gantry");
     }
 
     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        const real_t motorSpeed = M_2_PI * 100.0 * std::sin(M_2_PI * (real_t)10.0 * t);
-        engine.setConstraintAngularVelocity(m_motor_constraint, Vector3r(0, 0, motorSpeed));
+        auto right_motor = m_motor_constraints[0];
+        auto left_motor = m_motor_constraints[1];
+
+        real_t speed = 100.0 * (real_t)M_2_PI;
+        real_t vx = speed * std::sin(M_2_PI * (real_t)2.0 * t);
+        real_t vy = speed * std::cos(M_2_PI * (real_t)2.0 * t);
+
+        real_t targetR = vx + vy;
+        real_t targetL = -vy + vx;
+
+        engine.setConstraintAngularVelocity(right_motor, Vector3r(0, 0, targetR));
+        engine.setConstraintAngularVelocity(left_motor, Vector3r(0, 0, targetL));
     }
 
    private:
-    index_t m_motor_constraint{0};
+    std::vector<index_t> m_motor_constraints;
 };
