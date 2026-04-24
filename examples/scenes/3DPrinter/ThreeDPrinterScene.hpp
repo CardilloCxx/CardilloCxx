@@ -194,7 +194,7 @@ class ThreeDPrinterScene : public SceneBase {
             }};
             for (const auto& p : rigidPairs) engine.addRigidConstraint(getE(p[0]), getE(p[1]));
 
-            m_motor_constraints.push_back(engine.addRigidConstraint(getE(a.motor), getE(a.motorPin)));
+            m_motor_constraints.push_back(engine.addRigidConstraint(getE(a.motorPin), getE(a.motor)));
 
             auto beamByY = [&](const std::string& pinName) {
                 const bool worldLeft = pByName.at(pinName).y() >= (real_t)0.0;
@@ -217,7 +217,7 @@ class ThreeDPrinterScene : public SceneBase {
             const Vector3r cMidR = pByName.at(a.middlePinR);
             const Vector3r cMidL = pByName.at(a.middlePinL);
             const real_t pinR = rByName.at(a.motorPin);
-            const real_t beltBufferR = (real_t)0.0005;
+            const real_t beltBufferR = 0.0005;  //(real_t)0.0005;
             const real_t beltR = pinR + beltBufferR;
 
             const Vector3r cMotorB(cMotor.x(), cMotor.y(), beltZ);
@@ -292,7 +292,7 @@ class ThreeDPrinterScene : public SceneBase {
             addAxisAligned(midLBottom, gantryLeftAnchor, false);
 
             const physics::BeamCrossSection beltSection((real_t)0.0005, (real_t)0.01, physics::BeamBodyType::Cube);
-            physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, (real_t)4000, (real_t)4000, (real_t)0.4, (real_t)0.4, (real_t)0.5);
+            physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, 1e6, (real_t)4000, (real_t)0.4, (real_t)0.4, (real_t)0.5);
             beltSprings.gamma0 = Vector3r::Zero();
             beltSprings.gamma0->x() = (real_t)-1.0e-4;
             beltSprings.kappa0 = Vector3r::Zero();
@@ -301,12 +301,10 @@ class ThreeDPrinterScene : public SceneBase {
 
             auto beltEnds = engine.createBeams(beltSegs, beltSection, beltSprings, beltStateDefaults, beltProps, (size_t)1040);
             if (beltEnds.first != entt::null) {
-                engine.track(beltEnds.first, a.beltStartTrack);
                 engine.addRigidConstraint(beltEnds.first, getE("Gantry"));
                 engine.disableCollisionBetween(beltEnds.first, getE("Gantry"));
             }
             if (beltEnds.second != entt::null) {
-                engine.track(beltEnds.second, a.beltEndTrack);
                 engine.addRigidConstraint(beltEnds.second, getE("Gantry"));
                 engine.disableCollisionBetween(beltEnds.second, getE("Gantry"));
             }
@@ -335,10 +333,10 @@ class ThreeDPrinterScene : public SceneBase {
         auto right_motor = m_motor_constraints[0];
         auto left_motor = m_motor_constraints[1];
 
-        real_t speed = 100.0 * (real_t)M_2_PI;
-        real_t vx = speed * std::sin(M_2_PI * (real_t)2.0 * t);
-        real_t vy = speed * std::cos(M_2_PI * (real_t)2.0 * t);
-
+        real_t start_ramp = std::min(1.0, t / (real_t)0.1);
+        real_t speed = 10.0 * (real_t)M_PI * start_ramp;
+        real_t vx = speed * std::sin(M_PI * 2.0 * t);
+        real_t vy = speed * std::cos(M_PI * 2.0 * t);
         real_t targetR = vx + vy;
         real_t targetL = -vy + vx;
 

@@ -66,6 +66,3 @@ if __name__ == "__main__":
     out = "trajectory_xy.png"
     fig.savefig(out, dpi=150)
     print(f"Saved figure to {out}")
-
-    if "DISPLAY" in os.environ:
-        plt.show()
