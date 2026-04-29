@@ -32,8 +32,8 @@ class BodyFactory {
 
     static std::pair<entt::entity, entt::entity> createBeams(World& sys, const std::vector<const misc::SplinePattern*>& splines, const physics::BeamCrossSection& section,
                                                              const physics::BeamSpringParams& springs, const physics::RigidState& stateDefaults, const physics::RigidProps& propsDefaults,
-                                                             size_t segmentsPerSpline, cardillo::collision::CollisionCoal* collision_mgr = nullptr) {
-        return BeamFactory::createBeams(sys, splines, section, springs, stateDefaults, propsDefaults, segmentsPerSpline, collision_mgr);
+                                                             size_t segments, cardillo::collision::CollisionCoal* collision_mgr = nullptr) {
+        return BeamFactory::createBeams(sys, splines, section, springs, stateDefaults, propsDefaults, segments, collision_mgr);
     }
 
     static index_t addPointMass(World& sys, real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);
@@ -43,7 +43,8 @@ class BodyFactory {
 
     static std::vector<entt::entity> addSoftBody(World& sys, const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position = Vector3r::Zero(),
                                                  const Quaternion4r& orientation = Quaternion4r::Identity(), const Vector3r& linearVelocity = Vector3r::Zero(),
-                                                 const Vector3r& angularVelocity = Vector3r::Zero(), real_t totalMass = (real_t)0.0);
+                                                 const Vector3r& angularVelocity = Vector3r::Zero(), real_t totalMass = (real_t)0.0, real_t nodeRadius = (real_t)0.02,
+                                                 cardillo::collision::CollisionCoal* collision_mgr = nullptr);
 };
 
 }  // namespace physics

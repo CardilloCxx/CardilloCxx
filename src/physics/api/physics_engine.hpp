@@ -57,8 +57,8 @@ class PhysicsEngine {
 
     inline std::vector<entt::entity> addSoftBody(const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position = Vector3r::Zero(),
                                                  const Quaternion4r& orientation = Quaternion4r::Identity(), const Vector3r& linearVelocity = Vector3r::Zero(),
-                                                 const Vector3r& angularVelocity = Vector3r::Zero(), real_t totalMass = (real_t)0.0) {
-        return BodyFactory::addSoftBody(*m_world, objPath, stiffness, damping, position, orientation, linearVelocity, angularVelocity, totalMass);
+                                                 const Vector3r& angularVelocity = Vector3r::Zero(), real_t totalMass = (real_t)0.0, real_t nodeRadius = (real_t)0.02) {
+        return BodyFactory::addSoftBody(*m_world, objPath, stiffness, damping, position, orientation, linearVelocity, angularVelocity, totalMass, nodeRadius, m_collision_mgr.get());
     }
 
     inline std::pair<entt::entity, entt::entity> createBeam(const cardillo::misc::SplinePattern& spline, const BeamCrossSection& section, const BeamSpringParams& springs,
@@ -67,8 +67,8 @@ class PhysicsEngine {
     }
 
     inline std::pair<entt::entity, entt::entity> createBeams(const std::vector<const cardillo::misc::SplinePattern*>& splines, const BeamCrossSection& section, const BeamSpringParams& springs,
-                                                             const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segmentsPerSpline) {
-        return BodyFactory::createBeams(*m_world, splines, section, springs, stateDefaults, propsDefaults, segmentsPerSpline, m_collision_mgr.get());
+                                                             const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments) {
+        return BodyFactory::createBeams(*m_world, splines, section, springs, stateDefaults, propsDefaults, segments, m_collision_mgr.get());
     }
 
     void step();

@@ -50,6 +50,7 @@
 #include "scenes/sphere_packing/SpherePackingScene.hpp"
 #include "scenes/stringTest/StringTestScene.hpp"
 #include "scenes/table/TableScene.hpp"
+#include "scenes/tennis/TennisScene.hpp"
 #include "scenes/tube/TubeScene.hpp"
 
 using namespace cardillo;
@@ -110,6 +111,7 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<TubeScene>());
     scenes.emplace_back(std::make_unique<StringTestScene>());
     scenes.emplace_back(std::make_unique<TableScene>());
+    scenes.emplace_back(std::make_unique<TennisScene>());
     scenes.emplace_back(std::make_unique<ConveyorScene>());
     scenes.emplace_back(std::make_unique<ThreeDPrinterScene>());
 

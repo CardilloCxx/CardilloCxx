@@ -58,7 +58,8 @@ index_t BodyFactory::addObstacleHeightField(World& sys, const Vector3r& position
 }
 
 std::vector<entt::entity> BodyFactory::addSoftBody(World& sys, const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position, const Quaternion4r& orientation,
-                                                   const Vector3r& linearVelocity, const Vector3r& angularVelocity, real_t totalMass) {
+                                                   const Vector3r& linearVelocity, const Vector3r& angularVelocity, real_t totalMass, real_t nodeRadius,
+                                                   cardillo::collision::CollisionCoal* collision_mgr) {
     std::vector<entt::entity> nodes;
     cardillo::io::SoftBodyMesh sb;
     if (!cardillo::io::load_obj_softbody(objPath, sb)) {
@@ -70,7 +71,6 @@ std::vector<entt::entity> BodyFactory::addSoftBody(World& sys, const std::string
     if (N == 0) return nodes;
 
     real_t nodeMass = (totalMass > (real_t)0) ? (totalMass / (real_t)N) : (real_t)0.02;
-    const real_t nodeRadius = (real_t)0.02;
 
     Matrix33r R = orientation.toRotationMatrix();
     nodes.reserve(N);
@@ -88,6 +88,14 @@ std::vector<entt::entity> BodyFactory::addSoftBody(World& sys, const std::string
             entt::entity A = nodes[(size_t)i];
             entt::entity B = nodes[(size_t)j];
             ConstraintFactory::addLinearDistanceConstraint(sys, A, B, Vector3r::Zero(), Vector3r::Zero(), stiffness, damping);
+        }
+    }
+
+    for (const auto& n1 : nodes) {
+        for (const auto& n2 : nodes) {
+            if (n1 < n2) {
+                collision_mgr->disablePair(n1, n2);
+            }
         }
     }
 
