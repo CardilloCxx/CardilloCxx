@@ -396,13 +396,13 @@ void DynamicsAssembler::rebuildInteractionW_() {
         if (!addA && !addB) continue;
         if (!addA) {
             const VectorXr vA = m_world.getVelocity(constraint.a);
-            velSpring -= constraint.WgA.transpose() * vA;
-            velDamper -= constraint.WgammaA.transpose() * vA;
+            velSpring += constraint.WgA.transpose() * vA;
+            velDamper += constraint.WgammaA.transpose() * vA;
         }
         if (!addB) {
             const VectorXr vB = m_world.getVelocity(constraint.b);
-            velSpring -= constraint.WgB.transpose() * vB;
-            velDamper -= constraint.WgammaB.transpose() * vB;
+            velSpring += constraint.WgB.transpose() * vB;
+            velDamper += constraint.WgammaB.transpose() * vB;
         }
 
         // Spring rows

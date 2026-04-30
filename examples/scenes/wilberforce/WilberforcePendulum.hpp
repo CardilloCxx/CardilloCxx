@@ -56,19 +56,19 @@ public:
         m_top = endpoints.first;
         // cube_constraint = engine.addRigidConstraint(m_top);
         engine.makeStatic(m_top);
-        // engine.addTrajectory(m_top,
-        //                      // [](real_t t) {
-        //                      //     TrajectoryPose pose;
-        //                      //     pose.first = Vector3r(0, 0, 0);
-        //                      //     pose.second = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 2, Vector3r::UnitY()));
-        //                      //     return pose;
-        //                      // },
-        //                      std::nullopt, [](real_t t) {
-        //                          TrajectoryTwist twist;
-        //                          twist.first = {0, 0.5 * std::sin(t), 0.0};
-        //                          twist.second = Vector3r::Zero();
-        //                          return twist;
-        //                      });
+        engine.addTrajectory(m_top,
+                             // [](real_t t) {
+                             //     TrajectoryPose pose;
+                             //     pose.first = {0, 0.5 * std::sin(t), 0.0};
+                             //     pose.second = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 2, Vector3r::UnitY()));
+                             //     return pose;
+                             // },
+                             std::nullopt, [](real_t t) {
+                                 TrajectoryTwist twist;
+                                 twist.first = {0, 0.5 * std::sin(10 * t), 0.0};
+                                 twist.second = Vector3r::Zero();
+                                 return twist;
+                             });
 
         m_bottom = endpoints.second;
 
