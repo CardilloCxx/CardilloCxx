@@ -11,6 +11,7 @@
 #include "../integration/moreau.hpp"
 #include "../solver/clarabel_solver.hpp"
 #include "../solver/projected_jacobi.hpp"
+#include "../solver/projected_newton.hpp"
 #include "../solver/qoco_solver.hpp"
 
 namespace cardillo {
@@ -29,6 +30,8 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Confi
     using namespace cardillo::solver;
     if (cfg.solver == cardillo::config::SolverType::ProjectedJacobi) {
         m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);
+    } else if (cfg.solver == cardillo::config::SolverType::ProjectedNewton) {
+        m_solver = std::make_unique<ProjectedNewtonSolver>(*m_dyn, m_cfg);
     } else if (cfg.solver == cardillo::config::SolverType::Qoco) {
         m_solver = std::make_unique<QocoSolver>(*m_dyn, m_cfg);
     } else if (cfg.solver == cardillo::config::SolverType::Clarabel) {
