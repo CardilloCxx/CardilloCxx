@@ -87,7 +87,6 @@ namespace cardillo::solver {
 
     static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
         auto scope = ws->timer->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobiSweep);
-
         ws->prev_velocity = ws->velocity;
         ws->prev_impulse = ws->impulse;
 
@@ -95,19 +94,14 @@ namespace cardillo::solver {
         ws->impulse -= ws->y_free_star;
 
         project(ws);
-        //
-        //         ws->tmp_impulse = ws->impulse;
-        //         ws->tmp_impulse -= ws->prev_impulse;
-        //         ws->velocity.noalias() += ws->WTstar * ws->tmp_impulse;
 
         ws->velocity.noalias() = ws->WTstar * ws->impulse;
     }
 
-    static inline real_t residual(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg) {
-        const VectorXr q = (ws->velocity.cwiseAbs().cwiseMax(ws->prev_velocity.cwiseAbs()) * cfg.pj_tol_rel).array() + cfg.pj_tol_abs;
-
-        ws->tmp_velocity = (ws->velocity - ws->prev_velocity).cwiseQuotient(q);
-        return 1.0 / sqrt((double)ws->Nv) * ws->tmp_velocity.norm();
+    static inline real_t residual(const VectorXr& v, const VectorXr& v_prev, cardillo::config::Config& cfg) {
+        const int Nv = (int)v.size();
+        const VectorXr q = v.cwiseAbs().cwiseMax(v_prev.cwiseAbs()) * cfg.pj_tol_rel + VectorXr::Constant(Nv, cfg.pj_tol_abs);
+        return 1.0 / sqrt((double)Nv) * (v - v_prev).cwiseQuotient(q).norm();
     }
 
     static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::DynamicsAssembler& dyn, cardillo::config::Config& cfg, const VectorXr& u_free) {
@@ -145,7 +139,7 @@ namespace cardillo::solver {
             pj_sweep(ws);
             ws->iter = iter + 1;
 
-            if (residual(ws, cfg) <= 1) break;
+            if (iter % 10 == 0 && residual(ws->velocity, ws->prev_velocity, cfg) <= 1) break;
         }
     }
 
@@ -164,7 +158,7 @@ namespace cardillo::solver {
             zk1 = ws->z;
             ws->iter = iter + 1;
 
-            const real_t err = residual(ws, cfg);
+            const real_t err = residual(zk1.head(ws->Nv), zk.head(ws->Nv), cfg);
             if (err <= (real_t)1) break;
 
             const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));

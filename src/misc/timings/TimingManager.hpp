@@ -24,6 +24,7 @@ class TimingManager {
         Integration,
         ProjectedJacobi,
         ProjectedJacobiSweep,
+        ProjectedJacobiSetup,
         ProjectedNewton,
         ProjectedNewtonSetup,
         QocoSolve,
@@ -238,6 +239,8 @@ class TimingManager {
                 return "Collision Make Contact";
             case TimerId::ProjectedJacobi:
                 return "Projected Jacobi";
+            case TimerId::ProjectedJacobiSetup:
+                return "Projected Jacobi Setup";
             case TimerId::ProjectedJacobiSweep:
                 return "Projected Jacobi Sweep";
             case TimerId::ProjectedNewton:

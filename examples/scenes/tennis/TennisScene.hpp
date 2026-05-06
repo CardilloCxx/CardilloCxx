@@ -61,9 +61,9 @@ class TennisScene : public SceneBase {
         engine.disableCollisionBetween(frameLeft, handle);
         engine.disableCollisionBetween(frameRight, handle);
 
-        const Vector3r Ktrans((real_t)2500.0, (real_t)2500.0, (real_t)2500.0);
+        const Vector3r Ktrans((real_t)250000.0, (real_t)250000.0, (real_t)250000.0);
         const Vector3r Dtrans((real_t)0.0, (real_t)0.0, (real_t)0.0);
-        const Vector3r Krot((real_t)450.0, (real_t)450.0, (real_t)450.0);
+        const Vector3r Krot((real_t)45000.0, (real_t)45000.0, (real_t)45000.0);
         const Vector3r Drot((real_t)0.0, (real_t)0.0, (real_t)0.0);
         engine.addTranslationRotationConstraint(handle, entt::null, physics::JointFrame(handle), Ktrans, Dtrans, Krot, Drot);
 
@@ -93,10 +93,10 @@ class TennisScene : public SceneBase {
         for (int row = 0; row < totalCrosses; ++row) crossZ[row] = lerp(zMin, zMax, (real_t)row / (real_t)(totalCrosses - 1));
 
         const physics::BeamCrossSection stringSection(stringRadius, stringRadius, physics::BeamBodyType::Capsule);
-        physics::BeamSpringParams stringSprings = physics::BeamSpringParams::fromMaterial((real_t)5.0e9, (real_t)0.35, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)0.0005);
+        physics::BeamSpringParams stringSprings =
+            physics::BeamSpringParams::fromMaterial((real_t)5.0e10, (real_t)0.35, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)0.0005);
         stringSprings.gamma0 = Vector3r::Zero();
-        stringSprings.gamma0->x() = (real_t)-1.0e-4;
-        stringSprings.kappa0 = Vector3r::Zero();
+        stringSprings.gamma0->x() = (real_t)-1.0e-5;
         const physics::RigidProps stringProps = physics::RigidProps::withDensity((real_t)1200.0);
         const physics::RigidState stringStateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero());
 
