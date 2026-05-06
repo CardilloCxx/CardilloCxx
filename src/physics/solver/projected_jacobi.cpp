@@ -168,6 +168,8 @@ static inline void relax_exchange_update(PJIterContext& ctx, const VectorXr& x_o
 
 // One Projected-Jacobi sweep: update p with current u, then compute new u
 static inline void pj_sweep(PJIterContext& ctx, const VectorXr& x_in, const VectorXr& p_in, VectorXr& x_out, VectorXr& p_out) {
+    auto scope = ctx.dyn->timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobiSweep);
+
     const VectorXr z = provisional_step(ctx, x_in.segment(0, ctx.nV), p_in);
     project_groups(ctx, z, p_in, p_out);
     relax_exchange_update(ctx, x_in, p_in, x_out, p_out);
