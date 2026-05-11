@@ -66,7 +66,9 @@ static inline void project(std::unique_ptr<workspace>& ws) {
         ws->impulse[i] = std::max(ws->impulse[i], (real_t)0);
         const real_t t1 = ws->impulse[i + 1], t2 = ws->impulse[i + 2];
         const real_t tnorm_sq = t1 * t1 + t2 * t2;
+
         if (tnorm_sq <= 0) continue;
+
         const real_t s = std::min<real_t>((real_t)1, (ws->mu[i] * ws->impulse[i]) / std::sqrt((double)tnorm_sq));
         ws->impulse[i + 1] = s * t1;
         ws->impulse[i + 2] = s * t2;

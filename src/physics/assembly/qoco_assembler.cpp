@@ -97,6 +97,15 @@ QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
 QOCOFloat* QocoAssembler::h(real_t dt, real_t theta) {
     VectorXr Smu = computeSmu();
     m_h_cache = Smu.cwiseProduct(m_dyn->contactVVec());
+
+    VectorXr gamma_old = m_dyn->W().asSparseRowMajor() * m_dyn->vVec();
+
+    for (int i = m_dyn->numFrictionlessContacts(); i < m_dyn->numContactRows(); i += 3) {
+        const real_t y_1 = gamma_old[i + 1];
+        const real_t y_2 = gamma_old[i + 2];
+        m_h_cache[i] += std::sqrt(y_1 * y_1 + y_2 * y_2);
+    }
+
     return toQocoVector(m_h_cache);
 }
 

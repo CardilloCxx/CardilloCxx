@@ -55,6 +55,14 @@ VectorXr& ClarabelAssembler::b(real_t dt, real_t theta) {
     VectorXr b_mid = -((1.0 - theta) / theta) * (m_dyn->Wgamma().asSparse() * m_dyn->vVec()) - (1.0 / theta) * m_dyn->A_v_vec();
     VectorXr b_contact = Smu.cwiseProduct(m_dyn->contactVVec());
 
+    VectorXr gamma_old = m_dyn->W().asSparseRowMajor() * m_dyn->vVec();
+
+    for (int i = m_dyn->numFrictionlessContacts(); i < m_dyn->numContactRows(); i += 3) {
+        const real_t y_1 = gamma_old[i + 1];
+        const real_t y_2 = gamma_old[i + 2];
+        b_contact[i] += std::sqrt(y_1 * y_1 + y_2 * y_2);
+    }
+
     auto beta = m_dyn->system().config().constraint_bias_factor;
     if (beta > 0) b_top.noalias() -= (-m_dyn->Cdiag().cwiseProduct(lambda_g) / dt + m_dyn->g_error_vec()) * (beta / (dt * theta));
 

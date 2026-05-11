@@ -41,10 +41,11 @@ public:
         // engine.track(rod, "painleve_rod");
 
         // Parameter sweep over friction and initial angle phi
-        const size_t num_friction_steps = 100;
-        const real_t friction_min = 0.5;                    const real_t friction_max = 5.5;     
-         
-        const size_t num_phi_steps = 100;
+        const size_t num_friction_steps = 10;
+        const real_t friction_min = 0.5;
+        const real_t friction_max = 5.5;
+
+        const size_t num_phi_steps = 10;
         const real_t phi_min =  (real_t)(10 * M_PI / 180.0); const real_t phi_max = (real_t)(90 * M_PI / 180.0);
 
         const real_t spacing = 5.0;
