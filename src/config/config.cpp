@@ -120,8 +120,8 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             if (v == "projected_jacobi" || v == "projectedjacobi" || v == "pj")
                 cfg.solver = SolverType::ProjectedJacobi;
-            else if (v == "projected_newton" || v == "projectednewton" || v == "pn")
-                cfg.solver = SolverType::ProjectedNewton;
+            else if (v == "projected_gauss_seidel" || v == "projectedgaussseidel" || v == "pgs")
+                cfg.solver = SolverType::ProjectedGaussSeidel;
             else if (v == "ip" || v == "interior_point" || v == "interior point" || v == "qoco" || v == "qoco_solver")
                 cfg.solver = SolverType::Qoco;
             else if (v == "clarabel" || v == "clarabel_solver" || v == "clarabelcpp")

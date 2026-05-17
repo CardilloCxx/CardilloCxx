@@ -8,6 +8,7 @@
 #include "../../misc/math_helper.hpp"
 #include "../../misc/triplet_matrix.hpp"
 #include "../../misc/types.hpp"
+#include "../constraints/constraints.hpp"
 #include "../synchronization/derived_entity_sync.hpp"
 #include "../world.hpp"
 
@@ -46,6 +47,7 @@ class DynamicsAssembler {
         static const std::vector<collision::Contact> emptyContacts;
         return m_contacts_ptr ? *m_contacts_ptr : emptyContacts;
     }
+    std::vector<ConstraintResult> constraintResults() const { return m_constraintResults; }
 
     // DOF queries owned by the assembler (scan ECS indices)
     index_t numQ() const { return m_numQ; }
@@ -147,6 +149,8 @@ class DynamicsAssembler {
     // Store Lagrange multipliers (they are being integrated)
     VectorXr m_Lambda_g;
     VectorXr m_Lambda_gamma;
+
+    std::vector<ConstraintResult> m_constraintResults;  // store constraint results for access outside the assembler
 };
 
 }  // namespace cardillo::physics

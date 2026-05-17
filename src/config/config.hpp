@@ -7,7 +7,7 @@
 namespace cardillo::config {
 
 enum class IntegratorType { Moreau };
-enum class SolverType { ProjectedJacobi, ProjectedNewton, Qoco, Clarabel };
+enum class SolverType { ProjectedJacobi, ProjectedGaussSeidel, Qoco, Clarabel };
 
 struct Config {
     // Simulation settings

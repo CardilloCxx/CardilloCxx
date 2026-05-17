@@ -65,7 +65,7 @@ public:
                              // },
                              std::nullopt, [](real_t t) {
                                  TrajectoryTwist twist;
-                                 twist.first = {0, 0.5 * std::sin(10 * t), 0.0};
+                                 twist.first = {0, 0.0 * std::sin(10 * t), 0.0};
                                  twist.second = Vector3r::Zero();
                                  return twist;
                              });

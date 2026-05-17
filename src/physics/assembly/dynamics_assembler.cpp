@@ -357,6 +357,8 @@ void DynamicsAssembler::rebuildInteractionW_() {
     std::vector<real_t> A_vel;
     std::vector<real_t> g_error_vec;
 
+    m_constraintResults.clear();
+
     int springRowCounter = 0;
     int damperRowCounter = 0;
     const real_t EPS_C = (real_t)1e-10;
@@ -382,7 +384,11 @@ void DynamicsAssembler::rebuildInteractionW_() {
     const auto& patterns = m_world.constraintPatterns();
     for (const auto& uptr : patterns) {
         if (!uptr) continue;
-        const auto constraint = uptr->getConstraint();
+        m_constraintResults.push_back(uptr->getConstraint());
+        auto& constraint = m_constraintResults.back();
+        constraint.c_used = std::vector<bool>(constraint.Crows.size(), false);
+        constraint.a_used = std::vector<bool>(constraint.Arows.size(), false);
+
         const auto velSrc = uptr->getSource();
         const auto posError = constraint.positionError;
 
@@ -413,6 +419,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
                 C_vel.push_back(velSpring[i]);
                 g_error_vec.push_back(posError[i]);
                 const int row = springRowCounter++;
+                constraint.c_used[i] = true;
                 if (addA && i < constraint.WgA.cols()) emitRowRef(tripsWg, row, constraint.a, constraint.WgA.col(i));
                 if (addB && i < constraint.WgB.cols()) emitRowRef(tripsWg, row, constraint.b, constraint.WgB.col(i));
             }
@@ -425,6 +432,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
                 Arows.push_back(Ai);
                 A_vel.push_back(velDamper[i]);
                 const int row = damperRowCounter++;
+                constraint.a_used[i] = true;
                 if (addA && i < constraint.WgammaA.cols()) emitRowRef(tripsWgamma, row, constraint.a, constraint.WgammaA.col(i));
                 if (addB && i < constraint.WgammaB.cols()) emitRowRef(tripsWgamma, row, constraint.b, constraint.WgammaB.col(i));
             }

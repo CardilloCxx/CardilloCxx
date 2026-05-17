@@ -25,6 +25,9 @@ class TimingManager {
         ProjectedJacobi,
         ProjectedJacobiSweep,
         ProjectedJacobiSetup,
+        ProjectedGaussSeidel,
+        ProjectedGaussSeidelSweep,
+        ProjectedGaussSeidelSetup,
         ProjectedNewton,
         ProjectedNewtonSetup,
         QocoSolve,
@@ -243,6 +246,12 @@ class TimingManager {
                 return "Projected Jacobi Setup";
             case TimerId::ProjectedJacobiSweep:
                 return "Projected Jacobi Sweep";
+            case TimerId::ProjectedGaussSeidel:
+                return "Projected Gauss-Seidel";
+            case TimerId::ProjectedGaussSeidelSetup:
+                return "Projected Gauss-Seidel Setup";
+            case TimerId::ProjectedGaussSeidelSweep:
+                return "Projected Gauss-Seidel Sweep";
             case TimerId::ProjectedNewton:
                 return "Projected Newton";
             case TimerId::ProjectedNewtonSetup:

@@ -29,6 +29,9 @@ struct ConstraintResult {
     VectorXr Arows;  // size N (compliances per damper row)
 
     VectorXr positionError;
+
+    std::vector<bool> c_used;
+    std::vector<bool> a_used;
 };
 
 // Reference for a joint frame: position/orientation expressed in a frame entity
