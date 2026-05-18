@@ -249,9 +249,9 @@ class TimingManager {
             case TimerId::ProjectedGaussSeidel:
                 return "Projected Gauss-Seidel";
             case TimerId::ProjectedGaussSeidelSetup:
-                return "Projected Gauss-Seidel Setup";
+                return "Prox Gauss-Seidel Setup";
             case TimerId::ProjectedGaussSeidelSweep:
-                return "Projected Gauss-Seidel Sweep";
+                return "Prox Gauss-Seidel Sweep";
             case TimerId::ProjectedNewton:
                 return "Projected Newton";
             case TimerId::ProjectedNewtonSetup:

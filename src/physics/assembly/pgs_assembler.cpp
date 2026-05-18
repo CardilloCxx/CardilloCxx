@@ -66,23 +66,23 @@ VectorXr PgsAssembler::ufree(real_t dt, real_t theta) const {
     return ufree;
 }
 
-Eigen::MatrixXd selectRows(const Eigen::MatrixXd& A, const std::vector<bool>& mask) {
+Eigen::MatrixXd selectCols(const Eigen::MatrixXd& A, const std::vector<bool>& mask) {
     int rows = A.rows();
     int cols = A.cols();
 
-    assert((int)mask.size() == rows && "Mask size must match the number of rows in A");
+    assert((int)mask.size() == cols && "Mask size must match the number of columns in A");
 
-    // count selected rows
-    int newRows = 0;
+    // count selected cols
+    int newCols = 0;
     for (bool b : mask)
-        if (b) ++newRows;
+        if (b) ++newCols;
 
-    Eigen::MatrixXd B(newRows, cols);
+    Eigen::MatrixXd B(rows, newCols);
 
     int j = 0;
-    for (int i = 0; i < rows; ++i) {
+    for (int i = 0; i < cols; ++i) {
         if (mask[i]) {
-            B.row(j++) = A.row(i);
+            B.col(j++) = A.col(i);
         }
     }
 
@@ -116,7 +116,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<cardillo::C_BodyIndex>(constraint.a).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgA_sel = selectRows(constraint.WgA, c_used);
+                const MatrixXXr WgA_sel = selectCols(constraint.WgA, c_used);
                 blockSpring.noalias() += WgA_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgA_sel;
             }
 
@@ -124,14 +124,14 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<cardillo::C_BodyIndex>(constraint.b).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgB_sel = selectRows(constraint.WgB, c_used);
+                const MatrixXXr WgB_sel = selectCols(constraint.WgB, c_used);
                 blockSpring.noalias() += WgB_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgB_sel;
             }
 
             for (int i = 0, j = 0; i < (int)c_used.size(); ++i) {
                 if (!c_used[i]) continue;
 
-                blockSpring(j, j) += m_dyn->Cdiag()[(size_t)i] / (theta * dt * dt);
+                blockSpring(j, j) += Crows[(size_t)i] / (theta * dt * dt);
                 ++j;
             }
 
@@ -145,7 +145,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<cardillo::C_BodyIndex>(constraint.a).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgammaA_sel = selectRows(constraint.WgammaA, a_used);
+                const MatrixXXr WgammaA_sel = selectCols(constraint.WgammaA, a_used);
                 blockDamper.noalias() += WgammaA_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgammaA_sel;
             }
 
@@ -153,14 +153,14 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<cardillo::C_BodyIndex>(constraint.b).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgammaB_sel = selectRows(constraint.WgammaB, a_used);
+                const MatrixXXr WgammaB_sel = selectCols(constraint.WgammaB, a_used);
                 blockDamper.noalias() += WgammaB_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgammaB_sel;
             }
 
             for (int i = 0, j = 0; i < (int)a_used.size(); ++i) {
                 if (!a_used[i]) continue;
 
-                blockDamper(j, j) += m_dyn->Adiag()[(size_t)i] / (theta * dt);
+                blockDamper(j, j) += Arows[(size_t)i] / (theta * dt);
                 ++j;
             }
 
@@ -173,6 +173,53 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
     for (MatrixXXr& block : damperBlocks) D.addBlock(block);
 
     return D.calculateInverse();
+}
+
+BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
+    const int nSprings = m_dyn->numSprings();
+    const int nDampers = m_dyn->numDampers();
+
+    auto diag_sparse = [](const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag) {
+        const int C = (int)W.rows();
+        VectorXr D = VectorXr::Zero(C);
+        for (int cid = 0; cid < C; ++cid) {
+            real_t Dii = 0;
+            for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
+                const real_t w = it.value();
+                Dii += w * w * MinvDiag[it.col()];
+            }
+            D[cid] = Dii;
+        }
+        return D;
+    };
+
+    VectorXr D_diag = VectorXr::Zero(nSprings + nDampers);
+    D_diag.head(nSprings) = diag_sparse(m_dyn->Wg().asSparse(), m_dyn->MinvDiag());
+    D_diag.head(nSprings) += m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
+
+    D_diag.tail(nDampers) = diag_sparse(m_dyn->Wgamma().asSparse(), m_dyn->MinvDiag());
+    D_diag.tail(nDampers) += m_dyn->Adiag() * (1.0 / (theta * dt));
+
+    BlockDiagonal DinvDiag;
+    for (int i = 0; i < nSprings + nDampers; ++i) {
+        DinvDiag.addBlock(MatrixXXr::Identity(1, 1) * (D_diag[i] > 0 ? 1.0 / D_diag[i] : 0));
+    }
+    return DinvDiag;
+}
+
+Eigen::SparseMatrix<real_t> PgsAssembler::W() const {
+    return m_dyn->Wg().vConcat(m_dyn->Wgamma()).asSparse();
+}
+
+VectorXr PgsAssembler::C(real_t dt, real_t theta) const {
+    const int nSprings = m_dyn->numSprings();
+    const int nDampers = m_dyn->numDampers();
+
+    VectorXr C_vec = VectorXr::Zero(nSprings + nDampers);
+    if (nSprings > 0) C_vec.head(nSprings) = m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
+    if (nDampers > 0) C_vec.tail(nDampers) = m_dyn->Adiag() * (1.0 / (theta * dt));
+
+    return C_vec;
 }
 
 }  // namespace cardillo::physics::assembly

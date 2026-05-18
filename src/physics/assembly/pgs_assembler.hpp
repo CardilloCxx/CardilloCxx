@@ -15,6 +15,10 @@ class PgsAssembler {
     VectorXr rhs(real_t dt, real_t theta) const;
     VectorXr ufree(real_t dt, real_t theta) const;
     BlockDiagonal Dinv(real_t dt, real_t theta) const;
+    BlockDiagonal DinvDiag(real_t dt, real_t theta) const;
+
+    Eigen::SparseMatrix<real_t> W() const;
+    VectorXr C(real_t dt, real_t theta) const;
 
    private:
     cardillo::physics::DynamicsAssembler* m_dyn{nullptr};

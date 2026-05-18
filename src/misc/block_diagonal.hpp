@@ -54,8 +54,11 @@ class BlockDiagonal {
         return result;
     }
 
+    const std::vector<MatrixXXr>& blocks() const { return blocks_; }
+    size_t size() const { return n_; }
+
    private:
-    size_t n_;
+    size_t n_ = 0;
     std::vector<MatrixXXr> blocks_;
 };
 
