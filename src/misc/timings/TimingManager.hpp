@@ -28,6 +28,9 @@ class TimingManager {
         ProjectedGaussSeidel,
         ProjectedGaussSeidelSweep,
         ProjectedGaussSeidelSetup,
+        ConjugateGradientSetup,
+        ConjugateGradientSolve,
+        ConjugateGradientSweep,
         ProjectedNewton,
         ProjectedNewtonSetup,
         QocoSolve,
@@ -252,6 +255,12 @@ class TimingManager {
                 return "Prox Gauss-Seidel Setup";
             case TimerId::ProjectedGaussSeidelSweep:
                 return "Prox Gauss-Seidel Sweep";
+            case TimerId::ConjugateGradientSetup:
+                return "Conjugate Gradient Setup";
+            case TimerId::ConjugateGradientSolve:
+                return "Conjugate Gradient Solve";
+            case TimerId::ConjugateGradientSweep:
+                return "Conjugate Gradient Sweep";
             case TimerId::ProjectedNewton:
                 return "Projected Newton";
             case TimerId::ProjectedNewtonSetup:

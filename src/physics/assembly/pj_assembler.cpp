@@ -80,11 +80,11 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bo
             m_S_sparse_lu.reset();
             std::cout << "PjAssembler::buildAndFactorS: SparseLU factorization failed\n";
             return false;
-        } else if (m_dyn->system().config().debug_rb) {
+        } else if (m_cfg.debug_rb) {
             std::cout << "[PjAssembler] SparseLU factorization success.\n";
         }
     } catch (const std::exception& ex) {
-        if (m_dyn->system().config().debug_rb) {
+        if (m_cfg.debug_rb) {
             std::cout << "[PjAssembler] Exception during SparseLU: " << ex.what() << '\n';
         }
         m_S_sparse_lu.reset();

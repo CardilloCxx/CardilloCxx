@@ -200,11 +200,26 @@ BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
     D_diag.tail(nDampers) = diag_sparse(m_dyn->Wgamma().asSparse(), m_dyn->MinvDiag());
     D_diag.tail(nDampers) += m_dyn->Adiag() * (1.0 / (theta * dt));
 
-    BlockDiagonal DinvDiag;
-    for (int i = 0; i < nSprings + nDampers; ++i) {
-        DinvDiag.addBlock(MatrixXXr::Identity(1, 1) * (D_diag[i] > 0 ? 1.0 / D_diag[i] : 0));
+    BlockDiagonal Dinv;
+    int offset = 0;
+
+    for (auto& constraint : m_dyn->constraintResults()) {
+        const auto& c_used = constraint.c_used;
+        const int nSprings = std::count(c_used.begin(), c_used.end(), true);
+
+        if (nSprings > 0) Dinv.addBlockDiag(D_diag.segment(offset, nSprings).cwiseInverse());
+        offset += nSprings;
     }
-    return DinvDiag;
+
+    for (auto& constraint : m_dyn->constraintResults()) {
+        const auto& a_used = constraint.a_used;
+        const int nDampers = std::count(a_used.begin(), a_used.end(), true);
+
+        if (nDampers > 0) Dinv.addBlockDiag(D_diag.segment(offset, nDampers).cwiseInverse());
+        offset += nDampers;
+    }
+
+    return Dinv;
 }
 
 Eigen::SparseMatrix<real_t> PgsAssembler::W() const {

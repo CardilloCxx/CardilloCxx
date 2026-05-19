@@ -13,7 +13,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     const int numDampers = m_dyn.numDampers();
     if (numSprings + numDampers == 0) return u_free;
 
-    const auto& DinvMatrix = m_assembler.Dinv(dt, theta);
+    const auto& DinvMatrix = m_assembler.DinvDiag(dt, theta);
     const VectorXr rhs = m_assembler.rhs(dt, theta);
     VectorXr u_corr = VectorXr::Zero(u_free.size());
 
@@ -80,7 +80,6 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
         if (std::isnan(res_norm) || std::isinf(res_norm)) {
             std::cerr << "[ProjectedGaussSeidel] Divergence detected! res_norm = " << res_norm << "\n";
-            std::cerr << "Lambda = " << lambda.transpose() << "\n";
             throw std::runtime_error("Projected Gauss-Seidel diverged");
         }
 

@@ -10,6 +10,7 @@
 #include "../assembly/dynamics_assembler.hpp"
 #include "../integration/moreau.hpp"
 #include "../solver/clarabel_solver.hpp"
+#include "../solver/conjugate_gradient.hpp"
 #include "../solver/projected_gauss_seidel.hpp"
 #include "../solver/projected_jacobi.hpp"
 #include "../solver/qoco_solver.hpp"
@@ -30,6 +31,8 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Confi
     using namespace cardillo::solver;
     if (cfg.solver == cardillo::config::SolverType::ProjectedJacobi) {
         m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);
+    } else if (cfg.solver == cardillo::config::SolverType::ConjugateGradient) {
+        m_solver = std::make_unique<ConjugateGradientSolver>(*m_dyn, m_cfg);
     } else if (cfg.solver == cardillo::config::SolverType::ProjectedGaussSeidel) {
         m_solver = std::make_unique<ProjectedGaussSeidelSolver>(*m_dyn, m_cfg);
     } else if (cfg.solver == cardillo::config::SolverType::Qoco) {

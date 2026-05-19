@@ -16,6 +16,11 @@ class BlockDiagonal {
         n_ += block.rows();
     }
 
+    void addBlockDiag(const VectorXr& diag) {
+        MatrixXXr block = diag.asDiagonal();
+        addBlock(block);
+    }
+
     BlockDiagonal calculateInverse() {
         BlockDiagonal inverse;
 
