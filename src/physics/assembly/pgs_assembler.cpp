@@ -13,11 +13,14 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta) const {
     const auto& vn = m_dyn->vVec();
     const auto& Wg = m_dyn->Wg().asSparse();
     const auto& Wgamma = m_dyn->Wgamma().asSparse();
+    const auto& Wcontact = m_dyn->W().asSparse();
     const auto& M_diag = m_dyn->MDiag();
     const auto& M_inv = m_dyn->MinvDiag();
     const int totalV = m_dyn->numV();
     const int nSprings = m_dyn->numSprings();
     const int nDampers = m_dyn->numDampers();
+    const int nContacts = m_dyn->numContactRows();
+    const int nLambda = nSprings + nDampers + nContacts;
 
     VectorXr Lambda_g = m_dyn->Lambda_g();
     if ((int)Lambda_g.size() != nSprings) Lambda_g = VectorXr::Zero(nSprings);
@@ -37,7 +40,7 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta) const {
         rhs_vel -= (1.0 - theta) * corr;
     }
 
-    VectorXr rhs = VectorXr::Zero(nSprings + nDampers);
+    VectorXr rhs = VectorXr::Zero(nLambda);
     if (nSprings > 0) {
         rhs.head(nSprings) = +(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) + ((1.0 - theta) / theta) * (Wg * vn) + (1.0 / theta) * m_dyn->C_v_vec();
 
@@ -48,9 +51,14 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta) const {
     }
 
     if (nDampers > 0) {
-        rhs.tail(nDampers) = +((1.0 - theta) / theta) * (Wgamma * vn) + (1.0 / theta) * m_dyn->A_v_vec();
+        rhs.segment(nSprings, nDampers) = +((1.0 - theta) / theta) * (Wgamma * vn) + (1.0 / theta) * m_dyn->A_v_vec();
 
-        rhs.tail(nDampers).noalias() += Wgamma * M_inv.cwiseProduct(rhs_vel);
+        rhs.segment(nSprings, nDampers).noalias() += Wgamma * M_inv.cwiseProduct(rhs_vel);
+    }
+
+    if (nContacts > 0) {
+        VectorXr u_free = this->ufree(dt, theta);
+        rhs.segment(nSprings + nDampers, nContacts).noalias() = Wcontact * u_free + m_dyn->contactVVec();
     }
 
     return rhs;
@@ -172,12 +180,41 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
     for (MatrixXXr& block : springBlocks) D.addBlock(block);
     for (MatrixXXr& block : damperBlocks) D.addBlock(block);
 
+    if (m_dyn->numContacts() == 0) return D.calculateInverse();
+
+    // Frictionless contacts:
+    const Eigen::SparseMatrix<real_t, Eigen::RowMajor> W_contact = m_dyn->W().asSparse();
+    const int nFrictionless = m_dyn->numFrictionlessContacts();
+    if (nFrictionless > 0) {
+        for (int cid = 0; cid < nFrictionless; ++cid) {
+            real_t Dii = 0;
+            for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W_contact, cid); it; ++it) {
+                const real_t w = it.value();
+                Dii += w * w * m_dyn->MinvDiag()[it.col()];
+            }
+            D.addBlockDiag(VectorXr::Constant(1, Dii));
+        }
+    }
+
+    // Frictional contacts:
+    const int nFrictionalContacts = m_dyn->numFrictionalContacts();
+    const int nFrictionalRows = 3 * nFrictionalContacts;
+    if (nFrictionalContacts > 0) {
+        for (int cid = nFrictionless; cid < nFrictionless + nFrictionalRows; cid += 3) {
+            auto W_sel = W_contact.middleRows(cid, 3);
+            MatrixXXr blockContact = W_sel * m_dyn->MinvDiag().asDiagonal() * W_sel.transpose();
+            D.addBlock(blockContact);
+        }
+    }
+
     return D.calculateInverse();
 }
 
 BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
     const int nSprings = m_dyn->numSprings();
     const int nDampers = m_dyn->numDampers();
+    const int nContacts = m_dyn->numContactRows();
+    const int nFrictionless = m_dyn->numFrictionlessContacts();
 
     auto diag_sparse = [](const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag) {
         const int C = (int)W.rows();
@@ -193,46 +230,70 @@ BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
         return D;
     };
 
-    VectorXr D_diag = VectorXr::Zero(nSprings + nDampers);
+    VectorXr D_diag = VectorXr::Zero(nSprings + nDampers + nContacts);
     D_diag.head(nSprings) = diag_sparse(m_dyn->Wg().asSparse(), m_dyn->MinvDiag());
     D_diag.head(nSprings) += m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
 
-    D_diag.tail(nDampers) = diag_sparse(m_dyn->Wgamma().asSparse(), m_dyn->MinvDiag());
-    D_diag.tail(nDampers) += m_dyn->Adiag() * (1.0 / (theta * dt));
+    D_diag.segment(nSprings, nDampers) = diag_sparse(m_dyn->Wgamma().asSparse(), m_dyn->MinvDiag());
+    D_diag.segment(nSprings, nDampers) += m_dyn->Adiag() * (1.0 / (theta * dt));
+
+    D_diag.segment(nSprings + nDampers, nContacts) = diag_sparse(m_dyn->W().asSparse(), m_dyn->MinvDiag());
 
     BlockDiagonal Dinv;
     int offset = 0;
+    const auto& reg = m_dyn->system().ecs();
 
     for (auto& constraint : m_dyn->constraintResults()) {
-        const auto& c_used = constraint.c_used;
-        const int nSprings = std::count(c_used.begin(), c_used.end(), true);
+        const bool addA = !RigidBody::isStatic(reg, constraint.a);
+        const bool addB = !RigidBody::isStatic(reg, constraint.b);
+        if (!addA && !addB) continue;
 
-        if (nSprings > 0) Dinv.addBlockDiag(D_diag.segment(offset, nSprings).cwiseInverse());
-        offset += nSprings;
+        const auto& c_used = constraint.c_used;
+        const int nSp = std::count(c_used.begin(), c_used.end(), true);
+
+        if (nSp > 0) Dinv.addBlockDiag(D_diag.segment(offset, nSp).cwiseInverse());
+        offset += nSp;
     }
 
     for (auto& constraint : m_dyn->constraintResults()) {
-        const auto& a_used = constraint.a_used;
-        const int nDampers = std::count(a_used.begin(), a_used.end(), true);
+        const bool addA = !RigidBody::isStatic(reg, constraint.a);
+        const bool addB = !RigidBody::isStatic(reg, constraint.b);
+        if (!addA && !addB) continue;
 
-        if (nDampers > 0) Dinv.addBlockDiag(D_diag.segment(offset, nDampers).cwiseInverse());
-        offset += nDampers;
+        const auto& a_used = constraint.a_used;
+        const int nDa = std::count(a_used.begin(), a_used.end(), true);
+
+        if (nDa > 0) Dinv.addBlockDiag(D_diag.segment(offset, nDa).cwiseInverse());
+        offset += nDa;
+    }
+
+    for (int cid = 0; cid < nFrictionless; ++cid) {
+        real_t Dii = D_diag[offset + cid];
+        Dinv.addBlockDiag(VectorXr::Constant(1, Dii > 0 ? 1.0 / Dii : 0));
+    }
+
+    for (int cid = nFrictionless; cid < nFrictionless + 3 * m_dyn->numFrictionalContacts(); cid += 3) {
+        VectorXr Dii = D_diag.segment(offset + cid, 3);
+        Dinv.addBlockDiag(Dii.cwiseInverse());
     }
 
     return Dinv;
 }
 
 Eigen::SparseMatrix<real_t> PgsAssembler::W() const {
-    return m_dyn->Wg().vConcat(m_dyn->Wgamma()).asSparse();
+    return m_dyn->Wg().vConcat(m_dyn->Wgamma()).vConcat(m_dyn->W()).asSparse();
 }
 
 VectorXr PgsAssembler::C(real_t dt, real_t theta) const {
     const int nSprings = m_dyn->numSprings();
     const int nDampers = m_dyn->numDampers();
+    const int nContacts = m_dyn->numContactRows();
+    const int nLambda = nSprings + nDampers + nContacts;
 
-    VectorXr C_vec = VectorXr::Zero(nSprings + nDampers);
+    VectorXr C_vec = VectorXr::Zero(nLambda);
     if (nSprings > 0) C_vec.head(nSprings) = m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
-    if (nDampers > 0) C_vec.tail(nDampers) = m_dyn->Adiag() * (1.0 / (theta * dt));
+    if (nDampers > 0) C_vec.segment(nSprings, nDampers) = m_dyn->Adiag() * (1.0 / (theta * dt));
+    if (nContacts > 0) C_vec.tail(nContacts) = VectorXr::Zero(nContacts);
 
     return C_vec;
 }

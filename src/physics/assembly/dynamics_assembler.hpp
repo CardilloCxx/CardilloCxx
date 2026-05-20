@@ -31,6 +31,7 @@ class DynamicsAssembler {
     // body
     const TripletMatrix& W() const { return m_W; }
     const VectorXr& contactVVec() const { return m_contact_v_vec; }
+    const VectorXr& muVec() const { return m_mu_vec; }
 
     // Body b occupies columns [bodyVelOffsets()[b], bodyVelOffsets()[b+1])
     const std::vector<int>& bodyVelOffsets() const { return m_body_vel_offsets; }
@@ -128,6 +129,8 @@ class DynamicsAssembler {
     // Contact Jacobian and supporting mappings
     TripletMatrix m_W;  // (C_dynamic x totalV)
     VectorXr m_contact_v_vec;  // velocity-space contact bias (size = num contact rows)
+    VectorXr m_mu_vec;         // friction coefficients for each contact row (size = num contact rows)
+
     int m_numFrictionalContacts{0};
     int m_numFrictionlessContacts{0};
 

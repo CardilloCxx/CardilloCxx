@@ -4,6 +4,8 @@
 namespace cardillo::solver {
 
 VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
+    if (m_dyn.numContacts() > 0) throw std::runtime_error("Conjugate Gradient does not handle contact constraints");
+
     auto sc_setup = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ConjugateGradientSetup);
 
     const VectorXr u_free = m_assembler.ufree(dt, theta);
@@ -77,27 +79,6 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
         res_norm = res.norm();
 
         if (res_norm < m_cfg.pj_tol_abs) break;
-
-        //         if (m_cfg.debug_pj) {
-        //             // calc real residual for debugging (res_real = b - A * lambda)
-        //             u_temp.noalias() = W_T * lambda;
-        //             u_corr.noalias() = Minv.cwiseProduct(u_temp);
-        //             real_res = rhs;
-        //             real_res.noalias() -= W_row * u_corr;
-        //             real_res.noalias() -= C_vec.cwiseProduct(lambda);
-        //             real_t real_res_norm = real_res.norm();
-        //
-        //             // A * real_res
-        //             u_temp.noalias() = W_T * real_res;
-        //             u_corr.noalias() = Minv.cwiseProduct(u_temp);
-        //             VectorXr A_real_res = W_row * u_corr + C_vec.cwiseProduct(real_res);
-        //             real_t Anorm = std::sqrt(real_res.dot(A_real_res));
-        //
-        //             real_t norm_p = std::sqrt(p.dot(p));
-        //             real_t norm_lambda = std::sqrt(lambda.dot(lambda));
-        //             std::cout << "[ConjugateGradient] Iter " << iter + 1 << ": res_norm = " << res_norm << ", real_res_norm = " << real_res_norm << ", Anorm = " << Anorm << ", alpha = " << alpha
-        //                       << ", beta = " << beta << ", ||p|| = " << norm_p << ", ||lambda|| = " << norm_lambda << "\n";
-        //         }
 
         if (std::isnan(res_norm) || std::isinf(res_norm)) {
             std::cerr << "[ConjugateGradient] Divergence detected! res_norm = " << res_norm << "\n";

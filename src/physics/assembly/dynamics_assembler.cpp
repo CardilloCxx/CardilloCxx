@@ -252,6 +252,7 @@ void DynamicsAssembler::rebuildW_() {
     // Per-contact-row velocity contribution from static entities, using the same local Jacobian
     // convention as W row assembly.
     m_contact_v_vec = VectorXr::Zero((index_t)C_all * 3);
+    m_mu_vec = VectorXr::Zero((index_t)C_all * 3);
 
     for (bool frictionPass : {false, true}) {
         if (frictionPass && !frictionEnabled) break;
@@ -299,18 +300,23 @@ void DynamicsAssembler::rebuildW_() {
             // record base index and default size for this contact
             c.impulse_base_index = rowN;
             c.impulse_size = 1;
+
             accumulateDirForSide(c.normal, c.pointA_body, c.normalA_body, c.a, aDyn, (real_t)-1, rowN);
             accumulateDirForSide(c.normal, c.pointB_body, c.normalB_body, c.b, bDyn, (real_t) + 1, rowN);
             ++dynContactId;
 
             // Optional rows: two tangential directions if friction enabled and mu > 0
             if (frictionEnabled && c.friction_mu > (real_t)0) {
+                m_mu_vec[rowN] = c.friction_mu;
+
                 const int rowT1 = dynContactId;
+                m_mu_vec[rowT1] = c.friction_mu;
                 accumulateDirForSide(c.tangent1, c.pointA_body, c.tangent1A_body, c.a, aDyn, (real_t)-1, rowT1);
                 accumulateDirForSide(c.tangent1, c.pointB_body, c.tangent1B_body, c.b, bDyn, (real_t) + 1, rowT1);
                 ++dynContactId;
 
                 const int rowT2 = dynContactId;
+                m_mu_vec[rowT2] = c.friction_mu;
                 accumulateDirForSide(c.tangent2, c.pointA_body, c.tangent2A_body, c.a, aDyn, (real_t)-1, rowT2);
                 accumulateDirForSide(c.tangent2, c.pointB_body, c.tangent2B_body, c.b, bDyn, (real_t) + 1, rowT2);
                 ++dynContactId;
@@ -329,6 +335,7 @@ void DynamicsAssembler::rebuildW_() {
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     m_W = TripletMatrix(C_dyn, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(trips)));
     m_contact_v_vec.conservativeResize((index_t)C_dyn);
+    m_mu_vec.conservativeResize((index_t)C_dyn);
 }
 
 void DynamicsAssembler::setContactLastImpulse(int global_out_index, const cardillo::Vector3r& imp) {

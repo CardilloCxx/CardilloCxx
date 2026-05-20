@@ -116,11 +116,7 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
     VectorXr p = VectorXr::Zero(Nc);
     if (cfg.pj_warmstart) cardillo::solver::WarmstartProvider::applyWarmstart(p, dyn);
 
-    VectorXr mus = VectorXr::Zero(Nc);
-    for (int i = 0; i < dyn.numContacts(); ++i) {
-        const auto& c = dyn.contacts()[i];
-        mus[c.impulse_base_index] = c.friction_mu;
-    }
+    VectorXr mus = dyn.muVec();
 
     // Init x directly from p via full solve — consistent with the non-incremental sweep.
     // When p=0 (no warm-start), x_init=0 without an explicit solve.
