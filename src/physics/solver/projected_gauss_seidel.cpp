@@ -111,12 +111,6 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
             // Update underlying u_corr via W_T
             u_corr.noalias() += m_dyn.MinvDiag().cwiseProduct(W_T.middleCols(offset, blockSize) * dlambda.segment(offset, blockSize));
-            //  for (int c = 0; c < blockSize; ++c) {
-            //     real_t dl = dlambda[offset + c];
-            //     for (Eigen::SparseMatrix<real_t, Eigen::ColMajor>::InnerIterator it(W_T, offset + c); it; ++it) {
-            //         u_corr[it.row()] += m_dyn.MinvDiag()[it.row()] * it.value() * dl;
-            //     }
-            // }
 
             // Accumulate residual norm for convergence check (use dlambda instead of res to get projected residual)
             res_norm_sq += dlambda.segment(offset, blockSize).squaredNorm() / (DinvBlocks[i].diagonal().squaredNorm());

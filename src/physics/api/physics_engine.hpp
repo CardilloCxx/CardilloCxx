@@ -2,6 +2,7 @@
 
 #include <limits>
 #include <memory>
+#include <cmath>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -129,6 +130,19 @@ class PhysicsEngine {
     void setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w) { m_world->setVelocityByForce(e, v, w); }
     void addTrajectory(entt::entity e, std::optional<std::function<TrajectoryPose(real_t)>> positionFunc, std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc) {
         m_world->setTrajectory(e, std::move(positionFunc), std::move(velocityFunc));
+    }
+    template <class TSpline, std::enable_if_t<std::is_base_of_v<cardillo::misc::SplinePattern, TSpline>, int> = 0>
+    void addTrajectory(entt::entity e, const TSpline& spline, real_t period) {
+        auto splineCopy = std::make_shared<TSpline>(spline);
+        const real_t safePeriod = std::max(period, (real_t)1e-8);
+        m_world->setTrajectory(
+            e,
+            [splineCopy, safePeriod](real_t t) -> TrajectoryPose {
+                const real_t phase = std::fmod(std::max(t, (real_t)0), safePeriod) / safePeriod;
+                const auto sample = splineCopy->sample(phase);
+                return {sample.position, Quaternion4r::Identity()};
+            },
+            std::nullopt);
     }
     void removeTrajectory(entt::entity e) { m_world->removeTrajectory(e); }
 

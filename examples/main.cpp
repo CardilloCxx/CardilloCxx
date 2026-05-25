@@ -40,6 +40,7 @@
 // #include "scenes/gears/GearsScene.hpp"         
 // #include "scenes/pendulum/PendulumScene.hpp"
 #include "scenes/3DPrinter/ThreeDPrinterScene.hpp"
+#include "scenes/cable_bunch/CableBunchScene.hpp"
 #include "scenes/cantilever/CantileverScene.hpp"
 #include "scenes/constraintTest/ConstraintTestScene.hpp"
 #include "scenes/conveyor/ConveyorScene.hpp"
@@ -114,6 +115,7 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<TennisScene>());
     scenes.emplace_back(std::make_unique<ConveyorScene>());
     scenes.emplace_back(std::make_unique<ThreeDPrinterScene>());
+    scenes.emplace_back(std::make_unique<CableBunchScene>());
 
     SceneBase* selected = nullptr;
     for (auto& s : scenes) {
