@@ -39,7 +39,7 @@ public:
 
         // cube_constraint = engine.addRigidConstraint(bottomCube);
 
-        engine.addTrajectory(bottomCube, std::nullopt, std::make_optional<std::function<TrajectoryTwist(real_t)>>([=](real_t t) -> TrajectoryTwist {
+        engine.addTrajectory(bottomCube, std::nullopt, std::make_optional<std::function<TrajectoryTwist(real_t)>>([=, this](real_t t) -> TrajectoryTwist {
                                  double v = amplitude * std::sin(2 * M_PI * frequency * t);
                                  return TrajectoryTwist{Vector3r(0, 0, v), Vector3r(5.0, 0, 0)};
                              }));
