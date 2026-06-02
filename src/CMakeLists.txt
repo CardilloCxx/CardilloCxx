@@ -7,7 +7,7 @@ add_library(${PROJECT_NAME} STATIC ${CARDILLO_SOURCES})
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${entt_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/lib/third_party/tinyexr
+    ${CMAKE_CURRENT_SOURCE_DIR}/../lib/third_party/tinyexr
 )
 
 target_link_libraries(${PROJECT_NAME}
