@@ -49,7 +49,7 @@ class PhysicsEngine {
 
     inline entt::entity addStaticBody(const RigidShape& shape, const RigidState& state) { return BodyFactory::addStaticBody(*m_world, shape, state); }
 
-    inline index_t addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05) { return BodyFactory::addPointMass(*m_world, mass, x0, v0, radius); }
+    inline entt::entity addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05) { return BodyFactory::addPointMass(*m_world, mass, x0, v0, radius); }
 
     inline index_t addObstacleHeightField(const Vector3r& position, const Quaternion4r& orientation, const std::string& exrPath, real_t x_dim, real_t y_dim, real_t z_scale = (real_t)1.0,
                                           real_t min_height = (real_t)0.0) {
