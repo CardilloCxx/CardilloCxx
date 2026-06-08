@@ -27,8 +27,8 @@ public:
         // Domino dims: x=length/2, y=thickness/2, z=height/2
         const Vector3r dominoHalf((real_t)0.024, (real_t)0.00375, (real_t)0.012); // length 9.6cm, thickness 1.5cm, height 4.8cm
         const real_t density = (real_t)800.0;
-        const int layers = 53; //186; //11; // 26; //53;
-        const int gridN = 12;  // 8; //16; // 16; //32;
+        const int layers = 26;  // 186; //11; // 26; //53;
+        const int gridN = 8;    // 8; //16; // 16; //32;
         const Vector3r baseCenter(0.0, 0.0, 0.0);
         const real_t gapLong = (real_t)0.004; // small longitudinal spacing
         const real_t extraLayerGap = (real_t)-0.0001;

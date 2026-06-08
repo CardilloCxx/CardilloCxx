@@ -7,3 +7,4 @@ vtk_out*
 domino_*
 lib/qoco*
 compile_commands.json
+analysis_results*

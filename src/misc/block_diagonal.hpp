@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <iostream>
 #include "types.hpp"
 
 namespace cardillo {
@@ -13,6 +14,7 @@ class BlockDiagonal {
     void addBlock(const MatrixXXr& block) {
         if (block.rows() != block.cols()) throw std::invalid_argument("Block must be square.");
         blocks_.push_back(block);
+        is_diag_ = is_diag_ && block.isDiagonal();
         n_ += block.rows();
     }
 
@@ -25,6 +27,12 @@ class BlockDiagonal {
         BlockDiagonal inverse;
 
         for (const auto& block : blocks_) {
+
+            if (is_diag_) {
+                inverse.addBlockDiag(block.diagonal().cwiseInverse());
+                continue;
+            }
+
             MatrixXXr I = MatrixXXr::Identity(block.rows(), block.cols());
             Eigen::LLT<MatrixXXr> llt(block);
             if (llt.info() == Eigen::Success) {
@@ -41,12 +49,16 @@ class BlockDiagonal {
                 }
             }
         }
-
+        inverse.calcDiag();
         return inverse;
     }
 
     VectorXr operator*(const VectorXr& vec) const {
         if (vec.size() != n_) throw std::invalid_argument("Dimension mismatch." + std::to_string(vec.size()) + " vs " + std::to_string(n_));
+
+        if (is_diag_ && vec.size() == diag_.size()) {
+            return diag_.cwiseProduct(vec); 
+        }
 
         VectorXr result(n_);
 
@@ -60,11 +72,21 @@ class BlockDiagonal {
     }
 
     const std::vector<MatrixXXr>& blocks() const { return blocks_; }
+    const void calcDiag() {
+        diag_ = VectorXr::Zero(n_);
+        int offset = 0;
+        for (const auto& block : blocks_) {
+            diag_.segment(offset, block.rows()) = block.diagonal();
+            offset += block.rows();
+        }
+    }
     size_t size() const { return n_; }
 
    private:
     size_t n_ = 0;
     std::vector<MatrixXXr> blocks_;
+    bool is_diag_ = true;
+    VectorXr diag_;
 };
 
 }  // namespace cardillo

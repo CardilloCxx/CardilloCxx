@@ -276,7 +276,7 @@ BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
         VectorXr Dii = D_diag.segment(offset + cid, 3);
         Dinv.addBlockDiag(Dii.cwiseInverse());
     }
-
+    Dinv.calcDiag();
     return Dinv;
 }
 
