@@ -13,11 +13,11 @@ public:
         double sphereRadius = 0.05;
         double sphereSpacing = 0.0;
 
-        bool disturb = true;
+        bool disturb = false;
 
         double wallThickness = sphereRadius * 0.25;
         double tubeWidth = sphereRadius * 3.0;
-        double tubeDepth = tubeWidth;
+        double tubeDepth = tubeWidth; 
         double tubeHeight = nSpheres * (2 * sphereRadius + sphereSpacing) + 0.5;
 
         double normalMass = 1.0;

@@ -103,7 +103,7 @@ def plot_combined_results(
     results: dict[tuple[str, str], tuple[list[int], list[int]]], 
     unique_scenes: list[str], 
     out_path: Path, 
-    smoothness_fraction: float = 0.02
+    smoothness_fraction: float = 0.013
 ) -> None:
     colors = {
         ("pj", False): "#a0cbe8",
@@ -174,7 +174,7 @@ def plot_combined_results(
                         marker=markers[nesterov],
                         markersize=0.5,
                         color=color,
-                        alpha=0.2,
+                        alpha=0.3,
                     )
                 else:
                     line_iters = iters

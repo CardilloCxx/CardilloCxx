@@ -7,45 +7,54 @@ namespace cardillo::solver {
 
 struct workspace {
     const int Nv, Ns, Nd, Nnfc, Nfc, Nc;
-    const VectorXr y_free_star;  // R*(W*u_free + contactBias), constant
+    const VectorXr x_free;      // free solution: assembler.solveS(rhs_free), constant
     const VectorXr mu;
-    const VectorXr Rdiag;
+    const VectorXr biasImpulse; // dyn.contactVVec(), constant
     const Eigen::SparseMatrix<real_t, Eigen::RowMajor> W;
+    const Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW;
 
-    // x is a pure delta: [delta_velocity; delta_lambda_g; delta_lambda_gamma]
-    // The full solution is x_free + x.
     VectorXr x;
     VectorXr prev_x;
     VectorXr impulse;
+    VectorXr delta_impulse;
     VectorXr prev_impulse;
-    VectorXr rhs;
+    VectorXr rhs;               // reusable RHS buffer for solveS
 
     int iter = 0;
     cardillo::misc::TimingManager* timer;
     cardillo::physics::assembly::PjAssembler* assembler;
 
-    workspace(int nv, int ns, int nd, int nnfc, int nfc, int nc, VectorXr y_free_star, Eigen::SparseMatrix<real_t, Eigen::RowMajor> W, VectorXr Rdiag, VectorXr mu, VectorXr p, VectorXr x_init,
-              cardillo::misc::TimingManager* timer, cardillo::physics::assembly::PjAssembler* assembler)
+    workspace(int nv, int ns, int nd, int nnfc, int nfc, int nc,
+              VectorXr x_free,
+              Eigen::SparseMatrix<real_t, Eigen::RowMajor> W,
+               Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW,
+                VectorXr biasImpulse, VectorXr mu,
+              VectorXr p_init, VectorXr x_init,
+              cardillo::misc::TimingManager* timer,
+              cardillo::physics::assembly::PjAssembler* assembler)
         : Nv(nv),
           Ns(ns),
           Nd(nd),
           Nnfc(nnfc),
           Nfc(nfc),
           Nc(nc),
-          y_free_star(std::move(y_free_star)),
+          x_free(std::move(x_free)),
           mu(std::move(mu)),
-          Rdiag(std::move(Rdiag)),
+          biasImpulse(std::move(biasImpulse)),
           W(std::move(W)),
+          RW(std::move(RW)),
           x(std::move(x_init)),
           prev_x(x),
-          impulse(std::move(p)),
+          impulse(std::move(p_init)),
           prev_impulse(impulse),
+          delta_impulse(VectorXr::Zero(nv + ns + nd)),
           rhs(VectorXr::Zero(nv + ns + nd)),
           timer(timer),
           assembler(assembler) {}
 };
 
-static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, real_t alpha) {
+static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W,
+                                     const VectorXr& MinvDiag, real_t alpha) {
     const int C = (int)W.rows();
     VectorXr R = VectorXr::Zero(C);
     for (int cid = 0; cid < C; ++cid) {
@@ -60,142 +69,168 @@ static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::Row
 }
 
 static inline void project(std::unique_ptr<workspace>& ws) {
-    ws->impulse.segment(0, ws->Nnfc) = ws->impulse.segment(0, ws->Nnfc).cwiseMax((real_t)0);
+    // Frictionless contacts: clamp normal impulse >= 0
+    ws->impulse.segment(0, ws->Nnfc) =
+        ws->impulse.segment(0, ws->Nnfc).cwiseMax((real_t)0);
 
+    // Frictional contacts: normal clamp + Coulomb disk projection
     for (int i = ws->Nnfc; i < ws->Nc; i += 3) {
         ws->impulse[i] = std::max(ws->impulse[i], (real_t)0);
         const real_t t1 = ws->impulse[i + 1], t2 = ws->impulse[i + 2];
         const real_t tnorm_sq = t1 * t1 + t2 * t2;
-
         if (tnorm_sq <= 0) continue;
-
-        const real_t s = std::min<real_t>((real_t)1, (ws->mu[i] * ws->impulse[i]) / std::sqrt((double)tnorm_sq));
+        const real_t s = std::min<real_t>(
+            (real_t)1, (ws->mu[i] * ws->impulse[i]) / std::sqrt((double)tnorm_sq));
         ws->impulse[i + 1] = s * t1;
         ws->impulse[i + 2] = s * t2;
     }
 }
 
 static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
-    auto scope = ws->timer->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobiSweep);
+    auto scope = ws->timer->scope(
+        cardillo::misc::TimingManager::TimerId::ProjectedJacobiSweep);
 
-    ws->prev_x = ws->x;
+    ws->prev_x      = ws->x;
     ws->prev_impulse = ws->impulse;
 
-    ws->impulse.noalias() -= ws->Rdiag.asDiagonal() * (ws->W * ws->x.head(ws->Nv));
-    ws->impulse -= ws->y_free_star;
+    ws->delta_impulse.noalias() = ws->RW * ws->x.head(ws->Nv);
+    ws->delta_impulse += ws->biasImpulse;
+
+    ws->impulse.noalias() -= ws->delta_impulse;
 
     project(ws);
+    ws->delta_impulse = ws->impulse - ws->prev_impulse;
 
-    ws->rhs.segment(0, ws->Nv).noalias() = ws->W.transpose() * ws->impulse;
-    ws->x = ws->assembler->solveS(ws->rhs);
+    ws->rhs.segment(0, ws->Nv).noalias() = ws->W.transpose() * ws->delta_impulse;
+    ws->x += ws->assembler->solveS(ws->rhs);
 }
 
-static inline real_t residual(const VectorXr& v, const VectorXr& v_prev, cardillo::config::Config& cfg) {
+static inline real_t residual(const VectorXr& v, const VectorXr& v_prev,
+                               cardillo::config::Config& cfg) {
     const int Nv = (int)v.size();
-    const VectorXr q = v.cwiseAbs().cwiseMax(v_prev.cwiseAbs()) * cfg.pj_tol_rel + VectorXr::Constant(Nv, cfg.pj_tol_abs);
+    const VectorXr q = v.cwiseAbs().cwiseMax(v_prev.cwiseAbs()) * cfg.pj_tol_rel
+                     + VectorXr::Constant(Nv, cfg.pj_tol_abs);
     return 1.0 / sqrt((double)Nv) * (v - v_prev).cwiseQuotient(q).norm();
 }
 
-static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::DynamicsAssembler& dyn, cardillo::physics::assembly::PjAssembler& assembler, cardillo::config::Config& cfg,
-                                                         const VectorXr& x_free) {
-    const int Nv = (int)dyn.numV();
-    const int Nc = (int)dyn.numContactRows();
-    const int Nnfc = (int)dyn.numFrictionlessContacts();
-    const int Nfc = Nc - Nnfc;
-    const int Ns = (int)dyn.numSprings();
-    const int Nd = (int)dyn.numDampers();
+static inline std::unique_ptr<workspace> build_workspace(
+    cardillo::physics::DynamicsAssembler& dyn,
+    cardillo::physics::assembly::PjAssembler& assembler,
+    cardillo::config::Config& cfg,
+    real_t dt, real_t theta) {
 
-    const auto& W = dyn.W().asSparseRowMajor();
+    const int Nv    = (int)dyn.numV();
+    const int Nc    = (int)dyn.numContactRows();
+    const int Nnfc  = (int)dyn.numFrictionlessContacts();
+    const int Nfc   = Nc - Nnfc;
+    const int Ns    = (int)dyn.numSprings();
+    const int Nd    = (int)dyn.numDampers();
+
+    const auto& W    = dyn.W().asSparseRowMajor();
     const auto& Minv = dyn.MinvDiag();
 
     VectorXr Rdiag = rdiag_sparse(W, Minv, cfg.pj_alpha);
+    const auto RW = Rdiag.asDiagonal() * W;
 
-    const VectorXr u_free = x_free.segment(0, Nv);
-    VectorXr y_free_star = Rdiag.asDiagonal() * (W * u_free) + Rdiag.cwiseProduct(dyn.contactVVec());
+    // Free solution (no contacts)
+    VectorXr rhs_free = assembler.rhs(dt, theta);
+    VectorXr x_free   = assembler.solveS(rhs_free);
 
+    // Warm-start impulse
     VectorXr p = VectorXr::Zero(Nc);
-    if (cfg.pj_warmstart) cardillo::solver::WarmstartProvider::applyWarmstart(p, dyn);
+    if (cfg.pj_warmstart)
+        cardillo::solver::WarmstartProvider::applyWarmstart(p, dyn);
 
-    VectorXr mus = dyn.muVec();
+    VectorXr rhs_init = rhs_free;
+    rhs_init.segment(0, Nv).noalias() += W.transpose() * p;
+    VectorXr x_init = assembler.solveS(rhs_init);
 
-    // Init x directly from p via full solve — consistent with the non-incremental sweep.
-    // When p=0 (no warm-start), x_init=0 without an explicit solve.
-    VectorXr x_init = VectorXr::Zero(Nv + Ns + Nd);
-    if (cfg.pj_warmstart && p.cwiseAbs().maxCoeff() > (real_t)0) {
-        VectorXr rhs_init = VectorXr::Zero(Nv + Ns + Nd);
-        rhs_init.segment(0, Nv).noalias() = W.transpose() * p;
-        x_init = assembler.solveS(rhs_init);
-    }
+    VectorXr mus         = dyn.muVec();
+    VectorXr contactBias = dyn.contactVVec();
+    VectorXr biasImpulse  = Rdiag.asDiagonal() * contactBias;
 
-    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, std::move(y_free_star), W, std::move(Rdiag), std::move(mus), std::move(p), std::move(x_init), dyn.timings(), &assembler);
+    return std::make_unique<workspace>(
+        Nv, Ns, Nd, Nnfc, Nfc, Nc,
+        std::move(x_free),
+        W, RW,
+        std::move(biasImpulse), std::move(mus),
+        std::move(p), std::move(x_init),
+        dyn.timings(), &assembler);
 }
 
-static inline void standard_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg) {
+static inline void standard_loop(std::unique_ptr<workspace>& ws,
+                                  cardillo::config::Config& cfg) {
     for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
         pj_sweep(ws);
         ws->iter = iter + 1;
-        if (iter % 10 == 0 && residual(ws->x.head(ws->Nv), ws->prev_x.head(ws->Nv), cfg) <= 1) break;
+        if (iter % 10 == 0 && residual(ws->x.head(ws->Nv), ws->prev_x.head(ws->Nv), cfg) <= 1)
+            break;
     }
 }
 
-static inline void nesterov_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg) {
-    VectorXr xk = ws->x;
-    VectorXr pk = ws->impulse;
+static inline void nesterov_loop(std::unique_ptr<workspace>& ws,
+                                  cardillo::config::Config& cfg) {
+    VectorXr xk  = ws->x;
+    VectorXr pk  = ws->impulse;
     VectorXr xk1 = ws->x;
     VectorXr pk1 = ws->impulse;
-    VectorXr xy = ws->x;
-    VectorXr py = ws->impulse;
+    VectorXr xy  = ws->x;
+    VectorXr py  = ws->impulse;
 
-    double thk = 1.0;
-    real_t err_prev = std::numeric_limits<real_t>::infinity();
-    int restarts = 0;
-    bool momentum_disabled = false;
+    double   thk             = 1.0;
+    real_t   err_prev        = std::numeric_limits<real_t>::infinity();
+    int      restarts        = 0;
+    bool     momentum_disabled = false;
 
     for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
-        ws->x = xy;
+        ws->x      = xy;
         ws->impulse = py;
         pj_sweep(ws);
         xk1 = ws->x;
         pk1 = ws->impulse;
         ws->iter = iter + 1;
 
-        const real_t err = residual(xk1.head(ws->Nv), xk.head(ws->Nv), cfg);
+        const real_t err = residual(xk1.head(ws->Nv), xy.head(ws->Nv), cfg);
+
+        if (cfg.debug_pj && iter % 1000 == 0) std::cout << "PJ nes iter " << iter << ", residual norm: " << err << std::endl;
         if (err <= (real_t)1) break;
 
-        const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
+        const double thk1  = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
         const double betak1 = (thk - 1.0) / thk1;
 
         bool restart = false;
         if (!std::isfinite((double)err)) {
             restart = true;
-        } else if (err_prev < std::numeric_limits<real_t>::infinity() && err > (real_t)1.05 * err_prev) {
+        } else if (err_prev < std::numeric_limits<real_t>::infinity() &&
+                   err > (real_t)1.05 * err_prev) {
             restart = true;
         } else if (betak1 > (double)cfg.pj_nesterov_beta_threshold) {
             restart = true;
         } else if (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0) {
             restart = true;
         } else {
-            const VectorXr vy = xy.head(ws->Nv);
+            const VectorXr vy  = xy.head(ws->Nv);
             const VectorXr vk1 = xk1.head(ws->Nv);
-            const VectorXr vk = xk.head(ws->Nv);
+            const VectorXr vk  = xk.head(ws->Nv);
             if ((vy - vk1).dot(vk1 - vk) > 0.0) restart = true;
         }
 
         if (restart) {
-            xy = xk1;
-            py = pk1;
-            xk = xk1;
-            pk = pk1;
+            xy  = xk1;
+            py  = pk1;
+            xk  = xk1;
+            pk  = pk1;
             thk = 1.0;
-            if (++restarts >= cfg.pj_nesterov_restart_limit) momentum_disabled = true;
+            if (++restarts >= cfg.pj_nesterov_restart_limit)
+                momentum_disabled = true;
         } else {
             if (momentum_disabled) {
-                xy = xk1;
-                py = pk1;
+                xy  = xk1;
+                py  = pk1;
                 thk = 1.0;
             } else {
-                xy = xk1 + (real_t)betak1 * (xk1 - xk);
-                py = pk1 + (real_t)betak1 * (pk1 - pk);
+                xy  = xk1 + (real_t)betak1 * (xk1 - xk);
+                py  = pk1 + (real_t)betak1 * (pk1 - pk);
                 thk = thk1;
             }
             xk = xk1;
@@ -204,34 +239,42 @@ static inline void nesterov_loop(std::unique_ptr<workspace>& ws, cardillo::confi
         err_prev = err;
     }
 
-    ws->x = xk1;
+    ws->x      = xk1;
     ws->impulse = pk1;
 }
 
 VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
     m_assembler.buildAndFactorS(dt, theta);
 
-    VectorXr rhs = m_assembler.rhs(dt, theta);
-    VectorXr x_free = m_assembler.solveS(rhs);
-
     const int numV = m_dyn.numV();
     const int numS = m_dyn.numSprings();
     const int numD = m_dyn.numDampers();
 
-    m_dyn.setLambda_g(x_free.segment(numV, numS));
-    m_dyn.setLambda_gamma(x_free.segment(numV + numS, numD));
     m_last_iters = 0;
 
-    if (m_dyn.numContacts() == 0) return x_free.segment(0, numV);
+    if (m_dyn.numContacts() == 0) {
+        // No contacts: free solution only
+        VectorXr rhs    = m_assembler.rhs(dt, theta);
+        VectorXr x_free = m_assembler.solveS(rhs);
+        m_dyn.setLambda_g(x_free.segment(numV, numS));
+        m_dyn.setLambda_gamma(x_free.segment(numV + numS, numD));
+        return x_free.segment(0, numV);
+    }
 
     std::unique_ptr<workspace> ws;
     {
-        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobiSetup);
-        ws = build_workspace(m_dyn, m_assembler, m_cfg, x_free);
+        auto sc = m_dyn.timings()->scope(
+            cardillo::misc::TimingManager::TimerId::ProjectedJacobiSetup);
+        ws = build_workspace(m_dyn, m_assembler, m_cfg, dt, theta);
     }
 
+    // Set free-solution spring/damper lambdas before the contact loop
+    m_dyn.setLambda_g(ws->x_free.segment(numV, numS));
+    m_dyn.setLambda_gamma(ws->x_free.segment(numV + numS, numD));
+
     {
-        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobi);
+        auto sc = m_dyn.timings()->scope(
+            cardillo::misc::TimingManager::TimerId::ProjectedJacobi);
         if (m_cfg.pj_nesterov)
             nesterov_loop(ws, m_cfg);
         else
@@ -242,10 +285,11 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
 
     cardillo::solver::WarmstartProvider::storeImpulse(ws->impulse, m_dyn);
 
-    m_dyn.setLambda_g(x_free.segment(numV, numS) + ws->x.segment(numV, numS));
-    m_dyn.setLambda_gamma(x_free.segment(numV + numS, numD) + ws->x.segment(numV + numS, numD));
+    // ws->x is the absolute solution; update lambdas with contact correction included
+    m_dyn.setLambda_g(ws->x.segment(numV, numS));
+    m_dyn.setLambda_gamma(ws->x.segment(numV + numS, numD));
 
-    return x_free.segment(0, numV) + ws->x.segment(0, numV);
+    return ws->x.segment(0, numV);
 }
 
 }  // namespace cardillo::solver

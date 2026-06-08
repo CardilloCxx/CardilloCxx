@@ -63,6 +63,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     const int nContacts = m_dyn.numContactRows();
     const int Nnfc = m_dyn.numFrictionlessContacts();
     const int Nfc = nContacts - Nnfc;
+    const int nV = u_free.size();
     const int numLambda = nSprings + nDampers + nContacts;
 
     if (m_cfg.debug_pj) {
@@ -74,7 +75,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     const VectorXr mus = m_dyn.muVec();
     const auto& DinvMatrix = m_assembler.DinvDiag(dt, theta);
     const VectorXr rhs = m_assembler.rhs(dt, theta);
-    VectorXr u_corr = VectorXr::Zero(u_free.size());
+    VectorXr u_corr = VectorXr::Zero(nV);
 
     Eigen::SparseMatrix<real_t, Eigen::RowMajor> W_row(m_assembler.W());
     Eigen::SparseMatrix<real_t, Eigen::ColMajor> MiW_T = m_dyn.MinvDiag().asDiagonal() * W_row.transpose();
@@ -113,11 +114,18 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
         o += DinvBlocks[i].rows();
     }
 
-    auto residual = [&](const VectorXr& v, const VectorXr& v_prev) {
-        const int Nv = (int)v.size();
-        if (Nv == 0) return (real_t)0;
-        const VectorXr q = v.cwiseAbs().cwiseMax(v_prev.cwiseAbs()) * m_cfg.pj_tol_rel + VectorXr::Constant(Nv, m_cfg.pj_tol_abs);
-        return 1.0 / std::sqrt((double)Nv) * (v - v_prev).cwiseQuotient(q).norm();
+    VectorXr res_diff(nV);
+    VectorXr res_q(nV);
+    VectorXr res_v0(nV);
+    VectorXr res_v1(nV);
+
+    auto residual = [&](const VectorXr& u_corr_k, const VectorXr& u_corr_k1) -> real_t {
+        const int Nv = (int)u_corr_k.size();
+        res_diff.noalias() = u_corr_k1 - u_corr_k;
+        res_v0.noalias()   = u_free - u_corr_k;
+        res_v1.noalias()   = u_free - u_corr_k1;
+        res_q.array() = res_v0.cwiseAbs().cwiseMax(res_v1.cwiseAbs()).array() * m_cfg.pj_tol_rel + m_cfg.pj_tol_abs;
+        return (real_t)(1.0 / std::sqrt((double)Nv) * res_diff.cwiseQuotient(res_q).norm());
     };
 
     auto check_residual = [&](const VectorXr& u_k, const VectorXr& u_k1, int iter) -> real_t {
@@ -134,7 +142,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     auto pgs_sweep = [&](int iter) -> void {
         auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
         // real_t res_norm_sq = 0;
-        const bool backward = iter & 1;
+        const bool backward = false; 
 
         for (int bi = 0; bi < nBlocks; ++bi) {
             int i = backward ? (nBlocks - 1 - bi) : bi;
@@ -197,13 +205,12 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
             lambda = lambda_y;
             u_corr = u_y;
 
-            pgs_sweep(iter++);
-            // pgs_sweep(++iter);
+            pgs_sweep(iter);
             const VectorXr lambda_k1 = lambda;
             const VectorXr u_k1 = u_corr;
             m_last_iters = iter + 2;
 
-            const real_t err = check_residual(u_k, u_k1, iter);
+            const real_t err = check_residual(u_y, u_k1, iter);
             if (err <= (real_t)1) break;
 
             const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
