@@ -34,6 +34,9 @@ Each example scene is driven by a config file that sets the scene name, output f
 
 	./build/bin/main ./examples/scenes/wilberforce/scene.config
 
+If you want a compact code walkthrough after building the project, see the
+worked pendulum example in :doc:`using_the_engine/example`.
+
 Docs build
 ----------
 

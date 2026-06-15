@@ -198,8 +198,6 @@ The factory:
 2. Creates a rigid body at each sample point (shape from ``section.type``).
 3. Connects every adjacent pair with ``addBeamConstraint``.
 
-Increasing ``segments`` improves accuracy but scales solve cost linearly.
-
 createBeams (multiple connected splines)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -226,9 +224,7 @@ Complete example
    using namespace cardillo::physics;
 
    // 1-metre straight rod along the z-axis
-   misc::LinearSpline spline;
-   spline.addControlPoint(Vector3r(0, 0, 0));
-   spline.addControlPoint(Vector3r(0, 0, 1));
+   misc::LinearSpline spline(Vector3r(0, 0, 0), Vector3r(0, 0, 1));
 
    // 5 mm diameter circular cross-section
    BeamCrossSection section(0.005, 0.005, BeamBodyType::Capsule);

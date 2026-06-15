@@ -139,6 +139,8 @@ CatmullRomSpline
 
 A smooth curve through a list of control points.
 
+Vector-based construction:
+
 .. code-block:: cpp
 
    std::vector<Vector3r> pts = {
@@ -150,15 +152,31 @@ A smooth curve through a list of control points.
 
    misc::CatmullRomSpline curve(pts, false);
 
-Constructor:
+Incremental construction:
 
 .. code-block:: cpp
 
+   misc::CatmullRomSpline curve;
+   curve.addControlPoint(Vector3r(0, 0, 0));
+   curve.addControlPoint(Vector3r(0.3, 0, 0.1));
+   curve.addControlPoint(Vector3r(0.6, 0.2, 0.1));
+   curve.addControlPoint(Vector3r(1.0, 0, 0));
+   curve.setLoop(false);
+
+Available API:
+
+.. code-block:: cpp
+
+   CatmullRomSpline();
    CatmullRomSpline(std::vector<Vector3r> controlPoints, bool loop);
+   void addControlPoint(const Vector3r& point);
+   void setLoop(bool loop);
 
 Notes:
 
 - open and closed curves are supported
+- adding control points or changing the loop flag rebuilds the internal
+  arc-length lookup table
 - the implementation builds an arc-length lookup table, so ``alpha`` is sampled
   more uniformly by length than raw segment parameter space
 - ``centerOfMass()`` is approximated numerically from sampled arc segments

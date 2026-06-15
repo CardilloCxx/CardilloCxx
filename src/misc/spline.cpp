@@ -126,12 +126,29 @@ Vector3r HelixSpline::centerOfMass() const {
 }
 
 // CatmullRomSpline -----------------------------------------------------------
-CatmullRomSpline::CatmullRomSpline(std::vector<Vector3r> controlPoints, bool loop) : m_cp(std::move(controlPoints)), m_loop(loop) {
+void CatmullRomSpline::rebuild() {
     if (m_cp.size() < 2) {
         m_len = (real_t)0;
+        m_arcLut.clear();
+        m_lutSamplesPerSeg = 0;
+        m_lutSegCount = 0;
     } else {
         buildArcLengthLUT(20);
     }
+}
+
+CatmullRomSpline::CatmullRomSpline(std::vector<Vector3r> controlPoints, bool loop) : m_cp(std::move(controlPoints)), m_loop(loop) {
+    rebuild();
+}
+
+void CatmullRomSpline::addControlPoint(const Vector3r& point) {
+    m_cp.push_back(point);
+    rebuild();
+}
+
+void CatmullRomSpline::setLoop(bool loop) {
+    m_loop = loop;
+    rebuild();
 }
 
 real_t CatmullRomSpline::totalLength() const {

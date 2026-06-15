@@ -63,6 +63,9 @@ Simulation timing
 Output settings
 ~~~~~~~~~~~~~~~
 
+The simulation writes VTK output files that can be opened directly in
+`ParaView <https://www.paraview.org/>`_ for inspection and animation.
+
 .. list-table::
    :header-rows: 1
    :widths: 25 35 15 25

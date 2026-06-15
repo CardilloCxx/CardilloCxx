@@ -107,7 +107,7 @@ next ``step()``:
    engine.setLinearVelocity(e, Vector3r(0, 0, -1));
    engine.setAngularVelocity(e, Vector3r(0, 1, 0));
 
-   // Set both linear and angular velocity in one call
+   // Set both linear and angular velocity by applying an impulse (force over one time step)
    engine.setVelocityByForce(e, Vector3r(0, 0, -1), Vector3r(0, 1, 0));
 
 .. warning::

@@ -210,12 +210,29 @@
 <span class="p">}</span>
 
 <span class="c1">// CatmullRomSpline -----------------------------------------------------------</span>
-<span class="n">CatmullRomSpline</span><span class="o">::</span><span class="n">CatmullRomSpline</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Vector3r</span><span class="o">&gt;</span><span class="w"> </span><span class="n">controlPoints</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">loop</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">m_cp</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">controlPoints</span><span class="p">)),</span><span class="w"> </span><span class="n">m_loop</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="kt">void</span><span class="w"> </span><span class="n">CatmullRomSpline</span><span class="o">::</span><span class="n">rebuild</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">m_cp</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">m_len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mi">0</span><span class="p">;</span>
+<span class="w">        </span><span class="n">m_arcLut</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+<span class="w">        </span><span class="n">m_lutSamplesPerSeg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">        </span><span class="n">m_lutSegCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">buildArcLengthLUT</span><span class="p">(</span><span class="mi">20</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">CatmullRomSpline</span><span class="o">::</span><span class="n">CatmullRomSpline</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Vector3r</span><span class="o">&gt;</span><span class="w"> </span><span class="n">controlPoints</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">loop</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">m_cp</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">controlPoints</span><span class="p">)),</span><span class="w"> </span><span class="n">m_loop</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">rebuild</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="n">CatmullRomSpline</span><span class="o">::</span><span class="n">addControlPoint</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">point</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">m_cp</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">point</span><span class="p">);</span>
+<span class="w">    </span><span class="n">rebuild</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="n">CatmullRomSpline</span><span class="o">::</span><span class="n">setLoop</span><span class="p">(</span><span class="kt">bool</span><span class="w"> </span><span class="n">loop</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">m_loop</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">loop</span><span class="p">;</span>
+<span class="w">    </span><span class="n">rebuild</span><span class="p">();</span>
 <span class="p">}</span>
 
 <span class="n">real_t</span><span class="w"> </span><span class="n">CatmullRomSpline</span><span class="o">::</span><span class="n">totalLength</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>

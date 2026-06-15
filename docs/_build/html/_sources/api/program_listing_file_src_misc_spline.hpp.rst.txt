@@ -98,13 +98,17 @@ Program Listing for File spline.hpp
    // Catmull-Rom spline (uniform parameterization, supports open or closed loops)
    class CatmullRomSpline : public SplinePattern {
       public:
+       CatmullRomSpline() = default;
        CatmullRomSpline(std::vector<Vector3r> controlPoints, bool loop);
+       void addControlPoint(const Vector3r& point);
+       void setLoop(bool loop);
        real_t totalLength() const override;
        bool isLoop() const override;
        SplineSample sample(real_t alpha) const override;
        Vector3r centerOfMass() const override;
    
       private:
+       void rebuild();
        Vector3r controlPoint(int idx) const;
        Vector3r segmentPosition(int seg, real_t t) const;
        Vector3r segmentTangent(int seg, real_t t) const;
