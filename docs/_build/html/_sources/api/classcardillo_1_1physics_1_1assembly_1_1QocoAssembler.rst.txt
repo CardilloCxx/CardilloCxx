@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1physics_1_1assembly_1_1QocoAssembler:
+
+Class QocoAssembler
+===================
+
+- Defined in :ref:`file_src_physics_assembly_qoco_assembler.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::physics::assembly::QocoAssembler
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

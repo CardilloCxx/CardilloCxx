@@ -1,0 +1,46 @@
+
+.. _file_src_physics_assembly_clarabel_assembler.cpp:
+
+File clarabel_assembler.cpp
+===========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assembly>` (``src/physics/assembly``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assembly/clarabel_assembler.cpp``)
+------------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assembly_clarabel_assembler.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``clarabel_assembler.hpp`` (:ref:`file_src_physics_assembly_clarabel_assembler.hpp`)
+
+- ``dynamics_assembler.hpp`` (:ref:`file_src_physics_assembly_dynamics_assembler.hpp`)
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+- :ref:`namespace_cardillo__physics__assembly`
+

@@ -1,0 +1,61 @@
+
+.. _file_src_physics_solver_projected_gauss_seidel.cpp:
+
+File projected_gauss_seidel.cpp
+===============================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_solver>` (``src/physics/solver``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/solver/projected_gauss_seidel.cpp``)
+--------------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_solver_projected_gauss_seidel.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``chrono``
+
+- ``cmath``
+
+- ``iostream``
+
+- ``limits``
+
+- ``projected_gauss_seidel.hpp`` (:ref:`file_src_physics_solver_projected_gauss_seidel.hpp`)
+
+- ``vector``
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__solver`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_projected__gauss__seidel_8cpp_1ae412e230eaa3b6f97f1c08bac15755c5`
+
+- :ref:`exhale_function_projected__gauss__seidel_8cpp_1a61e029ba684ad8ccb69474d8eef12344`
+

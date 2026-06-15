@@ -1,0 +1,81 @@
+
+.. _program_listing_file_src_physics_solver_projected_jacobi.hpp:
+
+Program Listing for File projected_jacobi.hpp
+=============================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_physics_solver_projected_jacobi.hpp>` (``src/physics/solver/projected_jacobi.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #pragma once
+   
+   #include <Eigen/Dense>
+   #include <Eigen/SparseCore>
+   #include <algorithm>
+   #include <optional>
+   #include "../../config/config.hpp"
+   #include "../../misc/types.hpp"
+   #include "../assembly/dynamics_assembler.hpp"
+   #include "../assembly/pj_assembler.hpp"
+   #include "solver_base.hpp"
+   #include "warmstart.hpp"
+   
+   namespace cardillo::solver {
+   
+   // Simple Projected Jacobi solver for normal contact impulses (percussions)
+   // Iteration: p_{k+1} = min(0, (R*G - I) p_k + R*b)
+   // where R = alpha * D^{-1}, D = diag(G), and b = W * v (normal relative speeds)
+   // Notes:
+   // - We treat the projection as clamping to non-positive impulses (compressive only).
+   // - alpha in (0,2) typically for convergence; default alpha=1.
+   class ProjectedJacobiSolver : public SolverBase {
+      public:
+       explicit ProjectedJacobiSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg)
+           : m_dyn(dyn),
+             m_cfg(cfg),
+             m_alpha(cfg.pj_alpha),
+             m_assembler(dyn, cfg),
+             m_relax(std::clamp<real_t>(cfg.pj_relaxation, 0, 1)),
+             m_maxIterations(std::max(1, cfg.pj_max_iterations)),
+             m_epsRel(cfg.pj_tol_rel),
+             m_warmStart(cfg.pj_warmstart),
+             m_debug(cfg.debug_pj),
+             m_useNesterov(cfg.pj_nesterov),
+             m_nest_beta_threshold((double)cfg.pj_nesterov_beta_threshold),
+             m_nest_restart_limit(std::max(0, cfg.pj_nesterov_restart_limit))
+   
+             ,
+             m_convCsvDir(cfg.pj_convergence_csv_dir) {}
+   
+       real_t alpha() const { return m_alpha; }
+       real_t lastError() const override { return m_lastError; }
+   
+       // Concatenated API: accept stacked preliminary velocities and return stacked velocities
+       VectorXr solve(real_t dt, real_t theta) override;
+   
+       const char* name() const override { return "ProjectedJacobi"; }
+   
+      private:
+       cardillo::physics::DynamicsAssembler& m_dyn;
+       cardillo::physics::assembly::PjAssembler m_assembler;
+       cardillo::config::Config m_cfg;
+   
+       real_t m_alpha{(real_t)1};
+       // No internal row-vector warmstart fallback; only via external cache when enabled
+       real_t m_relax{(real_t)1};
+       int m_maxIterations{1000000};
+       bool m_warmStart{true};
+       bool m_debug{false};
+       bool m_useNesterov{false};
+       double m_nest_beta_threshold{0.995};
+       int m_nest_restart_limit{4};
+       real_t m_epsRel{(real_t)0};
+   
+       std::string m_convCsvDir{};
+       real_t m_lastError{(real_t)0};
+   };
+   
+   }  // namespace cardillo::solver

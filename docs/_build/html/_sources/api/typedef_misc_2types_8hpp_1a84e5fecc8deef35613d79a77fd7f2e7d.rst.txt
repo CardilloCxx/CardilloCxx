@@ -1,0 +1,14 @@
+.. _exhale_typedef_misc_2types_8hpp_1a84e5fecc8deef35613d79a77fd7f2e7d:
+
+Typedef cardillo::Array3i
+=========================
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::Array3i
+   :project: Cardillo

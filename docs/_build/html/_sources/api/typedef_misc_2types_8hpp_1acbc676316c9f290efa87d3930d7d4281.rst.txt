@@ -1,0 +1,14 @@
+.. _exhale_typedef_misc_2types_8hpp_1acbc676316c9f290efa87d3930d7d4281:
+
+Typedef cardillo::SkewSymmetricMatrix3r
+=======================================
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::SkewSymmetricMatrix3r
+   :project: Cardillo

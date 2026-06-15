@@ -1,0 +1,32 @@
+
+.. _namespace_cardillo__transform:
+
+Namespace cardillo::transform
+=============================
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo__transform__detail`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_transformations_8hpp_1afb07ef55f3225d1927d2a87aa0f2927c`
+
+- :ref:`exhale_function_transformations_8hpp_1a1f1168a1d50deb7fe8bbb6352ebe5857`
+
+- :ref:`exhale_function_transformations_8hpp_1ae324b80a57793bf5345523bebfcd029a`
+
+- :ref:`exhale_function_transformations_8hpp_1a224ff25fb73e97ce4d2251272ca4d941`
+
+- :ref:`exhale_function_transformations_8hpp_1afbbfee35ad84e0fc1f2edffb10a2d11b`
+
+- :ref:`exhale_function_transformations_8hpp_1ae974527eaed19b08628832b521343ab0`
+
+- :ref:`exhale_function_transformations_8hpp_1a695fbd841e86344bf9b2be68cefc454f`

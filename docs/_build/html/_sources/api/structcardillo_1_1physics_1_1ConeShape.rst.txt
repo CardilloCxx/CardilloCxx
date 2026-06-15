@@ -1,0 +1,17 @@
+.. _exhale_struct_structcardillo_1_1physics_1_1ConeShape:
+
+Struct ConeShape
+================
+
+- Defined in :ref:`file_src_physics_api_physics_types.hpp`
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: cardillo::physics::ConeShape
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

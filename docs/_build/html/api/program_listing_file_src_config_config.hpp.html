@@ -1,0 +1,218 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Program Listing for File config.hpp &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Program Listing for File config.hpp</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/program_listing_file_src_config_config.hpp.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="program-listing-for-file-config-hpp">
+<span id="program-listing-file-src-config-config-hpp"></span><h1>Program Listing for File config.hpp<a class="headerlink" href="#program-listing-for-file-config-hpp" title="Link to this heading"></a></h1>
+<p>↰ <a class="reference internal" href="file_src_config_config.hpp.html#file-src-config-config-hpp"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">src/config/config.hpp</span></code>)</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;optional&gt;</span>
+<span class="cp">#pragma once</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;string&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;misc/types.hpp&quot;</span>
+
+<span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="o">::</span><span class="nn">config</span><span class="w"> </span><span class="p">{</span>
+
+<span class="k">enum</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">IntegratorType</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Moreau</span><span class="w"> </span><span class="p">};</span>
+<span class="k">enum</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">SolverType</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">ProjectedJacobi</span><span class="p">,</span><span class="w"> </span><span class="n">ConjugateGradient</span><span class="p">,</span><span class="w"> </span><span class="n">ProjectedGaussSeidel</span><span class="p">,</span><span class="w"> </span><span class="n">Qoco</span><span class="p">,</span><span class="w"> </span><span class="n">Clarabel</span><span class="w"> </span><span class="p">};</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">Config</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Simulation settings</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">sim_T</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">5.0</span><span class="p">};</span><span class="w">    </span><span class="c1">// sim.T - total simulation time</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">sim_dt</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">1e-3</span><span class="p">};</span><span class="w">  </span><span class="c1">// sim.dt - time step</span>
+<span class="w">    </span><span class="c1">// Gravity vector (world frame) used by examples and World</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">sim_gravity</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">-9.81</span><span class="p">};</span><span class="w">  </span><span class="c1">// sim.gravity = gx gy gz</span>
+
+<span class="w">    </span><span class="c1">// Output settings</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">output_interval_steps</span><span class="p">{</span><span class="mi">50</span><span class="p">};</span><span class="w">                </span><span class="c1">// output.interval_steps - VTK write interval in steps</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">output_heightfield_stride</span><span class="p">{</span><span class="mi">8</span><span class="p">};</span><span class="w">             </span><span class="c1">// output.heightfield_stride - decimation factor for HeightField VTK</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">output_contacts_body_vectors</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span><span class="w">     </span><span class="c1">// output.contacts_body_vectors</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">output_folder</span><span class="p">{</span><span class="s">&quot;./vtk_out&quot;</span><span class="p">};</span><span class="w">       </span><span class="c1">// output.folder</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">output_filename_prefix</span><span class="p">{</span><span class="s">&quot;scene&quot;</span><span class="p">};</span><span class="w">  </span><span class="c1">// output.filename_prefix</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">output_write_contacts</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span><span class="w">            </span><span class="c1">// output.write_contacts</span>
+
+<span class="w">    </span><span class="c1">// Collision settings</span>
+<span class="w">    </span><span class="c1">// collision.broadphase: one of [dynamic_aabb, dynamic_aabb_array, naive, sap, ssap]</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">collision_broadphase</span><span class="p">{</span><span class="s">&quot;dynamic_aabb&quot;</span><span class="p">};</span>
+<span class="w">    </span><span class="c1">// Disable all collisions globally (no collidable components, no contact computation)</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">collision_disable_all</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+<span class="w">    </span><span class="c1">// Security margin for collision request (&gt;=0). Small positive helps robustness.</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">collision_security_margin</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.0</span><span class="p">};</span><span class="w">  </span><span class="c1">// collision.security_margin</span>
+<span class="w">    </span><span class="c1">// Maximum raw contacts requested per pair from narrowphase</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">collision_max_raw_contacts</span><span class="p">{</span><span class="mi">1024</span><span class="p">};</span><span class="w">  </span><span class="c1">// collision.max_raw_contacts</span>
+<span class="w">    </span><span class="c1">// Maximum number of contact patches requested per pair</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="n">collision_max_patches</span><span class="p">{</span><span class="mi">4</span><span class="p">};</span><span class="w">  </span><span class="c1">// collision.max_patches</span>
+<span class="w">    </span><span class="c1">// Prefer using patch vertices over raw contacts when available</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">collision_use_patch_vertices</span><span class="p">{</span><span class="nb">true</span><span class="p">};</span><span class="w">  </span><span class="c1">// collision.use_patch_vertices</span>
+<span class="w">    </span><span class="c1">// Maximum distance (in meters) to consider a current contact matched to a previous one</span>
+<span class="w">    </span><span class="c1">// Used for warmstarting across steps. Set via `collision.match_max_dist`.</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">collision_match_max_dist</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.02</span><span class="p">};</span>
+<span class="w">    </span><span class="c1">// Minimum separation between contacts within the same entity-entity pair (meters).</span>
+<span class="w">    </span><span class="c1">// Contacts closer than this will be deduplicated (keeping deeper penetrations).</span>
+<span class="w">    </span><span class="c1">// Set via `collision.min_pair_contact_distance`. Set to 0 to disable.</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">collision_min_pair_contact_distance</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.0</span><span class="p">};</span>
+<span class="w">    </span><span class="c1">// Friction settings</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">friction_enable</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span><span class="w">              </span><span class="c1">// friction.enable - extend W with tangents</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">friction_combine</span><span class="p">{</span><span class="s">&quot;min&quot;</span><span class="p">};</span><span class="w">      </span><span class="c1">// friction.combine - one of [min, arith, geom]</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">friction_default_mu</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.5</span><span class="p">};</span><span class="w">  </span><span class="c1">// friction.default_mu - default C_Friction when not set on entities</span>
+
+<span class="w">    </span><span class="c1">// Debug/diagnostics</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">debug_rb</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span><span class="w">    </span><span class="c1">// debug.rb  - enable rigid-body contact/W diagnostics in Moreau</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">debug_pj</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span><span class="w">    </span><span class="c1">// debug.pj  - enable ProjectedJacobi iteration logging</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">debug_mesh</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span><span class="w">  </span><span class="c1">// debug.mesh - print mesh normalization info (volume, COM, inertia)</span>
+
+<span class="w">    </span><span class="c1">// Solver selection</span>
+<span class="w">    </span><span class="n">SolverType</span><span class="w"> </span><span class="n">solver</span><span class="p">{</span><span class="n">SolverType</span><span class="o">::</span><span class="n">ProjectedJacobi</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">pj_max_iterations</span><span class="p">{</span><span class="mi">200000</span><span class="p">};</span><span class="w">                     </span><span class="c1">// pj.max_iterations</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">pj_tol_abs</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">1e-4</span><span class="p">};</span><span class="w">                   </span><span class="c1">// pj.tol_abs</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">pj_tol_rel</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">1e-4</span><span class="p">};</span><span class="w">                   </span><span class="c1">// pj.tol_rel</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">pj_relaxation</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.9</span><span class="p">};</span><span class="w">                 </span><span class="c1">// pj.relaxation</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">pj_alpha</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.3</span><span class="p">};</span><span class="w">                      </span><span class="c1">// pj.alpha</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">pj_nesterov</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span><span class="w">                           </span><span class="c1">// pj.nesterov (enable Nesterov acceleration)</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">pj_nesterov_beta_threshold</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.995</span><span class="p">};</span><span class="w">  </span><span class="c1">// pj.nesterov_beta_threshold</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">pj_nesterov_restart_limit</span><span class="p">{</span><span class="mi">4</span><span class="p">};</span><span class="w">                  </span><span class="c1">// pj.nesterov_restart_limit</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">pj_warmstart</span><span class="p">{</span><span class="nb">true</span><span class="p">};</span><span class="w">                           </span><span class="c1">// pj.warmstart (enable warmstart &amp; cache)</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">pj_rdiag_true_delassus</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span><span class="w">                </span><span class="c1">// pj.rdiag_true_delassus</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">pj_convergence_csv_dir</span><span class="p">{</span><span class="s">&quot;&quot;</span><span class="p">};</span><span class="w">            </span><span class="c1">// pj.convergence_csv_dir (empty to disable)</span>
+
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">constraint_bias_factor</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.001</span><span class="p">};</span><span class="w">  </span><span class="c1">// constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)</span>
+
+<span class="w">    </span><span class="c1">// Interior-point solver settings shared across QOCO and Clarabel</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">qoco_backend</span><span class="p">{</span><span class="s">&quot;auto&quot;</span><span class="p">};</span><span class="w">         </span><span class="c1">// qoco.backend [auto, cpu, cuda]</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">ip_kkt_static_reg</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">1e-8</span><span class="p">};</span><span class="w">   </span><span class="c1">// solver.kkt_static_reg</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">ip_kkt_dynamic_reg</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">1e-8</span><span class="p">};</span><span class="w">  </span><span class="c1">// solver.kkt_dynamic_reg</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">ip_iter_ref_iters</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span><span class="w">                 </span><span class="c1">// solver.iter_ref_iters</span>
+
+<span class="w">    </span><span class="c1">// Presence flags for precedence handling (e.g., pj.alpha overrides alpha if both set)</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">has_pj_alpha</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">has_pj_max_iterations</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">has_pj_tol_abs</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">has_pj_tol_rel</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">has_pj_relaxation</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+
+<span class="w">    </span><span class="c1">// Integrator selection</span>
+<span class="w">    </span><span class="n">IntegratorType</span><span class="w"> </span><span class="n">integrator</span><span class="p">{</span><span class="n">IntegratorType</span><span class="o">::</span><span class="n">Moreau</span><span class="p">};</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">moreau_theta</span><span class="p">{(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">1.0</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">moreau_implicit_gyroscopy</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">moreau_lambda_theta</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">scene_name</span><span class="p">{</span><span class="s">&quot;none-specified&quot;</span><span class="p">};</span>
+<span class="p">};</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ConfigReader</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="c1">// Load config from file. If loading/parsing fails, returns a Config with header defaults.</span>
+<span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="n">Config</span><span class="w"> </span><span class="n">fromFile</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">path</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace cardillo::config</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

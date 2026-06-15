@@ -1,0 +1,25 @@
+
+.. _program_listing_file_src_physics_assets_rigid_body_factory.hpp:
+
+Program Listing for File rigid_body_factory.hpp
+===============================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_physics_assets_rigid_body_factory.hpp>` (``src/physics/assets/rigid_body_factory.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #pragma once
+   
+   #include <entt/entt.hpp>
+   
+   #include "../world.hpp"
+   
+   namespace cardillo::physics {
+   
+   struct RigidBodyFactory {
+       static entt::entity create(World& system, const physics::RigidShape& shape, const physics::RigidState& state, const physics::RigidProps& props);
+   };
+   
+   }  // namespace cardillo::physics

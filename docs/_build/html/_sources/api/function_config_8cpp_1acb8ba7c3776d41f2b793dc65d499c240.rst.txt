@@ -1,0 +1,14 @@
+.. _exhale_function_config_8cpp_1acb8ba7c3776d41f2b793dc65d499c240:
+
+Function cardillo::config::trim
+===============================
+
+- Defined in :ref:`file_src_config_config.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::config::trim(const std::string&)
+   :project: Cardillo

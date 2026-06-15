@@ -1,0 +1,17 @@
+.. _exhale_struct_structcardillo_1_1C__RigidBodyDirectorTag:
+
+Struct C_RigidBodyDirectorTag
+=============================
+
+- Defined in :ref:`file_src_physics_ecs_types.hpp`
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: cardillo::C_RigidBodyDirectorTag
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

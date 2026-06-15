@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1collision_1_1CollisionCoal:
+
+Class CollisionCoal
+===================
+
+- Defined in :ref:`file_src_collision_collision_coal.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::collision::CollisionCoal
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

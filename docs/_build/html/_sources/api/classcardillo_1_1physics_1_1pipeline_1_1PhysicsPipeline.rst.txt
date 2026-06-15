@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1physics_1_1pipeline_1_1PhysicsPipeline:
+
+Class PhysicsPipeline
+=====================
+
+- Defined in :ref:`file_src_physics_pipeline_physics_pipeline.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::physics::pipeline::PhysicsPipeline
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

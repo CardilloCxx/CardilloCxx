@@ -1,0 +1,14 @@
+.. _exhale_function_transformations_8hpp_1a35fed6521d873cc3697c13ef586f39e0:
+
+Function cardillo::transform::detail::vecToWorld
+================================================
+
+- Defined in :ref:`file_src_rigid_body_transformations.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::transform::detail::vecToWorld(const RigidBody::RigidState&, const Vector3r&)
+   :project: Cardillo

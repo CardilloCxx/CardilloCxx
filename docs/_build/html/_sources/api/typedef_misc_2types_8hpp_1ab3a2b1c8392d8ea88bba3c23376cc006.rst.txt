@@ -1,0 +1,14 @@
+.. _exhale_typedef_misc_2types_8hpp_1ab3a2b1c8392d8ea88bba3c23376cc006:
+
+Typedef cardillo::Matrixr
+=========================
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::Matrixr
+   :project: Cardillo

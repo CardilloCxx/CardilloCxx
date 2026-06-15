@@ -1,0 +1,69 @@
+
+.. _file_src_physics_assembly_pgs_assembler.hpp:
+
+File pgs_assembler.hpp
+======================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assembly>` (``src/physics/assembly``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assembly/pgs_assembler.hpp``)
+-------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assembly_pgs_assembler.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../config/config.hpp``
+
+- ``../../misc/block_diagonal.hpp``
+
+- ``../../misc/types.hpp``
+
+- ``dynamics_assembler.hpp`` (:ref:`file_src_physics_assembly_dynamics_assembler.hpp`)
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_assembly_pgs_assembler.cpp`
+
+- :ref:`file_src_physics_solver_conjugate_gradient.hpp`
+
+- :ref:`file_src_physics_solver_projected_gauss_seidel.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+- :ref:`namespace_cardillo__physics__assembly`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1assembly_1_1PgsAssembler`
+

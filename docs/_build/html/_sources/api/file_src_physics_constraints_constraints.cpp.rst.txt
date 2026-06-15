@@ -1,0 +1,42 @@
+
+.. _file_src_physics_constraints_constraints.cpp:
+
+File constraints.cpp
+====================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_constraints>` (``src/physics/constraints``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/constraints/constraints.cpp``)
+--------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_constraints_constraints.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``constraints.hpp`` (:ref:`file_src_physics_constraints_constraints.hpp`)
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+

@@ -1,0 +1,35 @@
+
+.. _program_listing_file_src_physics_integration_moreau.hpp:
+
+Program Listing for File moreau.hpp
+===================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_physics_integration_moreau.hpp>` (``src/physics/integration/moreau.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #pragma once
+   
+   #include <Eigen/Dense>
+   #include <Eigen/SparseCore>
+   #include "../solver/projected_jacobi.hpp"
+   #include "config/config.hpp"
+   #include "integration_base.hpp"
+   #include "misc/types.hpp"
+   #include "physics/assembly/dynamics_assembler.hpp"
+   #include "physics/world.hpp"
+   
+   namespace cardillo::integration {
+   
+   class MoreauIntegrator : public IntegrationBase {
+      public:
+       explicit MoreauIntegrator(cardillo::World& world, cardillo::solver::SolverBase& solver, cardillo::physics::DynamicsAssembler& dyn, cardillo::misc::TimingManager& timings,
+                                 cardillo::config::Config& config)
+           : IntegrationBase(world, solver, dyn, timings, config) {}
+   
+       void step(real_t dt) override;
+   };
+   
+   }  // namespace cardillo::integration

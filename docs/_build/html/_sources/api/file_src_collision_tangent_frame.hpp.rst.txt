@@ -1,0 +1,57 @@
+
+.. _file_src_collision_tangent_frame.hpp:
+
+File tangent_frame.hpp
+======================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_collision>` (``src/collision``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/collision/tangent_frame.hpp``)
+------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_collision_tangent_frame.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``cmath``
+
+- ``misc/types.hpp`` (:ref:`file_src_misc_types.hpp`)
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_collision_collision_coal.cpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__collision`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_tangent__frame_8hpp_1a0549728b2a560f86eade0c4772acd77f`
+

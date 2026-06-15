@@ -1,0 +1,29 @@
+.. _exhale_class_classcardillo_1_1misc_1_1SplinePattern:
+
+Class SplinePattern
+===================
+
+- Defined in :ref:`file_src_misc_spline.hpp`
+
+
+Inheritance Relationships
+-------------------------
+
+Derived Types
+*************
+
+- ``public cardillo::misc::CatmullRomSpline`` (:ref:`exhale_class_classcardillo_1_1misc_1_1CatmullRomSpline`)
+- ``public cardillo::misc::CircleSpline`` (:ref:`exhale_class_classcardillo_1_1misc_1_1CircleSpline`)
+- ``public cardillo::misc::HelixSpline`` (:ref:`exhale_class_classcardillo_1_1misc_1_1HelixSpline`)
+- ``public cardillo::misc::LinearSpline`` (:ref:`exhale_class_classcardillo_1_1misc_1_1LinearSpline`)
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::misc::SplinePattern
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

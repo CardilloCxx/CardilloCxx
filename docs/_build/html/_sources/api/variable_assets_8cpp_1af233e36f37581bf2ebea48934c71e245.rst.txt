@@ -1,0 +1,14 @@
+.. _exhale_variable_assets_8cpp_1af233e36f37581bf2ebea48934c71e245:
+
+Variable com
+============
+
+- Defined in :ref:`file_src_physics_assets_assets.cpp`
+
+
+Variable Documentation
+----------------------
+
+
+.. doxygenvariable:: com
+   :project: Cardillo

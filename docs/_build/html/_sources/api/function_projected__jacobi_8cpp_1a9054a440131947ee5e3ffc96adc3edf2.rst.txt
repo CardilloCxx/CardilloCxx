@@ -1,0 +1,14 @@
+.. _exhale_function_projected__jacobi_8cpp_1a9054a440131947ee5e3ffc96adc3edf2:
+
+Function cardillo::solver::build_workspace
+==========================================
+
+- Defined in :ref:`file_src_physics_solver_projected_jacobi.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::solver::build_workspace(cardillo::physics::DynamicsAssembler&, cardillo::physics::assembly::PjAssembler&, cardillo::config::Config&, real_t, real_t)
+   :project: Cardillo

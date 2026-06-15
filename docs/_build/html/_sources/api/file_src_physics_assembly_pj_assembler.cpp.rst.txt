@@ -1,0 +1,44 @@
+
+.. _file_src_physics_assembly_pj_assembler.cpp:
+
+File pj_assembler.cpp
+=====================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assembly>` (``src/physics/assembly``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assembly/pj_assembler.cpp``)
+------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assembly_pj_assembler.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``pj_assembler.hpp`` (:ref:`file_src_physics_assembly_pj_assembler.hpp`)
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+- :ref:`namespace_cardillo__physics__assembly`
+

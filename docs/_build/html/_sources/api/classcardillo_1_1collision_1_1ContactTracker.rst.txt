@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1collision_1_1ContactTracker:
+
+Class ContactTracker
+====================
+
+- Defined in :ref:`file_src_collision_contact_tracker.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::collision::ContactTracker
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

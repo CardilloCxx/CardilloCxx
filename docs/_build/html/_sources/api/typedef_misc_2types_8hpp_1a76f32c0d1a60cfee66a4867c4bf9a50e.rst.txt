@@ -1,0 +1,14 @@
+.. _exhale_typedef_misc_2types_8hpp_1a76f32c0d1a60cfee66a4867c4bf9a50e:
+
+Typedef cardillo::SparseMatrix
+==============================
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::SparseMatrix
+   :project: Cardillo

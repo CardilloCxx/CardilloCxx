@@ -1,0 +1,77 @@
+
+.. _file_src_physics_assets_assets.hpp:
+
+File assets.hpp
+===============
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assets>` (``src/physics/assets``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assets/assets.hpp``)
+----------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assets_assets.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../misc/types.hpp``
+
+- ``Eigen/Dense``
+
+- ``coal/BVH/BVH_model.h``
+
+- ``coal/hfield.h``
+
+- ``memory``
+
+- ``string``
+
+- ``unordered_map``
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_assets_assets.cpp`
+
+- :ref:`file_src_physics_assets_body_factory.cpp`
+
+- :ref:`file_src_physics_world.cpp`
+
+- :ref:`file_src_physics_world.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1HeightFieldAsset`
+
+- :ref:`exhale_struct_structcardillo_1_1MeshAsset`
+
+- :ref:`exhale_class_classcardillo_1_1PhysicsAssets`
+

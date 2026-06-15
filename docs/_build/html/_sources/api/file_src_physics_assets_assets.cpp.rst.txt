@@ -1,0 +1,65 @@
+
+.. _file_src_physics_assets_assets.cpp:
+
+File assets.cpp
+===============
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assets>` (``src/physics/assets``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assets/assets.cpp``)
+----------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assets_assets.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../io/heightmap_loader.hpp``
+
+- ``assets.hpp`` (:ref:`file_src_physics_assets_assets.hpp`)
+
+- ``coal/mesh_loader/loader.h``
+
+- ``fstream``
+
+- ``iomanip``
+
+- ``sstream``
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+
+Variables
+---------
+
+
+- :ref:`exhale_variable_assets_8cpp_1a3def67e442804e431cb9f26db82f6e56`
+
+- :ref:`exhale_variable_assets_8cpp_1af233e36f37581bf2ebea48934c71e245`
+
+- :ref:`exhale_variable_assets_8cpp_1ad3d00caa4f6a5d520ceabf3253f8fa34`
+
+- :ref:`exhale_variable_assets_8cpp_1aed3e8b5175a018c5ac00dfd069c99ed8`
+
+- :ref:`exhale_variable_assets_8cpp_1a66bb33a9d7007cc15272f6b532f7fae8`
+

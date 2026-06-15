@@ -1,0 +1,14 @@
+.. _exhale_function_softbody__loader_8cpp_1ab21bc378cef623aad80954e9bd463f1e:
+
+Function cardillo::io::load_obj_softbody
+========================================
+
+- Defined in :ref:`file_src_io_softbody_loader.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::io::load_obj_softbody(const std::string&, SoftBodyMesh&, const cardillo::Vector3r&)
+   :project: Cardillo

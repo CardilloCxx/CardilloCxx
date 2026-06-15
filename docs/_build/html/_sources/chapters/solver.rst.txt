@@ -1,0 +1,56 @@
+Solver
+======
+
+This chapter summarizes the currently wired solvers and how they fit into the contact pipeline.
+
+Projected Jacobi
+----------------
+
+Projected Jacobi is the default iterative solver. It is simple, parallel-friendly, and a good baseline for contact problems with friction. The solver iterates on the impulse vector, projects each update back to the admissible cone, and uses warmstart data when available.
+
+Use this when you want the most conservative default behavior.
+
+Projected Gauss-Seidel
+----------------------
+
+Projected Gauss-Seidel updates the contact blocks sequentially instead of all at once. That makes it better suited to strongly coupled contact sets and often improves convergence on stacked or chain-like systems.
+
+The current implementation also supports:
+
+- warmstarting from the previous step
+- friction cone projection for each contact block
+- an optional Nesterov-style acceleration path
+
+The core idea is a sweep of local block solves followed by projection onto the admissible set:
+
+.. math::
+
+   \lambda^{k+1} = \Pi_{\mathcal{K}}\!\left(\lambda^k + D^{-1} r^k\right)
+
+Conjugate Gradient
+------------------
+
+The conjugate-gradient backend is available for problems where the assembled system can be treated as a symmetric linear solve. It is useful as a comparative baseline and for debugging the linearized dynamics assembly.
+
+QOCO
+----
+
+QOCO is the interior-point backend used when a conic optimization solve is preferred. The build can target either CPU or CUDA support depending on the configured backend and available dependencies.
+
+Clarabel
+--------
+
+Clarabel is the other interior-point option exposed by the engine. It fits the same contact and cone-programming workflow and is selected from the config like the other solvers.
+
+Configuration
+-------------
+
+Select the solver with ``solver.type`` in the config file. Supported values currently include:
+
+- ``projected_jacobi`` or ``pj``
+- ``projected_gauss_seidel`` or ``pgs``
+- ``conjugate_gradient`` or ``cg``
+- ``qoco``
+- ``clarabel``
+
+The Moreau integrator itself is selected with ``solver.name = moreau`` or the equivalent ``moreau.theta`` settings, which are still routed through the same config file parser.

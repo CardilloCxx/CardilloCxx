@@ -233,8 +233,7 @@ private:
         for (size_t i = 1; i + 1 < nodes.size(); ++i) {
             const Vector3r& p = nodes[i];
             // add small point-mass segment (visual + collidable radius provided)
-            index_t seg_id = engine.addPointMass(segmentMass, p, Vector3r::Zero(), nodeRadius);
-            entt::entity seg = entt::entity(static_cast<uint32_t>(seg_id));
+            entt::entity seg = engine.addPointMass(segmentMass, p, Vector3r::Zero(), nodeRadius);
             bodies.push_back(seg);
         }
         bodies.push_back(eB);

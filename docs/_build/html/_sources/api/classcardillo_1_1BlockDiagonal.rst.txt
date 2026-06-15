@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1BlockDiagonal:
+
+Class BlockDiagonal
+===================
+
+- Defined in :ref:`file_src_misc_block_diagonal.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::BlockDiagonal
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

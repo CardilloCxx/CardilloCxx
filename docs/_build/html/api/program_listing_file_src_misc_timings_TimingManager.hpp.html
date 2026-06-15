@@ -1,0 +1,415 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Program Listing for File TimingManager.hpp &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Program Listing for File TimingManager.hpp</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/program_listing_file_src_misc_timings_TimingManager.hpp.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="program-listing-for-file-timingmanager-hpp">
+<span id="program-listing-file-src-misc-timings-timingmanager-hpp"></span><h1>Program Listing for File TimingManager.hpp<a class="headerlink" href="#program-listing-for-file-timingmanager-hpp" title="Link to this heading"></a></h1>
+<p>↰ <a class="reference internal" href="file_src_misc_timings_TimingManager.hpp.html#file-src-misc-timings-timingmanager-hpp"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">src/misc/timings/TimingManager.hpp</span></code>)</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// TimingManager.hpp - lightweight timing aggregation for subsystems</span>
+<span class="cp">#pragma once</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;chrono&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;iomanip&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;iostream&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;string&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;unordered_map&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;unordered_set&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+
+<span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="w"> </span><span class="p">{</span>
+<span class="k">namespace</span><span class="w"> </span><span class="nn">misc</span><span class="w"> </span><span class="p">{</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TimingManager</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="k">enum</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">TimerId</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">CollisionBroadphase</span><span class="p">,</span>
+<span class="w">        </span><span class="n">CollisionMatching</span><span class="p">,</span>
+<span class="w">        </span><span class="n">CollisionNarrowphase</span><span class="p">,</span>
+<span class="w">        </span><span class="n">UpdateEntities</span><span class="p">,</span>
+<span class="w">        </span><span class="n">BuildAndFactorS</span><span class="p">,</span>
+<span class="w">        </span><span class="n">RebuildConstraintJacobians</span><span class="p">,</span>
+<span class="w">        </span><span class="n">RebuildContactJacobians</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Integration</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ProjectedJacobi</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ProjectedJacobiSweep</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ProjectedJacobiSetup</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ProjectedGaussSeidel</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ProjectedGaussSeidelSweep</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ProjectedGaussSeidelSetup</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ConjugateGradientSetup</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ConjugateGradientSolve</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ConjugateGradientSweep</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ProjectedNewton</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ProjectedNewtonSetup</span><span class="p">,</span>
+<span class="w">        </span><span class="n">QocoSolve</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ClarabelSolve</span><span class="p">,</span>
+<span class="w">        </span><span class="n">CollisionMakeContact</span><span class="p">,</span>
+<span class="w">        </span><span class="n">DisableCollisionPairs</span><span class="p">,</span>
+<span class="w">        </span><span class="n">CollisionNarrowphaseCollide</span><span class="p">,</span>
+<span class="w">        </span><span class="n">CollisionMakeContactPatch</span><span class="p">,</span>
+<span class="w">        </span><span class="n">QocoAssembly</span><span class="p">,</span>
+<span class="w">        </span><span class="n">QocoSetup</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ClarabelAssembly</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ClarabelSetup</span><span class="p">,</span>
+<span class="w">        </span><span class="n">OutputWrite</span><span class="p">,</span>
+<span class="w">        </span><span class="n">DynamicsAssembler_RefreshState</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Total</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Other</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="c1">// Stats now distinguish between inclusive (wall time of the scope itself) and</span>
+<span class="w">    </span><span class="c1">// exclusive (time excluding any child scopes).</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">Stats</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">totalSec</span><span class="p">{</span><span class="mf">0.0</span><span class="p">};</span><span class="w">      </span><span class="c1">// EXCLUSIVE time</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">inclusiveSec</span><span class="p">{</span><span class="mf">0.0</span><span class="p">};</span><span class="w">  </span><span class="c1">// INCLUSIVE time</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">calls</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="k">class</span><span class="w"> </span><span class="nc">Scope</span><span class="w"> </span><span class="p">{</span>
+<span class="w">       </span><span class="k">public</span><span class="o">:</span>
+<span class="w">        </span><span class="n">Scope</span><span class="p">(</span><span class="n">TimingManager</span><span class="o">&amp;</span><span class="w"> </span><span class="n">mgr</span><span class="p">,</span><span class="w"> </span><span class="n">TimerId</span><span class="w"> </span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">m_mgr</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mgr</span><span class="p">),</span><span class="w"> </span><span class="n">m_active</span><span class="p">(</span><span class="nb">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">m_mgr</span><span class="o">-&gt;</span><span class="n">begin</span><span class="p">(</span><span class="n">id</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="c1">// non-copyable</span>
+<span class="w">        </span><span class="n">Scope</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Scope</span><span class="o">&amp;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">delete</span><span class="p">;</span>
+<span class="w">        </span><span class="n">Scope</span><span class="o">&amp;</span><span class="w"> </span><span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Scope</span><span class="o">&amp;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">delete</span><span class="p">;</span>
+<span class="w">        </span><span class="c1">// movable</span>
+<span class="w">        </span><span class="n">Scope</span><span class="p">(</span><span class="n">Scope</span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">other</span><span class="p">)</span><span class="w"> </span><span class="k">noexcept</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">m_mgr</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">m_mgr</span><span class="p">),</span><span class="w"> </span><span class="n">m_active</span><span class="p">(</span><span class="n">other</span><span class="p">.</span><span class="n">m_active</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">other</span><span class="p">.</span><span class="n">m_active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="n">Scope</span><span class="o">&amp;</span><span class="w"> </span><span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">Scope</span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">other</span><span class="p">)</span><span class="w"> </span><span class="k">noexcept</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">this</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">other</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="c1">// end current if still active</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">m_active</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">m_mgr</span><span class="p">)</span><span class="w"> </span><span class="n">m_mgr</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">();</span>
+<span class="w">                </span><span class="n">m_mgr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">other</span><span class="p">.</span><span class="n">m_mgr</span><span class="p">;</span>
+<span class="w">                </span><span class="n">m_active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">other</span><span class="p">.</span><span class="n">m_active</span><span class="p">;</span>
+<span class="w">                </span><span class="n">other</span><span class="p">.</span><span class="n">m_active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="o">*</span><span class="k">this</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="o">~</span><span class="n">Scope</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">m_active</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">m_mgr</span><span class="p">)</span><span class="w"> </span><span class="n">m_mgr</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">();</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">       </span><span class="k">private</span><span class="o">:</span>
+<span class="w">        </span><span class="n">TimingManager</span><span class="o">*</span><span class="w"> </span><span class="n">m_mgr</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+<span class="w">        </span><span class="kt">bool</span><span class="w"> </span><span class="n">m_active</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">reset</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">m_stats</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">Scope</span><span class="w"> </span><span class="nf">scope</span><span class="p">(</span><span class="n">TimerId</span><span class="w"> </span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">Scope</span><span class="p">(</span><span class="o">*</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="n">id</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="n">Scope</span><span class="w"> </span><span class="nf">scope</span><span class="p">(</span><span class="n">TimerId</span><span class="w"> </span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">Scope</span><span class="p">(</span><span class="k">const_cast</span><span class="o">&lt;</span><span class="n">TimingManager</span><span class="o">&amp;&gt;</span><span class="p">(</span><span class="o">*</span><span class="k">this</span><span class="p">),</span><span class="w"> </span><span class="n">id</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Stats</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">stats</span><span class="p">(</span><span class="n">TimerId</span><span class="w"> </span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m_stats</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">it</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">m_stats</span><span class="p">.</span><span class="n">end</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">;</span>
+<span class="w">        </span><span class="k">static</span><span class="w"> </span><span class="n">Stats</span><span class="w"> </span><span class="n">empty</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">empty</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">printBreakdown</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span><span class="w"> </span><span class="n">os</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">grandInclusive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">-1.0</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m_stats</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">TimerId</span><span class="o">::</span><span class="n">Total</span><span class="p">);</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">m_stats</span><span class="p">.</span><span class="n">end</span><span class="p">())</span><span class="w"> </span><span class="n">grandInclusive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">.</span><span class="n">inclusiveSec</span><span class="p">;</span>
+
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">knownExclusive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">kv</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">m_stats</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">kv</span><span class="p">.</span><span class="n">first</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">TimerId</span><span class="o">::</span><span class="n">Total</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">kv</span><span class="p">.</span><span class="n">first</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">TimerId</span><span class="o">::</span><span class="n">Other</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">            </span><span class="n">knownExclusive</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">kv</span><span class="p">.</span><span class="n">second</span><span class="p">.</span><span class="n">totalSec</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">grand</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">grandInclusive</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">grandInclusive</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">knownExclusive</span><span class="p">;</span><span class="w">  </span><span class="c1">// fallback</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">grand</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">os</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">[Timings] No recorded timings.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">return</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">otherResidual</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="n">grand</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">knownExclusive</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">Row</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">name</span><span class="p">;</span>
+<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">sec</span><span class="p">;</span>
+<span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">calls</span><span class="p">;</span>
+<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">pct</span><span class="p">;</span>
+<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">avg</span><span class="p">;</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Row</span><span class="o">&gt;</span><span class="w"> </span><span class="n">rows</span><span class="p">;</span>
+<span class="w">        </span><span class="n">rows</span><span class="p">.</span><span class="n">reserve</span><span class="p">(</span><span class="n">m_stats</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">kv</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">m_stats</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">kv</span><span class="p">.</span><span class="n">first</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">TimerId</span><span class="o">::</span><span class="n">Total</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">kv</span><span class="p">.</span><span class="n">first</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">TimerId</span><span class="o">::</span><span class="n">Other</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">            </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">st</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">kv</span><span class="p">.</span><span class="n">second</span><span class="p">;</span>
+<span class="w">            </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">pct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">st</span><span class="p">.</span><span class="n">totalSec</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">grand</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">;</span>
+<span class="w">            </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">avg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">st</span><span class="p">.</span><span class="n">calls</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">st</span><span class="p">.</span><span class="n">totalSec</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">st</span><span class="p">.</span><span class="n">calls</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<span class="w">            </span><span class="n">rows</span><span class="p">.</span><span class="n">push_back</span><span class="p">({</span><span class="n">nameOf</span><span class="p">(</span><span class="n">kv</span><span class="p">.</span><span class="n">first</span><span class="p">),</span><span class="w"> </span><span class="n">st</span><span class="p">.</span><span class="n">totalSec</span><span class="p">,</span><span class="w"> </span><span class="n">st</span><span class="p">.</span><span class="n">calls</span><span class="p">,</span><span class="w"> </span><span class="n">pct</span><span class="p">,</span><span class="w"> </span><span class="n">avg</span><span class="p">});</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">otherResidual</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0.0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">m_stats</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">TimerId</span><span class="o">::</span><span class="n">Other</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">m_stats</span><span class="p">.</span><span class="n">end</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">calls</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">m_stats</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">TimerId</span><span class="o">::</span><span class="n">Other</span><span class="p">)</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">m_stats</span><span class="p">.</span><span class="n">end</span><span class="p">())</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">m_stats</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="n">TimerId</span><span class="o">::</span><span class="n">Other</span><span class="p">).</span><span class="n">calls</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">0ULL</span><span class="p">;</span>
+<span class="w">            </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">avg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">calls</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">otherResidual</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="kt">double</span><span class="p">)</span><span class="n">calls</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<span class="w">            </span><span class="n">rows</span><span class="p">.</span><span class="n">push_back</span><span class="p">({</span><span class="n">nameOf</span><span class="p">(</span><span class="n">TimerId</span><span class="o">::</span><span class="n">Other</span><span class="p">),</span><span class="w"> </span><span class="n">otherResidual</span><span class="p">,</span><span class="w"> </span><span class="n">calls</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">otherResidual</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">grand</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="p">,</span><span class="w"> </span><span class="n">avg</span><span class="p">});</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">sort</span><span class="p">(</span><span class="n">rows</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span><span class="w"> </span><span class="n">rows</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span><span class="w"> </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">Row</span><span class="o">&amp;</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Row</span><span class="o">&amp;</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">sec</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">sec</span><span class="p">;</span><span class="w"> </span><span class="p">});</span>
+<span class="w">        </span><span class="n">os</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">[Timing Breakdown - Exclusive]</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="n">os</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">left</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Section&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">right</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Calls&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Excl(s)&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;%&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Avg(µs)&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="n">os</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="mi">24</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">12</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;-&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">rows</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">os</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">left</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">right</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">calls</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">fixed</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setprecision</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">sec</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="w">               </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setprecision</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">pct</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setprecision</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">avg</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e6</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="n">os</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="mi">24</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">12</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39;-&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="n">os</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">left</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;Total (inclusive)&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">right</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">fixed</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setprecision</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">grand</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mf">100.0</span>
+<span class="w">           </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setw</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+
+<span class="w">        </span><span class="c1">// Hierarchy (indentation) output</span>
+<span class="w">        </span><span class="c1">// os &lt;&lt; &quot;\n[Timing Hierarchy]\n&quot;;</span>
+<span class="w">        </span><span class="c1">// double denom = grand;</span>
+<span class="w">        </span><span class="c1">// for (auto&amp; rid : m_roots) {</span>
+<span class="w">        </span><span class="c1">//     auto it = m_flatNodes.find(rid);</span>
+<span class="w">        </span><span class="c1">//     if (it != m_flatNodes.end()) printNode(os, *it-&gt;second, 0, denom);</span>
+<span class="w">        </span><span class="c1">// }</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">   </span><span class="k">private</span><span class="o">:</span>
+<span class="w">    </span><span class="k">friend</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">Scope</span><span class="p">;</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="n">clock</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">steady_clock</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">HierNode</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">TimerId</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">inclusiveSec</span><span class="p">{</span><span class="mf">0.0</span><span class="p">};</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">exclusiveSec</span><span class="p">{</span><span class="mf">0.0</span><span class="p">};</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">calls</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">TimerId</span><span class="p">,</span><span class="w"> </span><span class="n">HierNode</span><span class="o">*&gt;</span><span class="w"> </span><span class="n">children</span><span class="p">;</span><span class="w">  </span><span class="c1">// non-owning pointers to child nodes</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">Active</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">TimerId</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+<span class="w">        </span><span class="n">clock</span><span class="o">::</span><span class="n">time_point</span><span class="w"> </span><span class="n">start</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">childAccum</span><span class="p">{</span><span class="mf">0.0</span><span class="p">};</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">begin</span><span class="p">(</span><span class="n">TimerId</span><span class="w"> </span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">m_stack</span><span class="p">.</span><span class="n">push_back</span><span class="p">({</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">clock</span><span class="o">::</span><span class="n">now</span><span class="p">(),</span><span class="w"> </span><span class="mf">0.0</span><span class="p">});</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">end</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">endTime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">clock</span><span class="o">::</span><span class="n">now</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">m_stack</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w">  </span><span class="c1">// safety</span>
+<span class="w">        </span><span class="n">Active</span><span class="w"> </span><span class="n">active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m_stack</span><span class="p">.</span><span class="n">back</span><span class="p">();</span>
+<span class="w">        </span><span class="n">m_stack</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">duration</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">duration</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span class="n">endTime</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">active</span><span class="p">.</span><span class="n">start</span><span class="p">).</span><span class="n">count</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">exclusive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">duration</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">active</span><span class="p">.</span><span class="n">childAccum</span><span class="p">;</span>
+<span class="w">        </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">st</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m_stats</span><span class="p">[</span><span class="n">active</span><span class="p">.</span><span class="n">id</span><span class="p">];</span>
+<span class="w">        </span><span class="n">st</span><span class="p">.</span><span class="n">inclusiveSec</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">duration</span><span class="p">;</span>
+<span class="w">        </span><span class="n">st</span><span class="p">.</span><span class="n">totalSec</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">exclusive</span><span class="p">;</span><span class="w">  </span><span class="c1">// exclusive stored in totalSec (backward compat)</span>
+<span class="w">        </span><span class="o">++</span><span class="n">st</span><span class="p">.</span><span class="n">calls</span><span class="p">;</span>
+<span class="w">        </span><span class="c1">// Update hierarchy</span>
+<span class="w">        </span><span class="n">HierNode</span><span class="o">*</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getOrCreateNode</span><span class="p">(</span><span class="n">active</span><span class="p">.</span><span class="n">id</span><span class="p">);</span>
+<span class="w">        </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">inclusiveSec</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">duration</span><span class="p">;</span>
+<span class="w">        </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">exclusiveSec</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">exclusive</span><span class="p">;</span>
+<span class="w">        </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">calls</span><span class="o">++</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m_stack</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// propagate inclusive duration upward</span>
+<span class="w">            </span><span class="n">m_stack</span><span class="p">.</span><span class="n">back</span><span class="p">().</span><span class="n">childAccum</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">duration</span><span class="p">;</span>
+<span class="w">            </span><span class="n">HierNode</span><span class="o">*</span><span class="w"> </span><span class="n">parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getOrCreateNode</span><span class="p">(</span><span class="n">m_stack</span><span class="p">.</span><span class="n">back</span><span class="p">().</span><span class="n">id</span><span class="p">);</span>
+<span class="w">            </span><span class="n">parent</span><span class="o">-&gt;</span><span class="n">children</span><span class="p">[</span><span class="n">active</span><span class="p">.</span><span class="n">id</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// root node registration</span>
+<span class="w">            </span><span class="n">m_roots</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">active</span><span class="p">.</span><span class="n">id</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">HierNode</span><span class="o">*</span><span class="w"> </span><span class="nf">getOrCreateNode</span><span class="p">(</span><span class="n">TimerId</span><span class="w"> </span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m_flatNodes</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">id</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">it</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">m_flatNodes</span><span class="p">.</span><span class="n">end</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">.</span><span class="n">get</span><span class="p">();</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">HierNode</span><span class="o">&gt;</span><span class="p">(</span><span class="n">HierNode</span><span class="p">{</span><span class="n">id</span><span class="p">});</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">n</span><span class="p">.</span><span class="n">get</span><span class="p">();</span>
+<span class="w">        </span><span class="n">m_flatNodes</span><span class="p">[</span><span class="n">id</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">n</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">ptr</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">printNode</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span><span class="w"> </span><span class="n">os</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">HierNode</span><span class="o">&amp;</span><span class="w"> </span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">depth</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">grand</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">pct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">grand</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">node</span><span class="p">.</span><span class="n">exclusiveSec</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">grand</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100.0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<span class="w">        </span><span class="n">os</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="n">depth</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="sc">&#39; &#39;</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;- &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">nameOf</span><span class="p">(</span><span class="n">node</span><span class="p">.</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot; (incl=&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">fixed</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setprecision</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">inclusiveSec</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;s, excl=&quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">exclusiveSec</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;s, &quot;</span>
+<span class="w">           </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">setprecision</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">pct</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;%)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">kv</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">children</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">kv</span><span class="p">.</span><span class="n">second</span><span class="p">)</span><span class="w"> </span><span class="n">printNode</span><span class="p">(</span><span class="n">os</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">kv</span><span class="p">.</span><span class="n">second</span><span class="p">,</span><span class="w"> </span><span class="n">depth</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">grand</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="nf">nameOf</span><span class="p">(</span><span class="n">TimerId</span><span class="w"> </span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">CollisionBroadphase</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Collision Broadphase&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">CollisionMatching</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Collision Matching&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">CollisionNarrowphase</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Collision Narrowphase&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">OutputWrite</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Output Write&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">UpdateEntities</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Update Entities&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">BuildAndFactorS</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Build &amp; Factor S&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">RebuildConstraintJacobians</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Rebuild Constraints&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">RebuildContactJacobians</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Rebuild Contacts&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">CollisionNarrowphaseCollide</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Narrowphase Collide&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">Integration</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Integration&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">CollisionMakeContactPatch</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Collision Make Patches&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">CollisionMakeContact</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Collision Make Contact&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ProjectedJacobi</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Projected Jacobi&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ProjectedJacobiSetup</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Projected Jacobi Setup&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ProjectedJacobiSweep</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Projected Jacobi Sweep&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ProjectedGaussSeidel</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Projected Gauss-Seidel&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ProjectedGaussSeidelSetup</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Prox Gauss-Seidel Setup&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ProjectedGaussSeidelSweep</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Prox Gauss-Seidel Sweep&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ConjugateGradientSetup</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Conjugate Gradient Setup&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ConjugateGradientSolve</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Conjugate Gradient Solve&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ConjugateGradientSweep</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Conjugate Gradient Sweep&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ProjectedNewton</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Projected Newton&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ProjectedNewtonSetup</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Projected Newton Setup&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">QocoSolve</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;QOCO Solve&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ClarabelSolve</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Clarabel Solve&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">QocoAssembly</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;QOCO Assembly&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">QocoSetup</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;QOCO Setup&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ClarabelAssembly</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Clarabel Assembly&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">ClarabelSetup</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Clarabel Setup&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">DisableCollisionPairs</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Disable Collision Pairs&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">DynamicsAssembler_RefreshState</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;DA Refresh State&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">Total</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Total (all)&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="no">TimerId</span><span class="o">::</span><span class="no">Other</span><span class="p">:</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Other&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Unknown&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">TimerId</span><span class="p">,</span><span class="w"> </span><span class="n">Stats</span><span class="o">&gt;</span><span class="w"> </span><span class="n">m_stats</span><span class="p">;</span>
+<span class="w">    </span><span class="k">mutable</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">TimerId</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">HierNode</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">m_flatNodes</span><span class="p">;</span><span class="w">  </span><span class="c1">// aggregated unique nodes per TimerId</span>
+<span class="w">    </span><span class="k">mutable</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">unordered_set</span><span class="o">&lt;</span><span class="n">TimerId</span><span class="o">&gt;</span><span class="w"> </span><span class="n">m_roots</span><span class="p">;</span><span class="w">                                 </span><span class="c1">// root timer ids</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Active</span><span class="o">&gt;</span><span class="w"> </span><span class="n">m_stack</span><span class="p">;</span><span class="w">                                                 </span><span class="c1">// active scope stack</span>
+<span class="p">};</span>
+
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace misc</span>
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace cardillo</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

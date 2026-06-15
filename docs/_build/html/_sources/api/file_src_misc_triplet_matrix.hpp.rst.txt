@@ -1,0 +1,69 @@
+
+.. _file_src_misc_triplet_matrix.hpp:
+
+File triplet_matrix.hpp
+=======================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_misc>` (``src/misc``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/misc/triplet_matrix.hpp``)
+--------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_misc_triplet_matrix.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``Eigen/Sparse``
+
+- ``memory``
+
+- ``stdexcept``
+
+- ``types.hpp`` (:ref:`file_src_physics_ecs_types.hpp`)
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_assembly_clarabel_assembler.hpp`
+
+- :ref:`file_src_physics_assembly_dynamics_assembler.hpp`
+
+- :ref:`file_src_physics_assembly_pj_assembler.hpp`
+
+- :ref:`file_src_physics_assembly_qoco_assembler.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1TripletMatrix_1_1Block`
+
+- :ref:`exhale_class_classcardillo_1_1TripletMatrix`
+

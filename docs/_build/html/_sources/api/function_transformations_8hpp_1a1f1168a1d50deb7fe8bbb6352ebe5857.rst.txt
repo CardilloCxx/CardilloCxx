@@ -1,0 +1,14 @@
+.. _exhale_function_transformations_8hpp_1a1f1168a1d50deb7fe8bbb6352ebe5857:
+
+Function cardillo::transform::direction
+=======================================
+
+- Defined in :ref:`file_src_rigid_body_transformations.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::transform::direction(const Vector3r&, const RigidBody::RigidState&, const RigidBody::RigidState&)
+   :project: Cardillo

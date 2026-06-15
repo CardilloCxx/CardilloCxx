@@ -1,0 +1,59 @@
+
+.. _file_src_physics_assets_rigid_body_factory.hpp:
+
+File rigid_body_factory.hpp
+===========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assets>` (``src/physics/assets``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assets/rigid_body_factory.hpp``)
+----------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assets_rigid_body_factory.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../world.hpp``
+
+- ``entt/entt.hpp``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_assets_body_factory.hpp`
+
+- :ref:`file_src_physics_assets_rigid_body_factory.cpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1physics_1_1RigidBodyFactory`
+

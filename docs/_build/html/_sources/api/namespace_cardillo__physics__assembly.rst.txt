@@ -1,0 +1,26 @@
+
+.. _namespace_cardillo__physics__assembly:
+
+Namespace cardillo::physics::assembly
+=====================================
+
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1assembly_1_1ClarabelAssembler`
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1assembly_1_1PgsAssembler`
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1assembly_1_1PjAssembler`
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1assembly_1_1QocoAssembler`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_pgs__assembler_8cpp_1a7431d4e342b991a4bb2318463091424d`

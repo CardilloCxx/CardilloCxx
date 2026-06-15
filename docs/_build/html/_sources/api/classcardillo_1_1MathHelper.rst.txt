@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1MathHelper:
+
+Class MathHelper
+================
+
+- Defined in :ref:`file_src_misc_math_helper.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::MathHelper
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

@@ -1,0 +1,93 @@
+
+.. _file_src_collision_collision_coal.hpp:
+
+File collision_coal.hpp
+=======================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_collision>` (``src/collision``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/collision/collision_coal.hpp``)
+-------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_collision_collision_coal.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``coal/BVH/BVH_model.h``
+
+- ``coal/broadphase/broadphase.h``
+
+- ``coal/collision_object.h``
+
+- ``coal/mesh_loader/loader.h``
+
+- ``contact_tracker.hpp`` (:ref:`file_src_collision_contact_tracker.hpp`)
+
+- ``memory``
+
+- ``stdexcept``
+
+- ``types.hpp`` (:ref:`file_src_physics_ecs_types.hpp`)
+
+- ``unordered_map``
+
+- ``unordered_set``
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_collision_collision_coal.cpp`
+
+- :ref:`file_src_io_vtk_writer_binary.cpp`
+
+- :ref:`file_src_physics_api_physics_engine.cpp`
+
+- :ref:`file_src_physics_assembly_dynamics_assembler.cpp`
+
+- :ref:`file_src_physics_assets_beam_factory.cpp`
+
+- :ref:`file_src_physics_assets_body_factory.cpp`
+
+- :ref:`file_src_physics_pipeline_physics_pipeline.cpp`
+
+- :ref:`file_src_physics_world.cpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__collision`
+
+- :ref:`namespace_cardillo__misc`
+
+- :ref:`namespace_cardillo__physics`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1collision_1_1CollisionCoal`
+

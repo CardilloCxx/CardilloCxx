@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1physics_1_1DynamicsAssembler:
+
+Class DynamicsAssembler
+=======================
+
+- Defined in :ref:`file_src_physics_assembly_dynamics_assembler.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::physics::DynamicsAssembler
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

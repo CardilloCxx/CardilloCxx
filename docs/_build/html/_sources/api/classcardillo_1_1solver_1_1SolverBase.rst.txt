@@ -1,0 +1,30 @@
+.. _exhale_class_classcardillo_1_1solver_1_1SolverBase:
+
+Class SolverBase
+================
+
+- Defined in :ref:`file_src_physics_solver_solver_base.hpp`
+
+
+Inheritance Relationships
+-------------------------
+
+Derived Types
+*************
+
+- ``public cardillo::solver::ClarabelSolver`` (:ref:`exhale_class_classcardillo_1_1solver_1_1ClarabelSolver`)
+- ``public cardillo::solver::ConjugateGradientSolver`` (:ref:`exhale_class_classcardillo_1_1solver_1_1ConjugateGradientSolver`)
+- ``public cardillo::solver::ProjectedGaussSeidelSolver`` (:ref:`exhale_class_classcardillo_1_1solver_1_1ProjectedGaussSeidelSolver`)
+- ``public cardillo::solver::ProjectedJacobiSolver`` (:ref:`exhale_class_classcardillo_1_1solver_1_1ProjectedJacobiSolver`)
+- ``public cardillo::solver::QocoSolver`` (:ref:`exhale_class_classcardillo_1_1solver_1_1QocoSolver`)
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::solver::SolverBase
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

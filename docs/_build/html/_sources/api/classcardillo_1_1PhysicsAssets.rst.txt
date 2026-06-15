@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1PhysicsAssets:
+
+Class PhysicsAssets
+===================
+
+- Defined in :ref:`file_src_physics_assets_assets.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::PhysicsAssets
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

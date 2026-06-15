@@ -1,0 +1,92 @@
+
+.. _file_src_collision_types.hpp:
+
+File types.hpp
+==============
+
+|exhale_lsh| :ref:`Parent directory <dir_src_collision>` (``src/collision``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/collision/types.hpp``)
+----------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_collision_types.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../physics/world.hpp``
+
+- ``entt/entt.hpp``
+
+- ``misc/types.hpp`` (:ref:`file_src_misc_types.hpp`)
+
+- ``unordered_map``
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_collision_collision_coal.cpp`
+
+- :ref:`file_src_collision_collision_coal.hpp`
+
+- :ref:`file_src_collision_contact_tracker.hpp`
+
+- :ref:`file_src_physics_assembly_dynamics_assembler.hpp`
+
+- :ref:`file_src_physics_solver_warmstart.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__collision`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1collision_1_1AabbCollider`
+
+- :ref:`exhale_struct_structcardillo_1_1collision_1_1Contact`
+
+- :ref:`exhale_struct_structcardillo_1_1collision_1_1ContactPairKey`
+
+- :ref:`exhale_struct_structcardillo_1_1collision_1_1ContactPairKeyHash`
+
+- :ref:`exhale_struct_structcardillo_1_1collision_1_1ObbCollider`
+
+- :ref:`exhale_struct_structcardillo_1_1collision_1_1PlaneCollider`
+
+- :ref:`exhale_struct_structcardillo_1_1collision_1_1SphereCollider`
+
+
+Typedefs
+--------
+
+
+- :ref:`exhale_typedef_collision_2types_8hpp_1ae516225b98a5dc43dea663c0df3414c6`
+
+- :ref:`exhale_typedef_collision_2types_8hpp_1aae26d9f93e976cabbe1304ac8e370401`
+

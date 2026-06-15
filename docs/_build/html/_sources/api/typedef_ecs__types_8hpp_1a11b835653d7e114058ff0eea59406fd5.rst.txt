@@ -1,0 +1,14 @@
+.. _exhale_typedef_ecs__types_8hpp_1a11b835653d7e114058ff0eea59406fd5:
+
+Typedef cardillo::TrajectoryPose
+================================
+
+- Defined in :ref:`file_src_physics_ecs_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::TrajectoryPose
+   :project: Cardillo

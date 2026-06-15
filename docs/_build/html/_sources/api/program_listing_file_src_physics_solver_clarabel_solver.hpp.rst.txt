@@ -1,0 +1,48 @@
+
+.. _program_listing_file_src_physics_solver_clarabel_solver.hpp:
+
+Program Listing for File clarabel_solver.hpp
+============================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_physics_solver_clarabel_solver.hpp>` (``src/physics/solver/clarabel_solver.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #pragma once
+   
+   #include <memory>
+   #include <vector>
+   
+   #include "../../config/config.hpp"
+   #include "../assembly/clarabel_assembler.hpp"
+   #include "../assembly/dynamics_assembler.hpp"
+   #include "solver_base.hpp"
+   #include "warmstart.hpp"
+   
+   #include <clarabel.hpp>
+   
+   namespace cardillo::solver {
+   
+   class ClarabelSolver : public SolverBase {
+      public:
+       explicit ClarabelSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg);
+       ~ClarabelSolver() override;
+   
+       VectorXr solve(real_t dt, real_t theta) override;
+   
+       const char* name() const override { return "ClarabelSolver"; }
+   
+      private:
+       void initSolver(real_t dt, real_t theta, bool first_init = true);
+       void updateSolver(real_t dt, real_t theta);
+   
+       cardillo::physics::DynamicsAssembler& m_dyn;
+       cardillo::physics::assembly::ClarabelAssembler m_assembler;
+       cardillo::config::Config m_cfg;
+   
+       std::unique_ptr<clarabel::DefaultSolver<double>> m_solver;
+   };
+   
+   }  // namespace cardillo::solver

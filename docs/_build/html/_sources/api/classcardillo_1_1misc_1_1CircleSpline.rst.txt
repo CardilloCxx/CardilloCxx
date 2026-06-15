@@ -1,0 +1,26 @@
+.. _exhale_class_classcardillo_1_1misc_1_1CircleSpline:
+
+Class CircleSpline
+==================
+
+- Defined in :ref:`file_src_misc_spline.hpp`
+
+
+Inheritance Relationships
+-------------------------
+
+Base Type
+*********
+
+- ``public cardillo::misc::SplinePattern``
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::misc::CircleSpline
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

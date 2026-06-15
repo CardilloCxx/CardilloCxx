@@ -1,0 +1,17 @@
+.. _exhale_struct_structcardillo_1_1physics_1_1JointProperties:
+
+Struct JointProperties
+======================
+
+- Defined in :ref:`file_src_physics_constraints_constraints.hpp`
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: cardillo::physics::JointProperties
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

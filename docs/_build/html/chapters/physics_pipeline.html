@@ -1,0 +1,154 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Physics Pipeline &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Physics Pipeline</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/chapters/physics_pipeline.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="physics-pipeline">
+<h1>Physics Pipeline<a class="headerlink" href="#physics-pipeline" title="Link to this heading"></a></h1>
+<p>The pipeline is the step-by-step program flow that turns the current ECS state into one simulation increment. It owns the collision manager, dynamics assembler, solver, integrator, and output writers.</p>
+<section id="high-level-flow">
+<h2>High-level flow<a class="headerlink" href="#high-level-flow" title="Link to this heading"></a></h2>
+<p>The current step order is:</p>
+<ol class="arabic simple">
+<li><p>refresh the dynamics state</p></li>
+<li><p>drift the configuration by <code class="docutils literal notranslate"><span class="pre">(1</span> <span class="pre">-</span> <span class="pre">theta)</span> <span class="pre">*</span> <span class="pre">dt</span></code></p></li>
+<li><p>rebuild state-dependent terms at the midpoint configuration</p></li>
+<li><p>solve for the new velocity / impulse increment</p></li>
+<li><p>drift the configuration by <code class="docutils literal notranslate"><span class="pre">theta</span> <span class="pre">*</span> <span class="pre">dt</span></code></p></li>
+<li><p>write VTK and tracked CSV output, then update the progress bar</p></li>
+</ol>
+<p>The relevant midpoint drift is what keeps collision frames, spring directions, and other state-dependent matrices aligned with the Moreau theta scheme.</p>
+</section>
+<section id="midpoint-assembly">
+<h2>Midpoint assembly<a class="headerlink" href="#midpoint-assembly" title="Link to this heading"></a></h2>
+<p>Let <code class="docutils literal notranslate"><span class="pre">q_n</span></code> be the configuration and <code class="docutils literal notranslate"><span class="pre">u_n</span></code> the generalized velocity. The pipeline advances the midpoint state first:</p>
+<div class="math notranslate nohighlight">
+\[q_{n+\theta} = q_n + (1 - \theta)\,\Delta t\,u_n\]</div>
+<p>The dynamics assembler then updates all terms that depend on the current configuration, including collision geometry, contact Jacobians, and spring matrices. After the solver returns the corrected velocity increment, the engine completes the final drift:</p>
+<div class="math notranslate nohighlight">
+\[q_{n+1} = q_{n+\theta} + \theta\,\Delta t\,u_{n+1}\]</div>
+<p>That split is the main reason the code can evaluate contact and spring data at the midpoint while still using a first-order Moreau-style update.</p>
+</section>
+<section id="where-collisions-fit">
+<h2>Where collisions fit<a class="headerlink" href="#where-collisions-fit" title="Link to this heading"></a></h2>
+<p>Collisions are not assembled once at the start of a run. They are refreshed every step because the contact set can change as the configuration evolves. The pipeline therefore treats the collision manager as a live subsystem rather than a static precomputation.</p>
+<p>The practical effect is:</p>
+<ul class="simple">
+<li><p>contact normals and patch data are rebuilt from the current midpoint configuration</p></li>
+<li><p>warmstarting can reuse the previous step when contact pairs persist</p></li>
+<li><p>spring and beam contributions are assembled from the same updated geometry</p></li>
+</ul>
+</section>
+<section id="integrator-choice">
+<h2>Integrator choice<a class="headerlink" href="#integrator-choice" title="Link to this heading"></a></h2>
+<p>The code currently routes through the Moreau integrator. The config options that affect the update are <code class="docutils literal notranslate"><span class="pre">moreau.theta</span></code>, <code class="docutils literal notranslate"><span class="pre">moreau.implicit_gyroscopy</span></code>, and <code class="docutils literal notranslate"><span class="pre">moreau.lambda_theta</span></code>.</p>
+<p>When you document a new solver or integrator later, this page is the right place to describe how it plugs into the existing pipeline stages.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

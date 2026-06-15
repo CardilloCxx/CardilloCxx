@@ -1,0 +1,108 @@
+
+.. _file_src_physics_constraints_constraints.hpp:
+
+File constraints.hpp
+====================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_constraints>` (``src/physics/constraints``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/constraints/constraints.hpp``)
+--------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_constraints_constraints.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../misc/types.hpp``
+
+- ``../../rigid_body/rigid_body.hpp``
+
+- ``../../rigid_body/transformations.hpp``
+
+- ``../world.hpp``
+
+- ``cmath``
+
+- ``entt/entt.hpp``
+
+- ``iostream``
+
+- ``limits``
+
+- ``optional``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_io_vtk_writer_binary.cpp`
+
+- :ref:`file_src_physics_assembly_dynamics_assembler.cpp`
+
+- :ref:`file_src_physics_assembly_dynamics_assembler.hpp`
+
+- :ref:`file_src_physics_assembly_pgs_assembler.cpp`
+
+- :ref:`file_src_physics_assets_beam_factory.cpp`
+
+- :ref:`file_src_physics_assets_body_factory.cpp`
+
+- :ref:`file_src_physics_constraints_constraint_factory.hpp`
+
+- :ref:`file_src_physics_constraints_constraints.cpp`
+
+- :ref:`file_src_physics_world.cpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1physics_1_1ConstraintPattern_1_1WorldAttachments`
+
+- :ref:`exhale_struct_structcardillo_1_1physics_1_1ConstraintResult`
+
+- :ref:`exhale_struct_structcardillo_1_1physics_1_1JointFrame`
+
+- :ref:`exhale_struct_structcardillo_1_1physics_1_1JointProperties`
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1BeamConstraint`
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1ConstraintPattern`
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1LinearDistanceConstraint`
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1TranslationRotationConstraint`
+
+
+Typedefs
+--------
+
+
+- :ref:`exhale_typedef_constraints_8hpp_1a507bf005aef3c29996bbc8b33e46f7d1`
+

@@ -1,0 +1,21 @@
+.. _dir_src_misc_progress:
+
+
+Directory progress
+==================
+
+
+|exhale_lsh| :ref:`Parent directory <dir_src_misc>` (``src/misc``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+
+*Directory path:* ``src/misc/progress``
+
+
+Files
+-----
+
+- :ref:`file_src_misc_progress_ProgressBar.hpp`
+
+

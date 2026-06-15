@@ -1,0 +1,14 @@
+.. _exhale_function_transformations_8hpp_1ae324b80a57793bf5345523bebfcd029a:
+
+Function cardillo::transform::linearVelocity
+============================================
+
+- Defined in :ref:`file_src_rigid_body_transformations.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::transform::linearVelocity(const Vector3r&, const Vector3r&, const RigidBody::RigidState&, const RigidBody::RigidState&)
+   :project: Cardillo

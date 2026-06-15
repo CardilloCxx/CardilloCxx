@@ -1,0 +1,29 @@
+
+.. _program_listing_file_src_physics_synchronization_derived_entity_sync.hpp:
+
+Program Listing for File derived_entity_sync.hpp
+================================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_physics_synchronization_derived_entity_sync.hpp>` (``src/physics/synchronization/derived_entity_sync.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #pragma once
+   
+   #include <entt/entt.hpp>
+   
+   #include "../world.hpp"
+   
+   namespace cardillo {
+   namespace physics {
+   
+   class DerivedEntitySync {
+      public:
+       static void updateBeamElementEntity(World& world, entt::entity e);
+       static void updateEntities(World& world, real_t dt);
+   };
+   
+   }  // namespace physics
+   }  // namespace cardillo

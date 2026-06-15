@@ -1,0 +1,242 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Program Listing for File trajectory.cpp &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Program Listing for File trajectory.cpp</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/program_listing_file_src_physics_synchronization_trajectory.cpp.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="program-listing-for-file-trajectory-cpp">
+<span id="program-listing-file-src-physics-synchronization-trajectory-cpp"></span><h1>Program Listing for File trajectory.cpp<a class="headerlink" href="#program-listing-for-file-trajectory-cpp" title="Link to this heading"></a></h1>
+<p>↰ <a class="reference internal" href="file_src_physics_synchronization_trajectory.cpp.html#file-src-physics-synchronization-trajectory-cpp"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">src/physics/synchronization/trajectory.cpp</span></code>)</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;trajectory.hpp&quot;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;algorithm&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cmath&gt;</span>
+
+<span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="w"> </span><span class="p">{</span>
+<span class="k">namespace</span><span class="w"> </span><span class="nn">physics</span><span class="w"> </span><span class="p">{</span>
+<span class="k">namespace</span><span class="w"> </span><span class="p">{</span>
+
+<span class="k">constexpr</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">kEps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">1e-12</span><span class="p">;</span>
+
+<span class="n">TrajectoryTwist</span><span class="w"> </span><span class="nf">buildTwistFromEcs</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">registry</span><span class="o">&amp;</span><span class="w"> </span><span class="n">reg</span><span class="p">,</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">();</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">w</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reg</span><span class="p">.</span><span class="n">any_of</span><span class="o">&lt;</span><span class="n">C_LinearVelocity3</span><span class="o">&gt;</span><span class="p">(</span><span class="n">e</span><span class="p">))</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reg</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="n">C_LinearVelocity3</span><span class="o">&gt;</span><span class="p">(</span><span class="n">e</span><span class="p">).</span><span class="n">value</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reg</span><span class="p">.</span><span class="n">any_of</span><span class="o">&lt;</span><span class="n">C_AngularVelocity3</span><span class="o">&gt;</span><span class="p">(</span><span class="n">e</span><span class="p">))</span><span class="w"> </span><span class="n">w</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reg</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="n">C_AngularVelocity3</span><span class="o">&gt;</span><span class="p">(</span><span class="n">e</span><span class="p">).</span><span class="n">value</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="n">v</span><span class="p">,</span><span class="w"> </span><span class="n">w</span><span class="p">};</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">applyPose</span><span class="p">(</span><span class="n">World</span><span class="o">&amp;</span><span class="w"> </span><span class="n">world</span><span class="p">,</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">TrajectoryPose</span><span class="o">&amp;</span><span class="w"> </span><span class="n">pose</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasOrientation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">world</span><span class="p">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">pose</span><span class="p">.</span><span class="n">first</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">hasOrientation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">Quaternion4r</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pose</span><span class="p">.</span><span class="n">second</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">q</span><span class="p">.</span><span class="n">coeffs</span><span class="p">().</span><span class="n">allFinite</span><span class="p">()</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">q</span><span class="p">.</span><span class="n">coeffs</span><span class="p">().</span><span class="n">squaredNorm</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">kEps</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quaternion4r</span><span class="o">::</span><span class="n">Identity</span><span class="p">();</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">q</span><span class="p">.</span><span class="n">normalize</span><span class="p">();</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="n">world</span><span class="p">.</span><span class="n">setOrientation</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">q</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">applyTwist</span><span class="p">(</span><span class="n">World</span><span class="o">&amp;</span><span class="w"> </span><span class="n">world</span><span class="p">,</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">TrajectoryTwist</span><span class="o">&amp;</span><span class="w"> </span><span class="n">twist</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasAngularVelocity</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">world</span><span class="p">.</span><span class="n">setLinearVelocity</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">twist</span><span class="p">.</span><span class="n">first</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">hasAngularVelocity</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">world</span><span class="p">.</span><span class="n">setAngularVelocity</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">twist</span><span class="p">.</span><span class="n">second</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">TrajectoryTwist</span><span class="w"> </span><span class="nf">differentiatePose</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">TrajectoryPose</span><span class="o">&amp;</span><span class="w"> </span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">TrajectoryPose</span><span class="o">&amp;</span><span class="w"> </span><span class="n">curr</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">dt</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasAngularVelocity</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">TrajectoryTwist</span><span class="w"> </span><span class="n">out</span><span class="p">;</span>
+<span class="w">    </span><span class="n">out</span><span class="p">.</span><span class="n">first</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">curr</span><span class="p">.</span><span class="n">first</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">prev</span><span class="p">.</span><span class="n">first</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">dt</span><span class="p">;</span>
+<span class="w">    </span><span class="n">out</span><span class="p">.</span><span class="n">second</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">hasAngularVelocity</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">out</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">Quaternion4r</span><span class="w"> </span><span class="n">q0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prev</span><span class="p">.</span><span class="n">second</span><span class="p">;</span>
+<span class="w">    </span><span class="n">Quaternion4r</span><span class="w"> </span><span class="n">q1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">curr</span><span class="p">.</span><span class="n">second</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">q0</span><span class="p">.</span><span class="n">coeffs</span><span class="p">().</span><span class="n">allFinite</span><span class="p">()</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">q0</span><span class="p">.</span><span class="n">coeffs</span><span class="p">().</span><span class="n">squaredNorm</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">kEps</span><span class="p">)</span><span class="w"> </span><span class="n">q0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quaternion4r</span><span class="o">::</span><span class="n">Identity</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">q1</span><span class="p">.</span><span class="n">coeffs</span><span class="p">().</span><span class="n">allFinite</span><span class="p">()</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">q1</span><span class="p">.</span><span class="n">coeffs</span><span class="p">().</span><span class="n">squaredNorm</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">kEps</span><span class="p">)</span><span class="w"> </span><span class="n">q1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quaternion4r</span><span class="o">::</span><span class="n">Identity</span><span class="p">();</span>
+<span class="w">    </span><span class="n">q0</span><span class="p">.</span><span class="n">normalize</span><span class="p">();</span>
+<span class="w">    </span><span class="n">q1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MathHelper</span><span class="o">::</span><span class="n">alignQuaternionTo</span><span class="p">(</span><span class="n">q1</span><span class="p">.</span><span class="n">normalized</span><span class="p">(),</span><span class="w"> </span><span class="n">q0</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">Quaternion4r</span><span class="w"> </span><span class="n">dq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">q0</span><span class="p">.</span><span class="n">conjugate</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">q1</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">dq</span><span class="p">.</span><span class="n">coeffs</span><span class="p">().</span><span class="n">allFinite</span><span class="p">()</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">dq</span><span class="p">.</span><span class="n">coeffs</span><span class="p">().</span><span class="n">squaredNorm</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">kEps</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">out</span><span class="p">;</span>
+<span class="w">    </span><span class="n">dq</span><span class="p">.</span><span class="n">normalize</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">imag</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dq</span><span class="p">.</span><span class="n">vec</span><span class="p">();</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">imag_norm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">imag</span><span class="p">.</span><span class="n">norm</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">imag_norm</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">kEps</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">out</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">angle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">atan2</span><span class="p">(</span><span class="n">imag_norm</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">clamp</span><span class="p">(</span><span class="n">dq</span><span class="p">.</span><span class="n">w</span><span class="p">(),</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mi">-1</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mi">1</span><span class="p">));</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">angle</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="n">M_PI</span><span class="p">)</span><span class="w"> </span><span class="n">angle</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="n">M_PI</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">angle</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="o">-</span><span class="n">M_PI</span><span class="p">)</span><span class="w"> </span><span class="n">angle</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="n">M_PI</span><span class="p">;</span>
+<span class="w">    </span><span class="n">out</span><span class="p">.</span><span class="n">second</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">imag</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">imag_norm</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">angle</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">dt</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">out</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="n">Trajectory</span><span class="o">::</span><span class="n">update</span><span class="p">(</span><span class="n">World</span><span class="o">&amp;</span><span class="w"> </span><span class="n">world</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">dt</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">reg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">world</span><span class="p">.</span><span class="n">ecs</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">view</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reg</span><span class="p">.</span><span class="n">view</span><span class="o">&lt;</span><span class="n">C_StaticTrajectory</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="p">[</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">traj</span><span class="p">]</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">view</span><span class="p">.</span><span class="n">each</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">reg</span><span class="p">.</span><span class="n">valid</span><span class="p">(</span><span class="n">e</span><span class="p">))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+
+<span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasPos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">traj</span><span class="p">.</span><span class="n">positionFunc</span><span class="p">.</span><span class="n">has_value</span><span class="p">();</span>
+<span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasVel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">traj</span><span class="p">.</span><span class="n">velocityFunc</span><span class="p">.</span><span class="n">has_value</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">hasPos</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">hasVel</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+
+<span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasOrientation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reg</span><span class="p">.</span><span class="n">any_of</span><span class="o">&lt;</span><span class="n">C_Orientation</span><span class="o">&gt;</span><span class="p">(</span><span class="n">e</span><span class="p">);</span>
+<span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasAngularVelocity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reg</span><span class="p">.</span><span class="n">any_of</span><span class="o">&lt;</span><span class="n">C_AngularVelocity3</span><span class="o">&gt;</span><span class="p">(</span><span class="n">e</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">traj</span><span class="p">.</span><span class="n">elapsed</span><span class="p">;</span>
+<span class="w">        </span><span class="k">const</span><span class="w"> </span><span class="n">TrajectoryTwist</span><span class="w"> </span><span class="n">twist_current</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">buildTwistFromEcs</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">);</span>
+
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">TrajectoryPose</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pose_cmd</span><span class="p">;</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">TrajectoryTwist</span><span class="o">&gt;</span><span class="w"> </span><span class="n">twist_cmd</span><span class="p">;</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">hasPos</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">pose_cmd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">traj</span><span class="p">.</span><span class="n">positionFunc</span><span class="p">)(</span><span class="n">t</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">hasVel</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">twist_cmd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">traj</span><span class="p">.</span><span class="n">velocityFunc</span><span class="p">)(</span><span class="n">t</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">hasPos</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">hasVel</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">dt</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">kEps</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="k">const</span><span class="w"> </span><span class="n">TrajectoryPose</span><span class="w"> </span><span class="n">pose_next</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">traj</span><span class="p">.</span><span class="n">positionFunc</span><span class="p">)(</span><span class="n">t</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">dt</span><span class="p">);</span>
+<span class="w">                </span><span class="n">twist_cmd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">differentiatePose</span><span class="p">(</span><span class="o">*</span><span class="n">pose_cmd</span><span class="p">,</span><span class="w"> </span><span class="n">pose_next</span><span class="p">,</span><span class="w"> </span><span class="n">dt</span><span class="p">,</span><span class="w"> </span><span class="n">hasAngularVelocity</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">twist_cmd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">twist_current</span><span class="p">;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">hasPos</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">pose_cmd</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">applyPose</span><span class="p">(</span><span class="n">world</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">pose_cmd</span><span class="p">,</span><span class="w"> </span><span class="n">hasOrientation</span><span class="p">);</span>
+<span class="w">            </span><span class="n">traj</span><span class="p">.</span><span class="n">previousPosition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">pose_cmd</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Velocity-authoritative trajectories should be integrated by the global integrator.</span>
+<span class="w">            </span><span class="n">traj</span><span class="p">.</span><span class="n">previousPosition</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">twist_cmd</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">applyTwist</span><span class="p">(</span><span class="n">world</span><span class="p">,</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">twist_cmd</span><span class="p">,</span><span class="w"> </span><span class="n">hasAngularVelocity</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="n">traj</span><span class="p">.</span><span class="n">initialized</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<span class="w">        </span><span class="n">traj</span><span class="p">.</span><span class="n">elapsed</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="p">((</span><span class="n">real_t</span><span class="p">)</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">dt</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace physics</span>
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace cardillo</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

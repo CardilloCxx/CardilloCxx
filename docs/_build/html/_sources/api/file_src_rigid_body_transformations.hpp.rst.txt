@@ -1,0 +1,97 @@
+
+.. _file_src_rigid_body_transformations.hpp:
+
+File transformations.hpp
+========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_rigid_body>` (``src/rigid_body``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/rigid_body/transformations.hpp``)
+---------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_rigid_body_transformations.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../misc/math_helper.hpp``
+
+- ``../misc/types.hpp``
+
+- ``entt/entt.hpp``
+
+- ``limits``
+
+- ``rigid_body.hpp`` (:ref:`file_src_rigid_body_rigid_body.hpp`)
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_collision_collision_coal.cpp`
+
+- :ref:`file_src_physics_api_physics_types.cpp`
+
+- :ref:`file_src_physics_assets_beam_factory.cpp`
+
+- :ref:`file_src_physics_constraints_constraints.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__transform`
+
+- :ref:`namespace_cardillo__transform__detail`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_transformations_8hpp_1afb07ef55f3225d1927d2a87aa0f2927c`
+
+- :ref:`exhale_function_transformations_8hpp_1af5ab806c1e734433ffb4792b5c1455ab`
+
+- :ref:`exhale_function_transformations_8hpp_1afe7644a9a639744174765dd37ceb66ea`
+
+- :ref:`exhale_function_transformations_8hpp_1a5a0af82bde055a1c023fe16172104956`
+
+- :ref:`exhale_function_transformations_8hpp_1a2b19406a0156b2a911f3f702a2d5b995`
+
+- :ref:`exhale_function_transformations_8hpp_1a35fed6521d873cc3697c13ef586f39e0`
+
+- :ref:`exhale_function_transformations_8hpp_1a396d5430cbff7a2defe55ec56cb5f49b`
+
+- :ref:`exhale_function_transformations_8hpp_1adedbc21c4c3f93a98bf2c169eaf08e61`
+
+- :ref:`exhale_function_transformations_8hpp_1a1f1168a1d50deb7fe8bbb6352ebe5857`
+
+- :ref:`exhale_function_transformations_8hpp_1ae324b80a57793bf5345523bebfcd029a`
+
+- :ref:`exhale_function_transformations_8hpp_1a224ff25fb73e97ce4d2251272ca4d941`
+
+- :ref:`exhale_function_transformations_8hpp_1afbbfee35ad84e0fc1f2edffb10a2d11b`
+
+- :ref:`exhale_function_transformations_8hpp_1ae974527eaed19b08628832b521343ab0`
+
+- :ref:`exhale_function_transformations_8hpp_1a695fbd841e86344bf9b2be68cefc454f`
+

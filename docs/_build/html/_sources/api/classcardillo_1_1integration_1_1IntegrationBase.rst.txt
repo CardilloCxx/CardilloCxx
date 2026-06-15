@@ -1,0 +1,26 @@
+.. _exhale_class_classcardillo_1_1integration_1_1IntegrationBase:
+
+Class IntegrationBase
+=====================
+
+- Defined in :ref:`file_src_physics_integration_integration_base.hpp`
+
+
+Inheritance Relationships
+-------------------------
+
+Derived Type
+************
+
+- ``public cardillo::integration::MoreauIntegrator`` (:ref:`exhale_class_classcardillo_1_1integration_1_1MoreauIntegrator`)
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::integration::IntegrationBase
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

@@ -1,0 +1,14 @@
+.. _exhale_variable_assets_8cpp_1aed3e8b5175a018c5ac00dfd069c99ed8:
+
+Variable Rpa
+============
+
+- Defined in :ref:`file_src_physics_assets_assets.cpp`
+
+
+Variable Documentation
+----------------------
+
+
+.. doxygenvariable:: Rpa
+   :project: Cardillo

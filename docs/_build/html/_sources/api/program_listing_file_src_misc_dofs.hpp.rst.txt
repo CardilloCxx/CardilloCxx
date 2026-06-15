@@ -1,0 +1,28 @@
+
+.. _program_listing_file_src_misc_dofs.hpp:
+
+Program Listing for File dofs.hpp
+=================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_misc_dofs.hpp>` (``src/misc/dofs.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   // Prevent multiple inclusion
+   #pragma once
+   
+   #include "types.hpp"
+   
+   template <index_t size_>
+   struct Coordinates {
+       static constexpr index_t size = size_;
+       Eigen::Matrix<real_t, size, 1> value;
+   };
+   
+   template <index_t size_>
+   struct Index {
+       index_t start;
+       static constexpr index_t size = size_;
+   };

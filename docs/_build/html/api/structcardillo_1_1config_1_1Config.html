@@ -1,0 +1,527 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Struct Config &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Struct HeightFieldAsset" href="structcardillo_1_1HeightFieldAsset.html" />
+    <link rel="prev" title="Struct SphereCollider" href="structcardillo_1_1collision_1_1SphereCollider.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="library_root.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="library_root.html#full-api">Full API</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#namespaces">Namespaces</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="library_root.html#classes-and-structs">Classes and Structs</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__AngularAcceleration3.html">Struct C_AngularAcceleration3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__AngularVelocity3.html">Struct C_AngularVelocity3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__BeamElement.html">Struct C_BeamElement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__BodyIndex.html">Struct C_BodyIndex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Capsule.html">Struct C_Capsule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__CapsuleVisualTag.html">Struct C_CapsuleVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Collidable.html">Struct C_Collidable</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Cone.html">Struct C_Cone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ConeVisualTag.html">Struct C_ConeVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Cube.html">Struct C_Cube</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__CubeVisualTag.html">Struct C_CubeVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Cylinder.html">Struct C_Cylinder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__CylinderVisualTag.html">Struct C_CylinderVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__DirectorTriad.html">Struct C_DirectorTriad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalForce.html">Struct C_ExternalForce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalTorque.html">Struct C_ExternalTorque</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Friction.html">Struct C_Friction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html">Struct C_HeightField</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html">Struct C_HeightFieldVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html">Struct C_InertiaDiag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearAcceleration3.html">Struct C_LinearAcceleration3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearVelocity3.html">Struct C_LinearVelocity3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Mass.html">Struct C_Mass</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Mesh.html">Struct C_Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__MeshVisualTag.html">Struct C_MeshVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Orientation.html">Struct C_Orientation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PhysicsObject.html">Struct C_PhysicsObject</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Plane.html">Struct C_Plane</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PlaneVisualTag.html">Struct C_PlaneVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PointMassTag.html">Struct C_PointMassTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PointVisualTag.html">Struct C_PointVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Position3.html">Struct C_Position3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Radius.html">Struct C_Radius</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Capsule.html">Struct C_RB_Capsule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cone.html">Struct C_RB_Cone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cube.html">Struct C_RB_Cube</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cylinder.html">Struct C_RB_Cylinder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html">Struct C_RB_HeightField</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Mesh.html">Struct C_RB_Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Plane.html">Struct C_RB_Plane</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Sphere.html">Struct C_RB_Sphere</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RigidBodyDirectorTag.html">Struct C_RigidBodyDirectorTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RigidBodyTag.html">Struct C_RigidBodyTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__SoftBodySurface.html">Struct C_SoftBodySurface</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__SoftBodyVisualTag.html">Struct C_SoftBodyVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__StaticTrajectory.html">Struct C_StaticTrajectory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__TrackTag.html">Struct C_TrackTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__VisualObject.html">Struct C_VisualObject</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1AabbCollider.html">Struct AabbCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1Contact.html">Struct Contact</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1ContactPairKey.html">Struct ContactPairKey</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1ContactPairKeyHash.html">Struct ContactPairKeyHash</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1ObbCollider.html">Struct ObbCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1PlaneCollider.html">Struct PlaneCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1SphereCollider.html">Struct SphereCollider</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Struct Config</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html">Struct HeightFieldAsset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1MeshGenerator_1_1EntityMesh.html">Struct MeshGenerator::EntityMesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1SoftBodyMesh.html">Struct SoftBodyMesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1MeshAsset.html">Struct MeshAsset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1BCCHeader.html">Struct BCCHeader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1SplineSample.html">Struct SplineSample</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1Active.html">Struct TimingManager::Active</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1HierNode.html">Struct TimingManager::HierNode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1Stats.html">Struct TimingManager::Stats</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1BeamCrossSection.html">Struct BeamCrossSection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1BeamSpringParams.html">Struct BeamSpringParams</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1CapsuleShape.html">Struct CapsuleShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1ConeShape.html">Struct ConeShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1ConstraintPattern_1_1WorldAttachments.html">Struct ConstraintPattern::WorldAttachments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1ConstraintResult.html">Struct ConstraintResult</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1CubeShape.html">Struct CubeShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1CylinderShape.html">Struct CylinderShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1JointFrame.html">Struct JointFrame</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1JointProperties.html">Struct JointProperties</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1MeshShape.html">Struct MeshShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1PlaneShape.html">Struct PlaneShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1RigidBodyFactory.html">Struct RigidBodyFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1RigidProps.html">Struct RigidProps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1RigidState.html">Struct RigidState</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1SphereShape.html">Struct SphereShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1solver_1_1workspace.html">Struct workspace</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1TripletMatrix_1_1Block.html">Struct TripletMatrix::Block</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structCoordinates.html">Template Struct Coordinates</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structIndex.html">Template Struct Index</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1BlockDiagonal.html">Class BlockDiagonal</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1collision_1_1CollisionCoal.html">Class CollisionCoal</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1collision_1_1ContactTracker.html">Class ContactTracker</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1config_1_1ConfigReader.html">Class ConfigReader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1integration_1_1IntegrationBase.html">Class IntegrationBase</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1integration_1_1MoreauIntegrator.html">Class MoreauIntegrator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1CsvWriter.html">Class CsvWriter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html">Class MeshGenerator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html">Class VtkWriterBinary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1MathHelper.html">Class MathHelper</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1CatmullRomSpline.html">Class CatmullRomSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1CircleSpline.html">Class CircleSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1HelixSpline.html">Class HelixSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1LinearSpline.html">Class LinearSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1ProgressBar.html">Class ProgressBar</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1SplinePattern.html">Class SplinePattern</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1TimingManager.html">Class TimingManager</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1TimingManager_1_1Scope.html">Class TimingManager::Scope</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1ClarabelAssembler.html">Class ClarabelAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1PgsAssembler.html">Class PgsAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1PjAssembler.html">Class PjAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1QocoAssembler.html">Class QocoAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BeamConstraint.html">Class BeamConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BeamFactory.html">Class BeamFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BodyFactory.html">Class BodyFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintFactory.html">Class ConstraintFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintPattern.html">Class ConstraintPattern</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1DerivedEntitySync.html">Class DerivedEntitySync</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1DynamicsAssembler.html">Class DynamicsAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1LinearDistanceConstraint.html">Class LinearDistanceConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html">Class PhysicsEngine</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1pipeline_1_1PhysicsPipeline.html">Class PhysicsPipeline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1Trajectory.html">Class Trajectory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1TranslationRotationConstraint.html">Class TranslationRotationConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html">Class PhysicsAssets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ClarabelSolver.html">Class ClarabelSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ConjugateGradientSolver.html">Class ConjugateGradientSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ProjectedGaussSeidelSolver.html">Class ProjectedGaussSeidelSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ProjectedJacobiSolver.html">Class ProjectedJacobiSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1QocoSolver.html">Class QocoSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1SolverBase.html">Class SolverBase</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1WarmstartProvider.html">Class WarmstartProvider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1TripletMatrix.html">Class TripletMatrix</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1World.html">Class World</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#enums">Enums</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#functions">Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#variables">Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#defines">Defines</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="library_root.html">API Reference</a></li>
+      <li class="breadcrumb-item active">Struct Config</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/structcardillo_1_1config_1_1Config.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="struct-config">
+<span id="exhale-struct-structcardillo-1-1config-1-1config"></span><h1>Struct Config<a class="headerlink" href="#struct-config" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Defined in <a class="reference internal" href="file_src_config_config.hpp.html#file-src-config-config-hpp"><span class="std std-ref">File config.hpp</span></a></p></li>
+</ul>
+<section id="struct-documentation">
+<h2>Struct Documentation<a class="headerlink" href="#struct-documentation" title="Link to this heading"></a></h2>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6ConfigE">
+<span id="_CPPv3N8cardillo6config6ConfigE"></span><span id="_CPPv2N8cardillo6config6ConfigE"></span><span id="cardillo::config::Config"></span><span class="target" id="structcardillo_1_1config_1_1Config"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Config</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6ConfigE" title="Link to this definition"></a><br /></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config5sim_TE">
+<span id="_CPPv3N8cardillo6config6Config5sim_TE"></span><span id="_CPPv2N8cardillo6config6Config5sim_TE"></span><span id="cardillo::config::Config::sim_T__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1aec9c09c8006846b7eb1d061be614d9ec"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">sim_T</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">5.0</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config5sim_TE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config6sim_dtE">
+<span id="_CPPv3N8cardillo6config6Config6sim_dtE"></span><span id="_CPPv2N8cardillo6config6Config6sim_dtE"></span><span id="cardillo::config::Config::sim_dt__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a03553f2d4b32d1898db569b845fbeb20"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">sim_dt</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">1e-3</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config6sim_dtE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config11sim_gravityE">
+<span id="_CPPv3N8cardillo6config6Config11sim_gravityE"></span><span id="_CPPv2N8cardillo6config6Config11sim_gravityE"></span><span id="cardillo::config::Config::sim_gravity__Vector3r"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a065178e1eb337dacff20341a84e6fa67"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">sim_gravity</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="o"><span class="pre">-</span></span><span class="m"><span class="pre">9.81</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config11sim_gravityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config21output_interval_stepsE">
+<span id="_CPPv3N8cardillo6config6Config21output_interval_stepsE"></span><span id="_CPPv2N8cardillo6config6Config21output_interval_stepsE"></span><span id="cardillo::config::Config::output_interval_steps__i"></span><span class="target" id="structcardillo_1_1config_1_1Config_1ad6c3be5d12ebc13d584e8c25d57e8500"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">output_interval_steps</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">50</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config21output_interval_stepsE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config25output_heightfield_strideE">
+<span id="_CPPv3N8cardillo6config6Config25output_heightfield_strideE"></span><span id="_CPPv2N8cardillo6config6Config25output_heightfield_strideE"></span><span id="cardillo::config::Config::output_heightfield_stride__i"></span><span class="target" id="structcardillo_1_1config_1_1Config_1abe130c0e4a0db8c2ed1032feaa3e2660"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">output_heightfield_stride</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config25output_heightfield_strideE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config28output_contacts_body_vectorsE">
+<span id="_CPPv3N8cardillo6config6Config28output_contacts_body_vectorsE"></span><span id="_CPPv2N8cardillo6config6Config28output_contacts_body_vectorsE"></span><span id="cardillo::config::Config::output_contacts_body_vectors__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a3cfa533686b73b249d2ea16130f10d78"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">output_contacts_body_vectors</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config28output_contacts_body_vectorsE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config13output_folderE">
+<span id="_CPPv3N8cardillo6config6Config13output_folderE"></span><span id="_CPPv2N8cardillo6config6Config13output_folderE"></span><span id="cardillo::config::Config::output_folder__ss"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a83ff8544a0c62518dac2defdeba79d49"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">output_folder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="s"><span class="pre">&quot;./vtk_out&quot;</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config13output_folderE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config22output_filename_prefixE">
+<span id="_CPPv3N8cardillo6config6Config22output_filename_prefixE"></span><span id="_CPPv2N8cardillo6config6Config22output_filename_prefixE"></span><span id="cardillo::config::Config::output_filename_prefix__ss"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a0808551a6fc8fbffafe5280ccaffc950"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">output_filename_prefix</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="s"><span class="pre">&quot;scene&quot;</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config22output_filename_prefixE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config21output_write_contactsE">
+<span id="_CPPv3N8cardillo6config6Config21output_write_contactsE"></span><span id="_CPPv2N8cardillo6config6Config21output_write_contactsE"></span><span id="cardillo::config::Config::output_write_contacts__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a175c81e384266192e50911526ff5d68a"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">output_write_contacts</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config21output_write_contactsE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config20collision_broadphaseE">
+<span id="_CPPv3N8cardillo6config6Config20collision_broadphaseE"></span><span id="_CPPv2N8cardillo6config6Config20collision_broadphaseE"></span><span id="cardillo::config::Config::collision_broadphase__ss"></span><span class="target" id="structcardillo_1_1config_1_1Config_1ac1378422f3f18e762960bbe2a417776b"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">collision_broadphase</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="s"><span class="pre">&quot;dynamic_aabb&quot;</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config20collision_broadphaseE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config21collision_disable_allE">
+<span id="_CPPv3N8cardillo6config6Config21collision_disable_allE"></span><span id="_CPPv2N8cardillo6config6Config21collision_disable_allE"></span><span id="cardillo::config::Config::collision_disable_all__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1aafb9d69dde67180f66f2cda3317c7b54"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">collision_disable_all</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config21collision_disable_allE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config25collision_security_marginE">
+<span id="_CPPv3N8cardillo6config6Config25collision_security_marginE"></span><span id="_CPPv2N8cardillo6config6Config25collision_security_marginE"></span><span id="cardillo::config::Config::collision_security_margin__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a8af56e909dd82732fac0d80fd584035a"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">collision_security_margin</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0.0</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config25collision_security_marginE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config26collision_max_raw_contactsE">
+<span id="_CPPv3N8cardillo6config6Config26collision_max_raw_contactsE"></span><span id="_CPPv2N8cardillo6config6Config26collision_max_raw_contactsE"></span><span id="cardillo::config::Config::collision_max_raw_contacts__i"></span><span class="target" id="structcardillo_1_1config_1_1Config_1aaccb32814145850cfeb0cc8608615341"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">collision_max_raw_contacts</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">1024</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config26collision_max_raw_contactsE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config21collision_max_patchesE">
+<span id="_CPPv3N8cardillo6config6Config21collision_max_patchesE"></span><span id="_CPPv2N8cardillo6config6Config21collision_max_patchesE"></span><span id="cardillo::config::Config::collision_max_patches__std::s"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a0d6bec1dfd01c557f957a104c97550b8"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">collision_max_patches</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">4</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config21collision_max_patchesE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config28collision_use_patch_verticesE">
+<span id="_CPPv3N8cardillo6config6Config28collision_use_patch_verticesE"></span><span id="_CPPv2N8cardillo6config6Config28collision_use_patch_verticesE"></span><span id="cardillo::config::Config::collision_use_patch_vertices__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a02b08cd001da0872e9ce41ed52583e7b"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">collision_use_patch_vertices</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">true</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config28collision_use_patch_verticesE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config24collision_match_max_distE">
+<span id="_CPPv3N8cardillo6config6Config24collision_match_max_distE"></span><span id="_CPPv2N8cardillo6config6Config24collision_match_max_distE"></span><span id="cardillo::config::Config::collision_match_max_dist__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a33c7f23d2046a4ba9884c9097e1e5227"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">collision_match_max_dist</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0.02</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config24collision_match_max_distE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config35collision_min_pair_contact_distanceE">
+<span id="_CPPv3N8cardillo6config6Config35collision_min_pair_contact_distanceE"></span><span id="_CPPv2N8cardillo6config6Config35collision_min_pair_contact_distanceE"></span><span id="cardillo::config::Config::collision_min_pair_contact_distance__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a80c8bce587defaa911148f734e6d6db4"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">collision_min_pair_contact_distance</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0.0</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config35collision_min_pair_contact_distanceE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config15friction_enableE">
+<span id="_CPPv3N8cardillo6config6Config15friction_enableE"></span><span id="_CPPv2N8cardillo6config6Config15friction_enableE"></span><span id="cardillo::config::Config::friction_enable__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1aa9a6ffff43ebcd1da91bf5163b17af55"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">friction_enable</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config15friction_enableE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config16friction_combineE">
+<span id="_CPPv3N8cardillo6config6Config16friction_combineE"></span><span id="_CPPv2N8cardillo6config6Config16friction_combineE"></span><span id="cardillo::config::Config::friction_combine__ss"></span><span class="target" id="structcardillo_1_1config_1_1Config_1aab47bcf867d244dc588b48980d99102f"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">friction_combine</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="s"><span class="pre">&quot;min&quot;</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config16friction_combineE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config19friction_default_muE">
+<span id="_CPPv3N8cardillo6config6Config19friction_default_muE"></span><span id="_CPPv2N8cardillo6config6Config19friction_default_muE"></span><span id="cardillo::config::Config::friction_default_mu__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1aa7036119f709b143814a90955c2bf389"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">friction_default_mu</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0.5</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config19friction_default_muE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config8debug_rbE">
+<span id="_CPPv3N8cardillo6config6Config8debug_rbE"></span><span id="_CPPv2N8cardillo6config6Config8debug_rbE"></span><span id="cardillo::config::Config::debug_rb__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a6f1649852525745c548a4bf26d9eeeee"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">debug_rb</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config8debug_rbE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config8debug_pjE">
+<span id="_CPPv3N8cardillo6config6Config8debug_pjE"></span><span id="_CPPv2N8cardillo6config6Config8debug_pjE"></span><span id="cardillo::config::Config::debug_pj__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1ab2fb3ee89b8f668cab7b380f0c5a4e04"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">debug_pj</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config8debug_pjE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config10debug_meshE">
+<span id="_CPPv3N8cardillo6config6Config10debug_meshE"></span><span id="_CPPv2N8cardillo6config6Config10debug_meshE"></span><span id="cardillo::config::Config::debug_mesh__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a98cdff4a5472c494128c9048eb0aee21"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">debug_mesh</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config10debug_meshE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config6solverE">
+<span id="_CPPv3N8cardillo6config6Config6solverE"></span><span id="_CPPv2N8cardillo6config6Config6solverE"></span><span id="cardillo::config::Config::solver__SolverType"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a233997e38835bce8f8410885b8067928"></span><a class="reference internal" href="enum_config_8hpp_1a5a2b26bb9208185a713a6a40901597dd.html#_CPPv4N8cardillo6config10SolverTypeE" title="cardillo::config::SolverType"><span class="n"><span class="pre">SolverType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">solver</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><a class="reference internal" href="enum_config_8hpp_1a5a2b26bb9208185a713a6a40901597dd.html#_CPPv4N8cardillo6config10SolverTypeE" title="cardillo::config::SolverType"><span class="n"><span class="pre">SolverType</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="enum_config_8hpp_1a5a2b26bb9208185a713a6a40901597dd.html#_CPPv4N8cardillo6config10SolverType15ProjectedJacobiE" title="cardillo::config::SolverType::ProjectedJacobi"><span class="n"><span class="pre">ProjectedJacobi</span></span></a><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config6solverE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config17pj_max_iterationsE">
+<span id="_CPPv3N8cardillo6config6Config17pj_max_iterationsE"></span><span id="_CPPv2N8cardillo6config6Config17pj_max_iterationsE"></span><span id="cardillo::config::Config::pj_max_iterations__i"></span><span class="target" id="structcardillo_1_1config_1_1Config_1aa618a95a171ab11cb7a36c6caa194651"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_max_iterations</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">200000</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config17pj_max_iterationsE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config10pj_tol_absE">
+<span id="_CPPv3N8cardillo6config6Config10pj_tol_absE"></span><span id="_CPPv2N8cardillo6config6Config10pj_tol_absE"></span><span id="cardillo::config::Config::pj_tol_abs__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a16745199fab993eae28888434bb12b1c"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_tol_abs</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">1e-4</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config10pj_tol_absE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config10pj_tol_relE">
+<span id="_CPPv3N8cardillo6config6Config10pj_tol_relE"></span><span id="_CPPv2N8cardillo6config6Config10pj_tol_relE"></span><span id="cardillo::config::Config::pj_tol_rel__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a0279a1b768c597f8fb611095c147845a"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_tol_rel</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">1e-4</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config10pj_tol_relE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config13pj_relaxationE">
+<span id="_CPPv3N8cardillo6config6Config13pj_relaxationE"></span><span id="_CPPv2N8cardillo6config6Config13pj_relaxationE"></span><span id="cardillo::config::Config::pj_relaxation__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a82f0c9c3d74546337df71e852bc3ff4b"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_relaxation</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0.9</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config13pj_relaxationE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config8pj_alphaE">
+<span id="_CPPv3N8cardillo6config6Config8pj_alphaE"></span><span id="_CPPv2N8cardillo6config6Config8pj_alphaE"></span><span id="cardillo::config::Config::pj_alpha__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a01bd36aef094f7febbea89117547af1d"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_alpha</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0.3</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config8pj_alphaE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config11pj_nesterovE">
+<span id="_CPPv3N8cardillo6config6Config11pj_nesterovE"></span><span id="_CPPv2N8cardillo6config6Config11pj_nesterovE"></span><span id="cardillo::config::Config::pj_nesterov__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a031c3fa215beed627068389bb315241e"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_nesterov</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config11pj_nesterovE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config26pj_nesterov_beta_thresholdE">
+<span id="_CPPv3N8cardillo6config6Config26pj_nesterov_beta_thresholdE"></span><span id="_CPPv2N8cardillo6config6Config26pj_nesterov_beta_thresholdE"></span><span id="cardillo::config::Config::pj_nesterov_beta_threshold__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a12f521deffaf5161bb2188316546e6c5"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_nesterov_beta_threshold</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0.995</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config26pj_nesterov_beta_thresholdE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config25pj_nesterov_restart_limitE">
+<span id="_CPPv3N8cardillo6config6Config25pj_nesterov_restart_limitE"></span><span id="_CPPv2N8cardillo6config6Config25pj_nesterov_restart_limitE"></span><span id="cardillo::config::Config::pj_nesterov_restart_limit__i"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a9081b9b5ea318663f96b7d7a5a3c40a6"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_nesterov_restart_limit</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">4</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config25pj_nesterov_restart_limitE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config12pj_warmstartE">
+<span id="_CPPv3N8cardillo6config6Config12pj_warmstartE"></span><span id="_CPPv2N8cardillo6config6Config12pj_warmstartE"></span><span id="cardillo::config::Config::pj_warmstart__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a96980a414a838341c461ced7ecf69ac3"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_warmstart</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">true</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config12pj_warmstartE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config22pj_rdiag_true_delassusE">
+<span id="_CPPv3N8cardillo6config6Config22pj_rdiag_true_delassusE"></span><span id="_CPPv2N8cardillo6config6Config22pj_rdiag_true_delassusE"></span><span id="cardillo::config::Config::pj_rdiag_true_delassus__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a2811f0d31ced4d894ed648c4fde85a7c"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_rdiag_true_delassus</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config22pj_rdiag_true_delassusE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config22pj_convergence_csv_dirE">
+<span id="_CPPv3N8cardillo6config6Config22pj_convergence_csv_dirE"></span><span id="_CPPv2N8cardillo6config6Config22pj_convergence_csv_dirE"></span><span id="cardillo::config::Config::pj_convergence_csv_dir__ss"></span><span class="target" id="structcardillo_1_1config_1_1Config_1afcef3808bfe17e81ef93398ce190fae0"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">pj_convergence_csv_dir</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="s"><span class="pre">&quot;&quot;</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config22pj_convergence_csv_dirE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config22constraint_bias_factorE">
+<span id="_CPPv3N8cardillo6config6Config22constraint_bias_factorE"></span><span id="_CPPv2N8cardillo6config6Config22constraint_bias_factorE"></span><span id="cardillo::config::Config::constraint_bias_factor__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a555b5fa96fd0ab6b0bdef1ac8139edb2"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">constraint_bias_factor</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">0.001</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config22constraint_bias_factorE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config12qoco_backendE">
+<span id="_CPPv3N8cardillo6config6Config12qoco_backendE"></span><span id="_CPPv2N8cardillo6config6Config12qoco_backendE"></span><span id="cardillo::config::Config::qoco_backend__ss"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a281eaa36938280e8124b7d19cab6c92f"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">qoco_backend</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="s"><span class="pre">&quot;auto&quot;</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config12qoco_backendE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config17ip_kkt_static_regE">
+<span id="_CPPv3N8cardillo6config6Config17ip_kkt_static_regE"></span><span id="_CPPv2N8cardillo6config6Config17ip_kkt_static_regE"></span><span id="cardillo::config::Config::ip_kkt_static_reg__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1ab47dd8a63edaccb4796010ad7ffccc75"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ip_kkt_static_reg</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">1e-8</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config17ip_kkt_static_regE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config18ip_kkt_dynamic_regE">
+<span id="_CPPv3N8cardillo6config6Config18ip_kkt_dynamic_regE"></span><span id="_CPPv2N8cardillo6config6Config18ip_kkt_dynamic_regE"></span><span id="cardillo::config::Config::ip_kkt_dynamic_reg__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a557d6362944e07871f54680fcd2f031f"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ip_kkt_dynamic_reg</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">1e-8</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config18ip_kkt_dynamic_regE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config17ip_iter_ref_itersE">
+<span id="_CPPv3N8cardillo6config6Config17ip_iter_ref_itersE"></span><span id="_CPPv2N8cardillo6config6Config17ip_iter_ref_itersE"></span><span id="cardillo::config::Config::ip_iter_ref_iters__i"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a4cc9e7eec2cb2475b0b81672d6968350"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ip_iter_ref_iters</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">0</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config17ip_iter_ref_itersE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config12has_pj_alphaE">
+<span id="_CPPv3N8cardillo6config6Config12has_pj_alphaE"></span><span id="_CPPv2N8cardillo6config6Config12has_pj_alphaE"></span><span id="cardillo::config::Config::has_pj_alpha__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a8349d027d7b0f39a0f1edb4829906771"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">has_pj_alpha</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config12has_pj_alphaE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config21has_pj_max_iterationsE">
+<span id="_CPPv3N8cardillo6config6Config21has_pj_max_iterationsE"></span><span id="_CPPv2N8cardillo6config6Config21has_pj_max_iterationsE"></span><span id="cardillo::config::Config::has_pj_max_iterations__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a329c742783c239fd836a2b4fdb60d26a"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">has_pj_max_iterations</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config21has_pj_max_iterationsE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config14has_pj_tol_absE">
+<span id="_CPPv3N8cardillo6config6Config14has_pj_tol_absE"></span><span id="_CPPv2N8cardillo6config6Config14has_pj_tol_absE"></span><span id="cardillo::config::Config::has_pj_tol_abs__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1abd08b98e7df0d555249d9aeb5aa49258"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">has_pj_tol_abs</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config14has_pj_tol_absE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config14has_pj_tol_relE">
+<span id="_CPPv3N8cardillo6config6Config14has_pj_tol_relE"></span><span id="_CPPv2N8cardillo6config6Config14has_pj_tol_relE"></span><span id="cardillo::config::Config::has_pj_tol_rel__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a65bb32e6c3c3ec51a559c24832b8336c"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">has_pj_tol_rel</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config14has_pj_tol_relE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config17has_pj_relaxationE">
+<span id="_CPPv3N8cardillo6config6Config17has_pj_relaxationE"></span><span id="_CPPv2N8cardillo6config6Config17has_pj_relaxationE"></span><span id="cardillo::config::Config::has_pj_relaxation__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1ad8250196bce35794464477f2b6bcce42"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">has_pj_relaxation</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config17has_pj_relaxationE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config10integratorE">
+<span id="_CPPv3N8cardillo6config6Config10integratorE"></span><span id="_CPPv2N8cardillo6config6Config10integratorE"></span><span id="cardillo::config::Config::integrator__IntegratorType"></span><span class="target" id="structcardillo_1_1config_1_1Config_1aa4e00c34c559ee010bd220dfd4189caa"></span><a class="reference internal" href="enum_config_8hpp_1a458b79649d6e626590d6374440aa027d.html#_CPPv4N8cardillo6config14IntegratorTypeE" title="cardillo::config::IntegratorType"><span class="n"><span class="pre">IntegratorType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">integrator</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><a class="reference internal" href="enum_config_8hpp_1a458b79649d6e626590d6374440aa027d.html#_CPPv4N8cardillo6config14IntegratorTypeE" title="cardillo::config::IntegratorType"><span class="n"><span class="pre">IntegratorType</span></span></a><span class="p"><span class="pre">::</span></span><a class="reference internal" href="enum_config_8hpp_1a458b79649d6e626590d6374440aa027d.html#_CPPv4N8cardillo6config14IntegratorType6MoreauE" title="cardillo::config::IntegratorType::Moreau"><span class="n"><span class="pre">Moreau</span></span></a><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config10integratorE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config12moreau_thetaE">
+<span id="_CPPv3N8cardillo6config6Config12moreau_thetaE"></span><span id="_CPPv2N8cardillo6config6Config12moreau_thetaE"></span><span id="cardillo::config::Config::moreau_theta__real_t"></span><span class="target" id="structcardillo_1_1config_1_1Config_1aada96768bcd843ff5758c282b3c25669"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">moreau_theta</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="m"><span class="pre">1.0</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config12moreau_thetaE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config25moreau_implicit_gyroscopyE">
+<span id="_CPPv3N8cardillo6config6Config25moreau_implicit_gyroscopyE"></span><span id="_CPPv2N8cardillo6config6Config25moreau_implicit_gyroscopyE"></span><span id="cardillo::config::Config::moreau_implicit_gyroscopy__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a6e00afe2cb305511b065d4a9fa597f5a"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">moreau_implicit_gyroscopy</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config25moreau_implicit_gyroscopyE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config19moreau_lambda_thetaE">
+<span id="_CPPv3N8cardillo6config6Config19moreau_lambda_thetaE"></span><span id="_CPPv2N8cardillo6config6Config19moreau_lambda_thetaE"></span><span id="cardillo::config::Config::moreau_lambda_theta__b"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a4950af2c1ebd546dd60a59dd725cad7e"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">moreau_lambda_theta</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="k"><span class="pre">false</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config19moreau_lambda_thetaE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo6config6Config10scene_nameE">
+<span id="_CPPv3N8cardillo6config6Config10scene_nameE"></span><span id="_CPPv2N8cardillo6config6Config10scene_nameE"></span><span id="cardillo::config::Config::scene_name__ss"></span><span class="target" id="structcardillo_1_1config_1_1Config_1a6062953a115dd6df4c9d68e7904318f3"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">scene_name</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="s"><span class="pre">&quot;none-specified&quot;</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo6config6Config10scene_nameE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="structcardillo_1_1collision_1_1SphereCollider.html" class="btn btn-neutral float-left" title="Struct SphereCollider" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="structcardillo_1_1HeightFieldAsset.html" class="btn btn-neutral float-right" title="Struct HeightFieldAsset" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

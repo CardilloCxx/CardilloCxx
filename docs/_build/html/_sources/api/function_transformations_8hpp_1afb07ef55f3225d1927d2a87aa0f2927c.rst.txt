@@ -1,0 +1,14 @@
+.. _exhale_function_transformations_8hpp_1afb07ef55f3225d1927d2a87aa0f2927c:
+
+Function cardillo::transform::angularVelocity
+=============================================
+
+- Defined in :ref:`file_src_rigid_body_transformations.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::transform::angularVelocity(const Vector3r&, const RigidBody::RigidState&, const RigidBody::RigidState&)
+   :project: Cardillo

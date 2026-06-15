@@ -1,0 +1,21 @@
+.. _dir_src_misc_timings:
+
+
+Directory timings
+=================
+
+
+|exhale_lsh| :ref:`Parent directory <dir_src_misc>` (``src/misc``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+
+*Directory path:* ``src/misc/timings``
+
+
+Files
+-----
+
+- :ref:`file_src_misc_timings_TimingManager.hpp`
+
+

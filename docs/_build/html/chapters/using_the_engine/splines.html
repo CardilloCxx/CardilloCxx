@@ -1,0 +1,379 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Splines &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Trajectories and Kinematic Control" href="trajectories.html" />
+    <link rel="prev" title="Constraints and Joints" href="constraints.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="setup.html">Setup and Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bodies.html">Bodies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="constraints.html">Constraints and Joints</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Splines</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-common-interface">The common interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#built-in-spline-types">Built-in spline types</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#linearspline">LinearSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#circlespline">CircleSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#helixspline">HelixSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#catmullromspline">CatmullRomSpline</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#loading-splines-from-bcc">Loading splines from BCC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-splines-to-create-beams">Using splines to create beams</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-splines-for-trajectories">Using splines for trajectories</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="trajectories.html">Trajectories and Kinematic Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="beams.html">Beams and Flexible Rods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stepping.html">Stepping and Runtime Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example.html">Worked Example: A Single Pendulum</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../using_the_engine.html">Using The Engine</a></li>
+      <li class="breadcrumb-item active">Splines</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/using_the_engine/splines.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="splines">
+<h1>Splines<a class="headerlink" href="#splines" title="Link to this heading"></a></h1>
+<p>Splines are reusable geometric paths used by the engine in two main places:</p>
+<ul class="simple">
+<li><p>as input geometry for <code class="docutils literal notranslate"><span class="pre">createBeam</span></code> / <code class="docutils literal notranslate"><span class="pre">createBeams</span></code></p></li>
+<li><p>as looping kinematic paths for <code class="docutils literal notranslate"><span class="pre">addTrajectory(entity,</span> <span class="pre">spline,</span> <span class="pre">period)</span></code></p></li>
+</ul>
+<p>All spline types live in <code class="docutils literal notranslate"><span class="pre">src/misc/spline.hpp</span></code> under <code class="docutils literal notranslate"><span class="pre">cardillo::misc</span></code>.</p>
+<nav class="contents local" id="on-this-page">
+<p class="topic-title">On this page</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#the-common-interface" id="id1">The common interface</a></p></li>
+<li><p><a class="reference internal" href="#built-in-spline-types" id="id2">Built-in spline types</a></p>
+<ul>
+<li><p><a class="reference internal" href="#linearspline" id="id3">LinearSpline</a></p></li>
+<li><p><a class="reference internal" href="#circlespline" id="id4">CircleSpline</a></p></li>
+<li><p><a class="reference internal" href="#helixspline" id="id5">HelixSpline</a></p></li>
+<li><p><a class="reference internal" href="#catmullromspline" id="id6">CatmullRomSpline</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#loading-splines-from-bcc" id="id7">Loading splines from BCC</a></p></li>
+<li><p><a class="reference internal" href="#using-splines-to-create-beams" id="id8">Using splines to create beams</a></p></li>
+<li><p><a class="reference internal" href="#using-splines-for-trajectories" id="id9">Using splines for trajectories</a></p></li>
+</ul>
+</nav>
+<section id="the-common-interface">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">The common interface</a><a class="headerlink" href="#the-common-interface" title="Link to this heading"></a></h2>
+<p>All spline classes derive from <code class="docutils literal notranslate"><span class="pre">misc::SplinePattern</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">SplinePattern</span><span class="w"> </span><span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="o">~</span><span class="n">SplinePattern</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">;</span>
+<span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="nf">totalLength</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="nf">isLoop</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="n">SplineSample</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="n">real_t</span><span class="w"> </span><span class="n">alpha</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="n">Vector3r</span><span class="w"> </span><span class="nf">centerOfMass</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">sample(alpha)</span></code> returns a <code class="docutils literal notranslate"><span class="pre">SplineSample</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">SplineSample</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">position</span><span class="p">;</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">tangent</span><span class="p">;</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">normal</span><span class="p">;</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">binormal</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>The parameter <code class="docutils literal notranslate"><span class="pre">alpha</span></code> is normalized to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> and clamped by the built-in
+implementations.</p>
+</section>
+<section id="built-in-spline-types">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Built-in spline types</a><a class="headerlink" href="#built-in-spline-types" title="Link to this heading"></a></h2>
+<section id="linearspline">
+<h3><a class="toc-backref" href="#id3" role="doc-backlink">LinearSpline</a><a class="headerlink" href="#linearspline" title="Link to this heading"></a></h3>
+<p>A straight segment between two points.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">misc</span><span class="o">::</span><span class="n">LinearSpline</span><span class="w"> </span><span class="nf">line</span><span class="p">(</span><span class="n">p0</span><span class="p">,</span><span class="w"> </span><span class="n">p1</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Constructor:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">LinearSpline</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">p0</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">p1</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Properties:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">totalLength()</span></code> is <code class="docutils literal notranslate"><span class="pre">|p1</span> <span class="pre">-</span> <span class="pre">p0|</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">isLoop()</span></code> is always <code class="docutils literal notranslate"><span class="pre">false</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">centerOfMass()</span></code> is the midpoint</p></li>
+</ul>
+</section>
+<section id="circlespline">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">CircleSpline</a><a class="headerlink" href="#circlespline" title="Link to this heading"></a></h3>
+<p>A circular arc in a plane, or a full loop if the angle span is <code class="docutils literal notranslate"><span class="pre">2π</span></code>.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">misc</span><span class="o">::</span><span class="n">CircleSpline</span><span class="w"> </span><span class="nf">arc</span><span class="p">(</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span>
+<span class="w">    </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitZ</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitX</span><span class="p">(),</span>
+<span class="w">    </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">M_PI</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Constructor:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CircleSpline</span><span class="p">(</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">center</span><span class="p">,</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">radius</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">normal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitZ</span><span class="p">(),</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">dir0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitX</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">thetaStart</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">thetaSpan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">M_PI</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Notes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">normal</span></code> defines the plane</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dir0</span></code> defines the radial direction at <code class="docutils literal notranslate"><span class="pre">alpha</span> <span class="pre">=</span> <span class="pre">0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">isLoop()</span></code> is true only when <code class="docutils literal notranslate"><span class="pre">|thetaSpan|</span></code> is effectively <code class="docutils literal notranslate"><span class="pre">2π</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">centerOfMass()</span></code> returns the circle center</p></li>
+</ul>
+</section>
+<section id="helixspline">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">HelixSpline</a><a class="headerlink" href="#helixspline" title="Link to this heading"></a></h3>
+<p>A helical path around an axis.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">misc</span><span class="o">::</span><span class="n">HelixSpline</span><span class="w"> </span><span class="nf">helix</span><span class="p">(</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitZ</span><span class="p">(),</span>
+<span class="w">    </span><span class="mf">0.02</span><span class="p">,</span>
+<span class="w">    </span><span class="mf">0.01</span><span class="p">,</span>
+<span class="w">    </span><span class="mf">8.0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitX</span><span class="p">());</span>
+</pre></div>
+</div>
+<p>Constructor:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">HelixSpline</span><span class="p">(</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">center</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">axisDir</span><span class="p">,</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">radius</span><span class="p">,</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">pitch</span><span class="p">,</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">turns</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">dir0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitX</span><span class="p">());</span>
+</pre></div>
+</div>
+<p>Notes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">axisDir</span></code> is normalized internally</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pitch</span></code> is the axial advance per revolution</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">turns</span></code> is the total number of revolutions</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">isLoop()</span></code> is always <code class="docutils literal notranslate"><span class="pre">false</span></code></p></li>
+</ul>
+</section>
+<section id="catmullromspline">
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">CatmullRomSpline</a><a class="headerlink" href="#catmullromspline" title="Link to this heading"></a></h3>
+<p>A smooth curve through a list of control points.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Vector3r</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.1</span><span class="p">),</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.6</span><span class="p">,</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w"> </span><span class="mf">0.1</span><span class="p">),</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="p">};</span>
+
+<span class="n">misc</span><span class="o">::</span><span class="n">CatmullRomSpline</span><span class="w"> </span><span class="nf">curve</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Constructor:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CatmullRomSpline</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Vector3r</span><span class="o">&gt;</span><span class="w"> </span><span class="n">controlPoints</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">loop</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Notes:</p>
+<ul class="simple">
+<li><p>open and closed curves are supported</p></li>
+<li><p>the implementation builds an arc-length lookup table, so <code class="docutils literal notranslate"><span class="pre">alpha</span></code> is sampled
+more uniformly by length than raw segment parameter space</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">centerOfMass()</span></code> is approximated numerically from sampled arc segments</p></li>
+</ul>
+</section>
+</section>
+<section id="loading-splines-from-bcc">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Loading splines from BCC</a><a class="headerlink" href="#loading-splines-from-bcc" title="Link to this heading"></a></h2>
+<p>The utility below loads one or more Catmull-Rom splines from a <code class="docutils literal notranslate"><span class="pre">.bcc</span></code> file:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">misc</span><span class="o">::</span><span class="n">SplinePattern</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">splines</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="n">misc</span><span class="o">::</span><span class="n">loadSplinesFromBCC</span><span class="p">(</span><span class="s">&quot;res/paths/my_curve.bcc&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.001</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Signature:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">SplinePattern</span><span class="o">&gt;&gt;</span>
+<span class="n">loadSplinesFromBCC</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">filePath</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">scale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">scale</span></code> factor is applied to all loaded control points.</p>
+</section>
+<section id="using-splines-to-create-beams">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Using splines to create beams</a><a class="headerlink" href="#using-splines-to-create-beams" title="Link to this heading"></a></h2>
+<p>A single spline can be sampled into a beam chain with <code class="docutils literal notranslate"><span class="pre">createBeam</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">misc</span><span class="o">::</span><span class="n">LinearSpline</span><span class="w"> </span><span class="nf">spline</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="p">[</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="n">tip</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">createBeam</span><span class="p">(</span>
+<span class="w">    </span><span class="n">spline</span><span class="p">,</span>
+<span class="w">    </span><span class="n">section</span><span class="p">,</span>
+<span class="w">    </span><span class="n">springs</span><span class="p">,</span>
+<span class="w">    </span><span class="n">RigidState</span><span class="p">{},</span>
+<span class="w">    </span><span class="n">RigidProps</span><span class="o">::</span><span class="n">withDensity</span><span class="p">(</span><span class="mf">1200.0</span><span class="p">),</span>
+<span class="w">    </span><span class="mi">32</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>For multiple connected spline pieces, use <code class="docutils literal notranslate"><span class="pre">createBeams</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">misc</span><span class="o">::</span><span class="n">LinearSpline</span><span class="w"> </span><span class="nf">part1</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+<span class="n">misc</span><span class="o">::</span><span class="n">CircleSpline</span><span class="w"> </span><span class="nf">part2</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span>
+<span class="w">                         </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitZ</span><span class="p">(),</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitX</span><span class="p">(),</span>
+<span class="w">                         </span><span class="o">-</span><span class="n">M_PI_2</span><span class="p">,</span><span class="w"> </span><span class="n">M_PI_2</span><span class="p">);</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">misc</span><span class="o">::</span><span class="n">SplinePattern</span><span class="o">*&gt;</span><span class="w"> </span><span class="n">parts</span><span class="p">{</span><span class="o">&amp;</span><span class="n">part1</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">part2</span><span class="p">};</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="p">[</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="n">tip</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">createBeams</span><span class="p">(</span>
+<span class="w">    </span><span class="n">parts</span><span class="p">,</span>
+<span class="w">    </span><span class="n">section</span><span class="p">,</span>
+<span class="w">    </span><span class="n">springs</span><span class="p">,</span>
+<span class="w">    </span><span class="n">RigidState</span><span class="p">{},</span>
+<span class="w">    </span><span class="n">props</span><span class="p">,</span>
+<span class="w">    </span><span class="mi">64</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>How it works:</p>
+<ul class="simple">
+<li><p>each spline is sampled immediately during the call</p></li>
+<li><p>the total segment budget is distributed across the input splines by length</p></li>
+<li><p>adjacent generated beam segments are connected with beam constraints</p></li>
+<li><p>adjacent beam-segment collisions are disabled automatically</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">createBeams</span></code> takes raw <code class="docutils literal notranslate"><span class="pre">SplinePattern</span></code> pointers, but it samples them
+synchronously inside the call. The spline objects only need to stay alive for
+the duration of that call.</p>
+</div>
+</section>
+<section id="using-splines-for-trajectories">
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">Using splines for trajectories</a><a class="headerlink" href="#using-splines-for-trajectories" title="Link to this heading"></a></h2>
+<p>You can also drive an entity along a spline with the spline overload of
+<code class="docutils literal notranslate"><span class="pre">addTrajectory</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">misc</span><span class="o">::</span><span class="n">CircleSpline</span><span class="w"> </span><span class="nf">path</span><span class="p">(</span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="mf">0.5</span><span class="p">);</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addTrajectory</span><span class="p">(</span><span class="n">body</span><span class="p">,</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="mf">4.0</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Signature:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">class</span><span class="w"> </span><span class="nc">TSpline</span><span class="o">&gt;</span>
+<span class="kt">void</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addTrajectory</span><span class="p">(</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">TSpline</span><span class="o">&amp;</span><span class="w"> </span><span class="n">spline</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">period</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Behavior of this overload:</p>
+<ul class="simple">
+<li><p>it copies the spline internally</p></li>
+<li><p>it maps time to <code class="docutils literal notranslate"><span class="pre">phase</span> <span class="pre">=</span> <span class="pre">fmod(max(t,</span> <span class="pre">0),</span> <span class="pre">period)</span> <span class="pre">/</span> <span class="pre">period</span></code></p></li>
+<li><p>it uses <code class="docutils literal notranslate"><span class="pre">sample(phase).position</span></code> as the commanded position</p></li>
+<li><p>it always sets orientation to <code class="docutils literal notranslate"><span class="pre">Quaternion4r::Identity()</span></code></p></li>
+<li><p>it is equivalent to a position-only trajectory callback</p></li>
+</ul>
+<p>If you need non-identity orientation along the path, use the callback-based
+trajectory API and compute both pose and velocity yourself.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="constraints.html" class="btn btn-neutral float-left" title="Constraints and Joints" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="trajectories.html" class="btn btn-neutral float-right" title="Trajectories and Kinematic Control" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

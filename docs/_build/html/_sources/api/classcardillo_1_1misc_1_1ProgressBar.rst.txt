@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1misc_1_1ProgressBar:
+
+Class ProgressBar
+=================
+
+- Defined in :ref:`file_src_misc_progress_ProgressBar.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::misc::ProgressBar
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

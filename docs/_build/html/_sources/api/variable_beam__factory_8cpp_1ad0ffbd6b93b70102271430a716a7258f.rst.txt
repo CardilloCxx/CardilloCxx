@@ -1,0 +1,14 @@
+.. _exhale_variable_beam__factory_8cpp_1ad0ffbd6b93b70102271430a716a7258f:
+
+Variable position
+=================
+
+- Defined in :ref:`file_src_physics_assets_beam_factory.cpp`
+
+
+Variable Documentation
+----------------------
+
+
+.. doxygenvariable:: position
+   :project: Cardillo

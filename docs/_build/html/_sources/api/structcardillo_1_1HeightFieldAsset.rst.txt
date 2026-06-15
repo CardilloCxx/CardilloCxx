@@ -1,0 +1,17 @@
+.. _exhale_struct_structcardillo_1_1HeightFieldAsset:
+
+Struct HeightFieldAsset
+=======================
+
+- Defined in :ref:`file_src_physics_assets_assets.hpp`
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: cardillo::HeightFieldAsset
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

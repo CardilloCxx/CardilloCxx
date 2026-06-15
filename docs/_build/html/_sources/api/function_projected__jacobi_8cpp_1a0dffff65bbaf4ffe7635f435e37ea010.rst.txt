@@ -1,0 +1,14 @@
+.. _exhale_function_projected__jacobi_8cpp_1a0dffff65bbaf4ffe7635f435e37ea010:
+
+Function cardillo::solver::rdiag_sparse
+=======================================
+
+- Defined in :ref:`file_src_physics_solver_projected_jacobi.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::solver::rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>&, const VectorXr&, real_t)
+   :project: Cardillo

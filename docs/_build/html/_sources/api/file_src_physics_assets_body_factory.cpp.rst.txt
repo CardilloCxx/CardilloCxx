@@ -1,0 +1,64 @@
+
+.. _file_src_physics_assets_body_factory.cpp:
+
+File body_factory.cpp
+=====================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assets>` (``src/physics/assets``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assets/body_factory.cpp``)
+----------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assets_body_factory.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../collision/collision_coal.hpp``
+
+- ``../../io/csv_writer.hpp``
+
+- ``../../io/heightmap_loader.hpp``
+
+- ``../../io/softbody_loader.hpp``
+
+- ``../constraints/constraint_factory.hpp``
+
+- ``../constraints/constraints.hpp``
+
+- ``algorithm``
+
+- ``assets.hpp`` (:ref:`file_src_physics_assets_assets.hpp`)
+
+- ``body_factory.hpp`` (:ref:`file_src_physics_assets_body_factory.hpp`)
+
+- ``coal/shape/geometric_shapes.h``
+
+- ``limits``
+
+- ``optional``
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+

@@ -1,0 +1,14 @@
+.. _exhale_define_misc_2types_8hpp_1a6675a3ab28312a8835980fffa55e7fba:
+
+Define real_t
+=============
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: real_t
+   :project: Cardillo

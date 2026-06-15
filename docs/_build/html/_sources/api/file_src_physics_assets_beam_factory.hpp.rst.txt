@@ -1,0 +1,63 @@
+
+.. _file_src_physics_assets_beam_factory.hpp:
+
+File beam_factory.hpp
+=====================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assets>` (``src/physics/assets``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assets/beam_factory.hpp``)
+----------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assets_beam_factory.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../world.hpp``
+
+- ``entt/entt.hpp``
+
+- ``utility``
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_assets_beam_factory.cpp`
+
+- :ref:`file_src_physics_assets_body_factory.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1BeamFactory`
+

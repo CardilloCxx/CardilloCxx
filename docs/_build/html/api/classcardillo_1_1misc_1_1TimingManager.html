@@ -1,0 +1,549 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Class TimingManager &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Class TimingManager::Scope" href="classcardillo_1_1misc_1_1TimingManager_1_1Scope.html" />
+    <link rel="prev" title="Class SplinePattern" href="classcardillo_1_1misc_1_1SplinePattern.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="library_root.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="library_root.html#full-api">Full API</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#namespaces">Namespaces</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="library_root.html#classes-and-structs">Classes and Structs</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__AngularAcceleration3.html">Struct C_AngularAcceleration3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__AngularVelocity3.html">Struct C_AngularVelocity3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__BeamElement.html">Struct C_BeamElement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__BodyIndex.html">Struct C_BodyIndex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Capsule.html">Struct C_Capsule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__CapsuleVisualTag.html">Struct C_CapsuleVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Collidable.html">Struct C_Collidable</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Cone.html">Struct C_Cone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ConeVisualTag.html">Struct C_ConeVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Cube.html">Struct C_Cube</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__CubeVisualTag.html">Struct C_CubeVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Cylinder.html">Struct C_Cylinder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__CylinderVisualTag.html">Struct C_CylinderVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__DirectorTriad.html">Struct C_DirectorTriad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalForce.html">Struct C_ExternalForce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalTorque.html">Struct C_ExternalTorque</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Friction.html">Struct C_Friction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html">Struct C_HeightField</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html">Struct C_HeightFieldVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html">Struct C_InertiaDiag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearAcceleration3.html">Struct C_LinearAcceleration3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearVelocity3.html">Struct C_LinearVelocity3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Mass.html">Struct C_Mass</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Mesh.html">Struct C_Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__MeshVisualTag.html">Struct C_MeshVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Orientation.html">Struct C_Orientation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PhysicsObject.html">Struct C_PhysicsObject</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Plane.html">Struct C_Plane</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PlaneVisualTag.html">Struct C_PlaneVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PointMassTag.html">Struct C_PointMassTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PointVisualTag.html">Struct C_PointVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Position3.html">Struct C_Position3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Radius.html">Struct C_Radius</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Capsule.html">Struct C_RB_Capsule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cone.html">Struct C_RB_Cone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cube.html">Struct C_RB_Cube</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cylinder.html">Struct C_RB_Cylinder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html">Struct C_RB_HeightField</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Mesh.html">Struct C_RB_Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Plane.html">Struct C_RB_Plane</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Sphere.html">Struct C_RB_Sphere</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RigidBodyDirectorTag.html">Struct C_RigidBodyDirectorTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RigidBodyTag.html">Struct C_RigidBodyTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__SoftBodySurface.html">Struct C_SoftBodySurface</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__SoftBodyVisualTag.html">Struct C_SoftBodyVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__StaticTrajectory.html">Struct C_StaticTrajectory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__TrackTag.html">Struct C_TrackTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__VisualObject.html">Struct C_VisualObject</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1AabbCollider.html">Struct AabbCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1Contact.html">Struct Contact</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1ContactPairKey.html">Struct ContactPairKey</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1ContactPairKeyHash.html">Struct ContactPairKeyHash</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1ObbCollider.html">Struct ObbCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1PlaneCollider.html">Struct PlaneCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1SphereCollider.html">Struct SphereCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html">Struct Config</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html">Struct HeightFieldAsset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1MeshGenerator_1_1EntityMesh.html">Struct MeshGenerator::EntityMesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1SoftBodyMesh.html">Struct SoftBodyMesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1MeshAsset.html">Struct MeshAsset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1BCCHeader.html">Struct BCCHeader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1SplineSample.html">Struct SplineSample</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1Active.html">Struct TimingManager::Active</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1HierNode.html">Struct TimingManager::HierNode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1Stats.html">Struct TimingManager::Stats</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1BeamCrossSection.html">Struct BeamCrossSection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1BeamSpringParams.html">Struct BeamSpringParams</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1CapsuleShape.html">Struct CapsuleShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1ConeShape.html">Struct ConeShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1ConstraintPattern_1_1WorldAttachments.html">Struct ConstraintPattern::WorldAttachments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1ConstraintResult.html">Struct ConstraintResult</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1CubeShape.html">Struct CubeShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1CylinderShape.html">Struct CylinderShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1JointFrame.html">Struct JointFrame</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1JointProperties.html">Struct JointProperties</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1MeshShape.html">Struct MeshShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1PlaneShape.html">Struct PlaneShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1RigidBodyFactory.html">Struct RigidBodyFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1RigidProps.html">Struct RigidProps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1RigidState.html">Struct RigidState</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1SphereShape.html">Struct SphereShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1solver_1_1workspace.html">Struct workspace</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1TripletMatrix_1_1Block.html">Struct TripletMatrix::Block</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structCoordinates.html">Template Struct Coordinates</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structIndex.html">Template Struct Index</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1BlockDiagonal.html">Class BlockDiagonal</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1collision_1_1CollisionCoal.html">Class CollisionCoal</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1collision_1_1ContactTracker.html">Class ContactTracker</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1config_1_1ConfigReader.html">Class ConfigReader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1integration_1_1IntegrationBase.html">Class IntegrationBase</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1integration_1_1MoreauIntegrator.html">Class MoreauIntegrator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1CsvWriter.html">Class CsvWriter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html">Class MeshGenerator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html">Class VtkWriterBinary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1MathHelper.html">Class MathHelper</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1CatmullRomSpline.html">Class CatmullRomSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1CircleSpline.html">Class CircleSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1HelixSpline.html">Class HelixSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1LinearSpline.html">Class LinearSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1ProgressBar.html">Class ProgressBar</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1SplinePattern.html">Class SplinePattern</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Class TimingManager</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1TimingManager_1_1Scope.html">Class TimingManager::Scope</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1ClarabelAssembler.html">Class ClarabelAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1PgsAssembler.html">Class PgsAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1PjAssembler.html">Class PjAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1QocoAssembler.html">Class QocoAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BeamConstraint.html">Class BeamConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BeamFactory.html">Class BeamFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BodyFactory.html">Class BodyFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintFactory.html">Class ConstraintFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintPattern.html">Class ConstraintPattern</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1DerivedEntitySync.html">Class DerivedEntitySync</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1DynamicsAssembler.html">Class DynamicsAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1LinearDistanceConstraint.html">Class LinearDistanceConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html">Class PhysicsEngine</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1pipeline_1_1PhysicsPipeline.html">Class PhysicsPipeline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1Trajectory.html">Class Trajectory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1TranslationRotationConstraint.html">Class TranslationRotationConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html">Class PhysicsAssets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ClarabelSolver.html">Class ClarabelSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ConjugateGradientSolver.html">Class ConjugateGradientSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ProjectedGaussSeidelSolver.html">Class ProjectedGaussSeidelSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ProjectedJacobiSolver.html">Class ProjectedJacobiSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1QocoSolver.html">Class QocoSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1SolverBase.html">Class SolverBase</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1WarmstartProvider.html">Class WarmstartProvider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1TripletMatrix.html">Class TripletMatrix</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1World.html">Class World</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#enums">Enums</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#functions">Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#variables">Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#defines">Defines</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="library_root.html">API Reference</a></li>
+      <li class="breadcrumb-item active">Class TimingManager</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/classcardillo_1_1misc_1_1TimingManager.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="class-timingmanager">
+<span id="exhale-class-classcardillo-1-1misc-1-1timingmanager"></span><h1>Class TimingManager<a class="headerlink" href="#class-timingmanager" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Defined in <a class="reference internal" href="file_src_misc_timings_TimingManager.hpp.html#file-src-misc-timings-timingmanager-hpp"><span class="std std-ref">File TimingManager.hpp</span></a></p></li>
+</ul>
+<section id="nested-relationships">
+<h2>Nested Relationships<a class="headerlink" href="#nested-relationships" title="Link to this heading"></a></h2>
+<section id="nested-types">
+<h3>Nested Types<a class="headerlink" href="#nested-types" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1Active.html#exhale-struct-structcardillo-1-1misc-1-1timingmanager-1-1active"><span class="std std-ref">Struct TimingManager::Active</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1HierNode.html#exhale-struct-structcardillo-1-1misc-1-1timingmanager-1-1hiernode"><span class="std std-ref">Struct TimingManager::HierNode</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1misc_1_1TimingManager_1_1Scope.html#exhale-class-classcardillo-1-1misc-1-1timingmanager-1-1scope"><span class="std std-ref">Class TimingManager::Scope</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1Stats.html#exhale-struct-structcardillo-1-1misc-1-1timingmanager-1-1stats"><span class="std std-ref">Struct TimingManager::Stats</span></a></p></li>
+</ul>
+</section>
+</section>
+<section id="class-documentation">
+<h2>Class Documentation<a class="headerlink" href="#class-documentation" title="Link to this heading"></a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManagerE">
+<span id="_CPPv3N8cardillo4misc13TimingManagerE"></span><span id="_CPPv2N8cardillo4misc13TimingManagerE"></span><span id="cardillo::misc::TimingManager"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">TimingManager</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManagerE" title="Link to this definition"></a><br /></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
+<dl class="cpp enum-class">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerIdE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerIdE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerIdE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972e"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">TimerId</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerIdE" title="Link to this definition"></a><br /></dt>
+<dd><p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId19CollisionBroadphaseE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId19CollisionBroadphaseE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId19CollisionBroadphaseE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eab72dcebf9a185aaf1de12921eaa83e3a"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CollisionBroadphase</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId19CollisionBroadphaseE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId17CollisionMatchingE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId17CollisionMatchingE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId17CollisionMatchingE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ead9af5779c703b2786a45e45e1d4407e5"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CollisionMatching</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId17CollisionMatchingE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId20CollisionNarrowphaseE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId20CollisionNarrowphaseE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId20CollisionNarrowphaseE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eacfdc190e29a8f0138ed28997a815fdb3"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CollisionNarrowphase</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId20CollisionNarrowphaseE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId14UpdateEntitiesE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId14UpdateEntitiesE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId14UpdateEntitiesE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea0593c45ded461158d1f85dd80ad15cd6"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UpdateEntities</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId14UpdateEntitiesE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId15BuildAndFactorSE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId15BuildAndFactorSE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId15BuildAndFactorSE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eaba28c162f9cb1601c0cc85441c4f0b58"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">BuildAndFactorS</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId15BuildAndFactorSE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId26RebuildConstraintJacobiansE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId26RebuildConstraintJacobiansE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId26RebuildConstraintJacobiansE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea8dd4e5b2cf0d13a2386834e7b325ca55"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">RebuildConstraintJacobians</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId26RebuildConstraintJacobiansE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId23RebuildContactJacobiansE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId23RebuildContactJacobiansE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId23RebuildContactJacobiansE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eaf47f8758718a4bb9fb54e5ef0d440e63"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">RebuildContactJacobians</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId23RebuildContactJacobiansE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId11IntegrationE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId11IntegrationE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId11IntegrationE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea1115b855bb2a508bc2ca0609cc2d0f65"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Integration</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId11IntegrationE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId15ProjectedJacobiE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId15ProjectedJacobiE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId15ProjectedJacobiE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eaf459f8b47e306a3cadd29efb514f4d3f"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProjectedJacobi</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId15ProjectedJacobiE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId20ProjectedJacobiSweepE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId20ProjectedJacobiSweepE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId20ProjectedJacobiSweepE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eabdc6077f16715ee1fffcbc1d99f3f1ee"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProjectedJacobiSweep</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId20ProjectedJacobiSweepE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId20ProjectedJacobiSetupE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId20ProjectedJacobiSetupE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId20ProjectedJacobiSetupE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eab7d34bd0791b10d13dbf6c2abf4330d1"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProjectedJacobiSetup</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId20ProjectedJacobiSetupE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId20ProjectedGaussSeidelE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId20ProjectedGaussSeidelE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId20ProjectedGaussSeidelE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea02289f7107512d28eb5bdab410cc8f25"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProjectedGaussSeidel</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId20ProjectedGaussSeidelE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId25ProjectedGaussSeidelSweepE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId25ProjectedGaussSeidelSweepE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId25ProjectedGaussSeidelSweepE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eaf893852925b3d96349162718a85cfbd2"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProjectedGaussSeidelSweep</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId25ProjectedGaussSeidelSweepE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId25ProjectedGaussSeidelSetupE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId25ProjectedGaussSeidelSetupE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId25ProjectedGaussSeidelSetupE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eae4c0b0fcda7a86882352135dfeae19b7"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProjectedGaussSeidelSetup</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId25ProjectedGaussSeidelSetupE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSetupE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSetupE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSetupE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea0ab23cb1a15eaed325aac88e626e5529"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ConjugateGradientSetup</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSetupE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSolveE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSolveE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSolveE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea39199aa81d1677b378084f33e13e30ad"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ConjugateGradientSolve</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSolveE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSweepE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSweepE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSweepE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eaec3f875850ef24ad5c3858ddf87fe1fa"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ConjugateGradientSweep</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId22ConjugateGradientSweepE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId15ProjectedNewtonE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId15ProjectedNewtonE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId15ProjectedNewtonE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea2d43bd3639ef7b8cb9bbf82144f597a8"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProjectedNewton</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId15ProjectedNewtonE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId20ProjectedNewtonSetupE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId20ProjectedNewtonSetupE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId20ProjectedNewtonSetupE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea15d32d6d65356fa59616f04844f02492"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ProjectedNewtonSetup</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId20ProjectedNewtonSetupE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId9QocoSolveE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId9QocoSolveE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId9QocoSolveE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea43d361cf778878a86a8b88bceb8b5bfe"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">QocoSolve</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId9QocoSolveE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId13ClarabelSolveE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId13ClarabelSolveE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId13ClarabelSolveE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eab85ed7c6b99436f831a988ac77ebfa2d"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ClarabelSolve</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId13ClarabelSolveE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId20CollisionMakeContactE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId20CollisionMakeContactE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId20CollisionMakeContactE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ead2581889204791aea901306b3265b3bb"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CollisionMakeContact</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId20CollisionMakeContactE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId21DisableCollisionPairsE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId21DisableCollisionPairsE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId21DisableCollisionPairsE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea052bf71fb27984c1c335272ad25cb688"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DisableCollisionPairs</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId21DisableCollisionPairsE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId27CollisionNarrowphaseCollideE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId27CollisionNarrowphaseCollideE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId27CollisionNarrowphaseCollideE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eaa31a57d32259eef8b2d6511fc3182821"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CollisionNarrowphaseCollide</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId27CollisionNarrowphaseCollideE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId25CollisionMakeContactPatchE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId25CollisionMakeContactPatchE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId25CollisionMakeContactPatchE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea85c12e39e8b16d432e881c6c82acf3b9"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CollisionMakeContactPatch</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId25CollisionMakeContactPatchE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId12QocoAssemblyE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId12QocoAssemblyE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId12QocoAssemblyE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea3a60025fcf7248c13ba0fc69eec42936"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">QocoAssembly</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId12QocoAssemblyE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId9QocoSetupE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId9QocoSetupE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId9QocoSetupE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ead24db637c2a016c12f400dfde909727f"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">QocoSetup</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId9QocoSetupE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId16ClarabelAssemblyE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId16ClarabelAssemblyE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId16ClarabelAssemblyE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea55ab80c1777e2b3cdc50c448844918ca"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ClarabelAssembly</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId16ClarabelAssemblyE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId13ClarabelSetupE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId13ClarabelSetupE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId13ClarabelSetupE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972eaa3b1829f52fb7c32f507509745e23fca"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ClarabelSetup</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId13ClarabelSetupE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId11OutputWriteE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId11OutputWriteE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId11OutputWriteE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea7f0af5e319d9f1a6d1c273bdafc1c230"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">OutputWrite</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId11OutputWriteE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId30DynamicsAssembler_RefreshStateE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId30DynamicsAssembler_RefreshStateE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId30DynamicsAssembler_RefreshStateE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea63ec539541d1d036158f15ce7bc02c6d"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DynamicsAssembler_RefreshState</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId30DynamicsAssembler_RefreshStateE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId5TotalE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId5TotalE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId5TotalE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea96b0141273eabab320119c467cdcaf17"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Total</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId5TotalE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager7TimerId5OtherE">
+<span id="_CPPv3N8cardillo4misc13TimingManager7TimerId5OtherE"></span><span id="_CPPv2N8cardillo4misc13TimingManager7TimerId5OtherE"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1aa15846699f83a3e5c3d0ae9d2d4b972ea6311ae17c1ee52b36e68aaf4ad066387"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Other</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager7TimerId5OtherE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5resetEv">
+<span id="_CPPv3N8cardillo4misc13TimingManager5resetEv"></span><span id="_CPPv2N8cardillo4misc13TimingManager5resetEv"></span><span id="cardillo::misc::TimingManager::reset"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1ac960965b12fe52b09112e19c79b86ddc"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">reset</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5resetEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5scopeE7TimerId">
+<span id="_CPPv3N8cardillo4misc13TimingManager5scopeE7TimerId"></span><span id="_CPPv2N8cardillo4misc13TimingManager5scopeE7TimerId"></span><span id="cardillo::misc::TimingManager::scope__TimerId"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1ae0d5b7ffe2b8de2c84366105d4263bab"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeE" title="cardillo::misc::TimingManager::Scope"><span class="n"><span class="pre">Scope</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">scope</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager7TimerIdE" title="cardillo::misc::TimingManager::TimerId"><span class="n"><span class="pre">TimerId</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5scopeE7TimerId" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo4misc13TimingManager5scopeE7TimerId">
+<span id="_CPPv3NK8cardillo4misc13TimingManager5scopeE7TimerId"></span><span id="_CPPv2NK8cardillo4misc13TimingManager5scopeE7TimerId"></span><span id="cardillo::misc::TimingManager::scope__TimerIdC"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1a5a7bbd23f5085887fdf87d3fa1ce7a6d"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeE" title="cardillo::misc::TimingManager::Scope"><span class="n"><span class="pre">Scope</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">scope</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager7TimerIdE" title="cardillo::misc::TimingManager::TimerId"><span class="n"><span class="pre">TimerId</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo4misc13TimingManager5scopeE7TimerId" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo4misc13TimingManager5statsE7TimerId">
+<span id="_CPPv3NK8cardillo4misc13TimingManager5statsE7TimerId"></span><span id="_CPPv2NK8cardillo4misc13TimingManager5statsE7TimerId"></span><span id="cardillo::misc::TimingManager::stats__TimerIdC"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1a0be7cd20e51bda0cb4050203cf81dd0b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager5StatsE" title="cardillo::misc::TimingManager::Stats"><span class="n"><span class="pre">Stats</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">stats</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager7TimerIdE" title="cardillo::misc::TimingManager::TimerId"><span class="n"><span class="pre">TimerId</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo4misc13TimingManager5statsE7TimerId" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo4misc13TimingManager14printBreakdownERNSt7ostreamE">
+<span id="_CPPv3NK8cardillo4misc13TimingManager14printBreakdownERNSt7ostreamE"></span><span id="_CPPv2NK8cardillo4misc13TimingManager14printBreakdownERNSt7ostreamE"></span><span id="cardillo::misc::TimingManager::printBreakdown__osRC"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1a7a680a9ad07d0f762ab96f19ba0405e8"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">printBreakdown</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ostream</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">os</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo4misc13TimingManager14printBreakdownERNSt7ostreamE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+</div>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5ScopeE">
+<span id="_CPPv3N8cardillo4misc13TimingManager5ScopeE"></span><span id="_CPPv2N8cardillo4misc13TimingManager5ScopeE"></span><span id="cardillo::misc::TimingManager::Scope"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1_1Scope"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Scope</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeE" title="Link to this definition"></a><br /></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5Scope5ScopeER13TimingManager7TimerId">
+<span id="_CPPv3N8cardillo4misc13TimingManager5Scope5ScopeER13TimingManager7TimerId"></span><span id="_CPPv2N8cardillo4misc13TimingManager5Scope5ScopeER13TimingManager7TimerId"></span><span id="cardillo::misc::TimingManager::Scope::Scope__TimingManagerR.TimerId"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1_1Scope_1a0c690f23937c5d5dcff9256c292ba0d5"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Scope</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManagerE" title="cardillo::misc::TimingManager"><span class="n"><span class="pre">TimingManager</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">mgr</span></span>, <a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager7TimerIdE" title="cardillo::misc::TimingManager::TimerId"><span class="n"><span class="pre">TimerId</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">id</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5Scope5ScopeER13TimingManager7TimerId" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5Scope5ScopeERK5Scope">
+<span id="_CPPv3N8cardillo4misc13TimingManager5Scope5ScopeERK5Scope"></span><span id="_CPPv2N8cardillo4misc13TimingManager5Scope5ScopeERK5Scope"></span><span id="cardillo::misc::TimingManager::Scope::Scope__ScopeCR"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1_1Scope_1ac362649a7bdc9a6b1af7a09c20adc158"></span><span class="sig-name descname"><span class="n"><span class="pre">Scope</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager5Scope5ScopeERK5Scope" title="cardillo::misc::TimingManager::Scope::Scope"><span class="n"><span class="pre">Scope</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5Scope5ScopeERK5Scope" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5ScopeaSERK5Scope">
+<span id="_CPPv3N8cardillo4misc13TimingManager5ScopeaSERK5Scope"></span><span id="_CPPv2N8cardillo4misc13TimingManager5ScopeaSERK5Scope"></span><span id="cardillo::misc::TimingManager::Scope::assign-operator__ScopeCR"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1_1Scope_1a7dd2512436a7867871148d2f0d82f3de"></span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeE" title="cardillo::misc::TimingManager::Scope"><span class="n"><span class="pre">Scope</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeE" title="cardillo::misc::TimingManager::Scope"><span class="n"><span class="pre">Scope</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">delete</span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeaSERK5Scope" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5Scope5ScopeERR5Scope">
+<span id="_CPPv3N8cardillo4misc13TimingManager5Scope5ScopeERR5Scope"></span><span id="_CPPv2N8cardillo4misc13TimingManager5Scope5ScopeERR5Scope"></span><span id="cardillo::misc::TimingManager::Scope::Scope__ScopeRR"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1_1Scope_1a9ce102ec157f4fe3945aa5be2a30c187"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Scope</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager5Scope5ScopeERR5Scope" title="cardillo::misc::TimingManager::Scope::Scope"><span class="n"><span class="pre">Scope</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5Scope5ScopeERR5Scope" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5ScopeaSERR5Scope">
+<span id="_CPPv3N8cardillo4misc13TimingManager5ScopeaSERR5Scope"></span><span id="_CPPv2N8cardillo4misc13TimingManager5ScopeaSERR5Scope"></span><span id="cardillo::misc::TimingManager::Scope::assign-operator__ScopeRR"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1_1Scope_1a2af28e0e36d07fdcb8996766e26f1959"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeE" title="cardillo::misc::TimingManager::Scope"><span class="n"><span class="pre">Scope</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">=</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeE" title="cardillo::misc::TimingManager::Scope"><span class="n"><span class="pre">Scope</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">other</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeaSERR5Scope" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5ScopeD0Ev">
+<span id="_CPPv3N8cardillo4misc13TimingManager5ScopeD0Ev"></span><span id="_CPPv2N8cardillo4misc13TimingManager5ScopeD0Ev"></span><span id="cardillo::misc::TimingManager::Scope::~Scope"></span><span class="target" id="classcardillo_1_1misc_1_1TimingManager_1_1Scope_1a93c7d2ae2c36b0852533fc93cf1be4fb"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">~Scope</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5ScopeD0Ev" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5StatsE">
+<span id="_CPPv3N8cardillo4misc13TimingManager5StatsE"></span><span id="_CPPv2N8cardillo4misc13TimingManager5StatsE"></span><span id="cardillo::misc::TimingManager::Stats"></span><span class="target" id="structcardillo_1_1misc_1_1TimingManager_1_1Stats"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Stats</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5StatsE" title="Link to this definition"></a><br /></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5Stats8totalSecE">
+<span id="_CPPv3N8cardillo4misc13TimingManager5Stats8totalSecE"></span><span id="_CPPv2N8cardillo4misc13TimingManager5Stats8totalSecE"></span><span id="cardillo::misc::TimingManager::Stats::totalSec__double"></span><span class="target" id="structcardillo_1_1misc_1_1TimingManager_1_1Stats_1a3ac7474021c90b1573994e7e7e851afa"></span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">totalSec</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">0.0</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5Stats8totalSecE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5Stats12inclusiveSecE">
+<span id="_CPPv3N8cardillo4misc13TimingManager5Stats12inclusiveSecE"></span><span id="_CPPv2N8cardillo4misc13TimingManager5Stats12inclusiveSecE"></span><span id="cardillo::misc::TimingManager::Stats::inclusiveSec__double"></span><span class="target" id="structcardillo_1_1misc_1_1TimingManager_1_1Stats_1ad9b8a6faf974c29a81740dd73ca9e770"></span><span class="kt"><span class="pre">double</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">inclusiveSec</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">0.0</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5Stats12inclusiveSecE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo4misc13TimingManager5Stats5callsE">
+<span id="_CPPv3N8cardillo4misc13TimingManager5Stats5callsE"></span><span id="_CPPv2N8cardillo4misc13TimingManager5Stats5callsE"></span><span id="cardillo::misc::TimingManager::Stats::calls__std::uint64_t"></span><span class="target" id="structcardillo_1_1misc_1_1TimingManager_1_1Stats_1a56a520bff9be053c731c0347b33e8879"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">calls</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="m"><span class="pre">0</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo4misc13TimingManager5Stats5callsE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="classcardillo_1_1misc_1_1SplinePattern.html" class="btn btn-neutral float-left" title="Class SplinePattern" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="classcardillo_1_1misc_1_1TimingManager_1_1Scope.html" class="btn btn-neutral float-right" title="Class TimingManager::Scope" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

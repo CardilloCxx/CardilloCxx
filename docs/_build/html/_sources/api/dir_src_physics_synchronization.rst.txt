@@ -1,0 +1,24 @@
+.. _dir_src_physics_synchronization:
+
+
+Directory synchronization
+=========================
+
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics>` (``src/physics``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+
+*Directory path:* ``src/physics/synchronization``
+
+
+Files
+-----
+
+- :ref:`file_src_physics_synchronization_derived_entity_sync.cpp`
+- :ref:`file_src_physics_synchronization_derived_entity_sync.hpp`
+- :ref:`file_src_physics_synchronization_trajectory.cpp`
+- :ref:`file_src_physics_synchronization_trajectory.hpp`
+
+

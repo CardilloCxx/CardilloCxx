@@ -1,0 +1,175 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Program Listing for File assets.hpp &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Program Listing for File assets.hpp</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/program_listing_file_src_physics_assets_assets.hpp.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="program-listing-for-file-assets-hpp">
+<span id="program-listing-file-src-physics-assets-assets-hpp"></span><h1>Program Listing for File assets.hpp<a class="headerlink" href="#program-listing-for-file-assets-hpp" title="Link to this heading"></a></h1>
+<p>↰ <a class="reference internal" href="file_src_physics_assets_assets.hpp.html#file-src-physics-assets-assets-hpp"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/assets.hpp</span></code>)</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#pragma once</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;coal/BVH/BVH_model.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;coal/hfield.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;Eigen/Dense&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;memory&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;string&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;unordered_map&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../../misc/types.hpp&quot;</span>
+
+<span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="w"> </span><span class="p">{</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">MeshAsset</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">coal</span><span class="o">::</span><span class="n">BVHModelPtr_t</span><span class="w"> </span><span class="n">bvh</span><span class="p">;</span><span class="w">           </span><span class="c1">// geometry BVH (possibly normalized)</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Eigen</span><span class="o">::</span><span class="n">Vector2f</span><span class="o">&gt;</span><span class="w"> </span><span class="n">uvs</span><span class="p">;</span><span class="w">  </span><span class="c1">// optional UVs parsed for OBJ</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">hasUV</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">// Normalization metadata (unit density)</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">inertia_diag_unit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">();</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">volume</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.0</span><span class="p">;</span><span class="w">            </span><span class="c1">// signed volume</span>
+<span class="w">    </span><span class="n">Matrix33r</span><span class="w"> </span><span class="n">Rpa</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Matrix33r</span><span class="o">::</span><span class="n">Identity</span><span class="p">();</span><span class="w">  </span><span class="c1">// principal-axes rotation</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">com</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">();</span><span class="w">        </span><span class="c1">// center of mass</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">normalized</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span><span class="w">                </span><span class="c1">// if true: COM-centered &amp; PA-aligned</span>
+<span class="p">};</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">HeightFieldAsset</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">coal</span><span class="o">::</span><span class="n">HeightField</span><span class="o">&lt;</span><span class="n">coal</span><span class="o">::</span><span class="n">AABB</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">hf</span><span class="p">;</span><span class="w">  </span><span class="c1">// collider geometry</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">rows</span><span class="p">{</span><span class="mi">0</span><span class="p">},</span><span class="w"> </span><span class="n">cols</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">x_dim</span><span class="p">{</span><span class="mi">1</span><span class="p">},</span><span class="w"> </span><span class="n">y_dim</span><span class="p">{</span><span class="mi">1</span><span class="p">};</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">z_scale</span><span class="p">{</span><span class="mi">1</span><span class="p">},</span><span class="w"> </span><span class="n">min_height</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">path</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PhysicsAssets</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="n">PhysicsAssets</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Return mesh asset for path/scale. If normalized=true, asset is COM-centered &amp; principal-axes</span>
+<span class="w">    </span><span class="c1">// aligned.</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">MeshAsset</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">getMesh</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">scale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Ones</span><span class="p">(),</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">normalized</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">HeightFieldAsset</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">getHeightField</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">exrPath</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">x_dim</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">y_dim</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">z_scale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">min_height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mf">0.0</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">clear</span><span class="p">();</span>
+
+<span class="w">   </span><span class="k">private</span><span class="o">:</span>
+<span class="w">    </span><span class="k">mutable</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">MeshAsset</span><span class="o">&gt;</span><span class="w"> </span><span class="n">m_meshCache</span><span class="p">;</span>
+<span class="w">    </span><span class="k">mutable</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span><span class="w"> </span><span class="n">HeightFieldAsset</span><span class="o">&gt;</span><span class="w"> </span><span class="n">m_hfCache</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="nf">meshKey_</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">s</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">normalized</span><span class="p">);</span>
+<span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="nf">hfKey_</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">xd</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">yd</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">zs</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">minh</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Builders</span>
+<span class="w">    </span><span class="n">MeshAsset</span><span class="w"> </span><span class="nf">buildMeshAsset_</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">scale</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">normalized</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+<span class="w">    </span><span class="n">HeightFieldAsset</span><span class="w"> </span><span class="nf">buildHFAsset_</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">xd</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">yd</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">zs</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">minh</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace cardillo</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

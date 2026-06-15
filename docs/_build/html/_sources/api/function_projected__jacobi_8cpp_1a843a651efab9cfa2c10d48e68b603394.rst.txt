@@ -1,0 +1,14 @@
+.. _exhale_function_projected__jacobi_8cpp_1a843a651efab9cfa2c10d48e68b603394:
+
+Function cardillo::solver::pj_sweep
+===================================
+
+- Defined in :ref:`file_src_physics_solver_projected_jacobi.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::solver::pj_sweep(std::unique_ptr<workspace>&)
+   :project: Cardillo

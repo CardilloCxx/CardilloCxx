@@ -1,0 +1,23 @@
+.. _exhale_struct_structcardillo_1_1io_1_1MeshGenerator_1_1EntityMesh:
+
+Struct MeshGenerator::EntityMesh
+================================
+
+- Defined in :ref:`file_src_io_mesh_generator.hpp`
+
+
+Nested Relationships
+--------------------
+
+This struct is a nested type of :ref:`exhale_class_classcardillo_1_1io_1_1MeshGenerator`.
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: cardillo::io::MeshGenerator::EntityMesh
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

@@ -1,0 +1,46 @@
+
+.. _file_src_io_mesh_generator.cpp:
+
+File mesh_generator.cpp
+=======================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_io>` (``src/io``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/io/mesh_generator.cpp``)
+------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_io_mesh_generator.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../rigid_body/rigid_body.hpp``
+
+- ``cmath``
+
+- ``mesh_generator.hpp`` (:ref:`file_src_io_mesh_generator.hpp`)
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__io`
+

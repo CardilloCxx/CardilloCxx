@@ -1,0 +1,276 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Program Listing for File dynamics_assembler.hpp &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Program Listing for File dynamics_assembler.hpp</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/program_listing_file_src_physics_assembly_dynamics_assembler.hpp.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="program-listing-for-file-dynamics-assembler-hpp">
+<span id="program-listing-file-src-physics-assembly-dynamics-assembler-hpp"></span><h1>Program Listing for File dynamics_assembler.hpp<a class="headerlink" href="#program-listing-for-file-dynamics-assembler-hpp" title="Link to this heading"></a></h1>
+<p>↰ <a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.hpp.html#file-src-physics-assembly-dynamics-assembler-hpp"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/dynamics_assembler.hpp</span></code>)</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#pragma once</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;Eigen/SparseCore&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;optional&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../../collision/types.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../../misc/math_helper.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../../misc/triplet_matrix.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../../misc/types.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../constraints/constraints.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../synchronization/derived_entity_sync.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../world.hpp&quot;</span>
+
+<span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="o">::</span><span class="nn">physics</span><span class="w"> </span><span class="p">{</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">DynamicsAssembler</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="k">explicit</span><span class="w"> </span><span class="n">DynamicsAssembler</span><span class="p">(</span><span class="n">World</span><span class="o">&amp;</span><span class="w"> </span><span class="n">sys</span><span class="p">,</span><span class="w"> </span><span class="n">cardillo</span><span class="o">::</span><span class="n">collision</span><span class="o">::</span><span class="n">CollisionCoal</span><span class="o">*</span><span class="w"> </span><span class="n">collision_mgr</span><span class="p">,</span><span class="w"> </span><span class="n">cardillo</span><span class="o">::</span><span class="n">misc</span><span class="o">::</span><span class="n">TimingManager</span><span class="o">*</span><span class="w"> </span><span class="n">timings</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">cardillo</span><span class="o">::</span><span class="n">config</span><span class="o">::</span><span class="n">Config</span><span class="o">&amp;</span><span class="w"> </span><span class="n">cfg</span><span class="p">)</span>
+
+<span class="w">        </span><span class="o">:</span><span class="w"> </span><span class="n">m_world</span><span class="p">(</span><span class="n">sys</span><span class="p">),</span><span class="w"> </span><span class="n">m_collision_mgr</span><span class="p">(</span><span class="n">collision_mgr</span><span class="p">),</span><span class="w"> </span><span class="n">m_timings</span><span class="p">(</span><span class="n">timings</span><span class="p">),</span><span class="w"> </span><span class="n">m_cfg</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+
+<span class="w">    </span><span class="c1">// Cached getters (rebuild on demand) as concatenated global vectors</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">qVec</span><span class="p">();</span><span class="w">            </span><span class="c1">// stacked positions</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">vVec</span><span class="p">();</span><span class="w">            </span><span class="c1">// stacked velocities</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">fVec</span><span class="p">();</span><span class="w">            </span><span class="c1">// stacked external forces</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">fVecExternal</span><span class="p">();</span><span class="w">    </span><span class="c1">// stacked external forces (gravity + applied forces) only</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">fVecGyroscopic</span><span class="p">();</span><span class="w">  </span><span class="c1">// stacked gyroscopic forces/torques only</span>
+
+<span class="w">    </span><span class="c1">// Columns correspond to stacked body velocity DOFs in body order, laid out contiguously per</span>
+<span class="w">    </span><span class="c1">// body</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">TripletMatrix</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">W</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_W</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">contactVVec</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_contact_v_vec</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">muVec</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_mu_vec</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Body b occupies columns [bodyVelOffsets()[b], bodyVelOffsets()[b+1])</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">bodyVelOffsets</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_body_vel_offsets</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">bodyPosOffsets</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_body_pos_offsets</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Diagonal of block-diagonal Minv (size = total velocity dofs)</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">MinvDiag</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_Minv_diag</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">MDiag</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_M_diag</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Access underlying system (for debug / diagnostics)</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">World</span><span class="o">&amp;</span><span class="w"> </span><span class="n">system</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_world</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="c1">// Expose current contacts (includes penetration and points)</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">collision</span><span class="o">::</span><span class="n">Contact</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">contacts</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">static</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">collision</span><span class="o">::</span><span class="n">Contact</span><span class="o">&gt;</span><span class="w"> </span><span class="n">emptyContacts</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">m_contacts_ptr</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="o">*</span><span class="n">m_contacts_ptr</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">emptyContacts</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">ConstraintResult</span><span class="o">&gt;</span><span class="w"> </span><span class="n">constraintResults</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_constraintResults</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// DOF queries owned by the assembler (scan ECS indices)</span>
+<span class="w">    </span><span class="n">index_t</span><span class="w"> </span><span class="n">numQ</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_numQ</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="n">index_t</span><span class="w"> </span><span class="n">numV</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_numV</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Explicit state IO</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">loadStateFromSystem</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">writePositionToSystem</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">q</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">writeVelocityToSystem</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">v</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">dt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="mi">-1</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">writeStateToSystem</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">q</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">v</span><span class="p">);</span>
+<span class="w">    </span><span class="c1">// Assign contiguous DOF indices (3 per dynamic entity)</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">assignDofs</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// Detect and set contacts from the current system state</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">updateContactsFromSystem</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// Check system dirty flags and structural updates once per step and rebuild caches as needed</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">refreshState</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">updateStateDependentTerms</span><span class="p">(</span><span class="n">real_t</span><span class="w"> </span><span class="n">dt</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">cardillo</span><span class="o">::</span><span class="n">misc</span><span class="o">::</span><span class="n">TimingManager</span><span class="o">*</span><span class="w"> </span><span class="nf">timings</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_timings</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="n">cardillo</span><span class="o">::</span><span class="n">collision</span><span class="o">::</span><span class="n">CollisionCoal</span><span class="o">*</span><span class="w"> </span><span class="nf">collisionManager</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_collision_mgr</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Accessors for newly added matrices</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">TripletMatrix</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">Wg</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_Wg</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">TripletMatrix</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">Wgamma</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_Wgamma</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Per-spring diagonal C/A</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">Cdiag</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_Cdiag</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">Adiag</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_Adiag</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">C_v_vec</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_C_v_vec</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">A_v_vec</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_A_v_vec</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">g_error_vec</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_g_error_vec</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Counts</span>
+<span class="w">    </span><span class="c1">// Number of spring rows (rows in m_Wg / length of m_Cdiag)</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="nf">numSprings</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">m_Cdiag</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="nf">numDampers</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">m_Adiag</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="nf">numContacts</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">contacts</span><span class="p">().</span><span class="n">size</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="nf">numContactRows</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">m_W</span><span class="p">.</span><span class="n">nRows</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="nf">numFrictionalContacts</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_numFrictionalContacts</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="nf">numFrictionlessContacts</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_numFrictionlessContacts</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Accessors for Lagrange multipliers</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">Lambda_g</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_Lambda_g</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">Lambda_gamma</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_Lambda_gamma</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">setLambda_g</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">lam</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">setLambda_gamma</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">lam</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">m_Lambda_gamma</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lam</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">collision</span><span class="o">::</span><span class="n">Contact</span><span class="o">&gt;*</span><span class="w"> </span><span class="n">m_contacts_ptr</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">setContactLastImpulse</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">global_out_index</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">cardillo</span><span class="o">::</span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">imp</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Cached sizes</span>
+<span class="w">    </span><span class="n">index_t</span><span class="w"> </span><span class="n">m_numQ</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="w">    </span><span class="n">index_t</span><span class="w"> </span><span class="n">m_numV</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+<span class="w">    </span><span class="c1">// Rebuild helpers</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">rebuildMass_</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">rebuildForces_</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">rebuildW_</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">rebuildInteractionW_</span><span class="p">();</span>
+
+<span class="w">   </span><span class="k">private</span><span class="o">:</span>
+<span class="w">    </span><span class="n">World</span><span class="o">&amp;</span><span class="w"> </span><span class="n">m_world</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">// Non-owning pointers to external subsystems (moved out of World)</span>
+<span class="w">    </span><span class="n">cardillo</span><span class="o">::</span><span class="n">collision</span><span class="o">::</span><span class="n">CollisionCoal</span><span class="o">*</span><span class="w"> </span><span class="n">m_collision_mgr</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="n">cardillo</span><span class="o">::</span><span class="n">misc</span><span class="o">::</span><span class="n">TimingManager</span><span class="o">*</span><span class="w"> </span><span class="n">m_timings</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">cardillo</span><span class="o">::</span><span class="n">config</span><span class="o">::</span><span class="n">Config</span><span class="o">&amp;</span><span class="w"> </span><span class="n">m_cfg</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// Cached data</span>
+<span class="w">    </span><span class="c1">// Concatenated state</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_q_vec</span><span class="p">;</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_v_vec</span><span class="p">;</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_f_vec</span><span class="p">;</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_f_vec_external</span><span class="p">;</span><span class="w">    </span><span class="c1">// gravity + external forces/torques only</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_f_vec_gyroscopic</span><span class="p">;</span><span class="w">  </span><span class="c1">// gyroscopic forces/torques only</span>
+
+<span class="w">    </span><span class="c1">// Contact Jacobian and supporting mappings</span>
+<span class="w">    </span><span class="n">TripletMatrix</span><span class="w"> </span><span class="n">m_W</span><span class="p">;</span><span class="w">  </span><span class="c1">// (C_dynamic x totalV)</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_contact_v_vec</span><span class="p">;</span><span class="w">  </span><span class="c1">// velocity-space contact bias (size = num contact rows)</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_mu_vec</span><span class="p">;</span><span class="w">         </span><span class="c1">// friction coefficients for each contact row (size = num contact rows)</span>
+
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">m_numFrictionalContacts</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">m_numFrictionlessContacts</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">m_body_vel_offsets</span><span class="p">;</span><span class="w">  </span><span class="c1">// size Nb+1, prefix sums for body velocity columns</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">m_body_pos_offsets</span><span class="p">;</span><span class="w">  </span><span class="c1">// size Nb+1, prefix sums for body position columns</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_Minv_diag</span><span class="p">;</span><span class="w">                 </span><span class="c1">// size totalV, diagonal of Minv</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_M_diag</span><span class="p">;</span><span class="w">                    </span><span class="c1">// size totalV, diagonal of M (non-inverted)</span>
+
+<span class="w">    </span><span class="c1">// per-contact/block matrices used by solvers</span>
+<span class="w">    </span><span class="n">TripletMatrix</span><span class="w"> </span><span class="n">m_Wg</span><span class="p">;</span>
+<span class="w">    </span><span class="n">TripletMatrix</span><span class="w"> </span><span class="n">m_Wgamma</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_Cdiag</span><span class="p">;</span><span class="w">  </span><span class="c1">// Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_Adiag</span><span class="p">;</span><span class="w">  </span><span class="c1">// Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_C_v_vec</span><span class="p">;</span><span class="w">  </span><span class="c1">// spring velocity source</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_A_v_vec</span><span class="p">;</span><span class="w">  </span><span class="c1">// damper velocity source</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_g_error_vec</span><span class="p">;</span><span class="w">  </span><span class="c1">// spring position error source (size = numSprings)</span>
+
+<span class="w">    </span><span class="c1">// Store Lagrange multipliers (they are being integrated)</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_Lambda_g</span><span class="p">;</span>
+<span class="w">    </span><span class="n">VectorXr</span><span class="w"> </span><span class="n">m_Lambda_gamma</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">ConstraintResult</span><span class="o">&gt;</span><span class="w"> </span><span class="n">m_constraintResults</span><span class="p">;</span><span class="w">  </span><span class="c1">// store constraint results for access outside the assembler</span>
+<span class="p">};</span>
+
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace cardillo::physics</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

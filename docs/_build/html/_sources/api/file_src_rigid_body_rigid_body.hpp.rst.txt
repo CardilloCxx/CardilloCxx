@@ -1,0 +1,90 @@
+
+.. _file_src_rigid_body_rigid_body.hpp:
+
+File rigid_body.hpp
+===================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_rigid_body>` (``src/rigid_body``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/rigid_body/rigid_body.hpp``)
+----------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_rigid_body_rigid_body.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../physics/api/physics_types.hpp``
+
+- ``../physics/ecs_types.hpp``
+
+- ``entt/entt.hpp``
+
+- ``limits``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_io_csv_writer.hpp`
+
+- :ref:`file_src_io_mesh_generator.cpp`
+
+- :ref:`file_src_io_vtk_writer_binary.cpp`
+
+- :ref:`file_src_physics_assembly_pgs_assembler.cpp`
+
+- :ref:`file_src_physics_assets_beam_factory.cpp`
+
+- :ref:`file_src_physics_constraints_constraints.hpp`
+
+- :ref:`file_src_physics_synchronization_derived_entity_sync.cpp`
+
+- :ref:`file_src_rigid_body_transformations.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__RigidBody`
+
+- :ref:`namespace_cardillo__RigidBody__detail`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_rigid__body_8hpp_1ad008a7ab201f544fe76757817277f6be`
+
+- :ref:`exhale_function_rigid__body_8hpp_1a4da45b812ab0cc3793332aa7fa860339`
+
+- :ref:`exhale_function_rigid__body_8hpp_1ab71c4207183a37fbfa63b23f346a076b`
+
+- :ref:`exhale_function_rigid__body_8hpp_1a3c9b681cb472f2404e187953d874f8aa`
+
+
+Typedefs
+--------
+
+
+- :ref:`exhale_typedef_rigid__body_8hpp_1a47c874ce439ebe10b7ff199e39fc4b25`
+

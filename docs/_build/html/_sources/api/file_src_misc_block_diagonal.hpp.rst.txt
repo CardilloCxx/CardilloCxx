@@ -1,0 +1,59 @@
+
+.. _file_src_misc_block_diagonal.hpp:
+
+File block_diagonal.hpp
+=======================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_misc>` (``src/misc``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/misc/block_diagonal.hpp``)
+--------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_misc_block_diagonal.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``iostream``
+
+- ``stdexcept``
+
+- ``types.hpp`` (:ref:`file_src_physics_ecs_types.hpp`)
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_assembly_pgs_assembler.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1BlockDiagonal`
+

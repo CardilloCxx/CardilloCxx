@@ -1,0 +1,34 @@
+
+.. _program_listing_file_src_physics_api_physics_types.cpp:
+
+Program Listing for File physics_types.cpp
+==========================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_physics_api_physics_types.cpp>` (``src/physics/api/physics_types.cpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #include "physics_types.hpp"
+   
+   #include "../../rigid_body/transformations.hpp"
+   #include "../world.hpp"
+   
+   namespace cardillo::physics {
+   
+   RigidState::RigidState(const Vector3r& p_local, const Vector3r& v_local, const Quaternion4r& q_local, const Vector3r& w_local, entt::entity refEntity, entt::registry& reg) {
+       const cardillo::RigidBody::RigidState refState = cardillo::RigidBody::getState(reg, refEntity);
+       const cardillo::RigidBody::RigidState inertial = cardillo::RigidBody::RigidState::inertial();
+   
+       RigidState localState;
+       localState.position = p_local;
+       localState.orientation = q_local;
+       localState.rotation = q_local.toRotationMatrix();
+       localState.linearVelocity = v_local;
+       localState.angularVelocity = w_local;
+   
+       *this = cardillo::transform::rigidState(localState, refState, inertial);
+   }
+   
+   }  // namespace cardillo::physics

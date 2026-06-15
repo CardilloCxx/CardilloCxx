@@ -1,0 +1,14 @@
+.. _exhale_variable_beam__factory_8cpp_1ad6a3d92cccbc05aed1dc1eaef6f6642f:
+
+Variable binormal
+=================
+
+- Defined in :ref:`file_src_physics_assets_beam_factory.cpp`
+
+
+Variable Documentation
+----------------------
+
+
+.. doxygenvariable:: binormal
+   :project: Cardillo

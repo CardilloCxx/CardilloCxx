@@ -1,0 +1,200 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Namespace cardillo::physics &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Namespace cardillo::physics::assembly" href="namespace_cardillo__physics__assembly.html" />
+    <link rel="prev" title="Namespace cardillo::misc" href="namespace_cardillo__misc.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="library_root.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="library_root.html#full-api">Full API</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="library_root.html#namespaces">Namespaces</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo.html">Namespace cardillo</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__collision.html">Namespace cardillo::collision</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__config.html">Namespace cardillo::config</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__integration.html">Namespace cardillo::integration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__io.html">Namespace cardillo::io</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__misc.html">Namespace cardillo::misc</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Namespace cardillo::physics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__physics__assembly.html">Namespace cardillo::physics::assembly</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__physics__pipeline.html">Namespace cardillo::physics::pipeline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__RigidBody.html">Namespace cardillo::RigidBody</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__RigidBody__detail.html">Namespace cardillo::RigidBody::detail</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__solver.html">Namespace cardillo::solver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__transform.html">Namespace cardillo::transform</a></li>
+<li class="toctree-l4"><a class="reference internal" href="namespace_cardillo__transform__detail.html">Namespace cardillo::transform::detail</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#classes-and-structs">Classes and Structs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#enums">Enums</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#functions">Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#variables">Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#defines">Defines</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="library_root.html">API Reference</a></li>
+      <li class="breadcrumb-item active">Namespace cardillo::physics</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/namespace_cardillo__physics.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="namespace-cardillo-physics">
+<span id="id1"></span><h1>Namespace cardillo::physics<a class="headerlink" href="#namespace-cardillo-physics" title="Link to this heading"></a></h1>
+<section id="namespaces">
+<h2>Namespaces<a class="headerlink" href="#namespaces" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="namespace_cardillo__physics__assembly.html#namespace-cardillo-physics-assembly"><span class="std std-ref">Namespace cardillo::physics::assembly</span></a></p></li>
+<li><p><a class="reference internal" href="namespace_cardillo__physics__pipeline.html#namespace-cardillo-physics-pipeline"><span class="std std-ref">Namespace cardillo::physics::pipeline</span></a></p></li>
+</ul>
+</section>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1BeamCrossSection.html#exhale-struct-structcardillo-1-1physics-1-1beamcrosssection"><span class="std std-ref">Struct BeamCrossSection</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1BeamSpringParams.html#exhale-struct-structcardillo-1-1physics-1-1beamspringparams"><span class="std std-ref">Struct BeamSpringParams</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1CapsuleShape.html#exhale-struct-structcardillo-1-1physics-1-1capsuleshape"><span class="std std-ref">Struct CapsuleShape</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1ConeShape.html#exhale-struct-structcardillo-1-1physics-1-1coneshape"><span class="std std-ref">Struct ConeShape</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1ConstraintPattern_1_1WorldAttachments.html#exhale-struct-structcardillo-1-1physics-1-1constraintpattern-1-1worldattachments"><span class="std std-ref">Struct ConstraintPattern::WorldAttachments</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1ConstraintResult.html#exhale-struct-structcardillo-1-1physics-1-1constraintresult"><span class="std std-ref">Struct ConstraintResult</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1CubeShape.html#exhale-struct-structcardillo-1-1physics-1-1cubeshape"><span class="std std-ref">Struct CubeShape</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1CylinderShape.html#exhale-struct-structcardillo-1-1physics-1-1cylindershape"><span class="std std-ref">Struct CylinderShape</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1JointFrame.html#exhale-struct-structcardillo-1-1physics-1-1jointframe"><span class="std std-ref">Struct JointFrame</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1JointProperties.html#exhale-struct-structcardillo-1-1physics-1-1jointproperties"><span class="std std-ref">Struct JointProperties</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1MeshShape.html#exhale-struct-structcardillo-1-1physics-1-1meshshape"><span class="std std-ref">Struct MeshShape</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1PlaneShape.html#exhale-struct-structcardillo-1-1physics-1-1planeshape"><span class="std std-ref">Struct PlaneShape</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1RigidBodyFactory.html#exhale-struct-structcardillo-1-1physics-1-1rigidbodyfactory"><span class="std std-ref">Struct RigidBodyFactory</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1RigidProps.html#exhale-struct-structcardillo-1-1physics-1-1rigidprops"><span class="std std-ref">Struct RigidProps</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1RigidState.html#exhale-struct-structcardillo-1-1physics-1-1rigidstate"><span class="std std-ref">Struct RigidState</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1physics_1_1SphereShape.html#exhale-struct-structcardillo-1-1physics-1-1sphereshape"><span class="std std-ref">Struct SphereShape</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1BeamConstraint.html#exhale-class-classcardillo-1-1physics-1-1beamconstraint"><span class="std std-ref">Class BeamConstraint</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1BeamFactory.html#exhale-class-classcardillo-1-1physics-1-1beamfactory"><span class="std std-ref">Class BeamFactory</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1BodyFactory.html#exhale-class-classcardillo-1-1physics-1-1bodyfactory"><span class="std std-ref">Class BodyFactory</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintFactory.html#exhale-class-classcardillo-1-1physics-1-1constraintfactory"><span class="std std-ref">Class ConstraintFactory</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintPattern.html#exhale-class-classcardillo-1-1physics-1-1constraintpattern"><span class="std std-ref">Class ConstraintPattern</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1DerivedEntitySync.html#exhale-class-classcardillo-1-1physics-1-1derivedentitysync"><span class="std std-ref">Class DerivedEntitySync</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1DynamicsAssembler.html#exhale-class-classcardillo-1-1physics-1-1dynamicsassembler"><span class="std std-ref">Class DynamicsAssembler</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1LinearDistanceConstraint.html#exhale-class-classcardillo-1-1physics-1-1lineardistanceconstraint"><span class="std std-ref">Class LinearDistanceConstraint</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html#exhale-class-classcardillo-1-1physics-1-1physicsengine"><span class="std std-ref">Class PhysicsEngine</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1Trajectory.html#exhale-class-classcardillo-1-1physics-1-1trajectory"><span class="std std-ref">Class Trajectory</span></a></p></li>
+<li><p><a class="reference internal" href="classcardillo_1_1physics_1_1TranslationRotationConstraint.html#exhale-class-classcardillo-1-1physics-1-1translationrotationconstraint"><span class="std std-ref">Class TranslationRotationConstraint</span></a></p></li>
+</ul>
+</section>
+<section id="enums">
+<h2>Enums<a class="headerlink" href="#enums" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="enum_physics__types_8hpp_1ab76a9b09e1483649c651eb224aa37350.html#exhale-enum-physics-types-8hpp-1ab76a9b09e1483649c651eb224aa37350"><span class="std std-ref">Enum BeamBodyType</span></a></p></li>
+</ul>
+</section>
+<section id="typedefs">
+<h2>Typedefs<a class="headerlink" href="#typedefs" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="typedef_physics__types_8hpp_1a06928ce4422162b661e309e712c1320d.html#exhale-typedef-physics-types-8hpp-1a06928ce4422162b661e309e712c1320d"><span class="std std-ref">Typedef cardillo::physics::RigidShape</span></a></p></li>
+<li><p><a class="reference internal" href="typedef_constraints_8hpp_1a507bf005aef3c29996bbc8b33e46f7d1.html#exhale-typedef-constraints-8hpp-1a507bf005aef3c29996bbc8b33e46f7d1"><span class="std std-ref">Typedef cardillo::physics::Row6r</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="namespace_cardillo__misc.html" class="btn btn-neutral float-left" title="Namespace cardillo::misc" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="namespace_cardillo__physics__assembly.html" class="btn btn-neutral float-right" title="Namespace cardillo::physics::assembly" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

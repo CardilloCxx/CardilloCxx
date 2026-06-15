@@ -1,0 +1,686 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Setup and Configuration &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Bodies" href="bodies.html" />
+    <link rel="prev" title="Using The Engine" href="../using_the_engine.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Setup and Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#loading-a-config">Loading a config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#all-config-keys">All config keys</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#simulation-timing">Simulation timing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#output-settings">Output settings</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#collision-settings">Collision settings</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#friction-settings">Friction settings</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#debug-diagnostics">Debug / diagnostics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#solver-selection-and-parameters">Solver selection and parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#integrator-moreau-settings">Integrator (Moreau) settings</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#interior-point-solver-settings-qoco-clarabel">Interior-point solver settings (QOCO / Clarabel)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#position-error-bias">Position-error bias</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#scene-selection">Scene selection</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#config-file-syntax">Config file syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-main-loop">The main loop</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bodies.html">Bodies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="constraints.html">Constraints and Joints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="trajectories.html">Trajectories and Kinematic Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="beams.html">Beams and Flexible Rods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stepping.html">Stepping and Runtime Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example.html">Worked Example: A Single Pendulum</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../using_the_engine.html">Using The Engine</a></li>
+      <li class="breadcrumb-item active">Setup and Configuration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/using_the_engine/setup.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="setup-and-configuration">
+<h1>Setup and Configuration<a class="headerlink" href="#setup-and-configuration" title="Link to this heading"></a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">config::Config</span></code> struct (<code class="docutils literal notranslate"><span class="pre">src/config/config.hpp</span></code>) controls every global
+parameter: time step, gravity, solver, collision settings, output, and more.
+A <code class="docutils literal notranslate"><span class="pre">PhysicsEngine</span></code> is always initialized from a <code class="docutils literal notranslate"><span class="pre">Config</span></code>. It can be loaded via
+<code class="docutils literal notranslate"><span class="pre">ConfigReader::fromFile()</span></code> or built in code.</p>
+<p>Each config key has a <strong>variable name</strong> (the <code class="docutils literal notranslate"><span class="pre">Config</span></code> struct field) and one or
+more <strong>file keys</strong> that can appear in the configuration file. In config files,
+key names are matched literally by <code class="docutils literal notranslate"><span class="pre">ConfigReader</span></code>; boolean values are parsed
+case-insensitively. Comments use <code class="docutils literal notranslate"><span class="pre">#</span></code>.</p>
+<nav class="contents local" id="on-this-page">
+<p class="topic-title">On this page</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#loading-a-config" id="id1">Loading a config</a></p></li>
+<li><p><a class="reference internal" href="#all-config-keys" id="id2">All config keys</a></p>
+<ul>
+<li><p><a class="reference internal" href="#simulation-timing" id="id3">Simulation timing</a></p></li>
+<li><p><a class="reference internal" href="#output-settings" id="id4">Output settings</a></p></li>
+<li><p><a class="reference internal" href="#collision-settings" id="id5">Collision settings</a></p></li>
+<li><p><a class="reference internal" href="#friction-settings" id="id6">Friction settings</a></p></li>
+<li><p><a class="reference internal" href="#debug-diagnostics" id="id7">Debug / diagnostics</a></p></li>
+<li><p><a class="reference internal" href="#solver-selection-and-parameters" id="id8">Solver selection and parameters</a></p></li>
+<li><p><a class="reference internal" href="#integrator-moreau-settings" id="id9">Integrator (Moreau) settings</a></p></li>
+<li><p><a class="reference internal" href="#interior-point-solver-settings-qoco-clarabel" id="id10">Interior-point solver settings (QOCO / Clarabel)</a></p></li>
+<li><p><a class="reference internal" href="#position-error-bias" id="id11">Position-error bias</a></p></li>
+<li><p><a class="reference internal" href="#scene-selection" id="id12">Scene selection</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#config-file-syntax" id="id13">Config file syntax</a></p></li>
+<li><p><a class="reference internal" href="#the-main-loop" id="id14">The main loop</a></p></li>
+</ul>
+</nav>
+<section id="loading-a-config">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Loading a config</a><a class="headerlink" href="#loading-a-config" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;config/config.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;physics/api/physics.hpp&quot;</span>
+
+<span class="n">cardillo</span><span class="o">::</span><span class="n">config</span><span class="o">::</span><span class="n">Config</span><span class="w"> </span><span class="n">cfg</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="n">cardillo</span><span class="o">::</span><span class="n">config</span><span class="o">::</span><span class="n">ConfigReader</span><span class="o">::</span><span class="n">fromFile</span><span class="p">(</span><span class="s">&quot;examples/scenes/pendulum/scene.config&quot;</span><span class="p">);</span>
+
+<span class="n">cardillo</span><span class="o">::</span><span class="n">physics</span><span class="o">::</span><span class="n">PhysicsEngine</span><span class="w"> </span><span class="nf">engine</span><span class="p">(</span><span class="n">cfg</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>You can also build <code class="docutils literal notranslate"><span class="pre">Config</span></code> in code and call <code class="docutils literal notranslate"><span class="pre">engine.initFromConfig(cfg)</span></code> on a
+default-constructed engine.</p>
+</section>
+<section id="all-config-keys">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">All config keys</a><a class="headerlink" href="#all-config-keys" title="Link to this heading"></a></h2>
+<section id="simulation-timing">
+<h3><a class="toc-backref" href="#id3" role="doc-backlink">Simulation timing</a><a class="headerlink" href="#simulation-timing" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 19.6%" />
+<col style="width: 34.3%" />
+<col style="width: 11.8%" />
+<col style="width: 34.3%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sim_T</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sim.T</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">5.0</span></code></p></td>
+<td><p>Total simulation duration in seconds. <code class="docutils literal notranslate"><span class="pre">engine.isFinished()</span></code> returns
+<code class="docutils literal notranslate"><span class="pre">true</span></code> once elapsed time reaches this value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sim_dt</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sim.dt</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1e-3</span></code></p></td>
+<td><p>Fixed time step in seconds (used by the no-argument <code class="docutils literal notranslate"><span class="pre">step()</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sim_gravity</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sim.gravity</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">-9.81)</span></code></p></td>
+<td><p>World-frame gravity vector (m/s²). In cfg.txt: three space- or comma-separated
+values, e.g. <code class="docutils literal notranslate"><span class="pre">sim.gravity</span> <span class="pre">=</span> <span class="pre">0</span> <span class="pre">0</span> <span class="pre">-9.81</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="output-settings">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">Output settings</a><a class="headerlink" href="#output-settings" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 35.0%" />
+<col style="width: 15.0%" />
+<col style="width: 25.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">output_folder</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">output.folder</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;./vtk_out&quot;</span></code></p></td>
+<td><p>Output directory for VTK files.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">output_filename_prefix</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">output.filename_prefix</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;scene&quot;</span></code></p></td>
+<td><p>Filename prefix for the VTK series (e.g. <code class="docutils literal notranslate"><span class="pre">pendulum_0001.vtp</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">output_interval_steps</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">output.interval_steps</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td><p>Write one VTK frame every <em>N</em> time steps (minimum 1).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">output_heightfield_stride</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">output.heightfield_stride</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">8</span></code></p></td>
+<td><p>Decimation factor for height-field VTK triangles (minimum 1; larger reduces file size).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">output_write_contacts</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">output.write_contacts</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Also write per-step contact geometry VTK files.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">output_contacts_body_vectors</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">output.contacts_body_vectors</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Include per-contact body-frame normals/tangents/points in contact VTK.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="collision-settings">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">Collision settings</a><a class="headerlink" href="#collision-settings" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28.6%" />
+<col style="width: 35.7%" />
+<col style="width: 15.3%" />
+<col style="width: 20.4%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">collision_broadphase</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">collision.broadphase</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;dynamic_aabb&quot;</span></code></p></td>
+<td><p>Broad-phase algorithm. Options: <code class="docutils literal notranslate"><span class="pre">dynamic_aabb</span></code>, <code class="docutils literal notranslate"><span class="pre">dynamic_aabb_array</span></code>,
+<code class="docutils literal notranslate"><span class="pre">naive</span></code>, <code class="docutils literal notranslate"><span class="pre">sap</span></code>, <code class="docutils literal notranslate"><span class="pre">ssap</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">collision_disable_all</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">collision.disable_all</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Globally disable collision detection (no collidable components, no contact computation).
+Accepts <code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code> (case-insensitive).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">collision_security_margin</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">collision.security_margin</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.0</span></code></p></td>
+<td><p>Extra clearance (m) added around each shape for the narrow-phase query.
+A small positive value improves robustness for thin or fast-rotating objects.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">collision_max_raw_contacts</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">collision.max_raw_contacts</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1024</span></code></p></td>
+<td><p>Maximum raw contacts requested per shape pair from the narrow phase (minimum 1).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">collision_max_patches</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">collision.max_patches</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">4</span></code></p></td>
+<td><p>Maximum contact patches extracted per shape pair.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">collision_use_patch_vertices</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">collision.use_patch_vertices</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td><p>Emit patch-vertex contacts rather than raw contacts (more stable for planar contacts).
+Accepts <code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">collision_match_max_dist</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">collision.match_max_dist</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.02</span></code></p></td>
+<td><p>Maximum distance (m) between a current and previous contact for warmstarting impulse transfer.
+Clamped to ≥ 0.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">collision_min_pair_contact_distance</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">collision.min_pair_contact_distance</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.0</span></code></p></td>
+<td><p>Contacts within the same entity pair closer than this distance are deduplicated (keeping deeper penetrations).
+Set to 0 to disable; clamped to ≥ 0.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="friction-settings">
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">Friction settings</a><a class="headerlink" href="#friction-settings" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 23.8%" />
+<col style="width: 33.3%" />
+<col style="width: 14.3%" />
+<col style="width: 28.6%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">friction_enable</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">friction.enable</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Enable friction (adds tangent Jacobian rows to the contact problem).
+Accepts <code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code>. Roughly doubles solve cost.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">friction_combine</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">friction.combine</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;min&quot;</span></code></p></td>
+<td><p>Per-pair friction coefficient combination mode: <code class="docutils literal notranslate"><span class="pre">min</span></code>, <code class="docutils literal notranslate"><span class="pre">arith</span></code>, or <code class="docutils literal notranslate"><span class="pre">geom</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">friction_default_mu</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">friction.default_mu</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.5</span></code></p></td>
+<td><p>Default Coulomb coefficient when a body’s <code class="docutils literal notranslate"><span class="pre">RigidProps::friction</span></code> is negative.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="debug-diagnostics">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">Debug / diagnostics</a><a class="headerlink" href="#debug-diagnostics" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16.1%" />
+<col style="width: 25.5%" />
+<col style="width: 10.9%" />
+<col style="width: 47.4%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">debug_rb</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">debug.rb</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Enable rigid-body contact / W diagnostics in the Moreau integrator.
+Accepts <code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">debug_pj</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">debug.pj</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Enable Projected Jacobi iteration logging. Accepts <code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">debug_mesh</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">debug.mesh</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Print mesh normalization info (volume, COM, inertia) at load time.
+Accepts <code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="solver-selection-and-parameters">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">Solver selection and parameters</a><a class="headerlink" href="#solver-selection-and-parameters" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 35.0%" />
+<col style="width: 18.0%" />
+<col style="width: 27.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">solver</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.type</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ProjectedJacobi</span></code></p></td>
+<td><p>Which contact solver to use (pj, pgs, ip, qoco, clarabel, cg)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">integrator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">integrator</span></code>, alias: <code class="docutils literal notranslate"><span class="pre">solver.name</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Moreau</span></code></p></td>
+<td><p>The time integrator type (currently only Moreau is supported).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pj_max_iterations</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.max_iterations</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">200000</span></code></p></td>
+<td><p>Hard iteration cap for Projected Jacobi (minimum 1). Clamped to ≥ 1.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pj_tol_abs</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.tol_abs</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1e-4</span></code></p></td>
+<td><p>Absolute convergence tolerance on the velocity residual.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pj_tol_rel</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.tol_rel</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1e-4</span></code></p></td>
+<td><p>Relative convergence tolerance.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pj_relaxation</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.relaxation</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.9</span></code></p></td>
+<td><p>Over-relaxation factor ∈ (0, 1]. Below 1 stabilizes but slows convergence.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pj_alpha</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.alpha</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.3</span></code></p></td>
+<td><p>Step-size multiplier for each Jacobi update.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pj_nesterov</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.nesterov</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Enable Nesterov momentum acceleration. Accepts <code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pj_nesterov_beta_threshold</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.nesterov_beta_threshold</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.995</span></code></p></td>
+<td><p>Reset Nesterov momentum when beta exceeds this threshold (range 0–1).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pj_nesterov_restart_limit</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.nesterov_restart_limit</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">4</span></code></p></td>
+<td><p>After this many momentum resets in a solve, disable momentum for the remainder.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pj_warmstart</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.warmstart</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td><p>Reuse contact impulses from the previous step as the initial guess.
+Accepts <code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code>. Almost always beneficial.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="integrator-moreau-settings">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">Integrator (Moreau) settings</a><a class="headerlink" href="#integrator-moreau-settings" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 40.0%" />
+<col style="width: 18.0%" />
+<col style="width: 17.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">moreau_theta</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">moreau.theta</span></code>, alias: <code class="docutils literal notranslate"><span class="pre">solver.theta</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1.0</span></code></p></td>
+<td><p>Moreau theta parameter. <code class="docutils literal notranslate"><span class="pre">1.0</span></code> is fully implicit (most stable),
+<code class="docutils literal notranslate"><span class="pre">0.5</span></code> is midpoint (second-order accurate).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">moreau_implicit_gyroscopy</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">moreau.implicit_gyroscopy</span></code>, alias: <code class="docutils literal notranslate"><span class="pre">solver.implicit_gyroscopy</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Treat the gyroscopic torque term implicitly to conserve angular momentum.
+This makes the effective mass matrix non-symmetric. Accepts
+<code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">moreau_lambda_theta</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">moreau.lambda_theta</span></code>, alias: <code class="docutils literal notranslate"><span class="pre">solver.lambda_theta</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>Enable θ method for integrating the Lagrange multipliers in the Moreau
+integrator. Accepts <code class="docutils literal notranslate"><span class="pre">true/1/yes/on</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="interior-point-solver-settings-qoco-clarabel">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Interior-point solver settings (QOCO / Clarabel)</a><a class="headerlink" href="#interior-point-solver-settings-qoco-clarabel" title="Link to this heading"></a></h3>
+<p>These parameters are shared across both interior-point backends and accept multiple
+prefixes as shown:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 18.2%" />
+<col style="width: 40.9%" />
+<col style="width: 16.4%" />
+<col style="width: 24.5%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">qoco_backend</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">qoco.backend</span></code>
+accepts: <code class="docutils literal notranslate"><span class="pre">auto</span></code>, <code class="docutils literal notranslate"><span class="pre">cpu</span></code>, <code class="docutils literal notranslate"><span class="pre">cuda</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code></p></td>
+<td><p>QOCO backend selection.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ip_kkt_static_reg</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.kkt_static_reg</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1e-8</span></code></p></td>
+<td><p>Static regularization applied to the KKT matrix for interior-point solvers.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ip_kkt_dynamic_reg</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.kkt_dynamic_reg</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1e-8</span></code></p></td>
+<td><p>Dynamic regularization parameter for the KKT system.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ip_iter_ref_iters</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.iter_ref_iters</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Maximum number of iterative refinement passes for the KKT solve (minimum 0).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="position-error-bias">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">Position-error bias</a><a class="headerlink" href="#position-error-bias" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.8%" />
+<col style="width: 37.5%" />
+<col style="width: 15.0%" />
+<col style="width: 26.7%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">constraint_bias_factor</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">solver.constraint_bias_factor</span></code>; also <code class="docutils literal notranslate"><span class="pre">constraint_bias_factor</span></code>,
+<code class="docutils literal notranslate"><span class="pre">baumgarte_bias_factor</span></code>, <code class="docutils literal notranslate"><span class="pre">baumgarte_bias</span></code>, <code class="docutils literal notranslate"><span class="pre">baumgarte_factor</span></code>,
+<code class="docutils literal notranslate"><span class="pre">constraint_bias</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.001</span></code></p></td>
+<td><p>Baumgarte-style position-error correction gain. Larger values fix drift
+faster but can introduce artificial energy; 0 disables it entirely.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="scene-selection">
+<h3><a class="toc-backref" href="#id12" role="doc-backlink">Scene selection</a><a class="headerlink" href="#scene-selection" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 35.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Variable name</p></th>
+<th class="head"><p>cfg.txt key(s)</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scene_name</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">scene.name</span></code></p></td>
+<td><p>Selects which example scene to build. If not set (default <code class="docutils literal notranslate"><span class="pre">&quot;none-specified&quot;</span></code>), the engine lists available scenes and exits.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="config-file-syntax">
+<h2><a class="toc-backref" href="#id13" role="doc-backlink">Config file syntax</a><a class="headerlink" href="#config-file-syntax" title="Link to this heading"></a></h2>
+<p>Each line is <code class="docutils literal notranslate"><span class="pre">key</span> <span class="pre">=</span> <span class="pre">value</span></code>. Lines starting with <code class="docutils literal notranslate"><span class="pre">#</span></code> are
+comments. Inline comments after <code class="docutils literal notranslate"><span class="pre">#</span></code> are supported:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">sim.T</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s">10.0</span><span class="w">          </span><span class="c1"># total simulation time (seconds)</span>
+<span class="na">sim.dt</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s">5e-4</span><span class="w">           </span><span class="c1"># time step</span>
+<span class="na">sim.gravity</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s">0 0 -9.81</span><span class="w">     </span><span class="c1"># gx gy gz (space or comma separated)</span>
+
+<span class="na">friction.enable</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s">on</span><span class="w">       </span><span class="c1"># accepts true/1/yes/on, case-insensitive</span>
+<span class="na">friction.combine</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s">geom</span>
+<span class="na">friction.default_mu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.3</span>
+
+<span class="na">collision.broadphase</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">dynamic_aabb</span>
+<span class="na">collision.security_margin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.001</span>
+<span class="na">collision.disable_all</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">false</span>
+
+<span class="na">solver.max_iterations</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">100000</span>
+<span class="na">solver.nesterov</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s">true</span><span class="w">      </span><span class="c1"># accepts true/1/yes/on</span>
+<span class="na">solver.warmstart</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s">on</span>
+
+<span class="na">solver.type</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s">projected_jacobi</span><span class="w">   </span><span class="c1"># see table above for all aliases</span>
+<span class="na">integrator</span><span class="w">         </span><span class="o">=</span><span class="w"> </span><span class="s">moreau</span><span class="w">             </span><span class="c1"># selects the time integrator (alias: solver.name)</span>
+
+<span class="c1"># Baumgarte bias; many cfg.txt names work interchangeably</span>
+<span class="na">constraint_bias_factor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0.01</span><span class="w">          </span><span class="c1"># also works: baumgarte_bias_factor, baumgarte_bias</span>
+
+<span class="c1"># Interior-point settings accept multiple prefixes</span>
+<span class="na">solver.kkt_static_reg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">1e-6</span><span class="w">           </span><span class="c1"># also: ip.kkt_static_reg, qoco.kkt_static_reg</span>
+<span class="na">clarabel.static_regularization_constant</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">1e-6</span><span class="w">   </span><span class="c1"># Clarabel-specific alias for same value</span>
+
+<span class="na">output.folder</span><span class="w">          </span><span class="o">=</span><span class="w"> </span><span class="s">./vtk_out</span>
+<span class="na">output.interval_steps</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s">20</span>
+<span class="na">output.filename_prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">my_scene</span>
+
+<span class="na">scene.name</span><span class="w">             </span><span class="o">=</span><span class="w"> </span><span class="s">pendulum</span><span class="w">    </span><span class="c1"># selects the example scene</span>
+</pre></div>
+</div>
+</section>
+<section id="the-main-loop">
+<h2><a class="toc-backref" href="#id14" role="doc-backlink">The main loop</a><a class="headerlink" href="#the-main-loop" title="Link to this heading"></a></h2>
+<p>After populating the engine you drive it with a simple while-loop:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cardillo</span><span class="o">::</span><span class="n">config</span><span class="o">::</span><span class="n">Config</span><span class="w"> </span><span class="n">cfg</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="n">cardillo</span><span class="o">::</span><span class="n">config</span><span class="o">::</span><span class="n">ConfigReader</span><span class="o">::</span><span class="n">fromFile</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+<span class="n">cardillo</span><span class="o">::</span><span class="n">physics</span><span class="o">::</span><span class="n">PhysicsEngine</span><span class="w"> </span><span class="nf">engine</span><span class="p">(</span><span class="n">cfg</span><span class="p">);</span>
+
+<span class="n">myScene</span><span class="p">.</span><span class="n">populate</span><span class="p">(</span><span class="n">engine</span><span class="p">);</span>
+
+<span class="n">real_t</span><span class="w"> </span><span class="n">t</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<span class="n">real_t</span><span class="w"> </span><span class="n">dt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cfg</span><span class="p">.</span><span class="n">sim_dt</span><span class="p">;</span>
+
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">engine</span><span class="p">.</span><span class="n">isFinished</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">myScene</span><span class="p">.</span><span class="n">updateScene</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">,</span><span class="w"> </span><span class="n">dt</span><span class="p">);</span>
+<span class="w">    </span><span class="n">engine</span><span class="p">.</span><span class="n">step</span><span class="p">();</span><span class="w">                        </span><span class="c1">// advance by cfg.sim_dt</span>
+<span class="w">    </span><span class="n">t</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">dt</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../using_the_engine.html" class="btn btn-neutral float-left" title="Using The Engine" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="bodies.html" class="btn btn-neutral float-right" title="Bodies" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

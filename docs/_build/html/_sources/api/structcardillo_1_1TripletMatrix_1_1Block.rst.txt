@@ -1,0 +1,23 @@
+.. _exhale_struct_structcardillo_1_1TripletMatrix_1_1Block:
+
+Struct TripletMatrix::Block
+===========================
+
+- Defined in :ref:`file_src_misc_triplet_matrix.hpp`
+
+
+Nested Relationships
+--------------------
+
+This struct is a nested type of :ref:`exhale_class_classcardillo_1_1TripletMatrix`.
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: cardillo::TripletMatrix::Block
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

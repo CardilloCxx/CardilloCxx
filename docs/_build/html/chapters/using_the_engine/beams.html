@@ -1,0 +1,428 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beams and Flexible Rods &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Stepping and Runtime Control" href="stepping.html" />
+    <link rel="prev" title="Trajectories and Kinematic Control" href="trajectories.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="setup.html">Setup and Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bodies.html">Bodies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="constraints.html">Constraints and Joints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="trajectories.html">Trajectories and Kinematic Control</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Beams and Flexible Rods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cross-section-beamcrosssection">Cross-section (BeamCrossSection)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#material-stiffness-beamspringparams">Material stiffness (BeamSpringParams)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#fields">Fields</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#named-constructors">Named constructors</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#how-ke-and-kf-are-computed">How Ke and Kf are computed</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#creating-beams">Creating beams</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#createbeam-single-spline">createBeam (single spline)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#createbeams-multiple-connected-splines">createBeams (multiple connected splines)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#complete-example">Complete example</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="stepping.html">Stepping and Runtime Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example.html">Worked Example: A Single Pendulum</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../using_the_engine.html">Using The Engine</a></li>
+      <li class="breadcrumb-item active">Beams and Flexible Rods</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/using_the_engine/beams.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="beams-and-flexible-rods">
+<h1>Beams and Flexible Rods<a class="headerlink" href="#beams-and-flexible-rods" title="Link to this heading"></a></h1>
+<p>Cardillo models elastic rods as a chain of rigid segments connected by
+<strong>beam constraints</strong>, a Cosserat-rod spring model with six scalar rows
+(three for stretch/shear, three for torsion/bending). The segments are
+ordinary ECS entities, so all body factory methods, trajectories, and
+post-processing tools work on them directly.</p>
+<nav class="contents local" id="on-this-page">
+<p class="topic-title">On this page</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#cross-section-beamcrosssection" id="id1">Cross-section (BeamCrossSection)</a></p></li>
+<li><p><a class="reference internal" href="#material-stiffness-beamspringparams" id="id2">Material stiffness (BeamSpringParams)</a></p>
+<ul>
+<li><p><a class="reference internal" href="#fields" id="id3">Fields</a></p></li>
+<li><p><a class="reference internal" href="#named-constructors" id="id4">Named constructors</a></p></li>
+<li><p><a class="reference internal" href="#how-ke-and-kf-are-computed" id="id5">How Ke and Kf are computed</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#creating-beams" id="id6">Creating beams</a></p>
+<ul>
+<li><p><a class="reference internal" href="#createbeam-single-spline" id="id7">createBeam (single spline)</a></p></li>
+<li><p><a class="reference internal" href="#createbeams-multiple-connected-splines" id="id8">createBeams (multiple connected splines)</a></p></li>
+<li><p><a class="reference internal" href="#complete-example" id="id9">Complete example</a></p></li>
+</ul>
+</li>
+</ul>
+</nav>
+<section id="cross-section-beamcrosssection">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Cross-section (BeamCrossSection)</a><a class="headerlink" href="#cross-section-beamcrosssection" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">BeamCrossSection</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_types.hpp</span></code>) defines the
+geometry of each beam segment and provides the derived section properties
+used to compute stiffness:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 15.0%" />
+<col style="width: 65.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">width</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Cross-section width in metres. For circular sections (<code class="docutils literal notranslate"><span class="pre">Capsule</span></code> or
+<code class="docutils literal notranslate"><span class="pre">Cylinder</span></code> type) this is treated as the <strong>diameter</strong> and the radius
+is <code class="docutils literal notranslate"><span class="pre">min(width,</span> <span class="pre">height)</span> <span class="pre">/</span> <span class="pre">2</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">height</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Cross-section height in metres. For rectangular sections this is the
+dimension along the beam’s y-axis.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Cube</span></code></p></td>
+<td><p>Collision/visual shape used for each segment. One of <code class="docutils literal notranslate"><span class="pre">BeamBodyType::Cube</span></code>,
+<code class="docutils literal notranslate"><span class="pre">BeamBodyType::Capsule</span></code>, or <code class="docutils literal notranslate"><span class="pre">BeamBodyType::Cylinder</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Derived section properties computed from these fields:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">area()</span></code> – cross-sectional area A (m²)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Iy()</span></code>    – second moment of area about the y-axis (m⁴)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Iz()</span></code>    – second moment of area about the z-axis (m⁴)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Jp()</span></code>    – polar moment of inertia <code class="docutils literal notranslate"><span class="pre">Iy</span> <span class="pre">+</span> <span class="pre">Iz</span></code> (m⁴)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sectionModulus()</span></code> – minimum section modulus (m³); used for yield checks</p></li>
+</ul>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="o">::</span><span class="nn">physics</span><span class="p">;</span>
+
+<span class="c1">// 2 cm × 2 cm square cross-section</span>
+<span class="n">BeamCrossSection</span><span class="w"> </span><span class="nf">squareSection</span><span class="p">(</span><span class="mf">0.02</span><span class="p">,</span><span class="w"> </span><span class="mf">0.02</span><span class="p">,</span><span class="w"> </span><span class="n">BeamBodyType</span><span class="o">::</span><span class="n">Cube</span><span class="p">);</span>
+
+<span class="c1">// 1 cm diameter circular cross-section</span>
+<span class="n">BeamCrossSection</span><span class="w"> </span><span class="nf">circSection</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span><span class="w"> </span><span class="mf">0.01</span><span class="p">,</span><span class="w"> </span><span class="n">BeamBodyType</span><span class="o">::</span><span class="n">Capsule</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="material-stiffness-beamspringparams">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Material stiffness (BeamSpringParams)</a><a class="headerlink" href="#material-stiffness-beamspringparams" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">BeamSpringParams</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_types.hpp</span></code>) describes the
+elastic and damping properties of the beam.</p>
+<section id="fields">
+<h3><a class="toc-backref" href="#id3" role="doc-backlink">Fields</a><a class="headerlink" href="#fields" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22.0%" />
+<col style="width: 15.0%" />
+<col style="width: 63.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">E</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Young’s modulus (Pa). Used together with <code class="docutils literal notranslate"><span class="pre">nu</span></code> to derive <code class="docutils literal notranslate"><span class="pre">Ke</span></code> and
+<code class="docutils literal notranslate"><span class="pre">Kf</span></code> from the cross-section geometry. Set to 0 if you override with
+<code class="docutils literal notranslate"><span class="pre">Ke_direct</span></code> / <code class="docutils literal notranslate"><span class="pre">Kf_direct</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">nu</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Poisson’s ratio (dimensionless). Used to compute shear modulus
+<code class="docutils literal notranslate"><span class="pre">G</span> <span class="pre">=</span> <span class="pre">E</span> <span class="pre">/</span> <span class="pre">(2*(1</span> <span class="pre">+</span> <span class="pre">nu))</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scaleKe</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(1,</span> <span class="pre">1,</span> <span class="pre">1)</span></code></p></td>
+<td><p>Per-component scale factors applied to the computed extensional/shear
+stiffness vector <code class="docutils literal notranslate"><span class="pre">Ke</span> <span class="pre">=</span> <span class="pre">(E*A/L,</span> <span class="pre">G*A/L,</span> <span class="pre">G*A/L)</span></code>. Component order:
+<code class="docutils literal notranslate"><span class="pre">[axial,</span> <span class="pre">shear-y,</span> <span class="pre">shear-z]</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scaleKf</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(1,</span> <span class="pre">1,</span> <span class="pre">1)</span></code></p></td>
+<td><p>Per-component scale factors applied to the computed torsion/bending
+stiffness vector <code class="docutils literal notranslate"><span class="pre">Kf</span> <span class="pre">=</span> <span class="pre">(G*Jp/L,</span> <span class="pre">E*Iy/L,</span> <span class="pre">E*Iz/L)</span></code>. Component order:
+<code class="docutils literal notranslate"><span class="pre">[torsion,</span> <span class="pre">bend-y,</span> <span class="pre">bend-z]</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Ke_direct</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">nullopt</span></code></p></td>
+<td><p>Optional direct override for <code class="docutils literal notranslate"><span class="pre">Ke</span></code> (N/m, beam-local frame).
+When set, <code class="docutils literal notranslate"><span class="pre">E</span></code>, <code class="docutils literal notranslate"><span class="pre">nu</span></code>, and <code class="docutils literal notranslate"><span class="pre">scaleKe</span></code> are ignored for extensional/shear.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Kf_direct</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">nullopt</span></code></p></td>
+<td><p>Optional direct override for <code class="docutils literal notranslate"><span class="pre">Kf</span></code> (Nm/rad). When set, <code class="docutils literal notranslate"><span class="pre">E</span></code>, <code class="docutils literal notranslate"><span class="pre">nu</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">scaleKf</span></code> are ignored for torsion/bending.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gamma0</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">nullopt</span></code></p></td>
+<td><p>Optional rest-state translational strain <code class="docutils literal notranslate"><span class="pre">γ₀</span></code>. When unset the
+factory initialises it from the relative pose of the two connected
+segments at creation time (natural configuration).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">kappa0</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">nullopt</span></code></p></td>
+<td><p>Optional rest-state curvature <code class="docutils literal notranslate"><span class="pre">κ₀</span></code>. When unset the factory
+initialises it from the initial segment orientation.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dampingFactor</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Rayleigh-type damping factor <code class="docutils literal notranslate"><span class="pre">d</span></code> applied to all stiffness terms.
+The effective damping stiffness is <code class="docutils literal notranslate"><span class="pre">K</span> <span class="pre">*</span> <span class="pre">d</span></code> (units: s).
+A value of 0.01 provides light numerical damping.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="named-constructors">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">Named constructors</a><a class="headerlink" href="#named-constructors" title="Link to this heading"></a></h3>
+<p><strong>From a material</strong>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">BeamSpringParams</span><span class="w"> </span><span class="n">springs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BeamSpringParams</span><span class="o">::</span><span class="n">fromMaterial</span><span class="p">(</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">E_in</span><span class="p">,</span><span class="w">              </span><span class="c1">// Young&#39;s modulus (Pa)</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">nu_in</span><span class="p">,</span><span class="w">             </span><span class="c1">// Poisson&#39;s ratio</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">axialScale</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">   </span><span class="c1">// scale on axial stiffness Ke[0]</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">shearScale</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">   </span><span class="c1">// scale on shear stiffnesses Ke[1], Ke[2]</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">torsionScale</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">  </span><span class="c1">// scale on torsional stiffness Kf[0]</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">bendYScale</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">   </span><span class="c1">// scale on bending stiffness Kf[1]</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">bendZScale</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">   </span><span class="c1">// scale on bending stiffness Kf[2]</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">dampingFactor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="c1">// Rayleigh damping factor</span>
+<span class="p">);</span>
+
+<span class="c1">// Steel rod, slight damping</span>
+<span class="n">BeamCrossSection</span><span class="w"> </span><span class="nf">section</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span><span class="w"> </span><span class="mf">0.01</span><span class="p">,</span><span class="w"> </span><span class="n">BeamBodyType</span><span class="o">::</span><span class="n">Capsule</span><span class="p">);</span>
+<span class="n">BeamSpringParams</span><span class="w"> </span><span class="n">springs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BeamSpringParams</span><span class="o">::</span><span class="n">fromMaterial</span><span class="p">(</span>
+<span class="w">    </span><span class="mf">200e9</span><span class="p">,</span><span class="w">   </span><span class="c1">// E = 200 GPa (steel)</span>
+<span class="w">    </span><span class="mf">0.3</span><span class="p">,</span><span class="w">     </span><span class="c1">// nu</span>
+<span class="w">    </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="c1">// all scales = 1</span>
+<span class="w">    </span><span class="mf">0.005</span><span class="w">    </span><span class="c1">// 0.5% Rayleigh damping</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>From direct stiffness values</strong> (bypasses material formulas):</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">BeamSpringParams</span><span class="w"> </span><span class="n">springs</span><span class="p">(</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">1e4</span><span class="p">,</span><span class="w"> </span><span class="mf">5e3</span><span class="p">,</span><span class="w"> </span><span class="mf">5e3</span><span class="p">),</span><span class="w">   </span><span class="c1">// Ke: axial, shear-y, shear-z (N/m)</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">2e3</span><span class="p">,</span><span class="w"> </span><span class="mf">8e2</span><span class="p">,</span><span class="w"> </span><span class="mf">8e2</span><span class="p">),</span><span class="w">   </span><span class="c1">// Kf: torsion, bend-y, bend-z (Nm/rad)</span>
+<span class="w">    </span><span class="mf">0.01</span><span class="w">                        </span><span class="c1">// damping factor</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="how-ke-and-kf-are-computed">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">How Ke and Kf are computed</a><a class="headerlink" href="#how-ke-and-kf-are-computed" title="Link to this heading"></a></h3>
+<p>When <code class="docutils literal notranslate"><span class="pre">Ke_direct</span></code> and <code class="docutils literal notranslate"><span class="pre">Kf_direct</span></code> are not set, the stiffnesses are
+derived per segment from the material constants, cross-section, and segment
+length <code class="docutils literal notranslate"><span class="pre">L</span></code>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}K_e = \begin{pmatrix} EA/L \\ GA/L \\ GA/L \end{pmatrix}
+\odot \text{scaleKe}
+\qquad
+K_f = \begin{pmatrix} GJ_p/L \\ EI_y/L \\ EI_z/L \end{pmatrix}
+\odot \text{scaleKf}\end{split}\]</div>
+<p>where <span class="math notranslate nohighlight">\(G = E / (2(1+\nu))\)</span>.</p>
+</section>
+</section>
+<section id="creating-beams">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Creating beams</a><a class="headerlink" href="#creating-beams" title="Link to this heading"></a></h2>
+<section id="createbeam-single-spline">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">createBeam (single spline)</a><a class="headerlink" href="#createbeam-single-spline" title="Link to this heading"></a></h3>
+<p>Samples a spline into <code class="docutils literal notranslate"><span class="pre">segments</span></code> rigid bodies and connects adjacent ones
+with beam constraints. Returns the root and tip entity handles.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="p">,</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="o">&gt;</span><span class="w"> </span><span class="p">[</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="n">tip</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">createBeam</span><span class="p">(</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">misc</span><span class="o">::</span><span class="n">SplinePattern</span><span class="o">&amp;</span><span class="w"> </span><span class="n">spline</span><span class="p">,</span><span class="w">  </span><span class="c1">// geometry of the rod centreline</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">BeamCrossSection</span><span class="o">&amp;</span><span class="w"> </span><span class="n">section</span><span class="p">,</span><span class="w">    </span><span class="c1">// cross-section geometry + type</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">BeamSpringParams</span><span class="o">&amp;</span><span class="w"> </span><span class="n">springs</span><span class="p">,</span><span class="w">    </span><span class="c1">// material / stiffness params</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">RigidState</span><span class="o">&amp;</span><span class="w"> </span><span class="n">stateDefaults</span><span class="p">,</span><span class="w">    </span><span class="c1">// default state applied to all segments</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">RigidProps</span><span class="o">&amp;</span><span class="w"> </span><span class="n">propsDefaults</span><span class="p">,</span><span class="w">    </span><span class="c1">// default props (mass/density, flags)</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">segments</span><span class="w">                     </span><span class="c1">// number of rigid segments</span>
+<span class="p">);</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="p">[</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="n">tip</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">createBeam</span><span class="p">(</span><span class="n">spline</span><span class="p">,</span><span class="w"> </span><span class="n">section</span><span class="p">,</span><span class="w"> </span><span class="n">springs</span><span class="p">,</span>
+<span class="w">                                      </span><span class="n">defaultState</span><span class="p">,</span><span class="w"> </span><span class="n">defaultProps</span><span class="p">,</span><span class="w"> </span><span class="mi">48</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>The factory:</p>
+<ol class="arabic simple">
+<li><p>Samples the spline at <code class="docutils literal notranslate"><span class="pre">segments</span></code> evenly-spaced parameter values.</p></li>
+<li><p>Creates a rigid body at each sample point (shape from <code class="docutils literal notranslate"><span class="pre">section.type</span></code>).</p></li>
+<li><p>Connects every adjacent pair with <code class="docutils literal notranslate"><span class="pre">addBeamConstraint</span></code>.</p></li>
+</ol>
+<p>Increasing <code class="docutils literal notranslate"><span class="pre">segments</span></code> improves accuracy but scales solve cost linearly.</p>
+</section>
+<section id="createbeams-multiple-connected-splines">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">createBeams (multiple connected splines)</a><a class="headerlink" href="#createbeams-multiple-connected-splines" title="Link to this heading"></a></h3>
+<p>Chains several splines into a single beam, with the tip of each spline
+connected to the root of the next. Returns the overall root and tip.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="p">,</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="o">&gt;</span><span class="w"> </span><span class="p">[</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="n">tip</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">createBeams</span><span class="p">(</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">misc</span><span class="o">::</span><span class="n">SplinePattern</span><span class="o">*&gt;&amp;</span><span class="w"> </span><span class="n">splines</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">BeamCrossSection</span><span class="o">&amp;</span><span class="w"> </span><span class="n">section</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">BeamSpringParams</span><span class="o">&amp;</span><span class="w"> </span><span class="n">springs</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">RigidState</span><span class="o">&amp;</span><span class="w"> </span><span class="n">stateDefaults</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">RigidProps</span><span class="o">&amp;</span><span class="w"> </span><span class="n">propsDefaults</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">segments</span><span class="w">   </span><span class="c1">// total segments distributed across all splines</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="complete-example">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">Complete example</a><a class="headerlink" href="#complete-example" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="o">::</span><span class="nn">physics</span><span class="p">;</span>
+
+<span class="c1">// 1-metre straight rod along the z-axis</span>
+<span class="n">misc</span><span class="o">::</span><span class="n">LinearSpline</span><span class="w"> </span><span class="n">spline</span><span class="p">;</span>
+<span class="n">spline</span><span class="p">.</span><span class="n">addControlPoint</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+<span class="n">spline</span><span class="p">.</span><span class="n">addControlPoint</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">));</span>
+
+<span class="c1">// 5 mm diameter circular cross-section</span>
+<span class="n">BeamCrossSection</span><span class="w"> </span><span class="nf">section</span><span class="p">(</span><span class="mf">0.005</span><span class="p">,</span><span class="w"> </span><span class="mf">0.005</span><span class="p">,</span><span class="w"> </span><span class="n">BeamBodyType</span><span class="o">::</span><span class="n">Capsule</span><span class="p">);</span>
+
+<span class="c1">// Nylon-like material: E ≈ 3 GPa, nu = 0.4</span>
+<span class="n">BeamSpringParams</span><span class="w"> </span><span class="n">springs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BeamSpringParams</span><span class="o">::</span><span class="n">fromMaterial</span><span class="p">(</span>
+<span class="w">    </span><span class="mf">3e9</span><span class="p">,</span><span class="w"> </span><span class="mf">0.4</span><span class="p">,</span>
+<span class="w">    </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">    </span><span class="mf">0.01</span><span class="w">   </span><span class="c1">// light Rayleigh damping</span>
+<span class="p">);</span>
+
+<span class="n">RigidState</span><span class="w"> </span><span class="n">defaultState</span><span class="p">;</span><span class="w">                  </span><span class="c1">// segments positioned by spline</span>
+<span class="n">RigidProps</span><span class="w"> </span><span class="n">defaultProps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RigidProps</span><span class="o">::</span><span class="n">withDensity</span><span class="p">(</span><span class="mf">1150.0</span><span class="p">);</span><span class="w"> </span><span class="c1">// nylon density</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="p">[</span><span class="n">beamRoot</span><span class="p">,</span><span class="w"> </span><span class="n">beamTip</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">createBeam</span><span class="p">(</span><span class="n">spline</span><span class="p">,</span><span class="w"> </span><span class="n">section</span><span class="p">,</span><span class="w"> </span><span class="n">springs</span><span class="p">,</span>
+<span class="w">                                              </span><span class="n">defaultState</span><span class="p">,</span><span class="w"> </span><span class="n">defaultProps</span><span class="p">,</span><span class="w"> </span><span class="mi">32</span><span class="p">);</span>
+
+<span class="c1">// Pin the root to the world</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addHingeConstraint</span><span class="p">(</span><span class="n">beamRoot</span><span class="p">,</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">null</span><span class="p">,</span>
+<span class="w">    </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitZ</span><span class="p">()),</span>
+<span class="w">    </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">);</span>
+
+<span class="c1">// Track tip for output</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">track</span><span class="p">(</span><span class="n">beamTip</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;beam_tip&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Because beam segments are ordinary ECS entities, you can attach a
+trajectory to the root segment to drive the beam’s base, or apply
+<code class="docutils literal notranslate"><span class="pre">applyForce</span></code> to any segment to impose point loads.</p>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="trajectories.html" class="btn btn-neutral float-left" title="Trajectories and Kinematic Control" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="stepping.html" class="btn btn-neutral float-right" title="Stepping and Runtime Control" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

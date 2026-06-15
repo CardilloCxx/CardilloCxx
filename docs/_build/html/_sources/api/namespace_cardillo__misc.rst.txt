@@ -1,0 +1,46 @@
+
+.. _namespace_cardillo__misc:
+
+Namespace cardillo::misc
+========================
+
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1misc_1_1BCCHeader`
+
+- :ref:`exhale_struct_structcardillo_1_1misc_1_1SplineSample`
+
+- :ref:`exhale_struct_structcardillo_1_1misc_1_1TimingManager_1_1Active`
+
+- :ref:`exhale_struct_structcardillo_1_1misc_1_1TimingManager_1_1HierNode`
+
+- :ref:`exhale_struct_structcardillo_1_1misc_1_1TimingManager_1_1Stats`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1CatmullRomSpline`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1CircleSpline`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1HelixSpline`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1LinearSpline`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1ProgressBar`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1SplinePattern`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1TimingManager`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1TimingManager_1_1Scope`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_spline_8cpp_1a754c8656de3e7871f7073c0c4c044c73`
+
+- :ref:`exhale_function_spline_8cpp_1a37a250371bd718a9f766cfe064c5ec14`

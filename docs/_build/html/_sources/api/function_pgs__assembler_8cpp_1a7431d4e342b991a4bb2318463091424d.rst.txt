@@ -1,0 +1,14 @@
+.. _exhale_function_pgs__assembler_8cpp_1a7431d4e342b991a4bb2318463091424d:
+
+Function cardillo::physics::assembly::selectCols
+================================================
+
+- Defined in :ref:`file_src_physics_assembly_pgs_assembler.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::physics::assembly::selectCols(const Eigen::MatrixXd&, const std::vector<bool>&)
+   :project: Cardillo

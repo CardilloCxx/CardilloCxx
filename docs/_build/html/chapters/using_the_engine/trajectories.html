@@ -1,0 +1,282 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trajectories and Kinematic Control &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Beams and Flexible Rods" href="beams.html" />
+    <link rel="prev" title="Constraints and Joints" href="constraints.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="setup.html">Setup and Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bodies.html">Bodies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="constraints.html">Constraints and Joints</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Trajectories and Kinematic Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#trajectory-callback-types">Trajectory callback types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-the-engine-uses-them">How the engine uses them</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#callback-trajectories">Callback trajectories</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#spline-trajectories">Spline trajectories</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#removing-a-trajectory">Removing a trajectory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#typical-uses">Typical uses</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="beams.html">Beams and Flexible Rods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stepping.html">Stepping and Runtime Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example.html">Worked Example: A Single Pendulum</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../using_the_engine.html">Using The Engine</a></li>
+      <li class="breadcrumb-item active">Trajectories and Kinematic Control</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/using_the_engine/trajectories.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="trajectories-and-kinematic-control">
+<h1>Trajectories and Kinematic Control<a class="headerlink" href="#trajectories-and-kinematic-control" title="Link to this heading"></a></h1>
+<p>A trajectory lets you drive an entity from a callback instead of from the
+contact/constraint solve. Internally the engine stores a <code class="docutils literal notranslate"><span class="pre">C_StaticTrajectory</span></code>
+component and updates the entity once per step in
+<code class="docutils literal notranslate"><span class="pre">src/physics/synchronization/trajectory.cpp</span></code>.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">engine.addTrajectory(...)</span></code> on a dynamic body first makes that body
+static by removing its dynamic mass/inertia tags. The body can still remain
+collidable and visible, but gravity and solver-driven motion no longer act on
+it.</p>
+</div>
+<section id="trajectory-callback-types">
+<h2>Trajectory callback types<a class="headerlink" href="#trajectory-callback-types" title="Link to this heading"></a></h2>
+<p>The callback aliases are defined in <code class="docutils literal notranslate"><span class="pre">src/physics/ecs_types.hpp</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">TrajectoryPose</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Vector3r</span><span class="p">,</span><span class="w"> </span><span class="n">Quaternion4r</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">TrajectoryTwist</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Vector3r</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&gt;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">TrajectoryPose</span></code> is <code class="docutils literal notranslate"><span class="pre">(position,</span> <span class="pre">orientation)</span></code>.
+<code class="docutils literal notranslate"><span class="pre">TrajectoryTwist</span></code> is <code class="docutils literal notranslate"><span class="pre">(linearVelocity,</span> <span class="pre">angularVelocity)</span></code> where linear
+velocity is in world frame and angular velocity follows the engine’s usual
+body-frame convention.</p>
+</section>
+<section id="how-the-engine-uses-them">
+<h2>How the engine uses them<a class="headerlink" href="#how-the-engine-uses-them" title="Link to this heading"></a></h2>
+<p>You can provide a pose callback, a twist callback, or both:</p>
+<ul class="simple">
+<li><p><strong>Pose only</strong> – the engine samples the pose at <code class="docutils literal notranslate"><span class="pre">t</span></code> and <code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">+</span> <span class="pre">dt</span></code> and
+differentiates it to obtain velocity.</p></li>
+<li><p><strong>Twist only</strong> – the engine sets the entity’s linear and angular velocity,
+then the regular position update advances the pose from that velocity.</p></li>
+<li><p><strong>Pose + twist</strong> – the engine applies the pose directly and also uses the
+supplied velocity.</p></li>
+</ul>
+<p>If the entity has no orientation or angular-velocity component, the rotational
+part is ignored.</p>
+</section>
+<section id="callback-trajectories">
+<h2>Callback trajectories<a class="headerlink" href="#callback-trajectories" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addTrajectory</span><span class="p">(</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">,</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">TrajectoryPose</span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">positionFunc</span><span class="p">,</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">TrajectoryTwist</span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">velocityFunc</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>Examples:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="o">::</span><span class="nn">physics</span><span class="p">;</span>
+
+<span class="c1">// Position-driven motion</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addTrajectory</span><span class="p">(</span>
+<span class="w">    </span><span class="n">body</span><span class="p">,</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">make_optional</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">TrajectoryPose</span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="o">&gt;&gt;</span><span class="p">(</span>
+<span class="w">        </span><span class="p">[](</span><span class="n">real_t</span><span class="w"> </span><span class="n">t</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">TrajectoryPose</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">0.1</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">sin</span><span class="p">(</span><span class="n">t</span><span class="p">)),</span>
+<span class="w">                </span><span class="n">Quaternion4r</span><span class="o">::</span><span class="n">Identity</span><span class="p">()</span>
+<span class="w">            </span><span class="p">};</span>
+<span class="w">        </span><span class="p">}),</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">nullopt</span><span class="p">);</span>
+
+<span class="c1">// Velocity-driven motion</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addTrajectory</span><span class="p">(</span>
+<span class="w">    </span><span class="n">body</span><span class="p">,</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">nullopt</span><span class="p">,</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">make_optional</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">TrajectoryTwist</span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="o">&gt;&gt;</span><span class="p">(</span>
+<span class="w">        </span><span class="p">[](</span><span class="n">real_t</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">TrajectoryTwist</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">                </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">()</span>
+<span class="w">            </span><span class="p">};</span>
+<span class="w">        </span><span class="p">}));</span>
+
+<span class="c1">// Pose + velocity</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addTrajectory</span><span class="p">(</span>
+<span class="w">    </span><span class="n">body</span><span class="p">,</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">make_optional</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">TrajectoryPose</span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="o">&gt;&gt;</span><span class="p">(</span>
+<span class="w">        </span><span class="p">[](</span><span class="n">real_t</span><span class="w"> </span><span class="n">t</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">TrajectoryPose</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">Vector3r</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cos</span><span class="p">(</span><span class="n">t</span><span class="p">),</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">sin</span><span class="p">(</span><span class="n">t</span><span class="p">),</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">                </span><span class="n">Quaternion4r</span><span class="o">::</span><span class="n">Identity</span><span class="p">()</span>
+<span class="w">            </span><span class="p">};</span>
+<span class="w">        </span><span class="p">}),</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">make_optional</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">TrajectoryTwist</span><span class="p">(</span><span class="n">real_t</span><span class="p">)</span><span class="o">&gt;&gt;</span><span class="p">(</span>
+<span class="w">        </span><span class="p">[](</span><span class="n">real_t</span><span class="w"> </span><span class="n">t</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">TrajectoryTwist</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="n">Vector3r</span><span class="p">(</span><span class="o">-</span><span class="n">std</span><span class="o">::</span><span class="n">sin</span><span class="p">(</span><span class="n">t</span><span class="p">),</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">cos</span><span class="p">(</span><span class="n">t</span><span class="p">),</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">                </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">()</span>
+<span class="w">            </span><span class="p">};</span>
+<span class="w">        </span><span class="p">}));</span>
+</pre></div>
+</div>
+</section>
+<section id="spline-trajectories">
+<h2>Spline trajectories<a class="headerlink" href="#spline-trajectories" title="Link to this heading"></a></h2>
+<p>There is also a convenience overload for spline-based looping motion:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">class</span><span class="w"> </span><span class="nc">TSpline</span><span class="o">&gt;</span>
+<span class="kt">void</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addTrajectory</span><span class="p">(</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">TSpline</span><span class="o">&amp;</span><span class="w"> </span><span class="n">spline</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">period</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>This overload:</p>
+<ul class="simple">
+<li><p>accepts spline types derived from <code class="docutils literal notranslate"><span class="pre">misc::SplinePattern</span></code></p></li>
+<li><p>maps time to <code class="docutils literal notranslate"><span class="pre">phase</span> <span class="pre">=</span> <span class="pre">fmod(max(t,</span> <span class="pre">0),</span> <span class="pre">period)</span> <span class="pre">/</span> <span class="pre">period</span></code></p></li>
+<li><p>samples the spline position</p></li>
+<li><p>sets orientation to <code class="docutils literal notranslate"><span class="pre">Quaternion4r::Identity()</span></code></p></li>
+</ul>
+<p>Example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cardillo</span><span class="o">::</span><span class="n">misc</span><span class="o">::</span><span class="n">CatmullRomSpline</span><span class="w"> </span><span class="n">path</span><span class="p">;</span>
+<span class="n">path</span><span class="p">.</span><span class="n">addControlPoint</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+<span class="n">path</span><span class="p">.</span><span class="n">addControlPoint</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+<span class="n">path</span><span class="p">.</span><span class="n">addControlPoint</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+<span class="n">path</span><span class="p">.</span><span class="n">addControlPoint</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+
+<span class="n">engine</span><span class="p">.</span><span class="n">addTrajectory</span><span class="p">(</span><span class="n">body</span><span class="p">,</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="mf">4.0</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="removing-a-trajectory">
+<h2>Removing a trajectory<a class="headerlink" href="#removing-a-trajectory" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">removeTrajectory</span><span class="p">(</span><span class="n">body</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>This only removes the <code class="docutils literal notranslate"><span class="pre">C_StaticTrajectory</span></code> component. It does <strong>not</strong> recreate
+<code class="docutils literal notranslate"><span class="pre">C_PhysicsObject</span></code>, mass, or inertia for a body that was made static when the
+trajectory was attached.</p>
+<p>In practice that means:</p>
+<ul class="simple">
+<li><p>the entity stops following the scripted motion</p></li>
+<li><p>its current pose/velocity remain as they are</p></li>
+<li><p>it stays static unless you recreate the body or manually restore the missing
+ECS components</p></li>
+</ul>
+</section>
+<section id="typical-uses">
+<h2>Typical uses<a class="headerlink" href="#typical-uses" title="Link to this heading"></a></h2>
+<p>Use trajectories for objects that should behave like kinematic scene elements:</p>
+<ul class="simple">
+<li><p>conveyor belt slats</p></li>
+<li><p>moving platforms</p></li>
+<li><p>scripted grippers or fixtures</p></li>
+<li><p>guide geometry for contact tests</p></li>
+</ul>
+<p>If you want a body to remain fully dynamic, do not attach a trajectory to it.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="constraints.html" class="btn btn-neutral float-left" title="Constraints and Joints" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="beams.html" class="btn btn-neutral float-right" title="Beams and Flexible Rods" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

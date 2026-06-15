@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1io_1_1VtkWriterBinary:
+
+Class VtkWriterBinary
+=====================
+
+- Defined in :ref:`file_src_io_vtk_writer_binary.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::io::VtkWriterBinary
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

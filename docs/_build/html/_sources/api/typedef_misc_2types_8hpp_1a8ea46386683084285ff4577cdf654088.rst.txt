@@ -1,0 +1,14 @@
+.. _exhale_typedef_misc_2types_8hpp_1a8ea46386683084285ff4577cdf654088:
+
+Typedef cardillo::Quaternion4r
+==============================
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::Quaternion4r
+   :project: Cardillo

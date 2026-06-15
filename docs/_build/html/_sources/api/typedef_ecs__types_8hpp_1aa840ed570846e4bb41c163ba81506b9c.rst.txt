@@ -1,0 +1,14 @@
+.. _exhale_typedef_ecs__types_8hpp_1aa840ed570846e4bb41c163ba81506b9c:
+
+Typedef cardillo::TrajectoryTwist
+=================================
+
+- Defined in :ref:`file_src_physics_ecs_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::TrajectoryTwist
+   :project: Cardillo

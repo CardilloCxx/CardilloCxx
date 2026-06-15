@@ -1,0 +1,1396 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Full API &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Full API</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/unabridged_orphan.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="full-api">
+<h1>Full API<a class="headerlink" href="#full-api" title="Link to this heading"></a></h1>
+<section id="directories">
+<h2>Directories<a class="headerlink" href="#directories" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src.html">Directory src</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src.html#subdirectories">Subdirectories</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_collision.html">Directory collision</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_collision.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_config.html">Directory config</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_config.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_io.html">Directory io</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_io.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_misc.html">Directory misc</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_misc.html#subdirectories">Subdirectories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_misc.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_misc_progress.html">Directory progress</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_misc_progress.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_misc_timings.html">Directory timings</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_misc_timings.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_physics.html">Directory physics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics.html#subdirectories">Subdirectories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_physics_api.html">Directory api</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics_api.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_physics_assembly.html">Directory assembly</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics_assembly.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_physics_assets.html">Directory assets</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics_assets.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_physics_constraints.html">Directory constraints</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics_constraints.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_physics_integration.html">Directory integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics_integration.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_physics_pipeline.html">Directory pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics_pipeline.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_physics_solver.html">Directory solver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics_solver.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_physics_synchronization.html">Directory synchronization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_physics_synchronization.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dir_src_rigid_body.html">Directory rigid_body</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dir_src_rigid_body.html#files">Files</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="files">
+<h2>Files<a class="headerlink" href="#files" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assets_assets.cpp.html">File assets.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_assets.cpp.html#definition-src-physics-assets-assets-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/assets.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assets_assets.cpp.html">Program Listing for File assets.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_assets.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_assets.cpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_assets.cpp.html#variables">Variables</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assets_assets.hpp.html">File assets.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_assets.hpp.html#definition-src-physics-assets-assets-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/assets.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assets_assets.hpp.html">Program Listing for File assets.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_assets.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_assets.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_assets.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_assets.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assets_beam_factory.cpp.html">File beam_factory.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_beam_factory.cpp.html#definition-src-physics-assets-beam-factory-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/beam_factory.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assets_beam_factory.cpp.html">Program Listing for File beam_factory.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_beam_factory.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_beam_factory.cpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_beam_factory.cpp.html#variables">Variables</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assets_beam_factory.hpp.html">File beam_factory.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_beam_factory.hpp.html#definition-src-physics-assets-beam-factory-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/beam_factory.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assets_beam_factory.hpp.html">Program Listing for File beam_factory.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_beam_factory.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_beam_factory.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_beam_factory.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_beam_factory.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_misc_block_diagonal.hpp.html">File block_diagonal.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_block_diagonal.hpp.html#definition-src-misc-block-diagonal-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/misc/block_diagonal.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_misc_block_diagonal.hpp.html">Program Listing for File block_diagonal.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_block_diagonal.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_block_diagonal.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_block_diagonal.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_block_diagonal.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assets_body_factory.cpp.html">File body_factory.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_body_factory.cpp.html#definition-src-physics-assets-body-factory-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/body_factory.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assets_body_factory.cpp.html">Program Listing for File body_factory.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_body_factory.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_body_factory.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assets_body_factory.hpp.html">File body_factory.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_body_factory.hpp.html#definition-src-physics-assets-body-factory-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/body_factory.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assets_body_factory.hpp.html">Program Listing for File body_factory.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_body_factory.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_body_factory.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_body_factory.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_body_factory.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.cpp.html">File clarabel_assembler.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.cpp.html#definition-src-physics-assembly-clarabel-assembler-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/clarabel_assembler.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_clarabel_assembler.cpp.html">Program Listing for File clarabel_assembler.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.hpp.html">File clarabel_assembler.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.hpp.html#definition-src-physics-assembly-clarabel-assembler-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/clarabel_assembler.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_clarabel_assembler.hpp.html">Program Listing for File clarabel_assembler.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_clarabel_assembler.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.cpp.html">File clarabel_solver.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.cpp.html#definition-src-physics-solver-clarabel-solver-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/clarabel_solver.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_clarabel_solver.cpp.html">Program Listing for File clarabel_solver.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.hpp.html">File clarabel_solver.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.hpp.html#definition-src-physics-solver-clarabel-solver-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/clarabel_solver.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_clarabel_solver.hpp.html">Program Listing for File clarabel_solver.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_clarabel_solver.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_collision_collision_coal.cpp.html">File collision_coal.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_collision_coal.cpp.html#definition-src-collision-collision-coal-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/collision/collision_coal.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_collision_collision_coal.cpp.html">Program Listing for File collision_coal.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_collision_coal.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_collision_coal.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_collision_collision_coal.hpp.html">File collision_coal.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_collision_coal.hpp.html#definition-src-collision-collision-coal-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/collision/collision_coal.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_collision_collision_coal.hpp.html">Program Listing for File collision_coal.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_collision_coal.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_collision_coal.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_collision_coal.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_collision_coal.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_config_config.cpp.html">File config.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.cpp.html#definition-src-config-config-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/config/config.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_config_config.cpp.html">Program Listing for File config.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.cpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.cpp.html#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_config_config.hpp.html">File config.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.hpp.html#definition-src-config-config-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/config/config.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_config_config.hpp.html">Program Listing for File config.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.hpp.html#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_config_config.hpp.html#enums">Enums</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.cpp.html">File conjugate_gradient.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.cpp.html#definition-src-physics-solver-conjugate-gradient-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/conjugate_gradient.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_conjugate_gradient.cpp.html">Program Listing for File conjugate_gradient.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.hpp.html">File conjugate_gradient.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.hpp.html#definition-src-physics-solver-conjugate-gradient-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/conjugate_gradient.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_conjugate_gradient.hpp.html">Program Listing for File conjugate_gradient.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_conjugate_gradient.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_constraints_constraint_factory.hpp.html">File constraint_factory.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraint_factory.hpp.html#definition-src-physics-constraints-constraint-factory-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/constraints/constraint_factory.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_constraints_constraint_factory.hpp.html">Program Listing for File constraint_factory.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraint_factory.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraint_factory.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraint_factory.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraint_factory.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_constraints_constraints.cpp.html">File constraints.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraints.cpp.html#definition-src-physics-constraints-constraints-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/constraints/constraints.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_constraints_constraints.cpp.html">Program Listing for File constraints.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraints.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraints.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_constraints_constraints.hpp.html">File constraints.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraints.hpp.html#definition-src-physics-constraints-constraints-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/constraints/constraints.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_constraints_constraints.hpp.html">Program Listing for File constraints.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraints.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraints.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraints.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraints.hpp.html#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_constraints_constraints.hpp.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_collision_contact_tracker.cpp.html">File contact_tracker.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_contact_tracker.cpp.html#definition-src-collision-contact-tracker-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/collision/contact_tracker.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_collision_contact_tracker.cpp.html">Program Listing for File contact_tracker.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_contact_tracker.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_contact_tracker.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_collision_contact_tracker.hpp.html">File contact_tracker.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_contact_tracker.hpp.html#definition-src-collision-contact-tracker-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/collision/contact_tracker.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_collision_contact_tracker.hpp.html">Program Listing for File contact_tracker.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_contact_tracker.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_contact_tracker.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_contact_tracker.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_contact_tracker.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_io_csv_writer.hpp.html">File csv_writer.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_csv_writer.hpp.html#definition-src-io-csv-writer-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/io/csv_writer.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_io_csv_writer.hpp.html">Program Listing for File csv_writer.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_csv_writer.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_csv_writer.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_csv_writer.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_csv_writer.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.cpp.html">File derived_entity_sync.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.cpp.html#definition-src-physics-synchronization-derived-entity-sync-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/synchronization/derived_entity_sync.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_synchronization_derived_entity_sync.cpp.html">Program Listing for File derived_entity_sync.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.hpp.html">File derived_entity_sync.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.hpp.html#definition-src-physics-synchronization-derived-entity-sync-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/synchronization/derived_entity_sync.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_synchronization_derived_entity_sync.hpp.html">Program Listing for File derived_entity_sync.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_derived_entity_sync.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_misc_dofs.hpp.html">File dofs.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_dofs.hpp.html#definition-src-misc-dofs-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/misc/dofs.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_misc_dofs.hpp.html">Program Listing for File dofs.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_dofs.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_dofs.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_dofs.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.cpp.html">File dynamics_assembler.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.cpp.html#definition-src-physics-assembly-dynamics-assembler-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/dynamics_assembler.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_dynamics_assembler.cpp.html">Program Listing for File dynamics_assembler.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.hpp.html">File dynamics_assembler.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.hpp.html#definition-src-physics-assembly-dynamics-assembler-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/dynamics_assembler.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_dynamics_assembler.hpp.html">Program Listing for File dynamics_assembler.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_dynamics_assembler.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_ecs_types.hpp.html">File ecs_types.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_ecs_types.hpp.html#definition-src-physics-ecs-types-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/ecs_types.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_ecs_types.hpp.html">Program Listing for File ecs_types.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_ecs_types.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_ecs_types.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_ecs_types.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_ecs_types.hpp.html#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_ecs_types.hpp.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_io_heightmap_loader.cpp.html">File heightmap_loader.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_heightmap_loader.cpp.html#definition-src-io-heightmap-loader-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/io/heightmap_loader.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_io_heightmap_loader.cpp.html">Program Listing for File heightmap_loader.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_heightmap_loader.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_heightmap_loader.cpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_heightmap_loader.cpp.html#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_io_heightmap_loader.hpp.html">File heightmap_loader.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_heightmap_loader.hpp.html#definition-src-io-heightmap-loader-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/io/heightmap_loader.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_io_heightmap_loader.hpp.html">Program Listing for File heightmap_loader.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_heightmap_loader.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_heightmap_loader.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_heightmap_loader.hpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_integration_integration_base.cpp.html">File integration_base.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_integration_base.cpp.html#definition-src-physics-integration-integration-base-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/integration/integration_base.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_integration_integration_base.cpp.html">Program Listing for File integration_base.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_integration_base.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_integration_base.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_integration_integration_base.hpp.html">File integration_base.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_integration_base.hpp.html#definition-src-physics-integration-integration-base-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/integration/integration_base.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_integration_integration_base.hpp.html">Program Listing for File integration_base.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_integration_base.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_integration_base.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_integration_base.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_integration_base.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_misc_math_helper.hpp.html">File math_helper.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_math_helper.hpp.html#definition-src-misc-math-helper-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/misc/math_helper.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_misc_math_helper.hpp.html">Program Listing for File math_helper.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_math_helper.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_math_helper.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_math_helper.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_math_helper.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_io_mesh_generator.cpp.html">File mesh_generator.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_mesh_generator.cpp.html#definition-src-io-mesh-generator-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/io/mesh_generator.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_io_mesh_generator.cpp.html">Program Listing for File mesh_generator.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_mesh_generator.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_mesh_generator.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_io_mesh_generator.hpp.html">File mesh_generator.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_mesh_generator.hpp.html#definition-src-io-mesh-generator-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/io/mesh_generator.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_io_mesh_generator.hpp.html">Program Listing for File mesh_generator.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_mesh_generator.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_mesh_generator.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_mesh_generator.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_mesh_generator.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_integration_moreau.cpp.html">File moreau.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_moreau.cpp.html#definition-src-physics-integration-moreau-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/integration/moreau.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_integration_moreau.cpp.html">Program Listing for File moreau.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_moreau.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_moreau.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_integration_moreau.hpp.html">File moreau.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_moreau.hpp.html#definition-src-physics-integration-moreau-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/integration/moreau.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_integration_moreau.hpp.html">Program Listing for File moreau.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_moreau.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_moreau.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_moreau.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_integration_moreau.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.cpp.html">File pgs_assembler.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.cpp.html#definition-src-physics-assembly-pgs-assembler-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/pgs_assembler.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_pgs_assembler.cpp.html">Program Listing for File pgs_assembler.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.cpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.cpp.html#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.hpp.html">File pgs_assembler.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.hpp.html#definition-src-physics-assembly-pgs-assembler-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/pgs_assembler.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_pgs_assembler.hpp.html">Program Listing for File pgs_assembler.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pgs_assembler.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_api_physics.hpp.html">File physics.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics.hpp.html#definition-src-physics-api-physics-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_api_physics.hpp.html">Program Listing for File physics.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics.hpp.html#includes">Includes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_api_physics_engine.cpp.html">File physics_engine.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_engine.cpp.html#definition-src-physics-api-physics-engine-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_engine.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_api_physics_engine.cpp.html">Program Listing for File physics_engine.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_engine.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_engine.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_api_physics_engine.hpp.html">File physics_engine.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_engine.hpp.html#definition-src-physics-api-physics-engine-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_engine.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_api_physics_engine.hpp.html">Program Listing for File physics_engine.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_engine.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_engine.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_engine.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_engine.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.cpp.html">File physics_pipeline.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.cpp.html#definition-src-physics-pipeline-physics-pipeline-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/pipeline/physics_pipeline.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_pipeline_physics_pipeline.cpp.html">Program Listing for File physics_pipeline.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.hpp.html">File physics_pipeline.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.hpp.html#definition-src-physics-pipeline-physics-pipeline-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/pipeline/physics_pipeline.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_pipeline_physics_pipeline.hpp.html">Program Listing for File physics_pipeline.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_pipeline_physics_pipeline.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_api_physics_types.cpp.html">File physics_types.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.cpp.html#definition-src-physics-api-physics-types-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_types.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_api_physics_types.cpp.html">Program Listing for File physics_types.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_api_physics_types.hpp.html">File physics_types.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.hpp.html#definition-src-physics-api-physics-types-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_types.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_api_physics_types.hpp.html">Program Listing for File physics_types.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.hpp.html#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.hpp.html#enums">Enums</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_api_physics_types.hpp.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.cpp.html">File pj_assembler.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.cpp.html#definition-src-physics-assembly-pj-assembler-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/pj_assembler.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_pj_assembler.cpp.html">Program Listing for File pj_assembler.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.hpp.html">File pj_assembler.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.hpp.html#definition-src-physics-assembly-pj-assembler-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/pj_assembler.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_pj_assembler.hpp.html">Program Listing for File pj_assembler.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_pj_assembler.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_misc_progress_ProgressBar.hpp.html">File ProgressBar.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_progress_ProgressBar.hpp.html#definition-src-misc-progress-progressbar-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/misc/progress/ProgressBar.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_misc_progress_ProgressBar.hpp.html">Program Listing for File ProgressBar.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_progress_ProgressBar.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_progress_ProgressBar.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_progress_ProgressBar.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_progress_ProgressBar.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.cpp.html">File projected_gauss_seidel.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.cpp.html#definition-src-physics-solver-projected-gauss-seidel-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/projected_gauss_seidel.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_projected_gauss_seidel.cpp.html">Program Listing for File projected_gauss_seidel.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.cpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.cpp.html#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.hpp.html">File projected_gauss_seidel.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.hpp.html#definition-src-physics-solver-projected-gauss-seidel-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/projected_gauss_seidel.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_projected_gauss_seidel.hpp.html">Program Listing for File projected_gauss_seidel.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_gauss_seidel.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.cpp.html">File projected_jacobi.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.cpp.html#definition-src-physics-solver-projected-jacobi-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/projected_jacobi.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_projected_jacobi.cpp.html">Program Listing for File projected_jacobi.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.cpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.cpp.html#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.cpp.html#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.hpp.html">File projected_jacobi.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.hpp.html#definition-src-physics-solver-projected-jacobi-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/projected_jacobi.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_projected_jacobi.hpp.html">Program Listing for File projected_jacobi.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_projected_jacobi.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.cpp.html">File qoco_assembler.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.cpp.html#definition-src-physics-assembly-qoco-assembler-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/qoco_assembler.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_qoco_assembler.cpp.html">Program Listing for File qoco_assembler.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.hpp.html">File qoco_assembler.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.hpp.html#definition-src-physics-assembly-qoco-assembler-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assembly/qoco_assembler.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assembly_qoco_assembler.hpp.html">Program Listing for File qoco_assembler.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assembly_qoco_assembler.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_qoco_solver.cpp.html">File qoco_solver.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_qoco_solver.cpp.html#definition-src-physics-solver-qoco-solver-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/qoco_solver.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_qoco_solver.cpp.html">Program Listing for File qoco_solver.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_qoco_solver.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_qoco_solver.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_qoco_solver.hpp.html">File qoco_solver.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_qoco_solver.hpp.html#definition-src-physics-solver-qoco-solver-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/qoco_solver.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_qoco_solver.hpp.html">Program Listing for File qoco_solver.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_qoco_solver.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_qoco_solver.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_qoco_solver.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_qoco_solver.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_rigid_body_rigid_body.hpp.html">File rigid_body.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_rigid_body.hpp.html#definition-src-rigid-body-rigid-body-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/rigid_body/rigid_body.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_rigid_body_rigid_body.hpp.html">Program Listing for File rigid_body.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_rigid_body.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_rigid_body.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_rigid_body.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_rigid_body.hpp.html#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_rigid_body.hpp.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.cpp.html">File rigid_body_factory.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.cpp.html#definition-src-physics-assets-rigid-body-factory-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/rigid_body_factory.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assets_rigid_body_factory.cpp.html">Program Listing for File rigid_body_factory.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.hpp.html">File rigid_body_factory.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.hpp.html#definition-src-physics-assets-rigid-body-factory-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/rigid_body_factory.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_assets_rigid_body_factory.hpp.html">Program Listing for File rigid_body_factory.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_assets_rigid_body_factory.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_io_softbody_loader.cpp.html">File softbody_loader.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_softbody_loader.cpp.html#definition-src-io-softbody-loader-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/io/softbody_loader.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_io_softbody_loader.cpp.html">Program Listing for File softbody_loader.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_softbody_loader.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_softbody_loader.cpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_softbody_loader.cpp.html#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_io_softbody_loader.hpp.html">File softbody_loader.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_softbody_loader.hpp.html#definition-src-io-softbody-loader-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/io/softbody_loader.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_io_softbody_loader.hpp.html">Program Listing for File softbody_loader.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_softbody_loader.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_softbody_loader.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_softbody_loader.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_softbody_loader.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_solver_base.hpp.html">File solver_base.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_solver_base.hpp.html#definition-src-physics-solver-solver-base-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/solver_base.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_solver_base.hpp.html">Program Listing for File solver_base.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_solver_base.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_solver_base.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_solver_base.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_solver_base.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_misc_spline.cpp.html">File spline.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.cpp.html#definition-src-misc-spline-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/misc/spline.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_misc_spline.cpp.html">Program Listing for File spline.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.cpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.cpp.html#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.cpp.html#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_misc_spline.hpp.html">File spline.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.hpp.html#definition-src-misc-spline-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/misc/spline.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_misc_spline.hpp.html">Program Listing for File spline.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_spline.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_collision_tangent_frame.hpp.html">File tangent_frame.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_tangent_frame.hpp.html#definition-src-collision-tangent-frame-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/collision/tangent_frame.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_collision_tangent_frame.hpp.html">Program Listing for File tangent_frame.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_tangent_frame.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_tangent_frame.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_tangent_frame.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_tangent_frame.hpp.html#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_misc_timings_TimingManager.hpp.html">File TimingManager.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_timings_TimingManager.hpp.html#definition-src-misc-timings-timingmanager-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/misc/timings/TimingManager.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_misc_timings_TimingManager.hpp.html">Program Listing for File TimingManager.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_timings_TimingManager.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_timings_TimingManager.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_timings_TimingManager.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_timings_TimingManager.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_synchronization_trajectory.cpp.html">File trajectory.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_trajectory.cpp.html#definition-src-physics-synchronization-trajectory-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/synchronization/trajectory.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_synchronization_trajectory.cpp.html">Program Listing for File trajectory.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_trajectory.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_trajectory.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_synchronization_trajectory.hpp.html">File trajectory.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_trajectory.hpp.html#definition-src-physics-synchronization-trajectory-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/synchronization/trajectory.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_synchronization_trajectory.hpp.html">Program Listing for File trajectory.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_trajectory.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_trajectory.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_trajectory.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_synchronization_trajectory.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_rigid_body_transformations.hpp.html">File transformations.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_transformations.hpp.html#definition-src-rigid-body-transformations-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/rigid_body/transformations.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_rigid_body_transformations.hpp.html">Program Listing for File transformations.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_transformations.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_transformations.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_transformations.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_rigid_body_transformations.hpp.html#functions">Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_misc_triplet_matrix.hpp.html">File triplet_matrix.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_triplet_matrix.hpp.html#definition-src-misc-triplet-matrix-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/misc/triplet_matrix.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_misc_triplet_matrix.hpp.html">Program Listing for File triplet_matrix.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_triplet_matrix.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_triplet_matrix.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_triplet_matrix.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_triplet_matrix.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_collision_types.hpp.html">File types.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_types.hpp.html#definition-src-collision-types-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/collision/types.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_collision_types.hpp.html">Program Listing for File types.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_types.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_types.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_types.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_types.hpp.html#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_collision_types.hpp.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_misc_types.hpp.html">File types.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_types.hpp.html#definition-src-misc-types-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/misc/types.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_misc_types.hpp.html">Program Listing for File types.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_types.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_types.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_types.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_types.hpp.html#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_types.hpp.html#defines">Defines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_misc_types.hpp.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_io_vtk_writer_binary.cpp.html">File vtk_writer_binary.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_vtk_writer_binary.cpp.html#definition-src-io-vtk-writer-binary-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/io/vtk_writer_binary.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_io_vtk_writer_binary.cpp.html">Program Listing for File vtk_writer_binary.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_vtk_writer_binary.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_vtk_writer_binary.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_io_vtk_writer_binary.hpp.html">File vtk_writer_binary.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_vtk_writer_binary.hpp.html#definition-src-io-vtk-writer-binary-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/io/vtk_writer_binary.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_io_vtk_writer_binary.hpp.html">Program Listing for File vtk_writer_binary.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_vtk_writer_binary.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_vtk_writer_binary.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_vtk_writer_binary.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_io_vtk_writer_binary.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_solver_warmstart.hpp.html">File warmstart.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_warmstart.hpp.html#definition-src-physics-solver-warmstart-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/solver/warmstart.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_solver_warmstart.hpp.html">Program Listing for File warmstart.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_warmstart.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_warmstart.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_warmstart.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_solver_warmstart.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_world.cpp.html">File world.cpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_world.cpp.html#definition-src-physics-world-cpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/world.cpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_world.cpp.html">Program Listing for File world.cpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_world.cpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_world.cpp.html#namespaces">Namespaces</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="file_src_physics_world.hpp.html">File world.hpp</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_world.hpp.html#definition-src-physics-world-hpp">Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/world.hpp</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="program_listing_file_src_physics_world.hpp.html">Program Listing for File world.hpp</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_world.hpp.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_world.hpp.html#included-by">Included By</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_world.hpp.html#namespaces">Namespaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file_src_physics_world.hpp.html#classes">Classes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

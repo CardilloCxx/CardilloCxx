@@ -1,0 +1,14 @@
+.. _exhale_function_rigid__body_8hpp_1a3c9b681cb472f2404e187953d874f8aa:
+
+Function cardillo::RigidBody::updateState
+=========================================
+
+- Defined in :ref:`file_src_rigid_body_rigid_body.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::RigidBody::updateState(entt::registry&, entt::entity)
+   :project: Cardillo

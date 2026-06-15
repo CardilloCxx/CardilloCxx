@@ -1,0 +1,14 @@
+.. _exhale_typedef_physics__types_8hpp_1a06928ce4422162b661e309e712c1320d:
+
+Typedef cardillo::physics::RigidShape
+=====================================
+
+- Defined in :ref:`file_src_physics_api_physics_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::physics::RigidShape
+   :project: Cardillo

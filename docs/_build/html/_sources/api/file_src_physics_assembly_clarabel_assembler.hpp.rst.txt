@@ -1,0 +1,67 @@
+
+.. _file_src_physics_assembly_clarabel_assembler.hpp:
+
+File clarabel_assembler.hpp
+===========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assembly>` (``src/physics/assembly``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assembly/clarabel_assembler.hpp``)
+------------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assembly_clarabel_assembler.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../misc/triplet_matrix.hpp``
+
+- ``../../misc/types.hpp``
+
+- ``Eigen/SparseCore``
+
+- ``clarabel.hpp``
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_assembly_clarabel_assembler.cpp`
+
+- :ref:`file_src_physics_solver_clarabel_solver.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+- :ref:`namespace_cardillo__physics__assembly`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1assembly_1_1ClarabelAssembler`
+

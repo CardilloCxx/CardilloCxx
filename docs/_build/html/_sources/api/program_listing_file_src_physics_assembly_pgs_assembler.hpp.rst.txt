@@ -1,0 +1,40 @@
+
+.. _program_listing_file_src_physics_assembly_pgs_assembler.hpp:
+
+Program Listing for File pgs_assembler.hpp
+==========================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_physics_assembly_pgs_assembler.hpp>` (``src/physics/assembly/pgs_assembler.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #pragma once
+   
+   #include <vector>
+   #include "../../config/config.hpp"
+   #include "../../misc/block_diagonal.hpp"
+   #include "../../misc/types.hpp"
+   #include "dynamics_assembler.hpp"
+   
+   namespace cardillo::physics::assembly {
+   
+   class PgsAssembler {
+      public:
+       PgsAssembler(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
+   
+       VectorXr rhs(real_t dt, real_t theta) const;
+       VectorXr ufree(real_t dt, real_t theta) const;
+       BlockDiagonal Dinv(real_t dt, real_t theta) const;
+       BlockDiagonal DinvDiag(real_t dt, real_t theta) const;
+   
+       Eigen::SparseMatrix<real_t> W() const;
+       VectorXr C(real_t dt, real_t theta) const;
+   
+      private:
+       cardillo::physics::DynamicsAssembler* m_dyn{nullptr};
+       cardillo::config::Config m_cfg;
+   };
+   
+   }  // namespace cardillo::physics::assembly

@@ -13,12 +13,16 @@
 
 namespace cardillo::solver {
 
+/// Iterative projected Gauss-Seidel contact solver.
 class ProjectedGaussSeidelSolver : public SolverBase {
    public:
+    /// Construct the solver from the dynamics assembler and config.
     explicit ProjectedGaussSeidelSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(dyn), m_cfg(cfg), m_assembler(dyn, cfg) {}
 
+    /// Solve for the corrected velocity increment for one time step.
     VectorXr solve(real_t dt, real_t theta) override;
 
+    /// Solver name used in diagnostics and logs.
     const char* name() const override { return "ProjectedGaussSeidel"; }
 
    private:

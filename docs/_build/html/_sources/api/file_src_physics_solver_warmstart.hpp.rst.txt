@@ -1,0 +1,73 @@
+
+.. _file_src_physics_solver_warmstart.hpp:
+
+File warmstart.hpp
+==================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_solver>` (``src/physics/solver``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/solver/warmstart.hpp``)
+-------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_solver_warmstart.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../collision/types.hpp``
+
+- ``../assembly/dynamics_assembler.hpp``
+
+- ``misc/types.hpp`` (:ref:`file_src_misc_types.hpp`)
+
+- ``optional``
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_io_vtk_writer_binary.cpp`
+
+- :ref:`file_src_physics_solver_clarabel_solver.hpp`
+
+- :ref:`file_src_physics_solver_projected_gauss_seidel.hpp`
+
+- :ref:`file_src_physics_solver_projected_jacobi.hpp`
+
+- :ref:`file_src_physics_solver_qoco_solver.hpp`
+
+- :ref:`file_src_physics_world.cpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__solver`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1solver_1_1WarmstartProvider`
+

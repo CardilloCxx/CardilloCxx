@@ -1,0 +1,67 @@
+
+.. _file_src_physics_integration_integration_base.hpp:
+
+File integration_base.hpp
+=========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_integration>` (``src/physics/integration``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/integration/integration_base.hpp``)
+-------------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_integration_integration_base.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../solver/projected_jacobi.hpp``
+
+- ``../solver/solver_base.hpp``
+
+- ``memory``
+
+- ``misc/types.hpp`` (:ref:`file_src_misc_types.hpp`)
+
+- ``physics/assembly/dynamics_assembler.hpp`` (:ref:`file_src_physics_assembly_dynamics_assembler.hpp`)
+
+- ``physics/world.hpp`` (:ref:`file_src_physics_world.hpp`)
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_integration_integration_base.cpp`
+
+- :ref:`file_src_physics_integration_moreau.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__integration`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1integration_1_1IntegrationBase`
+

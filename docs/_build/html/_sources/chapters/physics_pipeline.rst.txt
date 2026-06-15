@@ -1,0 +1,53 @@
+Physics Pipeline
+================
+
+The pipeline is the step-by-step program flow that turns the current ECS state into one simulation increment. It owns the collision manager, dynamics assembler, solver, integrator, and output writers.
+
+High-level flow
+---------------
+
+The current step order is:
+
+1. refresh the dynamics state
+2. drift the configuration by ``(1 - theta) * dt``
+3. rebuild state-dependent terms at the midpoint configuration
+4. solve for the new velocity / impulse increment
+5. drift the configuration by ``theta * dt``
+6. write VTK and tracked CSV output, then update the progress bar
+
+The relevant midpoint drift is what keeps collision frames, spring directions, and other state-dependent matrices aligned with the Moreau theta scheme.
+
+Midpoint assembly
+-----------------
+
+Let ``q_n`` be the configuration and ``u_n`` the generalized velocity. The pipeline advances the midpoint state first:
+
+.. math::
+
+   q_{n+\theta} = q_n + (1 - \theta)\,\Delta t\,u_n
+
+The dynamics assembler then updates all terms that depend on the current configuration, including collision geometry, contact Jacobians, and spring matrices. After the solver returns the corrected velocity increment, the engine completes the final drift:
+
+.. math::
+
+   q_{n+1} = q_{n+\theta} + \theta\,\Delta t\,u_{n+1}
+
+That split is the main reason the code can evaluate contact and spring data at the midpoint while still using a first-order Moreau-style update.
+
+Where collisions fit
+--------------------
+
+Collisions are not assembled once at the start of a run. They are refreshed every step because the contact set can change as the configuration evolves. The pipeline therefore treats the collision manager as a live subsystem rather than a static precomputation.
+
+The practical effect is:
+
+- contact normals and patch data are rebuilt from the current midpoint configuration
+- warmstarting can reuse the previous step when contact pairs persist
+- spring and beam contributions are assembled from the same updated geometry
+
+Integrator choice
+-----------------
+
+The code currently routes through the Moreau integrator. The config options that affect the update are ``moreau.theta``, ``moreau.implicit_gyroscopy``, and ``moreau.lambda_theta``.
+
+When you document a new solver or integrator later, this page is the right place to describe how it plugs into the existing pipeline stages.

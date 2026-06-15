@@ -1,0 +1,14 @@
+.. _exhale_typedef_misc_2types_8hpp_1a450392cfeb9ce773a495cf607a9fb3ac:
+
+Typedef cardillo::CscMatrix
+===========================
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::CscMatrix
+   :project: Cardillo

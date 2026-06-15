@@ -1,0 +1,55 @@
+
+.. _file_src_io_softbody_loader.cpp:
+
+File softbody_loader.cpp
+========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_io>` (``src/io``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/io/softbody_loader.cpp``)
+-------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_io_softbody_loader.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``coal/BVH/BVH_model.h``
+
+- ``coal/mesh_loader/loader.h``
+
+- ``softbody_loader.hpp`` (:ref:`file_src_io_softbody_loader.hpp`)
+
+- ``unordered_set``
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__io`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_softbody__loader_8cpp_1ab21bc378cef623aad80954e9bd463f1e`
+

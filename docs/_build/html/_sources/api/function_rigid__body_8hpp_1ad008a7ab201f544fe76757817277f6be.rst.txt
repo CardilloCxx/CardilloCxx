@@ -1,0 +1,14 @@
+.. _exhale_function_rigid__body_8hpp_1ad008a7ab201f544fe76757817277f6be:
+
+Function cardillo::RigidBody::detail::readStateFromComponents
+=============================================================
+
+- Defined in :ref:`file_src_rigid_body_rigid_body.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::RigidBody::detail::readStateFromComponents(const entt::registry&, entt::entity)
+   :project: Cardillo

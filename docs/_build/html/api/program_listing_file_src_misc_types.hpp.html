@@ -1,0 +1,222 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Program Listing for File types.hpp &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Program Listing for File types.hpp</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/program_listing_file_src_misc_types.hpp.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="program-listing-for-file-types-hpp">
+<span id="program-listing-file-src-misc-types-hpp"></span><h1>Program Listing for File types.hpp<a class="headerlink" href="#program-listing-for-file-types-hpp" title="Link to this heading"></a></h1>
+<p>↰ <a class="reference internal" href="file_src_misc_types.hpp.html#file-src-misc-types-hpp"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">src/misc/types.hpp</span></code>)</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#pragma once</span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;Eigen/Dense&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;Eigen/Geometry&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;Eigen/SparseCore&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
+
+<span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="w"> </span><span class="p">{</span>
+
+<span class="cp">#define real_t double</span>
+<span class="cp">#define index_t int</span>
+
+<span class="c1">// fixed size objects</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Vector0r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Vector</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Matrix30r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">using</span><span class="w"> </span><span class="n">Vector1r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Matrix11r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">using</span><span class="w"> </span><span class="n">Array2r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Array2i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">index_t</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Vector2r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Vector2i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">index_t</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">using</span><span class="w"> </span><span class="n">Vector3r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Vector3b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="kt">bool</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Array3i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">index_t</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Array3b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Array</span><span class="o">&lt;</span><span class="kt">bool</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Matrix33r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="c1">// Eigen does not provide SkewSymmetricMatrix3 as a template alias in all versions.</span>
+<span class="c1">// Represent a 3x3 skew-symmetric matrix as a fixed-size Eigen matrix and</span>
+<span class="c1">// provide a helper to build it from a 3-vector when needed.</span>
+<span class="k">using</span><span class="w"> </span><span class="n">SkewSymmetricMatrix3r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">using</span><span class="w"> </span><span class="n">Vector4r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Matrix44r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="kr">inline</span><span class="w"> </span><span class="n">SkewSymmetricMatrix3r</span><span class="w"> </span><span class="nf">skew_from_vector</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">SkewSymmetricMatrix3r</span><span class="w"> </span><span class="n">m</span><span class="p">;</span>
+<span class="w">    </span><span class="n">m</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="n">v</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="n">v</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="n">v</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="n">v</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span><span class="w"> </span><span class="o">-</span><span class="n">v</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="n">v</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">using</span><span class="w"> </span><span class="n">AngleAxis3r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">AngleAxis</span><span class="o">&lt;</span><span class="n">real_t</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Quaternion4r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Quaternion</span><span class="o">&lt;</span><span class="n">real_t</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="n">index_t</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="o">&gt;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Vectorr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="n">index_t</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="o">&gt;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Arrayri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">index_t</span><span class="p">,</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="n">index_t</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="o">&gt;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Vectori</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">index_t</span><span class="p">,</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="n">index_t</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="p">,</span><span class="w"> </span><span class="n">index_t</span><span class="w"> </span><span class="n">ColsAtCompileTime</span><span class="o">&gt;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Matrixr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="p">,</span><span class="w"> </span><span class="n">ColsAtCompileTime</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="n">index_t</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="p">,</span><span class="w"> </span><span class="n">index_t</span><span class="w"> </span><span class="n">ColsAtCompileTime</span><span class="o">&gt;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Matrixi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">index_t</span><span class="p">,</span><span class="w"> </span><span class="n">RowsAtCompileTime</span><span class="p">,</span><span class="w"> </span><span class="n">ColsAtCompileTime</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="c1">// dynamic size objects</span>
+<span class="k">using</span><span class="w"> </span><span class="n">ArrayXi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">index_t</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">ArrayXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">VectorXb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="kt">bool</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">VectorXi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">index_t</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">VectorXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">ArrayXXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Array</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">MatrixXXi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">index_t</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">MatrixXXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="p">,</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Dynamic</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="c1">// reference type, read only</span>
+<span class="c1">// TODO: Make this</span>
+<span class="c1">// using ConstRefVectorXr = const Eigen::Ref&lt;const VectorXr&gt;;</span>
+<span class="c1">// and allow for using RefVectorXr = Eigen::Ref&lt;VectorXr&gt;;</span>
+<span class="c1">// see https://stackoverflow.com/questions/21132538/correct-usage-of-the-eigenref-class</span>
+<span class="c1">// and https://libeigen.gitlab.io/docs/classEigen_1_1Ref.html for correct usage.</span>
+<span class="k">using</span><span class="w"> </span><span class="n">RefVectorXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Ref</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">VectorXr</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">RefVectorXi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Ref</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">VectorXi</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">RefVectorXb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Ref</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">VectorXb</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">RefMatrixXXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Ref</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">MatrixXXr</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">RefMatrixXXi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Ref</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">MatrixXXi</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="c1">// maps</span>
+<span class="k">using</span><span class="w"> </span><span class="n">MapArrayXi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Map</span><span class="o">&lt;</span><span class="n">ArrayXi</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">MapVectorXi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Map</span><span class="o">&lt;</span><span class="n">VectorXi</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">MapVectorXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Map</span><span class="o">&lt;</span><span class="n">VectorXr</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">MapMatrixXXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Map</span><span class="o">&lt;</span><span class="n">MatrixXXr</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="c1">// using MapQuaternion4r = Eigen::Map&lt;const Quaternion4r&gt;;</span>
+
+<span class="c1">// stl vectors</span>
+<span class="k">using</span><span class="w"> </span><span class="n">StlVectorXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">real_t</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">StlVectorXi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">index_t</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">StlVectorStlVectorXi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">index_t</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">StlVectorVectorXr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">VectorXr</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="c1">// sparse matrices</span>
+<span class="c1">// // TODO: do we want CooMatrixXXr, Tripletr, SparseMatrixXXr, CscMatrixXXr,</span>
+<span class="c1">// // CsrMatrixXXr?</span>
+<span class="c1">// using CooMatrix = miscellaneous::CooMatrix&lt;real_t&gt;;</span>
+<span class="c1">// using Triplet = Eigen::Triplet&lt;real_t&gt;;</span>
+<span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="kt">int</span><span class="w"> </span><span class="n">StorageLayout</span><span class="o">&gt;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">SparseMatrix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">SparseMatrix</span><span class="o">&lt;</span><span class="n">real_t</span><span class="p">,</span><span class="w"> </span><span class="n">StorageLayout</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">CscMatrix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SparseMatrix</span><span class="o">&lt;</span><span class="n">Eigen</span><span class="o">::</span><span class="n">ColMajor</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">CsrMatrix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SparseMatrix</span><span class="o">&lt;</span><span class="n">Eigen</span><span class="o">::</span><span class="n">RowMajor</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace cardillo</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

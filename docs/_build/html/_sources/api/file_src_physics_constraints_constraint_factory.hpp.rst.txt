@@ -1,0 +1,67 @@
+
+.. _file_src_physics_constraints_constraint_factory.hpp:
+
+File constraint_factory.hpp
+===========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_constraints>` (``src/physics/constraints``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/constraints/constraint_factory.hpp``)
+---------------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_constraints_constraint_factory.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../world.hpp``
+
+- ``constraints.hpp`` (:ref:`file_src_physics_constraints_constraints.hpp`)
+
+- ``entt/entt.hpp``
+
+- ``memory``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_api_physics_engine.hpp`
+
+- :ref:`file_src_physics_assets_beam_factory.cpp`
+
+- :ref:`file_src_physics_assets_body_factory.cpp`
+
+- :ref:`file_src_physics_world.cpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1ConstraintFactory`
+

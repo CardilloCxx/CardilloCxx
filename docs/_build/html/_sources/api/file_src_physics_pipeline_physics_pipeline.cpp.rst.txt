@@ -1,0 +1,68 @@
+
+.. _file_src_physics_pipeline_physics_pipeline.cpp:
+
+File physics_pipeline.cpp
+=========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_pipeline>` (``src/physics/pipeline``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/pipeline/physics_pipeline.cpp``)
+----------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_pipeline_physics_pipeline.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../collision/collision_coal.hpp``
+
+- ``../../io/csv_writer.hpp``
+
+- ``../../io/vtk_writer_binary.hpp``
+
+- ``../../misc/progress/ProgressBar.hpp``
+
+- ``../assembly/dynamics_assembler.hpp``
+
+- ``../integration/moreau.hpp``
+
+- ``../solver/clarabel_solver.hpp``
+
+- ``../solver/conjugate_gradient.hpp``
+
+- ``../solver/projected_gauss_seidel.hpp``
+
+- ``../solver/projected_jacobi.hpp``
+
+- ``../solver/qoco_solver.hpp``
+
+- ``memory``
+
+- ``physics_pipeline.hpp`` (:ref:`file_src_physics_pipeline_physics_pipeline.hpp`)
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+- :ref:`namespace_cardillo__physics__pipeline`
+

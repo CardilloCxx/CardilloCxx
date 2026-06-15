@@ -1,0 +1,14 @@
+.. _exhale_typedef_collision_2types_8hpp_1ae516225b98a5dc43dea663c0df3414c6:
+
+Typedef cardillo::collision::ContactList
+========================================
+
+- Defined in :ref:`file_src_collision_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::collision::ContactList
+   :project: Cardillo

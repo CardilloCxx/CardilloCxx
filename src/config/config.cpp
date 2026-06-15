@@ -38,31 +38,32 @@ Config ConfigReader::fromFile(const std::string& path) {
         std::string key = trim(s.substr(0, pos));
         std::string val = trim(s.substr(pos + 1));
 
-        if (key == "pj.max_iterations") {
+        // PJ / solver core parameters (accept both pj. and solver. prefix)
+        if (key == "pj.max_iterations" || key == "solver.max_iterations") {
             try {
                 cfg.pj_max_iterations = std::max(1, std::stoi(val));
                 cfg.has_pj_max_iterations = true;
             } catch (...) {
             }
-        } else if (key == "pj.tol_abs") {
+        } else if (key == "pj.tol_abs" || key == "solver.tol_abs") {
             try {
                 cfg.pj_tol_abs = static_cast<real_t>(std::stod(val));
                 cfg.has_pj_tol_abs = true;
             } catch (...) {
             }
-        } else if (key == "pj.tol_rel") {
+        } else if (key == "pj.tol_rel" || key == "solver.tol_rel") {
             try {
                 cfg.pj_tol_rel = static_cast<real_t>(std::stod(val));
                 cfg.has_pj_tol_rel = true;
             } catch (...) {
             }
-        } else if (key == "pj.relaxation") {
+        } else if (key == "pj.relaxation" || key == "solver.relaxation") {
             try {
                 cfg.pj_relaxation = static_cast<real_t>(std::stod(val));
                 cfg.has_pj_relaxation = true;
             } catch (...) {
             }
-        } else if (key == "pj.alpha") {
+        } else if (key == "pj.alpha" || key == "solver.alpha") {
             try {
                 cfg.pj_alpha = static_cast<real_t>(std::stod(val));
                 cfg.has_pj_alpha = true;
@@ -70,29 +71,29 @@ Config ConfigReader::fromFile(const std::string& path) {
             }
         }
 
-        else if (key == "pj.nesterov") {
+        else if (key == "pj.nesterov" || key == "solver.nesterov") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.pj_nesterov = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "pj.nesterov_beta_threshold") {
+        } else if (key == "pj.nesterov_beta_threshold" || key == "solver.nesterov_beta_threshold") {
             try {
                 cfg.pj_nesterov_beta_threshold = static_cast<real_t>(std::stod(val));
             } catch (...) {
             }
-        } else if (key == "pj.nesterov_restart_limit") {
+        } else if (key == "pj.nesterov_restart_limit" || key == "solver.nesterov_restart_limit") {
             try {
                 cfg.pj_nesterov_restart_limit = std::max(0, std::stoi(val));
             } catch (...) {
             }
-        } else if (key == "pj.warmstart") {
+        } else if (key == "pj.warmstart" || key == "solver.warmstart") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.pj_warmstart = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "pj.rdiag_true_delassus") {
+        } else if (key == "pj.rdiag_true_delassus" || key == "solver.rdiag_true_delassus") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.pj_rdiag_true_delassus = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "pj.convergence_csv_dir") {
+        } else if (key == "pj.convergence_csv_dir" || key == "solver.convergence_csv_dir") {
             cfg.pj_convergence_csv_dir = val;
         } else if (key == "debug.rb") {
             std::string v = val;
@@ -106,13 +107,13 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.debug_mesh = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "solver.name") {
+        } else if (key == "solver.name" || key == "integrator") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             if (v == "moreau" || v == "first_order" || v == "theta")
                 cfg.integrator = IntegratorType::Moreau;
             else {
-                std::cerr << "Warning: unrecognized solver.name '" << val << "'. Defaulting to Moreau." << std::endl;
+                std::cerr << "Warning: unrecognized integrator '" << val << "'. Defaulting to Moreau." << std::endl;
                 cfg.integrator = IntegratorType::Moreau;
             }
         } else if (key == "solver.type") {

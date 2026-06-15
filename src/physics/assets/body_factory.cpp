@@ -18,7 +18,7 @@
 namespace cardillo {
 namespace physics {
 
-index_t BodyFactory::addPointMass(World& sys, real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius) {
+entt::entity BodyFactory::addPointMass(World& sys, real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius) {
     auto& reg = sys.ecs();
     auto e = reg.create();
     reg.emplace<cardillo::C_PhysicsObject>(e);
@@ -35,10 +35,10 @@ index_t BodyFactory::addPointMass(World& sys, real_t mass, const Vector3r& x0, c
         reg.emplace<cardillo::C_Friction>(e, cardillo::C_Friction{sys.config().friction_default_mu});
     }
     sys.markStructureDirty();
-    return static_cast<index_t>(entt::to_integral(e));
+    return e;
 }
 
-index_t BodyFactory::addObstacleHeightField(World& sys, const Vector3r& position, const Quaternion4r& orientation, const std::string& exrPath, real_t x_dim, real_t y_dim, real_t z_scale,
+entt::entity BodyFactory::addObstacleHeightField(World& sys, const Vector3r& position, const Quaternion4r& orientation, const std::string& exrPath, real_t x_dim, real_t y_dim, real_t z_scale,
                                             real_t min_height) {
     auto& reg = sys.ecs();
     auto e = reg.create();
@@ -54,7 +54,7 @@ index_t BodyFactory::addObstacleHeightField(World& sys, const Vector3r& position
     }
     sys.markStructureDirty();
     (void)sys.getHeightFieldAsset(e);
-    return static_cast<index_t>(entt::to_integral(e));
+    return e;
 }
 
 std::vector<entt::entity> BodyFactory::addSoftBody(World& sys, const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position, const Quaternion4r& orientation,
@@ -77,8 +77,8 @@ std::vector<entt::entity> BodyFactory::addSoftBody(World& sys, const std::string
     for (const auto& p0 : sb.positions) {
         Vector3r pw = position + R * p0;
         Vector3r vw = linearVelocity + angularVelocity.cross(pw - position);
-        index_t id = addPointMass(sys, nodeMass, pw, vw, nodeRadius);
-        nodes.push_back(entt::entity(static_cast<uint32_t>(id)));
+        entt::entity id = addPointMass(sys, nodeMass, pw, vw, nodeRadius);
+        nodes.push_back(id);
     }
 
     for (const auto& e : sb.edges) {

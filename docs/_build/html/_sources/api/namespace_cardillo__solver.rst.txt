@@ -1,0 +1,50 @@
+
+.. _namespace_cardillo__solver:
+
+Namespace cardillo::solver
+==========================
+
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1solver_1_1workspace`
+
+- :ref:`exhale_class_classcardillo_1_1solver_1_1ClarabelSolver`
+
+- :ref:`exhale_class_classcardillo_1_1solver_1_1ConjugateGradientSolver`
+
+- :ref:`exhale_class_classcardillo_1_1solver_1_1ProjectedGaussSeidelSolver`
+
+- :ref:`exhale_class_classcardillo_1_1solver_1_1ProjectedJacobiSolver`
+
+- :ref:`exhale_class_classcardillo_1_1solver_1_1QocoSolver`
+
+- :ref:`exhale_class_classcardillo_1_1solver_1_1SolverBase`
+
+- :ref:`exhale_class_classcardillo_1_1solver_1_1WarmstartProvider`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_projected__jacobi_8cpp_1a9054a440131947ee5e3ffc96adc3edf2`
+
+- :ref:`exhale_function_projected__jacobi_8cpp_1acbb794e7cd096087a06a0892f61cb523`
+
+- :ref:`exhale_function_projected__jacobi_8cpp_1a843a651efab9cfa2c10d48e68b603394`
+
+- :ref:`exhale_function_projected__gauss__seidel_8cpp_1ae412e230eaa3b6f97f1c08bac15755c5`
+
+- :ref:`exhale_function_projected__jacobi_8cpp_1af6074798ebf08e45d0ea842fabb0716d`
+
+- :ref:`exhale_function_projected__gauss__seidel_8cpp_1a61e029ba684ad8ccb69474d8eef12344`
+
+- :ref:`exhale_function_projected__jacobi_8cpp_1a0dffff65bbaf4ffe7635f435e37ea010`
+
+- :ref:`exhale_function_projected__jacobi_8cpp_1a4e8b1357587f921426c3a91dc0fb4162`
+
+- :ref:`exhale_function_projected__jacobi_8cpp_1a1db1c1146e59303d16581782f4eba787`

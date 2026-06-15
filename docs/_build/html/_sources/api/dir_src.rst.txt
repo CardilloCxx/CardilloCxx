@@ -1,0 +1,21 @@
+.. _dir_src:
+
+
+Directory src
+=============
+
+
+*Directory path:* ``src``
+
+Subdirectories
+--------------
+
+- :ref:`dir_src_collision`
+- :ref:`dir_src_config`
+- :ref:`dir_src_io`
+- :ref:`dir_src_misc`
+- :ref:`dir_src_physics`
+- :ref:`dir_src_rigid_body`
+
+
+

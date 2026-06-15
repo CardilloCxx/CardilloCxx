@@ -1,0 +1,234 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worked Example: A Single Pendulum &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="API Reference" href="../../api/library_root.html" />
+    <link rel="prev" title="Stepping and Runtime Control" href="stepping.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="setup.html">Setup and Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bodies.html">Bodies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="constraints.html">Constraints and Joints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="splines.html">Splines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="trajectories.html">Trajectories and Kinematic Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="beams.html">Beams and Flexible Rods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stepping.html">Stepping and Runtime Control</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Worked Example: A Single Pendulum</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#minimal-config">Minimal config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#code">Code</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#see-also-existing-scenes">See also: existing scenes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../using_the_engine.html">Using The Engine</a></li>
+      <li class="breadcrumb-item active">Worked Example: A Single Pendulum</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/using_the_engine/example.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="worked-example-a-single-pendulum">
+<h1>Worked Example: A Single Pendulum<a class="headerlink" href="#worked-example-a-single-pendulum" title="Link to this heading"></a></h1>
+<p>This example builds a simple pendulum scene with:</p>
+<ul class="simple">
+<li><p>one dynamic capsule arm</p></li>
+<li><p>one small static pivot body</p></li>
+<li><p>one hinge joint between pivot and arm</p></li>
+<li><p>gravity in <code class="docutils literal notranslate"><span class="pre">-z</span></code></p></li>
+<li><p>a 30° initial offset</p></li>
+<li><p>a small initial angular velocity</p></li>
+<li><p>a simple step loop</p></li>
+</ul>
+<p>Using a real pivot body keeps the hinge inside the jointed pair and matches the
+common pattern used throughout the example scenes.</p>
+<section id="minimal-config">
+<h2>Minimal config<a class="headerlink" href="#minimal-config" title="Link to this heading"></a></h2>
+<p>You can load these settings from a config file or assign them in code:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">sim.T</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">5.0</span>
+<span class="na">sim.dt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">1e-3</span>
+<span class="na">sim.gravity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0 0 -9.81</span>
+
+<span class="na">output.folder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">./vtk_out</span>
+<span class="na">output.filename_prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">pendulum</span>
+<span class="na">output.interval_steps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">10</span>
+</pre></div>
+</div>
+</section>
+<section id="code">
+<h2>Code<a class="headerlink" href="#code" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;config/config.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;physics/api/physics.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;Eigen/Geometry&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cmath&gt;</span>
+
+<span class="k">using</span><span class="w"> </span><span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="o">::</span><span class="nn">physics</span><span class="p">;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">config</span><span class="o">::</span><span class="n">Config</span><span class="w"> </span><span class="n">cfg</span><span class="p">;</span>
+<span class="w">    </span><span class="n">cfg</span><span class="p">.</span><span class="n">sim_T</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span><span class="p">;</span>
+<span class="w">    </span><span class="n">cfg</span><span class="p">.</span><span class="n">sim_dt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1e-3</span><span class="p">;</span>
+<span class="w">    </span><span class="n">cfg</span><span class="p">.</span><span class="n">sim_gravity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mf">-9.81</span><span class="p">);</span>
+<span class="w">    </span><span class="n">cfg</span><span class="p">.</span><span class="n">output_folder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;./vtk_out&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">cfg</span><span class="p">.</span><span class="n">output_filename_prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;pendulum&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">cfg</span><span class="p">.</span><span class="n">output_interval_steps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">PhysicsEngine</span><span class="w"> </span><span class="n">engine</span><span class="p">(</span><span class="n">cfg</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.05</span><span class="p">;</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">halfLength</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.45</span><span class="p">;</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">pivotToCom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">radius</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">halfLength</span><span class="p">;</span><span class="w">   </span><span class="c1">// 0.5 m</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">angle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">30.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">M_PI</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">180.0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">initialOmega</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.5</span><span class="p">;</span><span class="w">                 </span><span class="c1">// rad/s about hinge axis</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">pivot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addStaticBody</span><span class="p">(</span>
+<span class="w">        </span><span class="n">CubeShape</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.03</span><span class="p">,</span><span class="w"> </span><span class="mf">0.03</span><span class="p">,</span><span class="w"> </span><span class="mf">0.03</span><span class="p">)),</span>
+<span class="w">        </span><span class="n">RigidState</span><span class="p">{});</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">position</span><span class="p">(</span>
+<span class="w">        </span><span class="n">pivotToCom</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">),</span>
+<span class="w">        </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">       </span><span class="o">-</span><span class="n">pivotToCom</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">));</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">Quaternion4r</span><span class="w"> </span><span class="n">orientation</span><span class="p">(</span>
+<span class="w">        </span><span class="n">Eigen</span><span class="o">::</span><span class="n">AngleAxis</span><span class="o">&lt;</span><span class="n">real_t</span><span class="o">&gt;</span><span class="p">(</span><span class="o">-</span><span class="n">angle</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitY</span><span class="p">()));</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">RigidState</span><span class="w"> </span><span class="n">armState</span><span class="p">(</span>
+<span class="w">        </span><span class="n">position</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span>
+<span class="w">        </span><span class="n">orientation</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="n">initialOmega</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">));</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">arm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addRigidBody</span><span class="p">(</span>
+<span class="w">        </span><span class="n">CapsuleShape</span><span class="p">(</span><span class="n">radius</span><span class="p">,</span><span class="w"> </span><span class="n">halfLength</span><span class="p">),</span>
+<span class="w">        </span><span class="n">armState</span><span class="p">,</span>
+<span class="w">        </span><span class="n">RigidProps</span><span class="p">(</span><span class="mf">1.0</span><span class="p">));</span>
+
+<span class="w">    </span><span class="n">engine</span><span class="p">.</span><span class="n">addHingeConstraint</span><span class="p">(</span>
+<span class="w">        </span><span class="n">pivot</span><span class="p">,</span>
+<span class="w">        </span><span class="n">arm</span><span class="p">,</span>
+<span class="w">        </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitY</span><span class="p">()));</span>
+
+<span class="w">    </span><span class="n">engine</span><span class="p">.</span><span class="n">disableCollisionBetween</span><span class="p">(</span><span class="n">pivot</span><span class="p">,</span><span class="w"> </span><span class="n">arm</span><span class="p">);</span>
+<span class="w">    </span><span class="n">engine</span><span class="p">.</span><span class="n">track</span><span class="p">(</span><span class="n">arm</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;pendulum_arm&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">engine</span><span class="p">.</span><span class="n">isFinished</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">engine</span><span class="p">.</span><span class="n">step</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="see-also-existing-scenes">
+<h2>See also: existing scenes<a class="headerlink" href="#see-also-existing-scenes" title="Link to this heading"></a></h2>
+<p>For more complete setups, take a look at the scenes already in
+<code class="docutils literal notranslate"><span class="pre">examples/scenes</span></code>.</p>
+<p>Those examples show real project usage of hinges, trajectories, beams, and
+larger assembled mechanisms.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="stepping.html" class="btn btn-neutral float-left" title="Stepping and Runtime Control" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../api/library_root.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

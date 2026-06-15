@@ -1,0 +1,14 @@
+.. _exhale_function_transformations_8hpp_1ae974527eaed19b08628832b521343ab0:
+
+Function cardillo::transform::rigidState
+========================================
+
+- Defined in :ref:`file_src_rigid_body_transformations.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::transform::rigidState(const RigidBody::RigidState&, const RigidBody::RigidState&, const RigidBody::RigidState&)
+   :project: Cardillo

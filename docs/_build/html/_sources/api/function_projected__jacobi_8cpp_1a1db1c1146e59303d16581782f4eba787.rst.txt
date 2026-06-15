@@ -1,0 +1,14 @@
+.. _exhale_function_projected__jacobi_8cpp_1a1db1c1146e59303d16581782f4eba787:
+
+Function cardillo::solver::standard_loop
+========================================
+
+- Defined in :ref:`file_src_physics_solver_projected_jacobi.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::solver::standard_loop(std::unique_ptr<workspace>&, cardillo::config::Config&)
+   :project: Cardillo

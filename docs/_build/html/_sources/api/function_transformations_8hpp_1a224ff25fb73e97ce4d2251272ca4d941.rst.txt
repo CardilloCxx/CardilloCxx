@@ -1,0 +1,14 @@
+.. _exhale_function_transformations_8hpp_1a224ff25fb73e97ce4d2251272ca4d941:
+
+Function cardillo::transform::orientation
+=========================================
+
+- Defined in :ref:`file_src_rigid_body_transformations.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::transform::orientation(const Quaternion4r&, const RigidBody::RigidState&, const RigidBody::RigidState&)
+   :project: Cardillo

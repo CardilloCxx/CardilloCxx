@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1config_1_1ConfigReader:
+
+Class ConfigReader
+==================
+
+- Defined in :ref:`file_src_config_config.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::config::ConfigReader
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

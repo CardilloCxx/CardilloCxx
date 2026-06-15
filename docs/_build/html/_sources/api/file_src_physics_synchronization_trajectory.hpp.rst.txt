@@ -1,0 +1,57 @@
+
+.. _file_src_physics_synchronization_trajectory.hpp:
+
+File trajectory.hpp
+===================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_synchronization>` (``src/physics/synchronization``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/synchronization/trajectory.hpp``)
+-----------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_synchronization_trajectory.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../world.hpp``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_synchronization_derived_entity_sync.cpp`
+
+- :ref:`file_src_physics_synchronization_trajectory.cpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1physics_1_1Trajectory`
+

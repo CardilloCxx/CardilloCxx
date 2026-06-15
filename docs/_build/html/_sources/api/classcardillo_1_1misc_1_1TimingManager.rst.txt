@@ -1,0 +1,30 @@
+.. _exhale_class_classcardillo_1_1misc_1_1TimingManager:
+
+Class TimingManager
+===================
+
+- Defined in :ref:`file_src_misc_timings_TimingManager.hpp`
+
+
+Nested Relationships
+--------------------
+
+
+Nested Types
+************
+
+- :ref:`exhale_struct_structcardillo_1_1misc_1_1TimingManager_1_1Active`
+- :ref:`exhale_struct_structcardillo_1_1misc_1_1TimingManager_1_1HierNode`
+- :ref:`exhale_class_classcardillo_1_1misc_1_1TimingManager_1_1Scope`
+- :ref:`exhale_struct_structcardillo_1_1misc_1_1TimingManager_1_1Stats`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::misc::TimingManager
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

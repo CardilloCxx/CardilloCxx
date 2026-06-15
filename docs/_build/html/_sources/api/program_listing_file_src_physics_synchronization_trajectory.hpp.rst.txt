@@ -1,0 +1,26 @@
+
+.. _program_listing_file_src_physics_synchronization_trajectory.hpp:
+
+Program Listing for File trajectory.hpp
+=======================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_physics_synchronization_trajectory.hpp>` (``src/physics/synchronization/trajectory.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #pragma once
+   
+   #include "../world.hpp"
+   
+   namespace cardillo {
+   namespace physics {
+   
+   class Trajectory {
+      public:
+       static void update(World& world, real_t dt);
+   };
+   
+   }  // namespace physics
+   }  // namespace cardillo

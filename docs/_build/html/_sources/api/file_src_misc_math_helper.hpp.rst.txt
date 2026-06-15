@@ -1,0 +1,63 @@
+
+.. _file_src_misc_math_helper.hpp:
+
+File math_helper.hpp
+====================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_misc>` (``src/misc``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/misc/math_helper.hpp``)
+-----------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_misc_math_helper.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``Eigen/Dense``
+
+- ``Eigen/Geometry``
+
+- ``types.hpp`` (:ref:`file_src_physics_ecs_types.hpp`)
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_physics_assembly_dynamics_assembler.hpp`
+
+- :ref:`file_src_physics_assets_body_factory.hpp`
+
+- :ref:`file_src_physics_world.hpp`
+
+- :ref:`file_src_rigid_body_transformations.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1MathHelper`
+

@@ -1,0 +1,14 @@
+.. _exhale_function_heightmap__loader_8cpp_1a93d1831d8d3e246a8bc9ee7bd1e98952:
+
+Function cardillo::io::load_exr_heightmap
+=========================================
+
+- Defined in :ref:`file_src_io_heightmap_loader.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::io::load_exr_heightmap(const std::string&, Eigen::Matrix<coal::CoalScalar, Eigen::Dynamic, Eigen::Dynamic>&, int&, int&)
+   :project: Cardillo

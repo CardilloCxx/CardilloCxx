@@ -1,0 +1,17 @@
+.. _exhale_struct_structcardillo_1_1misc_1_1BCCHeader:
+
+Struct BCCHeader
+================
+
+- Defined in :ref:`file_src_misc_spline.cpp`
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: cardillo::misc::BCCHeader
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

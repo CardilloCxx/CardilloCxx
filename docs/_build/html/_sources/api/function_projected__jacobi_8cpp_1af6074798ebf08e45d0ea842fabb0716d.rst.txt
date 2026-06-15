@@ -1,0 +1,14 @@
+.. _exhale_function_projected__jacobi_8cpp_1af6074798ebf08e45d0ea842fabb0716d:
+
+Function cardillo::solver::project(std::unique_ptr<workspace>&)
+===============================================================
+
+- Defined in :ref:`file_src_physics_solver_projected_jacobi.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::solver::project(std::unique_ptr<workspace>&)
+   :project: Cardillo

@@ -1,0 +1,17 @@
+.. _exhale_struct_structIndex:
+
+Template Struct Index
+=====================
+
+- Defined in :ref:`file_src_misc_dofs.hpp`
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: Index
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

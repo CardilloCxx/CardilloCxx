@@ -1,0 +1,17 @@
+.. _exhale_struct_structcardillo_1_1config_1_1Config:
+
+Struct Config
+=============
+
+- Defined in :ref:`file_src_config_config.hpp`
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: cardillo::config::Config
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

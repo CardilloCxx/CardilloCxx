@@ -1,0 +1,14 @@
+.. _exhale_function_rigid__body_8hpp_1a4da45b812ab0cc3793332aa7fa860339:
+
+Function cardillo::RigidBody::getState
+======================================
+
+- Defined in :ref:`file_src_rigid_body_rigid_body.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::RigidBody::getState(const entt::registry&, entt::entity)
+   :project: Cardillo

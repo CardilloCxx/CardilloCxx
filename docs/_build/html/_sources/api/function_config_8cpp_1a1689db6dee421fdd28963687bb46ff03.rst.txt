@@ -1,0 +1,14 @@
+.. _exhale_function_config_8cpp_1a1689db6dee421fdd28963687bb46ff03:
+
+Function cardillo::config::iequals
+==================================
+
+- Defined in :ref:`file_src_config_config.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::config::iequals(const std::string&, const std::string&)
+   :project: Cardillo

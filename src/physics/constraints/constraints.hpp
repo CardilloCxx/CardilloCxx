@@ -34,11 +34,15 @@ struct ConstraintResult {
     std::vector<bool> a_used;
 };
 
-// Reference for a joint frame: position/orientation expressed in a frame entity
-// (or inertial frame if ref is null).
+/// Describes the position and orientation of a joint in a reference frame.
+/// When @p ref is empty all values are in world (inertial) frame.
+/// Column 0 of @p A_refJ is the primary (hinge) axis for revolute joints.
 struct JointFrame {
+    /// Joint origin in the reference frame (metres).
     Vector3r r_refJ{Vector3r::Zero()};
+    /// Joint orientation in the reference frame. Column 0 is the hinge/primary axis.
     Matrix33r A_refJ{Matrix33r::Identity()};
+    /// Optional reference entity whose frame defines r_refJ and A_refJ. Empty = world frame.
     std::optional<entt::entity> ref{std::nullopt};
 
     JointFrame() = default;

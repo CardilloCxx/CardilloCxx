@@ -1,0 +1,210 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>File ecs_types.hpp &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">File ecs_types.hpp</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/file_src_physics_ecs_types.hpp.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="file-ecs-types-hpp">
+<span id="file-src-physics-ecs-types-hpp"></span><h1>File ecs_types.hpp<a class="headerlink" href="#file-ecs-types-hpp" title="Link to this heading"></a></h1>
+<p>↰ <a class="reference internal" href="dir_src_physics.html#dir-src-physics"><span class="std std-ref">Parent directory</span></a> (<code class="docutils literal notranslate"><span class="pre">src/physics</span></code>)</p>
+<section id="definition-src-physics-ecs-types-hpp">
+<h2>Definition (<code class="docutils literal notranslate"><span class="pre">src/physics/ecs_types.hpp</span></code>)<a class="headerlink" href="#definition-src-physics-ecs-types-hpp" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="program_listing_file_src_physics_ecs_types.hpp.html">Program Listing for File ecs_types.hpp</a></li>
+</ul>
+</div>
+</section>
+<section id="includes">
+<h2>Includes<a class="headerlink" href="#includes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">../misc/types.hpp</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Eigen/Dense</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">entt/entt.hpp</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">functional</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">optional</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">string</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">utility</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vector</span></code></p></li>
+</ul>
+</section>
+<section id="included-by">
+<h2>Included By<a class="headerlink" href="#included-by" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="file_src_io_csv_writer.hpp.html#file-src-io-csv-writer-hpp"><span class="std std-ref">File csv_writer.hpp</span></a></p></li>
+<li><p><a class="reference internal" href="file_src_physics_world.hpp.html#file-src-physics-world-hpp"><span class="std std-ref">File world.hpp</span></a></p></li>
+<li><p><a class="reference internal" href="file_src_rigid_body_rigid_body.hpp.html#file-src-rigid-body-rigid-body-hpp"><span class="std std-ref">File rigid_body.hpp</span></a></p></li>
+</ul>
+</section>
+<section id="namespaces">
+<h2>Namespaces<a class="headerlink" href="#namespaces" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="namespace_cardillo.html#namespace-cardillo"><span class="std std-ref">Namespace cardillo</span></a></p></li>
+</ul>
+</section>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="structcardillo_1_1C__AngularAcceleration3.html#exhale-struct-structcardillo-1-1c-angularacceleration3"><span class="std std-ref">Struct C_AngularAcceleration3</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__AngularVelocity3.html#exhale-struct-structcardillo-1-1c-angularvelocity3"><span class="std std-ref">Struct C_AngularVelocity3</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__BeamElement.html#exhale-struct-structcardillo-1-1c-beamelement"><span class="std std-ref">Struct C_BeamElement</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__BodyIndex.html#exhale-struct-structcardillo-1-1c-bodyindex"><span class="std std-ref">Struct C_BodyIndex</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Capsule.html#exhale-struct-structcardillo-1-1c-capsule"><span class="std std-ref">Struct C_Capsule</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__CapsuleVisualTag.html#exhale-struct-structcardillo-1-1c-capsulevisualtag"><span class="std std-ref">Struct C_CapsuleVisualTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Collidable.html#exhale-struct-structcardillo-1-1c-collidable"><span class="std std-ref">Struct C_Collidable</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Cone.html#exhale-struct-structcardillo-1-1c-cone"><span class="std std-ref">Struct C_Cone</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__ConeVisualTag.html#exhale-struct-structcardillo-1-1c-conevisualtag"><span class="std std-ref">Struct C_ConeVisualTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Cube.html#exhale-struct-structcardillo-1-1c-cube"><span class="std std-ref">Struct C_Cube</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__CubeVisualTag.html#exhale-struct-structcardillo-1-1c-cubevisualtag"><span class="std std-ref">Struct C_CubeVisualTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Cylinder.html#exhale-struct-structcardillo-1-1c-cylinder"><span class="std std-ref">Struct C_Cylinder</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__CylinderVisualTag.html#exhale-struct-structcardillo-1-1c-cylindervisualtag"><span class="std std-ref">Struct C_CylinderVisualTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__DirectorTriad.html#exhale-struct-structcardillo-1-1c-directortriad"><span class="std std-ref">Struct C_DirectorTriad</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__ExternalForce.html#exhale-struct-structcardillo-1-1c-externalforce"><span class="std std-ref">Struct C_ExternalForce</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__ExternalTorque.html#exhale-struct-structcardillo-1-1c-externaltorque"><span class="std std-ref">Struct C_ExternalTorque</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Friction.html#exhale-struct-structcardillo-1-1c-friction"><span class="std std-ref">Struct C_Friction</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__HeightField.html#exhale-struct-structcardillo-1-1c-heightfield"><span class="std std-ref">Struct C_HeightField</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html#exhale-struct-structcardillo-1-1c-heightfieldvisualtag"><span class="std std-ref">Struct C_HeightFieldVisualTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html#exhale-struct-structcardillo-1-1c-inertiadiag"><span class="std std-ref">Struct C_InertiaDiag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__LinearAcceleration3.html#exhale-struct-structcardillo-1-1c-linearacceleration3"><span class="std std-ref">Struct C_LinearAcceleration3</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__LinearVelocity3.html#exhale-struct-structcardillo-1-1c-linearvelocity3"><span class="std std-ref">Struct C_LinearVelocity3</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Mass.html#exhale-struct-structcardillo-1-1c-mass"><span class="std std-ref">Struct C_Mass</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Mesh.html#exhale-struct-structcardillo-1-1c-mesh"><span class="std std-ref">Struct C_Mesh</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__MeshVisualTag.html#exhale-struct-structcardillo-1-1c-meshvisualtag"><span class="std std-ref">Struct C_MeshVisualTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Orientation.html#exhale-struct-structcardillo-1-1c-orientation"><span class="std std-ref">Struct C_Orientation</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__PhysicsObject.html#exhale-struct-structcardillo-1-1c-physicsobject"><span class="std std-ref">Struct C_PhysicsObject</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Plane.html#exhale-struct-structcardillo-1-1c-plane"><span class="std std-ref">Struct C_Plane</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__PlaneVisualTag.html#exhale-struct-structcardillo-1-1c-planevisualtag"><span class="std std-ref">Struct C_PlaneVisualTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__PointMassTag.html#exhale-struct-structcardillo-1-1c-pointmasstag"><span class="std std-ref">Struct C_PointMassTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__PointVisualTag.html#exhale-struct-structcardillo-1-1c-pointvisualtag"><span class="std std-ref">Struct C_PointVisualTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Position3.html#exhale-struct-structcardillo-1-1c-position3"><span class="std std-ref">Struct C_Position3</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__Radius.html#exhale-struct-structcardillo-1-1c-radius"><span class="std std-ref">Struct C_Radius</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RB__Capsule.html#exhale-struct-structcardillo-1-1c-rb-capsule"><span class="std std-ref">Struct C_RB_Capsule</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RB__Cone.html#exhale-struct-structcardillo-1-1c-rb-cone"><span class="std std-ref">Struct C_RB_Cone</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RB__Cube.html#exhale-struct-structcardillo-1-1c-rb-cube"><span class="std std-ref">Struct C_RB_Cube</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RB__Cylinder.html#exhale-struct-structcardillo-1-1c-rb-cylinder"><span class="std std-ref">Struct C_RB_Cylinder</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html#exhale-struct-structcardillo-1-1c-rb-heightfield"><span class="std std-ref">Struct C_RB_HeightField</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RB__Mesh.html#exhale-struct-structcardillo-1-1c-rb-mesh"><span class="std std-ref">Struct C_RB_Mesh</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RB__Plane.html#exhale-struct-structcardillo-1-1c-rb-plane"><span class="std std-ref">Struct C_RB_Plane</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RB__Sphere.html#exhale-struct-structcardillo-1-1c-rb-sphere"><span class="std std-ref">Struct C_RB_Sphere</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RigidBodyDirectorTag.html#exhale-struct-structcardillo-1-1c-rigidbodydirectortag"><span class="std std-ref">Struct C_RigidBodyDirectorTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__RigidBodyTag.html#exhale-struct-structcardillo-1-1c-rigidbodytag"><span class="std std-ref">Struct C_RigidBodyTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__SoftBodySurface.html#exhale-struct-structcardillo-1-1c-softbodysurface"><span class="std std-ref">Struct C_SoftBodySurface</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__SoftBodyVisualTag.html#exhale-struct-structcardillo-1-1c-softbodyvisualtag"><span class="std std-ref">Struct C_SoftBodyVisualTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__StaticTrajectory.html#exhale-struct-structcardillo-1-1c-statictrajectory"><span class="std std-ref">Struct C_StaticTrajectory</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__TrackTag.html#exhale-struct-structcardillo-1-1c-tracktag"><span class="std std-ref">Struct C_TrackTag</span></a></p></li>
+<li><p><a class="reference internal" href="structcardillo_1_1C__VisualObject.html#exhale-struct-structcardillo-1-1c-visualobject"><span class="std std-ref">Struct C_VisualObject</span></a></p></li>
+</ul>
+</section>
+<section id="typedefs">
+<h2>Typedefs<a class="headerlink" href="#typedefs" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="typedef_ecs__types_8hpp_1a11b835653d7e114058ff0eea59406fd5.html#exhale-typedef-ecs-types-8hpp-1a11b835653d7e114058ff0eea59406fd5"><span class="std std-ref">Typedef cardillo::TrajectoryPose</span></a></p></li>
+<li><p><a class="reference internal" href="typedef_ecs__types_8hpp_1aa840ed570846e4bb41c163ba81506b9c.html#exhale-typedef-ecs-types-8hpp-1aa840ed570846e4bb41c163ba81506b9c"><span class="std std-ref">Typedef cardillo::TrajectoryTwist</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

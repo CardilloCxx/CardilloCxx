@@ -1,0 +1,14 @@
+.. _exhale_function_misc_2types_8hpp_1a2bc31cba3d14129d8f3920f17377c68e:
+
+Function cardillo::skew_from_vector
+===================================
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::skew_from_vector(const Vector3r&)
+   :project: Cardillo

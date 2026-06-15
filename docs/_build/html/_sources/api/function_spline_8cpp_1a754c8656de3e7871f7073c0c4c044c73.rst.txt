@@ -1,0 +1,14 @@
+.. _exhale_function_spline_8cpp_1a754c8656de3e7871f7073c0c4c044c73:
+
+Function cardillo::misc::loadSplinesFromBCC
+===========================================
+
+- Defined in :ref:`file_src_misc_spline.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::misc::loadSplinesFromBCC(const std::string&, real_t)
+   :project: Cardillo

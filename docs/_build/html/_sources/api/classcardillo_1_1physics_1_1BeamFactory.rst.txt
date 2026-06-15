@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1physics_1_1BeamFactory:
+
+Class BeamFactory
+=================
+
+- Defined in :ref:`file_src_physics_assets_beam_factory.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::physics::BeamFactory
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

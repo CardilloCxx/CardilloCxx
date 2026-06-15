@@ -1,0 +1,282 @@
+
+.. _program_listing_file_src_config_config.cpp:
+
+Program Listing for File config.cpp
+===================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_config_config.cpp>` (``src/config/config.cpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #include "config.hpp"
+   #include <algorithm>
+   #include <cctype>
+   #include <fstream>
+   #include <iostream>
+   #include <sstream>
+   #include <stdexcept>
+   
+   namespace cardillo::config {
+   
+   static inline std::string trim(const std::string& s) {
+       size_t b = 0, e = s.size();
+       while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
+       while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
+       return s.substr(b, e - b);
+   }
+   
+   static inline bool iequals(const std::string& a, const std::string& b) {
+       return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](char c1, char c2) { return std::tolower(static_cast<unsigned char>(c1)) == std::tolower(static_cast<unsigned char>(c2)); });
+   }
+   
+   Config ConfigReader::fromFile(const std::string& path) {
+       Config cfg;  // start with defaults from header
+       std::ifstream f(path);
+       if (!f) return cfg;  // return defaults if file can't be opened
+       std::string line;
+       while (std::getline(f, line)) {
+           std::string s = trim(line);
+           if (s.empty()) continue;
+           // Strip inline comments starting with '#'
+           auto hashPos = s.find('#');
+           if (hashPos != std::string::npos) {
+               s = trim(s.substr(0, hashPos));
+           }
+           if (s.empty()) continue;
+           auto pos = s.find('=');
+           if (pos == std::string::npos) continue;
+           std::string key = trim(s.substr(0, pos));
+           std::string val = trim(s.substr(pos + 1));
+   
+           // PJ / solver core parameters (accept both pj. and solver. prefix)
+           if (key == "pj.max_iterations" || key == "solver.max_iterations") {
+               try {
+                   cfg.pj_max_iterations = std::max(1, std::stoi(val));
+                   cfg.has_pj_max_iterations = true;
+               } catch (...) {
+               }
+           } else if (key == "pj.tol_abs" || key == "solver.tol_abs") {
+               try {
+                   cfg.pj_tol_abs = static_cast<real_t>(std::stod(val));
+                   cfg.has_pj_tol_abs = true;
+               } catch (...) {
+               }
+           } else if (key == "pj.tol_rel" || key == "solver.tol_rel") {
+               try {
+                   cfg.pj_tol_rel = static_cast<real_t>(std::stod(val));
+                   cfg.has_pj_tol_rel = true;
+               } catch (...) {
+               }
+           } else if (key == "pj.relaxation" || key == "solver.relaxation") {
+               try {
+                   cfg.pj_relaxation = static_cast<real_t>(std::stod(val));
+                   cfg.has_pj_relaxation = true;
+               } catch (...) {
+               }
+           } else if (key == "pj.alpha" || key == "solver.alpha") {
+               try {
+                   cfg.pj_alpha = static_cast<real_t>(std::stod(val));
+                   cfg.has_pj_alpha = true;
+               } catch (...) {
+               }
+           }
+   
+           else if (key == "pj.nesterov" || key == "solver.nesterov") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.pj_nesterov = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "pj.nesterov_beta_threshold" || key == "solver.nesterov_beta_threshold") {
+               try {
+                   cfg.pj_nesterov_beta_threshold = static_cast<real_t>(std::stod(val));
+               } catch (...) {
+               }
+           } else if (key == "pj.nesterov_restart_limit" || key == "solver.nesterov_restart_limit") {
+               try {
+                   cfg.pj_nesterov_restart_limit = std::max(0, std::stoi(val));
+               } catch (...) {
+               }
+           } else if (key == "pj.warmstart" || key == "solver.warmstart") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.pj_warmstart = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "pj.rdiag_true_delassus" || key == "solver.rdiag_true_delassus") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.pj_rdiag_true_delassus = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "pj.convergence_csv_dir" || key == "solver.convergence_csv_dir") {
+               cfg.pj_convergence_csv_dir = val;
+           } else if (key == "debug.rb") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.debug_rb = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "debug.pj") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.debug_pj = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "debug.mesh") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.debug_mesh = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "solver.name" || key == "integrator") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               if (v == "moreau" || v == "first_order" || v == "theta")
+                   cfg.integrator = IntegratorType::Moreau;
+               else {
+                   std::cerr << "Warning: unrecognized integrator '" << val << "'. Defaulting to Moreau." << std::endl;
+                   cfg.integrator = IntegratorType::Moreau;
+               }
+           } else if (key == "solver.type") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               if (v == "projected_jacobi" || v == "projectedjacobi" || v == "pj")
+                   cfg.solver = SolverType::ProjectedJacobi;
+               else if (v == "projected_gauss_seidel" || v == "projectedgaussseidel" || v == "pgs")
+                   cfg.solver = SolverType::ProjectedGaussSeidel;
+               else if (v == "ip" || v == "interior_point" || v == "interior point" || v == "qoco" || v == "qoco_solver")
+                   cfg.solver = SolverType::Qoco;
+               else if (v == "clarabel" || v == "clarabel_solver" || v == "clarabelcpp")
+                   cfg.solver = SolverType::Clarabel;
+               else if (v == "conjugate_gradient" || v == "conjugategradient" || v == "cg")
+                   cfg.solver = SolverType::ConjugateGradient;
+               else {
+                   std::cerr << "Warning: unrecognized solver.type '" << val << "'. Defaulting to ProjectedJacobi." << std::endl;
+                   cfg.solver = SolverType::ProjectedJacobi;
+               }
+           } else if (key == "qoco.backend") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               if (v == "auto" || v == "cpu" || v == "builtin" || v == "cuda") {
+                   if (v == "builtin") v = "cpu";
+                   cfg.qoco_backend = v;
+               }
+           } else if (key == "solver.kkt_static_reg" || key == "ip.kkt_static_reg" || key == "qoco.kkt_static_reg" || key == "clarabel.static_regularization_constant") {
+               try {
+                   cfg.ip_kkt_static_reg = static_cast<real_t>(std::stod(val));
+               } catch (...) {
+               }
+           } else if (key == "solver.kkt_dynamic_reg" || key == "ip.kkt_dynamic_reg" || key == "qoco.kkt_dynamic_reg" || key == "clarabel.dynamic_regularization_delta") {
+               try {
+                   cfg.ip_kkt_dynamic_reg = static_cast<real_t>(std::stod(val));
+               } catch (...) {
+               }
+           } else if (key == "solver.iter_ref_iters" || key == "ip.iter_ref_iters" || key == "qoco.iter_ref_iters" || key == "clarabel.iterative_refinement_max_iter") {
+               try {
+                   cfg.ip_iter_ref_iters = std::max(0, std::stoi(val));
+               } catch (...) {
+               }
+           } else if (key == "solver.constraint_bias_factor" || key == "constraint_bias_factor" || key == "baumgarte_bias_factor" || key == "baumgarte_bias" || key == "baumgarte_factor" ||
+                      key == "constraint_bias") {
+               try {
+                   cfg.constraint_bias_factor = static_cast<real_t>(std::stod(val));
+               } catch (...) {
+               }
+           } else if (key == "moreau.theta" || key == "solver.theta") {
+               try {
+                   cfg.moreau_theta = static_cast<real_t>(std::stod(val));
+               } catch (...) {
+               }
+           } else if (key == "moreau.implicit_gyroscopy" || key == "solver.implicit_gyroscopy") {
+               cfg.moreau_implicit_gyroscopy = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
+           } else if (key == "moreau.lambda_theta" || key == "solver.lambda_theta") {
+               cfg.moreau_lambda_theta = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
+           } else if (key == "sim.T") {
+               try {
+                   cfg.sim_T = static_cast<real_t>(std::stod(val));
+               } catch (...) {
+               }
+           } else if (key == "sim.dt") {
+               try {
+                   cfg.sim_dt = static_cast<real_t>(std::stod(val));
+               } catch (...) {
+               }
+           } else if (key == "sim.gravity") {
+               std::string v = val;
+               // Allow commas or spaces as separators
+               std::replace(v.begin(), v.end(), ',', ' ');
+               std::istringstream ss(v);
+               double gx = 0, gy = 0, gz = -9.81;
+               if (ss >> gx >> gy >> gz) {
+                   cfg.sim_gravity = Vector3r((real_t)gx, (real_t)gy, (real_t)gz);
+               }
+           } else if (key == "output.write_contacts") {
+               cfg.output_write_contacts = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
+           } else if (key == "output.interval_steps") {
+               try {
+                   cfg.output_interval_steps = std::max(1, std::stoi(val));
+               } catch (...) {
+               }
+           } else if (key == "output.heightfield_stride") {
+               try {
+                   cfg.output_heightfield_stride = std::max(1, std::stoi(val));
+               } catch (...) {
+               }
+           } else if (key == "output.contacts_body_vectors") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.output_contacts_body_vectors = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "output.folder") {
+               cfg.output_folder = val;
+           } else if (key == "output.filename_prefix") {
+               cfg.output_filename_prefix = val;
+           } else if (key == "collision.broadphase") {
+               cfg.collision_broadphase = val;
+           } else if (key == "collision.disable_all") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.collision_disable_all = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "collision.max_raw_contacts") {
+               try {
+                   cfg.collision_max_raw_contacts = std::max(1, std::stoi(val));
+               } catch (...) {
+               }
+           } else if (key == "collision.max_patches") {
+               try {
+                   int v = std::max(0, std::stoi(val));
+                   cfg.collision_max_patches = static_cast<std::size_t>(v);
+               } catch (...) {
+               }
+           } else if (key == "collision.use_patch_vertices") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.collision_use_patch_vertices = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "collision.match_max_dist") {
+               try {
+                   cfg.collision_match_max_dist = static_cast<real_t>(std::stod(val));
+                   if (cfg.collision_match_max_dist < (real_t)0) cfg.collision_match_max_dist = (real_t)0;
+               } catch (...) {
+               }
+           } else if (key == "collision.min_pair_contact_distance") {
+               try {
+                   cfg.collision_min_pair_contact_distance = static_cast<real_t>(std::stod(val));
+                   if (cfg.collision_min_pair_contact_distance < (real_t)0) cfg.collision_min_pair_contact_distance = (real_t)0;
+               } catch (...) {
+               }
+           } else if (key == "collision.security_margin") {
+               try {
+                   cfg.collision_security_margin = static_cast<real_t>(std::stod(val));
+               } catch (...) {
+               }
+           } else if (key == "friction.enable") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               cfg.friction_enable = (v == "1" || v == "true" || v == "yes" || v == "on");
+           } else if (key == "friction.combine") {
+               std::string v = val;
+               std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+               if (v == "min" || v == "arith" || v == "geom") cfg.friction_combine = v;
+           } else if (key == "friction.default_mu") {
+               try {
+                   cfg.friction_default_mu = static_cast<real_t>(std::stod(val));
+               } catch (...) {
+               }
+           } else if (key == "scene.name") {
+               cfg.scene_name = val;
+           }
+       }
+       return cfg;
+   }
+   
+   }  // namespace cardillo::config

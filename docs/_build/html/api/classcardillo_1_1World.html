@@ -1,0 +1,550 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Class World &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Enum IntegratorType" href="enum_config_8hpp_1a458b79649d6e626590d6374440aa027d.html" />
+    <link rel="prev" title="Class TripletMatrix" href="classcardillo_1_1TripletMatrix.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="library_root.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="library_root.html#full-api">Full API</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#namespaces">Namespaces</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="library_root.html#classes-and-structs">Classes and Structs</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__AngularAcceleration3.html">Struct C_AngularAcceleration3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__AngularVelocity3.html">Struct C_AngularVelocity3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__BeamElement.html">Struct C_BeamElement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__BodyIndex.html">Struct C_BodyIndex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Capsule.html">Struct C_Capsule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__CapsuleVisualTag.html">Struct C_CapsuleVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Collidable.html">Struct C_Collidable</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Cone.html">Struct C_Cone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ConeVisualTag.html">Struct C_ConeVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Cube.html">Struct C_Cube</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__CubeVisualTag.html">Struct C_CubeVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Cylinder.html">Struct C_Cylinder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__CylinderVisualTag.html">Struct C_CylinderVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__DirectorTriad.html">Struct C_DirectorTriad</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalForce.html">Struct C_ExternalForce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalTorque.html">Struct C_ExternalTorque</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Friction.html">Struct C_Friction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html">Struct C_HeightField</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html">Struct C_HeightFieldVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html">Struct C_InertiaDiag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearAcceleration3.html">Struct C_LinearAcceleration3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearVelocity3.html">Struct C_LinearVelocity3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Mass.html">Struct C_Mass</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Mesh.html">Struct C_Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__MeshVisualTag.html">Struct C_MeshVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Orientation.html">Struct C_Orientation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PhysicsObject.html">Struct C_PhysicsObject</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Plane.html">Struct C_Plane</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PlaneVisualTag.html">Struct C_PlaneVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PointMassTag.html">Struct C_PointMassTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__PointVisualTag.html">Struct C_PointVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Position3.html">Struct C_Position3</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Radius.html">Struct C_Radius</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Capsule.html">Struct C_RB_Capsule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cone.html">Struct C_RB_Cone</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cube.html">Struct C_RB_Cube</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cylinder.html">Struct C_RB_Cylinder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html">Struct C_RB_HeightField</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Mesh.html">Struct C_RB_Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Plane.html">Struct C_RB_Plane</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Sphere.html">Struct C_RB_Sphere</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RigidBodyDirectorTag.html">Struct C_RigidBodyDirectorTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RigidBodyTag.html">Struct C_RigidBodyTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__SoftBodySurface.html">Struct C_SoftBodySurface</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__SoftBodyVisualTag.html">Struct C_SoftBodyVisualTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__StaticTrajectory.html">Struct C_StaticTrajectory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__TrackTag.html">Struct C_TrackTag</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__VisualObject.html">Struct C_VisualObject</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1AabbCollider.html">Struct AabbCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1Contact.html">Struct Contact</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1ContactPairKey.html">Struct ContactPairKey</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1ContactPairKeyHash.html">Struct ContactPairKeyHash</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1ObbCollider.html">Struct ObbCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1PlaneCollider.html">Struct PlaneCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1SphereCollider.html">Struct SphereCollider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html">Struct Config</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html">Struct HeightFieldAsset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1MeshGenerator_1_1EntityMesh.html">Struct MeshGenerator::EntityMesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1SoftBodyMesh.html">Struct SoftBodyMesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1MeshAsset.html">Struct MeshAsset</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1BCCHeader.html">Struct BCCHeader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1SplineSample.html">Struct SplineSample</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1Active.html">Struct TimingManager::Active</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1HierNode.html">Struct TimingManager::HierNode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1misc_1_1TimingManager_1_1Stats.html">Struct TimingManager::Stats</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1BeamCrossSection.html">Struct BeamCrossSection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1BeamSpringParams.html">Struct BeamSpringParams</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1CapsuleShape.html">Struct CapsuleShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1ConeShape.html">Struct ConeShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1ConstraintPattern_1_1WorldAttachments.html">Struct ConstraintPattern::WorldAttachments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1ConstraintResult.html">Struct ConstraintResult</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1CubeShape.html">Struct CubeShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1CylinderShape.html">Struct CylinderShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1JointFrame.html">Struct JointFrame</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1JointProperties.html">Struct JointProperties</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1MeshShape.html">Struct MeshShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1PlaneShape.html">Struct PlaneShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1RigidBodyFactory.html">Struct RigidBodyFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1RigidProps.html">Struct RigidProps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1RigidState.html">Struct RigidState</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1physics_1_1SphereShape.html">Struct SphereShape</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1solver_1_1workspace.html">Struct workspace</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1TripletMatrix_1_1Block.html">Struct TripletMatrix::Block</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structCoordinates.html">Template Struct Coordinates</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structIndex.html">Template Struct Index</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1BlockDiagonal.html">Class BlockDiagonal</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1collision_1_1CollisionCoal.html">Class CollisionCoal</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1collision_1_1ContactTracker.html">Class ContactTracker</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1config_1_1ConfigReader.html">Class ConfigReader</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1integration_1_1IntegrationBase.html">Class IntegrationBase</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1integration_1_1MoreauIntegrator.html">Class MoreauIntegrator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1CsvWriter.html">Class CsvWriter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html">Class MeshGenerator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html">Class VtkWriterBinary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1MathHelper.html">Class MathHelper</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1CatmullRomSpline.html">Class CatmullRomSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1CircleSpline.html">Class CircleSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1HelixSpline.html">Class HelixSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1LinearSpline.html">Class LinearSpline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1ProgressBar.html">Class ProgressBar</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1SplinePattern.html">Class SplinePattern</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1TimingManager.html">Class TimingManager</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1misc_1_1TimingManager_1_1Scope.html">Class TimingManager::Scope</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1ClarabelAssembler.html">Class ClarabelAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1PgsAssembler.html">Class PgsAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1PjAssembler.html">Class PjAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1assembly_1_1QocoAssembler.html">Class QocoAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BeamConstraint.html">Class BeamConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BeamFactory.html">Class BeamFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BodyFactory.html">Class BodyFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintFactory.html">Class ConstraintFactory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintPattern.html">Class ConstraintPattern</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1DerivedEntitySync.html">Class DerivedEntitySync</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1DynamicsAssembler.html">Class DynamicsAssembler</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1LinearDistanceConstraint.html">Class LinearDistanceConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html">Class PhysicsEngine</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1pipeline_1_1PhysicsPipeline.html">Class PhysicsPipeline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1Trajectory.html">Class Trajectory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1TranslationRotationConstraint.html">Class TranslationRotationConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html">Class PhysicsAssets</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ClarabelSolver.html">Class ClarabelSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ConjugateGradientSolver.html">Class ConjugateGradientSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ProjectedGaussSeidelSolver.html">Class ProjectedGaussSeidelSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1ProjectedJacobiSolver.html">Class ProjectedJacobiSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1QocoSolver.html">Class QocoSolver</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1SolverBase.html">Class SolverBase</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1solver_1_1WarmstartProvider.html">Class WarmstartProvider</a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1TripletMatrix.html">Class TripletMatrix</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Class World</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#enums">Enums</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#functions">Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#variables">Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#defines">Defines</a></li>
+<li class="toctree-l3"><a class="reference internal" href="library_root.html#typedefs">Typedefs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="library_root.html">API Reference</a></li>
+      <li class="breadcrumb-item active">Class World</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/classcardillo_1_1World.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="class-world">
+<span id="exhale-class-classcardillo-1-1world"></span><h1>Class World<a class="headerlink" href="#class-world" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Defined in <a class="reference internal" href="file_src_physics_world.hpp.html#file-src-physics-world-hpp"><span class="std std-ref">File world.hpp</span></a></p></li>
+</ul>
+<section id="class-documentation">
+<h2>Class Documentation<a class="headerlink" href="#class-documentation" title="Link to this heading"></a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5WorldE">
+<span id="_CPPv3N8cardillo5WorldE"></span><span id="_CPPv2N8cardillo5WorldE"></span><span id="cardillo::World"></span><span class="target" id="classcardillo_1_1World"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">World</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo5WorldE" title="Link to this definition"></a><br /></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World5WorldERKN6config6ConfigE">
+<span id="_CPPv3N8cardillo5World5WorldERKN6config6ConfigE"></span><span id="_CPPv2N8cardillo5World5WorldERKN6config6ConfigE"></span><span id="cardillo::World::World__config::ConfigCR"></span><span class="target" id="classcardillo_1_1World_1aabf4b268eac37e0b777452a3f0e3276a"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">World</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4NK8cardillo5World6configEv" title="cardillo::World::config"><span class="n"><span class="pre">config</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Config</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">cfg</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World5WorldERKN6config6ConfigE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5WorldD0Ev">
+<span id="_CPPv3N8cardillo5WorldD0Ev"></span><span id="_CPPv2N8cardillo5WorldD0Ev"></span><span id="cardillo::World::~World"></span><span class="target" id="classcardillo_1_1World_1a6a6c4507bb8be525987d32514f7926e8"></span><span class="sig-name descname"><span class="n"><span class="pre">~World</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5WorldD0Ev" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World6configEv">
+<span id="_CPPv3NK8cardillo5World6configEv"></span><span id="_CPPv2NK8cardillo5World6configEv"></span><span id="cardillo::World::configC"></span><span class="target" id="classcardillo_1_1World_1a584db8f9a89fc7619aad3a99cf74ca1b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4NK8cardillo5World6configEv" title="cardillo::World::config"><span class="n"><span class="pre">config</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Config</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">config</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World6configEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World6configEv">
+<span id="_CPPv3N8cardillo5World6configEv"></span><span id="_CPPv2N8cardillo5World6configEv"></span><span id="cardillo::World::config"></span><span class="target" id="classcardillo_1_1World_1ab00da34651f34c0a229dd055360568a9"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N8cardillo5World6configEv" title="cardillo::World::config"><span class="n"><span class="pre">config</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Config</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">config</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World6configEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World6assetsEv">
+<span id="_CPPv3N8cardillo5World6assetsEv"></span><span id="_CPPv2N8cardillo5World6assetsEv"></span><span id="cardillo::World::assets"></span><span class="target" id="classcardillo_1_1World_1a7814738ea5a3480009090c5f175d347a"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html#_CPPv4N8cardillo13PhysicsAssetsE" title="cardillo::PhysicsAssets"><span class="n"><span class="pre">PhysicsAssets</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">assets</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World6assetsEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World6assetsEv">
+<span id="_CPPv3NK8cardillo5World6assetsEv"></span><span id="_CPPv2NK8cardillo5World6assetsEv"></span><span id="cardillo::World::assetsC"></span><span class="target" id="classcardillo_1_1World_1a51546b9b935c093e1d973dfd5b44294f"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html#_CPPv4N8cardillo13PhysicsAssetsE" title="cardillo::PhysicsAssets"><span class="n"><span class="pre">PhysicsAssets</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">assets</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World6assetsEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World10setGravityERK8Vector3r">
+<span id="_CPPv3N8cardillo5World10setGravityERK8Vector3r"></span><span id="_CPPv2N8cardillo5World10setGravityERK8Vector3r"></span><span id="cardillo::World::setGravity__Vector3rCR"></span><span class="target" id="classcardillo_1_1World_1af7c2044787934ac84cd9263ef7f67b2c"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">setGravity</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">g</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World10setGravityERK8Vector3r" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World7gravityEv">
+<span id="_CPPv3NK8cardillo5World7gravityEv"></span><span id="_CPPv2NK8cardillo5World7gravityEv"></span><span id="cardillo::World::gravityC"></span><span class="target" id="classcardillo_1_1World_1ad0b7ef13cf020c657627276ad01d808e"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">gravity</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World7gravityEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World7getMassEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World7getMassEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World7getMassEN4entt6entityE"></span><span id="cardillo::World::getMass__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1ab7db41eb7f9d124e54b9d3bbe573444c"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1ab85948a2c4ef69e14af22fe0709b9e5c.html#_CPPv4N8cardillo9MatrixXXrE" title="cardillo::MatrixXXr"><span class="n"><span class="pre">MatrixXXr</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getMass</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World7getMassEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World18getMassInverseDiagEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World18getMassInverseDiagEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World18getMassInverseDiagEN4entt6entityE"></span><span id="cardillo::World::getMassInverseDiag__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1ae2cc1fab3e456937461e5ca0afafab53"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1a293f9796c371f0bd468ae9902288619f.html#_CPPv4N8cardillo8VectorXrE" title="cardillo::VectorXr"><span class="n"><span class="pre">VectorXr</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getMassInverseDiag</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World18getMassInverseDiagEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World14getInertiaDiagEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World14getInertiaDiagEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World14getInertiaDiagEN4entt6entityE"></span><span id="cardillo::World::getInertiaDiag__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1a1a703e55a6d1975a28afdfb19e1ec49d"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getInertiaDiag</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World14getInertiaDiagEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World11getPositionEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World11getPositionEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World11getPositionEN4entt6entityE"></span><span id="cardillo::World::getPosition__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1abb86e4d2dd45266a9131d00902c8569f"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1a293f9796c371f0bd468ae9902288619f.html#_CPPv4N8cardillo8VectorXrE" title="cardillo::VectorXr"><span class="n"><span class="pre">VectorXr</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getPosition</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World11getPositionEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World11getVelocityEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World11getVelocityEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World11getVelocityEN4entt6entityE"></span><span id="cardillo::World::getVelocity__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1a2466fdb339292423934d8417a7ec5f0c"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1a293f9796c371f0bd468ae9902288619f.html#_CPPv4N8cardillo8VectorXrE" title="cardillo::VectorXr"><span class="n"><span class="pre">VectorXr</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getVelocity</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World11getVelocityEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World8getForceEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World8getForceEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World8getForceEN4entt6entityE"></span><span id="cardillo::World::getForce__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1aae77631e0bebfeeb19582759ec559b79"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1a293f9796c371f0bd468ae9902288619f.html#_CPPv4N8cardillo8VectorXrE" title="cardillo::VectorXr"><span class="n"><span class="pre">VectorXr</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getForce</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World8getForceEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World16getForceExternalEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World16getForceExternalEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World16getForceExternalEN4entt6entityE"></span><span id="cardillo::World::getForceExternal__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1a05ea69bfe8a8d7262d769d9ef50fcc4b"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1a293f9796c371f0bd468ae9902288619f.html#_CPPv4N8cardillo8VectorXrE" title="cardillo::VectorXr"><span class="n"><span class="pre">VectorXr</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getForceExternal</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World16getForceExternalEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World18getForceGyroscopicEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World18getForceGyroscopicEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World18getForceGyroscopicEN4entt6entityE"></span><span id="cardillo::World::getForceGyroscopic__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1a3e1ae0704090413eae8adb098436d982"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1a293f9796c371f0bd468ae9902288619f.html#_CPPv4N8cardillo8VectorXrE" title="cardillo::VectorXr"><span class="n"><span class="pre">VectorXr</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getForceGyroscopic</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World18getForceGyroscopicEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World16getKineticEnergyEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World16getKineticEnergyEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World16getKineticEnergyEN4entt6entityE"></span><span id="cardillo::World::getKineticEnergy__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1a835b6cd1e948153eb628155a1b703107"></span><span class="n"><span class="pre">real_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">getKineticEnergy</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World16getKineticEnergyEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World12getMeshAssetEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World12getMeshAssetEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World12getMeshAssetEN4entt6entityE"></span><span id="cardillo::World::getMeshAsset__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1a98fdc5e5e72279e30f80be64b8599a05"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">cardillo</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="structcardillo_1_1MeshAsset.html#_CPPv4N8cardillo9MeshAssetE" title="cardillo::MeshAsset"><span class="n"><span class="pre">MeshAsset</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">getMeshAsset</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World12getMeshAssetEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World19getHeightFieldAssetEN4entt6entityE">
+<span id="_CPPv3NK8cardillo5World19getHeightFieldAssetEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World19getHeightFieldAssetEN4entt6entityE"></span><span id="cardillo::World::getHeightFieldAsset__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1ac623fa956415abfd45d884d2bb90b6df"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">cardillo</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAssetE" title="cardillo::HeightFieldAsset"><span class="n"><span class="pre">HeightFieldAsset</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">getHeightFieldAsset</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World19getHeightFieldAssetEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World3ecsEv">
+<span id="_CPPv3NK8cardillo5World3ecsEv"></span><span id="_CPPv2NK8cardillo5World3ecsEv"></span><span id="cardillo::World::ecsC"></span><span class="target" id="classcardillo_1_1World_1ab8d7e0fb78a48adb67f345289e98afa8"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">registry</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">ecs</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World3ecsEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World3ecsEv">
+<span id="_CPPv3N8cardillo5World3ecsEv"></span><span id="_CPPv2N8cardillo5World3ecsEv"></span><span id="cardillo::World::ecs"></span><span class="target" id="classcardillo_1_1World_1ad78c0d0e25592ef2c35890ba69ab69c1"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">registry</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">ecs</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World3ecsEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World18constraintPatternsEv">
+<span id="_CPPv3N8cardillo5World18constraintPatternsEv"></span><span id="_CPPv2N8cardillo5World18constraintPatternsEv"></span><span id="cardillo::World::constraintPatterns"></span><span class="target" id="classcardillo_1_1World_1a82cba56df1d5aeabc20beb5ce3b7fd22"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cardillo</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">physics</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintPattern.html#_CPPv4N8cardillo7physics17ConstraintPatternE" title="cardillo::physics::ConstraintPattern"><span class="n"><span class="pre">ConstraintPattern</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">constraintPatterns</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World18constraintPatternsEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World18constraintPatternsEv">
+<span id="_CPPv3NK8cardillo5World18constraintPatternsEv"></span><span id="_CPPv2NK8cardillo5World18constraintPatternsEv"></span><span id="cardillo::World::constraintPatternsC"></span><span class="target" id="classcardillo_1_1World_1a62528fae2ca3c0fe51733928dc8c75a9"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cardillo</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">physics</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintPattern.html#_CPPv4N8cardillo7physics17ConstraintPatternE" title="cardillo::physics::ConstraintPattern"><span class="n"><span class="pre">ConstraintPattern</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">constraintPatterns</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World18constraintPatternsEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World9numBodiesEv">
+<span id="_CPPv3NK8cardillo5World9numBodiesEv"></span><span id="_CPPv2NK8cardillo5World9numBodiesEv"></span><span id="cardillo::World::numBodiesC"></span><span class="target" id="classcardillo_1_1World_1a408937d9fac9f754542f0529f8990e5d"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">numBodies</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World9numBodiesEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World14markStateDirtyEv">
+<span id="_CPPv3NK8cardillo5World14markStateDirtyEv"></span><span id="_CPPv2NK8cardillo5World14markStateDirtyEv"></span><span id="cardillo::World::markStateDirtyC"></span><span class="target" id="classcardillo_1_1World_1afceff7f9c01e1ea121c375b5b68ac032"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">markStateDirty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World14markStateDirtyEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World18markStructureDirtyEv">
+<span id="_CPPv3NK8cardillo5World18markStructureDirtyEv"></span><span id="_CPPv2NK8cardillo5World18markStructureDirtyEv"></span><span id="cardillo::World::markStructureDirtyC"></span><span class="target" id="classcardillo_1_1World_1a74e9d8ae7ce59c4d092831444f433370"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">markStructureDirty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World18markStructureDirtyEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World15markForcesDirtyEv">
+<span id="_CPPv3NK8cardillo5World15markForcesDirtyEv"></span><span id="_CPPv2NK8cardillo5World15markForcesDirtyEv"></span><span id="cardillo::World::markForcesDirtyC"></span><span class="target" id="classcardillo_1_1World_1a784f389360d0c8d220cc014b770f418d"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">markForcesDirty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World15markForcesDirtyEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World12isStateDirtyEv">
+<span id="_CPPv3NK8cardillo5World12isStateDirtyEv"></span><span id="_CPPv2NK8cardillo5World12isStateDirtyEv"></span><span id="cardillo::World::isStateDirtyC"></span><span class="target" id="classcardillo_1_1World_1aecc3393e8730cf0a4c20f36e2c54f7e0"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">isStateDirty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World12isStateDirtyEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World16isStructureDirtyEv">
+<span id="_CPPv3NK8cardillo5World16isStructureDirtyEv"></span><span id="_CPPv2NK8cardillo5World16isStructureDirtyEv"></span><span id="cardillo::World::isStructureDirtyC"></span><span class="target" id="classcardillo_1_1World_1a5fee139757782ba9e6d38741d80ecddf"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">isStructureDirty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World16isStructureDirtyEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World13isForcesDirtyEv">
+<span id="_CPPv3NK8cardillo5World13isForcesDirtyEv"></span><span id="_CPPv2NK8cardillo5World13isForcesDirtyEv"></span><span id="cardillo::World::isForcesDirtyC"></span><span class="target" id="classcardillo_1_1World_1a4312534f040bdcd54fc67c923682eafb"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">isForcesDirty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World13isForcesDirtyEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World17consumeStateDirtyEv">
+<span id="_CPPv3NK8cardillo5World17consumeStateDirtyEv"></span><span id="_CPPv2NK8cardillo5World17consumeStateDirtyEv"></span><span id="cardillo::World::consumeStateDirtyC"></span><span class="target" id="classcardillo_1_1World_1a951a8ea2b0a67958be4a79d5cdee0080"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">consumeStateDirty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World17consumeStateDirtyEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World21consumeStructureDirtyEv">
+<span id="_CPPv3NK8cardillo5World21consumeStructureDirtyEv"></span><span id="_CPPv2NK8cardillo5World21consumeStructureDirtyEv"></span><span id="cardillo::World::consumeStructureDirtyC"></span><span class="target" id="classcardillo_1_1World_1a9a3b9954c78dd01cb9af35ef444b584b"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">consumeStructureDirty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World21consumeStructureDirtyEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World18consumeForcesDirtyEv">
+<span id="_CPPv3NK8cardillo5World18consumeForcesDirtyEv"></span><span id="_CPPv2NK8cardillo5World18consumeForcesDirtyEv"></span><span id="cardillo::World::consumeForcesDirtyC"></span><span class="target" id="classcardillo_1_1World_1a612550733c6de5f1341e001722dc8e0a"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">consumeForcesDirty</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World18consumeForcesDirtyEv" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World10applyForceEN4entt6entityERK8Vector3rRK8Vector3r">
+<span id="_CPPv3N8cardillo5World10applyForceEN4entt6entityERK8Vector3rRK8Vector3r"></span><span id="_CPPv2N8cardillo5World10applyForceEN4entt6entityERK8Vector3rRK8Vector3r"></span><span id="cardillo::World::applyForce__entt::entity.Vector3rCR.Vector3rCR"></span><span class="target" id="classcardillo_1_1World_1a1bd641ed6c4ad47df657090f33b96f7a"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">applyForce</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">force_world</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">torque_world</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World10applyForceEN4entt6entityERK8Vector3rRK8Vector3r" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World19applyInertialTorqueEN4entt6entityERK8Vector3r">
+<span id="_CPPv3N8cardillo5World19applyInertialTorqueEN4entt6entityERK8Vector3r"></span><span id="_CPPv2N8cardillo5World19applyInertialTorqueEN4entt6entityERK8Vector3r"></span><span id="cardillo::World::applyInertialTorque__entt::entity.Vector3rCR"></span><span class="target" id="classcardillo_1_1World_1a5dbd7e6771b7f96bcfa3d0110e8ede86"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">applyInertialTorque</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">torque_world</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World19applyInertialTorqueEN4entt6entityERK8Vector3r" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World10makeStaticEN4entt6entityE">
+<span id="_CPPv3N8cardillo5World10makeStaticEN4entt6entityE"></span><span id="_CPPv2N8cardillo5World10makeStaticEN4entt6entityE"></span><span id="cardillo::World::makeStatic__entt::entity"></span><span class="target" id="classcardillo_1_1World_1aa618abf92d4a87a2bc7f6f97b50717d8"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">makeStatic</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World10makeStaticEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World11setPositionEN4entt6entityERK8Vector3r">
+<span id="_CPPv3N8cardillo5World11setPositionEN4entt6entityERK8Vector3r"></span><span id="_CPPv2N8cardillo5World11setPositionEN4entt6entityERK8Vector3r"></span><span id="cardillo::World::setPosition__entt::entity.Vector3rCR"></span><span class="target" id="classcardillo_1_1World_1a4868db2682161416aecd026851138592"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">setPosition</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">p</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World11setPositionEN4entt6entityERK8Vector3r" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World14setOrientationEN4entt6entityERK12Quaternion4r">
+<span id="_CPPv3N8cardillo5World14setOrientationEN4entt6entityERK12Quaternion4r"></span><span id="_CPPv2N8cardillo5World14setOrientationEN4entt6entityERK12Quaternion4r"></span><span id="cardillo::World::setOrientation__entt::entity.Quaternion4rCR"></span><span class="target" id="classcardillo_1_1World_1a6e0012e3c4662f6aad7cf9bf8a78c94e"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">setOrientation</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a8ea46386683084285ff4577cdf654088.html#_CPPv4N8cardillo12Quaternion4rE" title="cardillo::Quaternion4r"><span class="n"><span class="pre">Quaternion4r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">q</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World14setOrientationEN4entt6entityERK12Quaternion4r" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World17setLinearVelocityEN4entt6entityERK8Vector3r">
+<span id="_CPPv3N8cardillo5World17setLinearVelocityEN4entt6entityERK8Vector3r"></span><span id="_CPPv2N8cardillo5World17setLinearVelocityEN4entt6entityERK8Vector3r"></span><span id="cardillo::World::setLinearVelocity__entt::entity.Vector3rCR"></span><span class="target" id="classcardillo_1_1World_1ade0fd0570e3211d95edbf67e78765361"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">setLinearVelocity</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">v</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World17setLinearVelocityEN4entt6entityERK8Vector3r" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World18setAngularVelocityEN4entt6entityERK8Vector3r">
+<span id="_CPPv3N8cardillo5World18setAngularVelocityEN4entt6entityERK8Vector3r"></span><span id="_CPPv2N8cardillo5World18setAngularVelocityEN4entt6entityERK8Vector3r"></span><span id="cardillo::World::setAngularVelocity__entt::entity.Vector3rCR"></span><span class="target" id="classcardillo_1_1World_1a62e1ec02fb5d80c74f855b8cd7c24d1a"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">setAngularVelocity</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">w</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World18setAngularVelocityEN4entt6entityERK8Vector3r" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World18setVelocityByForceEN4entt6entityERK8Vector3rRK8Vector3r">
+<span id="_CPPv3N8cardillo5World18setVelocityByForceEN4entt6entityERK8Vector3rRK8Vector3r"></span><span id="_CPPv2N8cardillo5World18setVelocityByForceEN4entt6entityERK8Vector3rRK8Vector3r"></span><span id="cardillo::World::setVelocityByForce__entt::entity.Vector3rCR.Vector3rCR"></span><span class="target" id="classcardillo_1_1World_1a0d5eefbffc968f3b709493312d1da504"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">setVelocityByForce</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">v</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">w</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World18setVelocityByForceEN4entt6entityERK8Vector3rRK8Vector3r" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World13setTrajectoryEN4entt6entityENSt8optionalINSt8functionIF14TrajectoryPose6real_tEEEEENSt8optionalINSt8functionIF15TrajectoryTwist6real_tEEEEE">
+<span id="_CPPv3N8cardillo5World13setTrajectoryEN4entt6entityENSt8optionalINSt8functionIF14TrajectoryPose6real_tEEEEENSt8optionalINSt8functionIF15TrajectoryTwist6real_tEEEEE"></span><span id="_CPPv2N8cardillo5World13setTrajectoryEN4entt6entityENSt8optionalINSt8functionIF14TrajectoryPose6real_tEEEEENSt8optionalINSt8functionIF15TrajectoryTwist6real_tEEEEE"></span><span class="target" id="classcardillo_1_1World_1a18896b1f511c7c57ac6db7f3e43fed06"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">setTrajectory</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="typedef_ecs__types_8hpp_1a11b835653d7e114058ff0eea59406fd5.html#_CPPv4N8cardillo14TrajectoryPoseE" title="cardillo::TrajectoryPose"><span class="n"><span class="pre">TrajectoryPose</span></span></a><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">positionFunc</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">optional</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="typedef_ecs__types_8hpp_1aa840ed570846e4bb41c163ba81506b9c.html#_CPPv4N8cardillo15TrajectoryTwistE" title="cardillo::TrajectoryTwist"><span class="n"><span class="pre">TrajectoryTwist</span></span></a><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">real_t</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">velocityFunc</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World13setTrajectoryEN4entt6entityENSt8optionalINSt8functionIF14TrajectoryPose6real_tEEEEENSt8optionalINSt8functionIF15TrajectoryTwist6real_tEEEEE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World16removeTrajectoryEN4entt6entityE">
+<span id="_CPPv3N8cardillo5World16removeTrajectoryEN4entt6entityE"></span><span id="_CPPv2N8cardillo5World16removeTrajectoryEN4entt6entityE"></span><span id="cardillo::World::removeTrajectory__entt::entity"></span><span class="target" id="classcardillo_1_1World_1a38f5cd62ed750ece4a3ff28262e94719"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">removeTrajectory</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World16removeTrajectoryEN4entt6entityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World5trackEN4entt6entityERKNSt6stringE">
+<span id="_CPPv3N8cardillo5World5trackEN4entt6entityERKNSt6stringE"></span><span id="_CPPv2N8cardillo5World5trackEN4entt6entityERKNSt6stringE"></span><span id="cardillo::World::track__entt::entity.ssCR"></span><span class="target" id="classcardillo_1_1World_1a3d7078e97c8e96c46faba131e2bef000"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">track</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo5World5trackEN4entt6entityERKNSt6stringE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World5m_regE">
+<span id="_CPPv3N8cardillo5World5m_regE"></span><span id="_CPPv2N8cardillo5World5m_regE"></span><span id="cardillo::World::m_reg__entt::registry"></span><span class="target" id="classcardillo_1_1World_1ab9f3b5d92119fc7220ece28afd9cc6bc"></span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">registry</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_reg</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo5World5m_regE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World9m_gravityE">
+<span id="_CPPv3N8cardillo5World9m_gravityE"></span><span id="_CPPv2N8cardillo5World9m_gravityE"></span><span id="cardillo::World::m_gravity__Vector3r"></span><span class="target" id="classcardillo_1_1World_1a512ff9fb5739dcb75cad17516f7b263d"></span><a class="reference internal" href="typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><span class="n"><span class="pre">Vector3r</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_gravity</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo5World9m_gravityE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World13m_state_dirtyE">
+<span id="_CPPv3N8cardillo5World13m_state_dirtyE"></span><span id="_CPPv2N8cardillo5World13m_state_dirtyE"></span><span id="cardillo::World::m_state_dirty__b"></span><span class="target" id="classcardillo_1_1World_1a39298997e9dd221d0cffda3f82e664db"></span><span class="k"><span class="pre">mutable</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_state_dirty</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><a class="headerlink" href="#_CPPv4N8cardillo5World13m_state_dirtyE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World17m_structure_dirtyE">
+<span id="_CPPv3N8cardillo5World17m_structure_dirtyE"></span><span id="_CPPv2N8cardillo5World17m_structure_dirtyE"></span><span id="cardillo::World::m_structure_dirty__b"></span><span class="target" id="classcardillo_1_1World_1aa2e616d4050eab262ee9b7cc2e6539db"></span><span class="k"><span class="pre">mutable</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_structure_dirty</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><a class="headerlink" href="#_CPPv4N8cardillo5World17m_structure_dirtyE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World14m_forces_dirtyE">
+<span id="_CPPv3N8cardillo5World14m_forces_dirtyE"></span><span id="_CPPv2N8cardillo5World14m_forces_dirtyE"></span><span id="cardillo::World::m_forces_dirty__b"></span><span class="target" id="classcardillo_1_1World_1a0d0dc408ba9c4db946c7ef0b9f3b94d0"></span><span class="k"><span class="pre">mutable</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_forces_dirty</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><a class="headerlink" href="#_CPPv4N8cardillo5World14m_forces_dirtyE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World19m_num_bodies_cachedE">
+<span id="_CPPv3N8cardillo5World19m_num_bodies_cachedE"></span><span id="_CPPv2N8cardillo5World19m_num_bodies_cachedE"></span><span id="cardillo::World::m_num_bodies_cached__i"></span><span class="target" id="classcardillo_1_1World_1abf1d2f95c938881134e1aacbc96e3acf"></span><span class="k"><span class="pre">mutable</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_num_bodies_cached</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="o"><span class="pre">-</span></span><span class="m"><span class="pre">1</span></span><a class="headerlink" href="#_CPPv4N8cardillo5World19m_num_bodies_cachedE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World18m_num_bodies_dirtyE">
+<span id="_CPPv3N8cardillo5World18m_num_bodies_dirtyE"></span><span id="_CPPv2N8cardillo5World18m_num_bodies_dirtyE"></span><span id="cardillo::World::m_num_bodies_dirty__b"></span><span class="target" id="classcardillo_1_1World_1aed8dd89ba253fdda2dd17a4a820959d7"></span><span class="k"><span class="pre">mutable</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_num_bodies_dirty</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><a class="headerlink" href="#_CPPv4N8cardillo5World18m_num_bodies_dirtyE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World5m_cfgE">
+<span id="_CPPv3N8cardillo5World5m_cfgE"></span><span id="_CPPv2N8cardillo5World5m_cfgE"></span><span id="cardillo::World::m_cfg__config::Config"></span><span class="target" id="classcardillo_1_1World_1ad00dbc3f5cf650a493143674ef92a5af"></span><a class="reference internal" href="#_CPPv4NK8cardillo5World6configEv" title="cardillo::World::config"><span class="n"><span class="pre">config</span></span></a><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Config</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_cfg</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv4N8cardillo5World5m_cfgE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World17m_constraints_newE">
+<span id="_CPPv3N8cardillo5World17m_constraints_newE"></span><span id="_CPPv2N8cardillo5World17m_constraints_newE"></span><span id="cardillo::World::m_constraints_new__std::vector:std::unique_ptr:cardillo::physics::ConstraintPattern::"></span><span class="target" id="classcardillo_1_1World_1acea143aae2f411bf39c1d7dd332abe99"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cardillo</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">physics</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="classcardillo_1_1physics_1_1ConstraintPattern.html#_CPPv4N8cardillo7physics17ConstraintPatternE" title="cardillo::physics::ConstraintPattern"><span class="n"><span class="pre">ConstraintPattern</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_constraints_new</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo5World17m_constraints_newE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo5World8m_assetsE">
+<span id="_CPPv3N8cardillo5World8m_assetsE"></span><span id="_CPPv2N8cardillo5World8m_assetsE"></span><span id="cardillo::World::m_assets__std::shared_ptr:PhysicsAssets:"></span><span class="target" id="classcardillo_1_1World_1a8786933d038583958e07f722ba766c05"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html#_CPPv4N8cardillo13PhysicsAssetsE" title="cardillo::PhysicsAssets"><span class="n"><span class="pre">PhysicsAssets</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">m_assets</span></span></span><a class="headerlink" href="#_CPPv4N8cardillo5World8m_assetsE" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="classcardillo_1_1TripletMatrix.html" class="btn btn-neutral float-left" title="Class TripletMatrix" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="enum_config_8hpp_1a458b79649d6e626590d6374440aa027d.html" class="btn btn-neutral float-right" title="Enum IntegratorType" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

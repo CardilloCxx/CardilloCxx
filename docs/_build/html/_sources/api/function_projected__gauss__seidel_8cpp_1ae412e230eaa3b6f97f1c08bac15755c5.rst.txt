@@ -1,0 +1,14 @@
+.. _exhale_function_projected__gauss__seidel_8cpp_1ae412e230eaa3b6f97f1c08bac15755c5:
+
+Function cardillo::solver::project(VectorXr&, VectorXr&, const real_t, const int, const int)
+============================================================================================
+
+- Defined in :ref:`file_src_physics_solver_projected_gauss_seidel.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::solver::project(VectorXr&, VectorXr&, const real_t, const int, const int)
+   :project: Cardillo

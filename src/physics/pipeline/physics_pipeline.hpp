@@ -43,21 +43,25 @@ namespace cardillo {
 namespace physics {
 namespace pipeline {
 
+/// Orchestrates collision, assembly, solver, integration, and output for one step.
 class PhysicsPipeline {
    public:
-    // Construct pipeline with references/pointers to the world and owned subsystems
+    /// Construct the pipeline around a world and engine-owned subsystems.
     PhysicsPipeline(World& world, config::Config& cfg, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings);
 
-    // Advance the pipeline by one step given dt; pipeline tracks current step/time internally
+    /// Advance the pipeline by one step given dt.
     void step(real_t dt);
 
-    // Query finished state
+    /// Query whether the configured simulation horizon has been reached.
     bool isFinished() const { return m_finished; }
 
-    // Getters for owned components
+    /// Access the dynamics assembler.
     cardillo::physics::DynamicsAssembler& dynamicsAssembler() { return *m_dyn; }
+    /// Access the active integrator.
     cardillo::integration::IntegrationBase& integrator() { return *m_integrator; }
+    /// Access the VTK writer, if output is enabled.
     cardillo::io::VtkWriterBinary* vtkWriter() { return m_vtk_writer.get(); }
+    /// Access the collision manager.
     cardillo::collision::CollisionCoal& collisionManager() { return *m_collision_mgr; }
 
     ~PhysicsPipeline();

@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1solver_1_1WarmstartProvider:
+
+Class WarmstartProvider
+=======================
+
+- Defined in :ref:`file_src_physics_solver_warmstart.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::solver::WarmstartProvider
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

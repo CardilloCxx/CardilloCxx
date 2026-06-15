@@ -1,0 +1,14 @@
+.. _exhale_variable_assets_8cpp_1a66bb33a9d7007cc15272f6b532f7fae8:
+
+Variable volume
+===============
+
+- Defined in :ref:`file_src_physics_assets_assets.cpp`
+
+
+Variable Documentation
+----------------------
+
+
+.. doxygenvariable:: volume
+   :project: Cardillo

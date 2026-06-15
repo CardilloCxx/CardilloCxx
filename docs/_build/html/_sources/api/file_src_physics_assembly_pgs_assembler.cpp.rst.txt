@@ -1,0 +1,61 @@
+
+.. _file_src_physics_assembly_pgs_assembler.cpp:
+
+File pgs_assembler.cpp
+======================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_assembly>` (``src/physics/assembly``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/assembly/pgs_assembler.cpp``)
+-------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_assembly_pgs_assembler.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../rigid_body/rigid_body.hpp``
+
+- ``../constraints/constraints.hpp``
+
+- ``Eigen/Cholesky``
+
+- ``cmath``
+
+- ``optional``
+
+- ``pgs_assembler.hpp`` (:ref:`file_src_physics_assembly_pgs_assembler.hpp`)
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+
+- :ref:`namespace_cardillo__physics__assembly`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_pgs__assembler_8cpp_1a7431d4e342b991a4bb2318463091424d`
+

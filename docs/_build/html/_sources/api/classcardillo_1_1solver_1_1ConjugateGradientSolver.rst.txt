@@ -1,0 +1,26 @@
+.. _exhale_class_classcardillo_1_1solver_1_1ConjugateGradientSolver:
+
+Class ConjugateGradientSolver
+=============================
+
+- Defined in :ref:`file_src_physics_solver_conjugate_gradient.hpp`
+
+
+Inheritance Relationships
+-------------------------
+
+Base Type
+*********
+
+- ``public cardillo::solver::SolverBase``
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::solver::ConjugateGradientSolver
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

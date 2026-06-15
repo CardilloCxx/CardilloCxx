@@ -8,3 +8,7 @@ domino_*
 lib/qoco*
 compile_commands.json
 analysis_results*
+docs/_doxygen*
+docs/_static*
+docs/_templates*
+docs/api*

@@ -72,6 +72,17 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Confi
     }
 }
 
+
+/**
+ * @brief Advances the simulation by one time step of size dt. This method is responsible for:
+ * 1. Refreshing the dynamics assembler state
+ * 2. Running the integrator to advance the simulation state
+ * 3. Writing output (VTK, tracked CSV) if enabled
+ * 4. Updating the progress bar if enabled
+ * 5. Tracking the current simulation time and step, and setting the finished flag when done
+ * @param dt The time step size to advance the simulation by
+ * @note This method may be called multiple times in a loop to advance the simulation through time
+ */
 void PhysicsPipeline::step(real_t dt) {
     if (m_finished) return;
 

@@ -1,0 +1,14 @@
+.. _exhale_enum_physics__types_8hpp_1ab76a9b09e1483649c651eb224aa37350:
+
+Enum BeamBodyType
+=================
+
+- Defined in :ref:`file_src_physics_api_physics_types.hpp`
+
+
+Enum Documentation
+------------------
+
+
+.. doxygenenum:: cardillo::physics::BeamBodyType
+   :project: Cardillo

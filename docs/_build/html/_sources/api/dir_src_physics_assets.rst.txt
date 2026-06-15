@@ -1,0 +1,28 @@
+.. _dir_src_physics_assets:
+
+
+Directory assets
+================
+
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics>` (``src/physics``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+
+*Directory path:* ``src/physics/assets``
+
+
+Files
+-----
+
+- :ref:`file_src_physics_assets_assets.cpp`
+- :ref:`file_src_physics_assets_assets.hpp`
+- :ref:`file_src_physics_assets_beam_factory.cpp`
+- :ref:`file_src_physics_assets_beam_factory.hpp`
+- :ref:`file_src_physics_assets_body_factory.cpp`
+- :ref:`file_src_physics_assets_body_factory.hpp`
+- :ref:`file_src_physics_assets_rigid_body_factory.cpp`
+- :ref:`file_src_physics_assets_rigid_body_factory.hpp`
+
+

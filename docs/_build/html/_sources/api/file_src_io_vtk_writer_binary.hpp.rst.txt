@@ -1,0 +1,73 @@
+
+.. _file_src_io_vtk_writer_binary.hpp:
+
+File vtk_writer_binary.hpp
+==========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_io>` (``src/io``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/io/vtk_writer_binary.hpp``)
+---------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_io_vtk_writer_binary.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../physics/world.hpp``
+
+- ``filesystem``
+
+- ``fstream``
+
+- ``mesh_generator.hpp`` (:ref:`file_src_io_mesh_generator.hpp`)
+
+- ``misc/types.hpp`` (:ref:`file_src_misc_types.hpp`)
+
+- ``string``
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_io_vtk_writer_binary.cpp`
+
+- :ref:`file_src_physics_pipeline_physics_pipeline.cpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__collision`
+
+- :ref:`namespace_cardillo__io`
+
+- :ref:`namespace_cardillo__physics`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1io_1_1VtkWriterBinary`
+

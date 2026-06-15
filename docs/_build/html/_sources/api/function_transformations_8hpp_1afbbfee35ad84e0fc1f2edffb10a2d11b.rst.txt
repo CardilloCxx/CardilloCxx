@@ -1,0 +1,14 @@
+.. _exhale_function_transformations_8hpp_1afbbfee35ad84e0fc1f2edffb10a2d11b:
+
+Function cardillo::transform::point
+===================================
+
+- Defined in :ref:`file_src_rigid_body_transformations.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::transform::point(const Vector3r&, const RigidBody::RigidState&, const RigidBody::RigidState&)
+   :project: Cardillo

@@ -1,0 +1,14 @@
+.. _exhale_variable_beam__factory_8cpp_1ad42967bc26d4ea7d5ba49e008728e4a7:
+
+Variable normal
+===============
+
+- Defined in :ref:`file_src_physics_assets_beam_factory.cpp`
+
+
+Variable Documentation
+----------------------
+
+
+.. doxygenvariable:: normal
+   :project: Cardillo

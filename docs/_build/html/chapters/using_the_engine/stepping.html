@@ -1,0 +1,297 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stepping and Runtime Control &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Worked Example: A Single Pendulum" href="example.html" />
+    <link rel="prev" title="Beams and Flexible Rods" href="beams.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="setup.html">Setup and Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bodies.html">Bodies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="constraints.html">Constraints and Joints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="splines.html">Splines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="trajectories.html">Trajectories and Kinematic Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="beams.html">Beams and Flexible Rods</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Stepping and Runtime Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#advancing-the-simulation">Advancing the simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#engine-step"><code class="docutils literal notranslate"><span class="pre">engine.step()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#engine-step-real-t-dt"><code class="docutils literal notranslate"><span class="pre">engine.step(real_t</span> <span class="pre">dt)</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#engine-isfinished"><code class="docutils literal notranslate"><span class="pre">engine.isFinished()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#gravity">Gravity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#applying-external-forces">Applying external forces</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reading-state">Reading state</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setting-state">Setting state</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marking-the-world-dirty">Marking the world dirty</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tracking-bodies-for-output">Tracking bodies for output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#freezing-a-body-mid-simulation">Freezing a body mid-simulation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#accessing-the-ecs-registry">Accessing the ECS registry</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="example.html">Worked Example: A Single Pendulum</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../using_the_engine.html">Using The Engine</a></li>
+      <li class="breadcrumb-item active">Stepping and Runtime Control</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/using_the_engine/stepping.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="stepping-and-runtime-control">
+<h1>Stepping and Runtime Control<a class="headerlink" href="#stepping-and-runtime-control" title="Link to this heading"></a></h1>
+<p>Once bodies and constraints are in place, <code class="docutils literal notranslate"><span class="pre">step()</span></code> advances the simulation.
+Everything else in this chapter covers runtime modifications: applying external
+forces, reading and overriding state, labelling bodies for output, and freezing
+or releasing bodies mid-simulation.</p>
+<section id="advancing-the-simulation">
+<h2>Advancing the simulation<a class="headerlink" href="#advancing-the-simulation" title="Link to this heading"></a></h2>
+<section id="engine-step">
+<h3><code class="docutils literal notranslate"><span class="pre">engine.step()</span></code><a class="headerlink" href="#engine-step" title="Link to this heading"></a></h3>
+<p>Advances by the configured time step <code class="docutils literal notranslate"><span class="pre">cfg.sim_dt</span></code>. This is the standard call
+inside the main loop:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">engine</span><span class="p">.</span><span class="n">isFinished</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">engine</span><span class="p">.</span><span class="n">step</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="engine-step-real-t-dt">
+<h3><code class="docutils literal notranslate"><span class="pre">engine.step(real_t</span> <span class="pre">dt)</span></code><a class="headerlink" href="#engine-step-real-t-dt" title="Link to this heading"></a></h3>
+<p>Advances by an explicit <code class="docutils literal notranslate"><span class="pre">dt</span></code>, ignoring <code class="docutils literal notranslate"><span class="pre">cfg.sim_dt</span></code> for this one step:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">step</span><span class="p">(</span><span class="mf">5e-4</span><span class="p">);</span><span class="w">   </span><span class="c1">// half a millisecond step</span>
+</pre></div>
+</div>
+<p>Useful for variable-rate drivers or when you want a single warmup step at a
+different resolution before the main loop.</p>
+</section>
+<section id="engine-isfinished">
+<h3><code class="docutils literal notranslate"><span class="pre">engine.isFinished()</span></code><a class="headerlink" href="#engine-isfinished" title="Link to this heading"></a></h3>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">true</span></code> when the pipeline has executed the configured number of
+steps, computed as <code class="docutils literal notranslate"><span class="pre">ceil(cfg.sim_T</span> <span class="pre">/</span> <span class="pre">cfg.sim_dt)</span></code> during initialization.
+This matches the default <code class="docutils literal notranslate"><span class="pre">step()</span></code> loop. If you drive the engine with
+<code class="docutils literal notranslate"><span class="pre">step(dt)</span></code> using a different <code class="docutils literal notranslate"><span class="pre">dt</span></code>, <code class="docutils literal notranslate"><span class="pre">isFinished()</span></code> still follows the
+configured step count rather than accumulated wall-clock simulation time.</p>
+</section>
+</section>
+<section id="gravity">
+<h2>Gravity<a class="headerlink" href="#gravity" title="Link to this heading"></a></h2>
+<p>Gravity is set during <code class="docutils literal notranslate"><span class="pre">initFromConfig</span></code> from <code class="docutils literal notranslate"><span class="pre">cfg.sim_gravity</span></code>. Change it at
+any time:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">setGravity</span><span class="p">(</span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mf">-9.81</span><span class="p">));</span><span class="w">   </span><span class="c1">// standard Earth gravity (−z)</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">setGravity</span><span class="p">(</span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">());</span><span class="w">         </span><span class="c1">// zero-g environment</span>
+
+<span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">g</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">gravity</span><span class="p">();</span><span class="w">        </span><span class="c1">// read current gravity</span>
+</pre></div>
+</div>
+</section>
+<section id="applying-external-forces">
+<h2>Applying external forces<a class="headerlink" href="#applying-external-forces" title="Link to this heading"></a></h2>
+<p>Force and torque are accumulated on the entity for the next assembly pass, then
+zeroed by the dynamics assembler after they have been consumed. Call these from
+inside <code class="docutils literal notranslate"><span class="pre">SceneBase::updateScene</span></code> (or before the first <code class="docutils literal notranslate"><span class="pre">step()</span></code>) to apply
+persistent loads:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Apply a world-frame force and torque to entity e</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">applyForce</span><span class="p">(</span><span class="n">e</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">100</span><span class="p">),</span><span class="w">    </span><span class="c1">// force in N (world frame)</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">()</span><span class="w">        </span><span class="c1">// torque in Nm (world frame)</span>
+<span class="p">);</span>
+
+<span class="c1">// Apply a pure torque defined in world (inertial) frame</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">applyInertialTorque</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">));</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">applyForce</span></code> and <code class="docutils literal notranslate"><span class="pre">applyInertialTorque</span></code> <strong>accumulate</strong>; calling them
+multiple times per step adds up. Forces are cleared automatically after
+each <code class="docutils literal notranslate"><span class="pre">step()</span></code> call by the integrator.</p>
+</div>
+</section>
+<section id="reading-state">
+<h2>Reading state<a class="headerlink" href="#reading-state" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">VectorXr</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">getPosition</span><span class="p">(</span><span class="n">e</span><span class="p">);</span><span class="w">        </span><span class="c1">// generalised position (7 for RB)</span>
+<span class="n">MatrixXXr</span><span class="w"> </span><span class="n">M</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">getMass</span><span class="p">(</span><span class="n">e</span><span class="p">);</span><span class="w">            </span><span class="c1">// 6×6 or 3×3 mass matrix</span>
+<span class="n">Vector3r</span><span class="w">  </span><span class="n">I</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">getInertiaDiag</span><span class="p">(</span><span class="n">e</span><span class="p">);</span><span class="w">     </span><span class="c1">// body-frame inertia diagonal</span>
+<span class="n">real_t</span><span class="w">   </span><span class="n">Ek</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">getKineticEnergy</span><span class="p">(</span><span class="n">e</span><span class="p">);</span><span class="w">   </span><span class="c1">// translational + rotational KE</span>
+</pre></div>
+</div>
+<p>For rigid bodies the generalised position vector is
+<code class="docutils literal notranslate"><span class="pre">[px,</span> <span class="pre">py,</span> <span class="pre">pz,</span> <span class="pre">qx,</span> <span class="pre">qy,</span> <span class="pre">qz,</span> <span class="pre">qw]</span></code> because it is returned from
+<code class="docutils literal notranslate"><span class="pre">Quaternion4r::coeffs()</span></code>.</p>
+</section>
+<section id="setting-state">
+<h2>Setting state<a class="headerlink" href="#setting-state" title="Link to this heading"></a></h2>
+<p>Use these to teleport a body or impose an initial condition mid-simulation.
+Each setter marks the world state dirty so the pipeline re-assembles on the
+next <code class="docutils literal notranslate"><span class="pre">step()</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">setPosition</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">));</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">setOrientation</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">Quaternion4r</span><span class="o">::</span><span class="n">Identity</span><span class="p">());</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">setLinearVelocity</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">-1</span><span class="p">));</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">setAngularVelocity</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+
+<span class="c1">// Set both linear and angular velocity in one call</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">setVelocityByForce</span><span class="p">(</span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">-1</span><span class="p">),</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Teleporting a body that is connected to other bodies by hard constraints
+can introduce large position errors. Either mark the structure dirty and
+let the Baumgarte correction handle it, or rebuild constraints after the
+move.</p>
+</div>
+</section>
+<section id="marking-the-world-dirty">
+<h2>Marking the world dirty<a class="headerlink" href="#marking-the-world-dirty" title="Link to this heading"></a></h2>
+<p>The pipeline uses three lazy-rebuild flags that are set automatically by most
+mutation methods. You can also set them manually:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">markStructureDirty</span><span class="p">();</span><span class="w">  </span><span class="c1">// body added/removed; rebuild mass matrix etc.</span>
+</pre></div>
+</div>
+<p>This is rarely needed manually because every body-creation and constraint method
+calls it internally.</p>
+</section>
+<section id="tracking-bodies-for-output">
+<h2>Tracking bodies for output<a class="headerlink" href="#tracking-bodies-for-output" title="Link to this heading"></a></h2>
+<p>Attach a named label to any entity to include its state over time in a CSV file for plotting.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">track</span><span class="p">(</span><span class="n">arm</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;pendulum_arm&quot;</span><span class="p">);</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">track</span><span class="p">(</span><span class="n">tip</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;beam_tip&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="freezing-a-body-mid-simulation">
+<h2>Freezing a body mid-simulation<a class="headerlink" href="#freezing-a-body-mid-simulation" title="Link to this heading"></a></h2>
+<p>Convert a dynamic body into a static obstacle without removing it:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">makeStatic</span><span class="p">(</span><span class="n">body</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>This removes the entity’s dynamic physics components (including
+<code class="docutils literal notranslate"><span class="pre">C_PhysicsObject</span></code>, rigid/point-mass tags, body index, mass, inertia, and any
+queued external force/torque data) and marks the structure dirty. Useful for
+staged simulations where a body should be settled, locked in place, and then
+other bodies dropped on top.</p>
+</section>
+<section id="accessing-the-ecs-registry">
+<h2>Accessing the ECS registry<a class="headerlink" href="#accessing-the-ecs-registry" title="Link to this heading"></a></h2>
+<p>For custom queries or one-off component reads that are not exposed by the
+<code class="docutils literal notranslate"><span class="pre">PhysicsEngine</span></code> API, access the underlying EnTT registry directly:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">registry</span><span class="o">&amp;</span><span class="w"> </span><span class="n">reg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">ecs</span><span class="p">();</span>
+
+<span class="c1">// Example: iterate all bodies that have a friction component</span>
+<span class="n">reg</span><span class="p">.</span><span class="n">view</span><span class="o">&lt;</span><span class="n">cardillo</span><span class="o">::</span><span class="n">C_Friction</span><span class="o">&gt;</span><span class="p">().</span><span class="n">each</span><span class="p">([](</span><span class="k">auto</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;mu = &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">f</span><span class="p">.</span><span class="n">mu</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Modifying ECS components directly (adding, removing, or overwriting them)
+bypasses the engine’s dirty flags. If you change any component that affects
+assembly, call <code class="docutils literal notranslate"><span class="pre">engine.markStructureDirty()</span></code> afterwards.</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="beams.html" class="btn btn-neutral float-left" title="Beams and Flexible Rods" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="example.html" class="btn btn-neutral float-right" title="Worked Example: A Single Pendulum" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

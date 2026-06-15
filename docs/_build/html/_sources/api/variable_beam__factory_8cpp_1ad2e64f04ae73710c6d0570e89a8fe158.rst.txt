@@ -1,0 +1,14 @@
+.. _exhale_variable_beam__factory_8cpp_1ad2e64f04ae73710c6d0570e89a8fe158:
+
+Variable segLen
+===============
+
+- Defined in :ref:`file_src_physics_assets_beam_factory.cpp`
+
+
+Variable Documentation
+----------------------
+
+
+.. doxygenvariable:: segLen
+   :project: Cardillo

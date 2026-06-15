@@ -1,0 +1,14 @@
+.. _exhale_function_spline_8cpp_1a37a250371bd718a9f766cfe064c5ec14:
+
+Function cardillo::misc::makeFrameFromTangent
+=============================================
+
+- Defined in :ref:`file_src_misc_spline.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::misc::makeFrameFromTangent(const Vector3r&)
+   :project: Cardillo

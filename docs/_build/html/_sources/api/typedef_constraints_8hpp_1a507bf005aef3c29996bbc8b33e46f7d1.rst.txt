@@ -1,0 +1,14 @@
+.. _exhale_typedef_constraints_8hpp_1a507bf005aef3c29996bbc8b33e46f7d1:
+
+Typedef cardillo::physics::Row6r
+================================
+
+- Defined in :ref:`file_src_physics_constraints_constraints.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::physics::Row6r
+   :project: Cardillo

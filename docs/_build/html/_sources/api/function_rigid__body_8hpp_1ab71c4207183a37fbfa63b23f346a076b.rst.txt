@@ -1,0 +1,14 @@
+.. _exhale_function_rigid__body_8hpp_1ab71c4207183a37fbfa63b23f346a076b:
+
+Function cardillo::RigidBody::isStatic
+======================================
+
+- Defined in :ref:`file_src_rigid_body_rigid_body.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::RigidBody::isStatic(const entt::registry&, entt::entity)
+   :project: Cardillo

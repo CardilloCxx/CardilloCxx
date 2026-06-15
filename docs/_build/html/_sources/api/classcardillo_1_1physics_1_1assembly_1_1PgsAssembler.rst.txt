@@ -1,0 +1,17 @@
+.. _exhale_class_classcardillo_1_1physics_1_1assembly_1_1PgsAssembler:
+
+Class PgsAssembler
+==================
+
+- Defined in :ref:`file_src_physics_assembly_pgs_assembler.hpp`
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::physics::assembly::PgsAssembler
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

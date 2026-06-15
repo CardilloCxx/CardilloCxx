@@ -1,0 +1,14 @@
+.. _exhale_function_tangent__frame_8hpp_1a0549728b2a560f86eade0c4772acd77f:
+
+Function cardillo::collision::tangentFrameFromNormal
+====================================================
+
+- Defined in :ref:`file_src_collision_tangent_frame.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::collision::tangentFrameFromNormal(const Vector3r&, Vector3r&, Vector3r&)
+   :project: Cardillo

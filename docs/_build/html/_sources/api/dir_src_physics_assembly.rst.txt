@@ -1,0 +1,30 @@
+.. _dir_src_physics_assembly:
+
+
+Directory assembly
+==================
+
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics>` (``src/physics``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+
+*Directory path:* ``src/physics/assembly``
+
+
+Files
+-----
+
+- :ref:`file_src_physics_assembly_clarabel_assembler.cpp`
+- :ref:`file_src_physics_assembly_clarabel_assembler.hpp`
+- :ref:`file_src_physics_assembly_dynamics_assembler.cpp`
+- :ref:`file_src_physics_assembly_dynamics_assembler.hpp`
+- :ref:`file_src_physics_assembly_pgs_assembler.cpp`
+- :ref:`file_src_physics_assembly_pgs_assembler.hpp`
+- :ref:`file_src_physics_assembly_pj_assembler.cpp`
+- :ref:`file_src_physics_assembly_pj_assembler.hpp`
+- :ref:`file_src_physics_assembly_qoco_assembler.cpp`
+- :ref:`file_src_physics_assembly_qoco_assembler.hpp`
+
+

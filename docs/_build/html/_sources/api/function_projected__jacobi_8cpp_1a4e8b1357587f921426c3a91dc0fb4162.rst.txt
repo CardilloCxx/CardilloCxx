@@ -1,0 +1,14 @@
+.. _exhale_function_projected__jacobi_8cpp_1a4e8b1357587f921426c3a91dc0fb4162:
+
+Function cardillo::solver::residual
+===================================
+
+- Defined in :ref:`file_src_physics_solver_projected_jacobi.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::solver::residual(const VectorXr&, const VectorXr&, cardillo::config::Config&)
+   :project: Cardillo

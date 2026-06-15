@@ -1,0 +1,14 @@
+.. _exhale_function_transformations_8hpp_1af5ab806c1e734433ffb4792b5c1455ab:
+
+Function cardillo::transform::detail::bodyPointVelocityWorld
+============================================================
+
+- Defined in :ref:`file_src_rigid_body_transformations.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::transform::detail::bodyPointVelocityWorld(const RigidBody::RigidState&, const Vector3r&)
+   :project: Cardillo

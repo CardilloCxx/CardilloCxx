@@ -1,0 +1,52 @@
+
+.. _file_src_physics_synchronization_derived_entity_sync.cpp:
+
+File derived_entity_sync.cpp
+============================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_physics_synchronization>` (``src/physics/synchronization``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/physics/synchronization/derived_entity_sync.cpp``)
+--------------------------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_physics_synchronization_derived_entity_sync.cpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../../rigid_body/rigid_body.hpp``
+
+- ``algorithm``
+
+- ``cmath``
+
+- ``derived_entity_sync.hpp`` (:ref:`file_src_physics_synchronization_derived_entity_sync.hpp`)
+
+- ``iostream``
+
+- ``trajectory.hpp`` (:ref:`file_src_physics_synchronization_trajectory.hpp`)
+
+
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__physics`
+

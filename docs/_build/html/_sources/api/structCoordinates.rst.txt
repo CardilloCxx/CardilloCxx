@@ -1,0 +1,17 @@
+.. _exhale_struct_structCoordinates:
+
+Template Struct Coordinates
+===========================
+
+- Defined in :ref:`file_src_misc_dofs.hpp`
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: Coordinates
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:

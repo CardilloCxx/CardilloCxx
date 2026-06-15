@@ -1,0 +1,63 @@
+
+.. _file_src_collision_contact_tracker.hpp:
+
+File contact_tracker.hpp
+========================
+
+|exhale_lsh| :ref:`Parent directory <dir_src_collision>` (``src/collision``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/collision/contact_tracker.hpp``)
+--------------------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_collision_contact_tracker.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``../config/config.hpp``
+
+- ``../misc/timings/TimingManager.hpp``
+
+- ``types.hpp`` (:ref:`file_src_physics_ecs_types.hpp`)
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_collision_collision_coal.hpp`
+
+- :ref:`file_src_collision_contact_tracker.cpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__collision`
+
+- :ref:`namespace_cardillo__physics`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classcardillo_1_1collision_1_1ContactTracker`
+

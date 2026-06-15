@@ -1,0 +1,14 @@
+.. _exhale_typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f:
+
+Typedef cardillo::Vector3r
+==========================
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: cardillo::Vector3r
+   :project: Cardillo

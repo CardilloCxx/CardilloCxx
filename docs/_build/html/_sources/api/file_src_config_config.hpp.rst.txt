@@ -1,0 +1,98 @@
+
+.. _file_src_config_config.hpp:
+
+File config.hpp
+===============
+
+|exhale_lsh| :ref:`Parent directory <dir_src_config>` (``src/config``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/config/config.hpp``)
+--------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_config_config.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``misc/types.hpp`` (:ref:`file_src_misc_types.hpp`)
+
+- ``optional``
+
+- ``string``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_collision_collision_coal.cpp`
+
+- :ref:`file_src_collision_contact_tracker.hpp`
+
+- :ref:`file_src_config_config.cpp`
+
+- :ref:`file_src_io_csv_writer.hpp`
+
+- :ref:`file_src_physics_api_physics_engine.hpp`
+
+- :ref:`file_src_physics_assembly_pgs_assembler.hpp`
+
+- :ref:`file_src_physics_assembly_pj_assembler.hpp`
+
+- :ref:`file_src_physics_integration_moreau.hpp`
+
+- :ref:`file_src_physics_pipeline_physics_pipeline.hpp`
+
+- :ref:`file_src_physics_solver_clarabel_solver.hpp`
+
+- :ref:`file_src_physics_solver_conjugate_gradient.hpp`
+
+- :ref:`file_src_physics_solver_projected_gauss_seidel.hpp`
+
+- :ref:`file_src_physics_solver_projected_jacobi.hpp`
+
+- :ref:`file_src_physics_solver_qoco_solver.hpp`
+
+- :ref:`file_src_physics_world.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__config`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1config_1_1Config`
+
+- :ref:`exhale_class_classcardillo_1_1config_1_1ConfigReader`
+
+
+Enums
+-----
+
+
+- :ref:`exhale_enum_config_8hpp_1a458b79649d6e626590d6374440aa027d`
+
+- :ref:`exhale_enum_config_8hpp_1a5a2b26bb9208185a713a6a40901597dd`
+

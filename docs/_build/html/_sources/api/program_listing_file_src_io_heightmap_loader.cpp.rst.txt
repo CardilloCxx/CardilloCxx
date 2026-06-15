@@ -1,0 +1,156 @@
+
+.. _program_listing_file_src_io_heightmap_loader.cpp:
+
+Program Listing for File heightmap_loader.cpp
+=============================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_io_heightmap_loader.cpp>` (``src/io/heightmap_loader.cpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #include "heightmap_loader.hpp"
+   #include <cstdio>
+   #include <cstring>
+   #include <string>
+   #include <vector>
+   
+   #ifdef CARDILLO_USE_TINYEXR
+   #ifndef TINYEXR_IMPLEMENTATION
+   #define TINYEXR_IMPLEMENTATION
+   #endif
+   // Prefer system zlib over bundled miniz to avoid extra vendoring
+   #ifndef TINYEXR_USE_MINIZ
+   #define TINYEXR_USE_MINIZ 0
+   #endif
+   #include <tinyexr.h>
+   #include <zlib.h>
+   #endif
+   
+   namespace cardillo::io {
+   
+   bool load_exr_heightmap(const std::string& path, Eigen::Matrix<coal::CoalScalar, Eigen::Dynamic, Eigen::Dynamic>& heights_out, int& rows, int& cols) {
+       rows = 0;
+       cols = 0;
+       heights_out.resize(0, 0);
+   #ifdef CARDILLO_USE_TINYEXR
+       // First, try the simple RGBA loader (handles many EXR variants)
+       {
+           float* rgba = nullptr;
+           int w = 0, h = 0;
+           const char* err = nullptr;
+           int r = LoadEXR(&rgba, &w, &h, path.c_str(), &err);
+           if (r == TINYEXR_SUCCESS && rgba && w > 0 && h > 0) {
+               cols = w;
+               rows = h;
+               heights_out.resize(rows, cols);
+               for (int y = 0; y < rows; ++y) {
+                   for (int x = 0; x < cols; ++x) {
+                       // Take R as height
+                       heights_out(y, x) = static_cast<coal::CoalScalar>(rgba[4 * (y * cols + x) + 0]);
+                   }
+               }
+               free(rgba);
+               return true;
+           } else if (err) {
+               std::printf("[Heightmap] RGBA EXR load failed: %s\n", err);
+               FreeEXRErrorMessage(err);
+           }
+           if (rgba) free(rgba);
+       }
+   
+       // Fallback: detailed image loader with channel selection
+       EXRHeader header;
+       EXRImage image;
+       const char* err = nullptr;
+       InitEXRHeader(&header);
+       InitEXRImage(&image);
+       EXRVersion ver;
+       int ret = 0;
+   #ifdef ParseEXRVersionFromFile
+       ret = ParseEXRVersionFromFile(&ver, path.c_str());
+       if (ret != 0) {
+           std::printf("[Heightmap] Failed to parse EXR version for '%s'\n", path.c_str());
+           return false;
+       }
+   #endif
+       ret = ParseEXRHeaderFromFile(&header, &ver, path.c_str(), &err);
+       if (ret != 0) {
+           if (err) {
+               std::printf("[Heightmap] EXR header parse failed: %s\n", err);
+               FreeEXRErrorMessage(err);
+           }
+           FreeEXRHeader(&header);
+           return false;
+       }
+       if (header.num_channels > 0) {
+           header.requested_pixel_types = (int*)malloc(sizeof(int) * header.num_channels);
+           for (int i = 0; i < header.num_channels; i++) header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_FLOAT;
+       }
+       ret = LoadEXRImageFromFile(&image, &header, path.c_str(), &err);
+       if (ret != 0) {
+           if (err) {
+               std::printf("[Heightmap] EXR image load failed: %s\n", err);
+               FreeEXRErrorMessage(err);
+           }
+           FreeEXRHeader(&header);
+           FreeEXRImage(&image);
+           return false;
+       }
+   
+       cols = image.width;
+       rows = image.height;
+       if (cols <= 0 || rows <= 0 || image.num_channels <= 0) {
+           std::printf("[Heightmap] Invalid EXR image dims or channels.\n");
+           FreeEXRHeader(&header);
+           FreeEXRImage(&image);
+           return false;
+       }
+   
+       int chan_idx = 0;
+       if (image.num_channels == 1)
+           chan_idx = 0;
+       else if (header.channels && header.num_channels > 0) {
+           auto pick = [&](const char* name) -> int {
+               for (int i = 0; i < header.num_channels; ++i) {
+                   if (!header.channels[i].name[0]) continue;
+                   std::string n(header.channels[i].name);
+                   for (auto& c : n) c = (char)std::tolower((unsigned char)c);
+                   if (n == name) return i;
+               }
+               return -1;
+           };
+           int idx = -1;
+           if (idx < 0) idx = pick("r");
+           if (idx < 0) idx = pick("y");
+           if (idx < 0) idx = pick("height");
+           if (idx < 0) idx = pick("z");
+           if (idx >= 0) chan_idx = idx;
+       }
+       float* chan = nullptr;
+       if (image.images && image.images[chan_idx]) chan = reinterpret_cast<float*>(image.images[chan_idx]);
+       if (!chan) {
+           std::printf("[Heightmap] EXR has no readable channel data.\n");
+           FreeEXRHeader(&header);
+           FreeEXRImage(&image);
+           return false;
+       }
+   
+       heights_out.resize(rows, cols);
+       for (int y = 0; y < rows; ++y) {
+           for (int x = 0; x < cols; ++x) {
+               heights_out(y, x) = static_cast<coal::CoalScalar>(chan[y * cols + x]);
+           }
+       }
+   
+       FreeEXRHeader(&header);
+       FreeEXRImage(&image);
+       return true;
+   #else
+       std::printf("[Heightmap] EXR loader disabled (CARDILLO_USE_TINYEXR not defined). Requested: %s\n", path.c_str());
+       return false;
+   #endif
+   }
+   
+   }  // namespace cardillo::io

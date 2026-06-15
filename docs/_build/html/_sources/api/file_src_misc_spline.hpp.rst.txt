@@ -1,0 +1,77 @@
+
+.. _file_src_misc_spline.hpp:
+
+File spline.hpp
+===============
+
+|exhale_lsh| :ref:`Parent directory <dir_src_misc>` (``src/misc``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+Definition (``src/misc/spline.hpp``)
+------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_src_misc_spline.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``Eigen/Geometry``
+
+- ``cmath``
+
+- ``memory``
+
+- ``string``
+
+- ``types.hpp`` (:ref:`file_src_physics_ecs_types.hpp`)
+
+- ``vector``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_src_misc_spline.cpp`
+
+- :ref:`file_src_physics_world.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_cardillo`
+
+- :ref:`namespace_cardillo__misc`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1misc_1_1SplineSample`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1CatmullRomSpline`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1CircleSpline`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1HelixSpline`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1LinearSpline`
+
+- :ref:`exhale_class_classcardillo_1_1misc_1_1SplinePattern`
+

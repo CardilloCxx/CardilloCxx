@@ -1,0 +1,14 @@
+.. _exhale_enum_config_8hpp_1a5a2b26bb9208185a713a6a40901597dd:
+
+Enum SolverType
+===============
+
+- Defined in :ref:`file_src_config_config.hpp`
+
+
+Enum Documentation
+------------------
+
+
+.. doxygenenum:: cardillo::config::SolverType
+   :project: Cardillo

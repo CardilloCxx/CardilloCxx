@@ -1,0 +1,14 @@
+.. _exhale_function_projected__jacobi_8cpp_1acbb794e7cd096087a06a0892f61cb523:
+
+Function cardillo::solver::nesterov_loop
+========================================
+
+- Defined in :ref:`file_src_physics_solver_projected_jacobi.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::solver::nesterov_loop(std::unique_ptr<workspace>&, cardillo::config::Config&)
+   :project: Cardillo

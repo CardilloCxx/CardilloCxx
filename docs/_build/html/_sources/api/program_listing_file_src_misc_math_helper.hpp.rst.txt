@@ -1,0 +1,32 @@
+
+.. _program_listing_file_src_misc_math_helper.hpp:
+
+Program Listing for File math_helper.hpp
+========================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_src_misc_math_helper.hpp>` (``src/misc/math_helper.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #pragma once
+   
+   #include <Eigen/Dense>
+   #include <Eigen/Geometry>
+   #include "types.hpp"
+   
+   namespace cardillo {
+   
+   class MathHelper {
+      public:
+       static Quaternion4r alignQuaternionTo(const Quaternion4r& q_in, const Quaternion4r& q_ref) {
+           Quaternion4r q = q_in;
+           if (!q.coeffs().allFinite()) return q_ref;
+           q.normalize();
+           if (q_ref.dot(q) < (real_t)0) q.coeffs() = -q.coeffs();
+           return q;
+       }
+   };
+   
+   }  // namespace cardillo

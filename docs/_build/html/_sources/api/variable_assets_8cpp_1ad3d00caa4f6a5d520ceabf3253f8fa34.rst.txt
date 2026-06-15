@@ -1,0 +1,14 @@
+.. _exhale_variable_assets_8cpp_1ad3d00caa4f6a5d520ceabf3253f8fa34:
+
+Variable inertia_diag_unit
+==========================
+
+- Defined in :ref:`file_src_physics_assets_assets.cpp`
+
+
+Variable Documentation
+----------------------
+
+
+.. doxygenvariable:: inertia_diag_unit
+   :project: Cardillo

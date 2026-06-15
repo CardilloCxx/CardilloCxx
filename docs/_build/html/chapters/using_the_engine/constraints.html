@@ -1,0 +1,534 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Constraints and Joints &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Trajectories and Kinematic Control" href="trajectories.html" />
+    <link rel="prev" title="Bodies" href="bodies.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="setup.html">Setup and Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bodies.html">Bodies</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Constraints and Joints</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#jointframe-specifying-where-and-how-a-joint-attaches">JointFrame (specifying where and how a joint attaches)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-stiffness-and-damping-work">How stiffness and damping work</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#constraint-types">Constraint types</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#addlineardistanceconstraint">addLinearDistanceConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#addrigidconstraint">addRigidConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#addhingeconstraint">addHingeConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#addtranslationalconstraint">addTranslationalConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#addrotationconstraint">addRotationConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#addtranslationrotationconstraint">addTranslationRotationConstraint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#addbeamconstraint">addBeamConstraint</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#driving-constraint-velocities-at-runtime">Driving constraint velocities at runtime</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#quick-constraint-type-reference">Quick constraint-type reference</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="trajectories.html">Trajectories and Kinematic Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="beams.html">Beams and Flexible Rods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stepping.html">Stepping and Runtime Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example.html">Worked Example: A Single Pendulum</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../using_the_engine.html">Using The Engine</a></li>
+      <li class="breadcrumb-item active">Constraints and Joints</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/using_the_engine/constraints.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="constraints-and-joints">
+<h1>Constraints and Joints<a class="headerlink" href="#constraints-and-joints" title="Link to this heading"></a></h1>
+<p>Constraints couple two bodies (or a body to the world) by restricting
+translation and/or rotation. Every factory method on <code class="docutils literal notranslate"><span class="pre">PhysicsEngine</span></code>
+delegates to <code class="docutils literal notranslate"><span class="pre">ConstraintFactory</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/constraints/</span></code>), inserts
+a <code class="docutils literal notranslate"><span class="pre">ConstraintPattern</span></code> into the world’s constraint list, and marks the
+world structure dirty so the next <code class="docutils literal notranslate"><span class="pre">step()</span></code> rebuilds the solver matrices.</p>
+<p>All factory methods return a <code class="docutils literal notranslate"><span class="pre">size_t</span></code> constraint index. Keep this index if
+you need to drive the constraint velocity at runtime with
+<code class="docutils literal notranslate"><span class="pre">setConstraintScalarVelocity</span></code> / <code class="docutils literal notranslate"><span class="pre">setConstraintLinearVelocity</span></code> /
+<code class="docutils literal notranslate"><span class="pre">setConstraintAngularVelocity</span></code>.</p>
+<nav class="contents local" id="on-this-page">
+<p class="topic-title">On this page</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#jointframe-specifying-where-and-how-a-joint-attaches" id="id1">JointFrame (specifying where and how a joint attaches)</a></p></li>
+<li><p><a class="reference internal" href="#how-stiffness-and-damping-work" id="id2">How stiffness and damping work</a></p></li>
+<li><p><a class="reference internal" href="#constraint-types" id="id3">Constraint types</a></p>
+<ul>
+<li><p><a class="reference internal" href="#addlineardistanceconstraint" id="id4">addLinearDistanceConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addrigidconstraint" id="id5">addRigidConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addhingeconstraint" id="id6">addHingeConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addtranslationalconstraint" id="id7">addTranslationalConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addrotationconstraint" id="id8">addRotationConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addtranslationrotationconstraint" id="id9">addTranslationRotationConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addbeamconstraint" id="id10">addBeamConstraint</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#driving-constraint-velocities-at-runtime" id="id11">Driving constraint velocities at runtime</a></p></li>
+<li><p><a class="reference internal" href="#quick-constraint-type-reference" id="id12">Quick constraint-type reference</a></p></li>
+</ul>
+</nav>
+<section id="jointframe-specifying-where-and-how-a-joint-attaches">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">JointFrame (specifying where and how a joint attaches)</a><a class="headerlink" href="#jointframe-specifying-where-and-how-a-joint-attaches" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">JointFrame</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/constraints/constraints.hpp</span></code>) describes the
+position and orientation of the joint in some reference frame:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">r_refJ</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code></p></td>
+<td><p>Joint origin expressed in the reference frame (or in world frame when
+<code class="docutils literal notranslate"><span class="pre">ref</span></code> is empty).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">A_refJ</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Identity</span></code></p></td>
+<td><p>3×3 rotation matrix defining the joint’s local axes in the reference
+frame. <strong>Column 0 is the primary (hinge) axis</strong> used by revolute joints.
+Columns 1 and 2 are the blocked rotation axes.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ref</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">nullopt</span></code></p></td>
+<td><p>Optional entity whose current frame defines <code class="docutils literal notranslate"><span class="pre">r_refJ</span></code> and <code class="docutils literal notranslate"><span class="pre">A_refJ</span></code>.
+When empty the values are taken directly in world coordinates.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The most convenient constructor is <code class="docutils literal notranslate"><span class="pre">JointFrame::fromAxis</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Build a joint frame at &#39;pivot&#39; whose x-column equals &#39;axis&#39;.</span>
+<span class="c1">// Columns 1 and 2 are filled in automatically as an orthonormal basis.</span>
+<span class="n">JointFrame</span><span class="w"> </span><span class="n">jf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">Vector3r</span><span class="w"> </span><span class="n">pivot</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">axis</span><span class="p">,</span>
+<span class="w">                                     </span><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{});</span>
+
+<span class="c1">// Hinge at world origin, rotating around the Y axis</span>
+<span class="n">JointFrame</span><span class="w"> </span><span class="n">jf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitY</span><span class="p">());</span>
+
+<span class="c1">// Hinge at a world point, in body A&#39;s local frame</span>
+<span class="n">JointFrame</span><span class="w"> </span><span class="n">jf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.02</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.035</span><span class="p">),</span><span class="w">   </span><span class="c1">// pivot in body A&#39;s frame</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitX</span><span class="p">(),</span><span class="w">            </span><span class="c1">// hinge axis in body A&#39;s frame</span>
+<span class="w">    </span><span class="n">bodyA</span><span class="w">                         </span><span class="c1">// reference entity</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>You can also build a <code class="docutils literal notranslate"><span class="pre">JointFrame</span></code> directly from a world position and
+rotation matrix:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">JointFrame</span><span class="w"> </span><span class="nf">jf</span><span class="p">(</span><span class="n">Vector3r</span><span class="w"> </span><span class="n">pivot</span><span class="p">,</span><span class="w"> </span><span class="n">Matrix33r</span><span class="w"> </span><span class="n">orientation</span><span class="p">);</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">ref</span></code> is set to an entity, <code class="docutils literal notranslate"><span class="pre">r_refJ</span></code> and the columns of <code class="docutils literal notranslate"><span class="pre">A_refJ</span></code>
+are expressed in that entity’s <strong>current</strong> frame at constraint-creation time.
+Changes to the entity’s pose after creation do not retroactively update the
+stored attachment offsets.</p>
+</div>
+</section>
+<section id="how-stiffness-and-damping-work">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">How stiffness and damping work</a><a class="headerlink" href="#how-stiffness-and-damping-work" title="Link to this heading"></a></h2>
+<p>All constraints except the beam use a <strong>compliant constraint</strong> formulation.
+Stiffness <code class="docutils literal notranslate"><span class="pre">K</span></code> and damping <code class="docutils literal notranslate"><span class="pre">D</span></code> are per-axis vectors in the joint frame.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">K</span> <span class="pre">=</span> <span class="pre">infinity</span></code> (the default) → <strong>hard</strong> constraint: the DOF is fully
+locked at assembly time and enforced with an impulsive force.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">K</span> <span class="pre">=</span> <span class="pre">0</span></code> → <strong>free</strong>: no restoring force, the DOF is unconstrained.</p></li>
+<li><p>A finite positive <code class="docutils literal notranslate"><span class="pre">K</span></code> → <strong>spring</strong>: a restoring force proportional to the
+displacement from the rest position, and a damping force proportional to the
+relative velocity.</p></li>
+</ul>
+<p>The compliance <code class="docutils literal notranslate"><span class="pre">C</span> <span class="pre">=</span> <span class="pre">1/K</span></code> (and analogously for damping <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">=</span> <span class="pre">1/D</span></code>) enters the
+Delassus operator directly; no special casing needed.</p>
+</section>
+<section id="constraint-types">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Constraint types</a><a class="headerlink" href="#constraint-types" title="Link to this heading"></a></h2>
+<section id="addlineardistanceconstraint">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">addLinearDistanceConstraint</a><a class="headerlink" href="#addlineardistanceconstraint" title="Link to this heading"></a></h3>
+<p>Maintains the Euclidean distance between two attachment points (one on each
+body) at its value at construction time. This is a single scalar constraint
+row (1 DOF).</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addLinearDistanceConstraint</span><span class="p">(</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w">                      </span><span class="c1">// body A (or entt::null for world)</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w">                      </span><span class="c1">// body B</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">rA_local</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="c1">// attachment offset in body A frame</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">rB_local</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="c1">// attachment offset in body B frame</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">stiffness</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">infinity</span><span class="p">,</span><span class="w">         </span><span class="c1">// spring stiffness (N/m); inf = hard</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">damping</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="w">              </span><span class="c1">// damper coefficient (Ns/m)</span>
+<span class="p">);</span>
+
+<span class="c1">// Hard cable between body centres</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addLinearDistanceConstraint</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">);</span>
+
+<span class="c1">// Soft spring at offset attachment points</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addLinearDistanceConstraint</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">),</span><span class="w">   </span><span class="c1">// attach at top of A</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mf">-0.5</span><span class="p">),</span><span class="w">  </span><span class="c1">// attach at bottom of B</span>
+<span class="w">    </span><span class="mf">1e4</span><span class="p">,</span><span class="w">                   </span><span class="c1">// 10 kN/m</span>
+<span class="w">    </span><span class="mf">50.0</span><span class="w">                   </span><span class="c1">// 50 Ns/m damping</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>The rest length <code class="docutils literal notranslate"><span class="pre">L₀</span></code> is computed at construction from the initial distance
+between the two attachment points. Drive the constraint with a constant
+scalar velocity using <code class="docutils literal notranslate"><span class="pre">engine.setConstraintScalarVelocity(idx,</span> <span class="pre">v)</span></code>.</p>
+</section>
+<section id="addrigidconstraint">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">addRigidConstraint</a><a class="headerlink" href="#addrigidconstraint" title="Link to this heading"></a></h3>
+<p>Fully welds body <code class="docutils literal notranslate"><span class="pre">b</span></code> to body <code class="docutils literal notranslate"><span class="pre">a</span></code> (or to the world when <code class="docutils literal notranslate"><span class="pre">b</span></code> is
+<code class="docutils literal notranslate"><span class="pre">entt::null</span></code>). Equivalent to locking all 6 DOF (3 translation + 3 rotation)
+with infinite stiffness. The joint position is taken as body <code class="docutils literal notranslate"><span class="pre">a</span></code>’s current
+world position at call time.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addRigidConstraint</span><span class="p">(</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w">             </span><span class="c1">// reference body (or entt::null for world)</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">null</span><span class="w"> </span><span class="c1">// body to pin (null → pins &#39;a&#39; to world)</span>
+<span class="p">);</span>
+
+<span class="n">engine</span><span class="p">.</span><span class="n">addRigidConstraint</span><span class="p">(</span><span class="n">wall</span><span class="p">,</span><span class="w"> </span><span class="n">bracket</span><span class="p">);</span><span class="w"> </span><span class="c1">// weld bracket to wall</span>
+</pre></div>
+</div>
+</section>
+<section id="addhingeconstraint">
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">addHingeConstraint</a><a class="headerlink" href="#addhingeconstraint" title="Link to this heading"></a></h3>
+<p>The most commonly used joint. Allows rotation around a single axis (the
+x-column of <code class="docutils literal notranslate"><span class="pre">frame.A_refJ</span></code>) while locking all other DOF. An optional torsional
+spring/damper can be added around the hinge axis.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addHingeConstraint</span><span class="p">(</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w">                              </span><span class="c1">// first body</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w">                              </span><span class="c1">// second body (or entt::null)</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">&amp;</span><span class="w"> </span><span class="n">frame</span><span class="p">,</span><span class="w">                     </span><span class="c1">// pivot + hinge axis</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">K_axis</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w">                        </span><span class="c1">// torsional spring (Nm/rad)</span>
+<span class="w">    </span><span class="n">real_t</span><span class="w"> </span><span class="n">D_axis</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w">                        </span><span class="c1">// torsional damping (Nms/rad)</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">K_trans</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Constant</span><span class="p">(</span><span class="n">inf</span><span class="p">),</span><span class="w">  </span><span class="c1">// translational stiffness</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">D_trans</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">()</span><span class="w">          </span><span class="c1">// translational damping</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>Parameters:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22.0%" />
+<col style="width: 18.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code></p></td>
+<td><p>auto</p></td>
+<td><p>The two bodies. Pass <code class="docutils literal notranslate"><span class="pre">entt::null</span></code> for <code class="docutils literal notranslate"><span class="pre">b</span></code> to pin body <code class="docutils literal notranslate"><span class="pre">a</span></code> to the
+world (useful for rollers, wall-mounted hinges, etc.).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">frame</span></code></p></td>
+<td><p>required</p></td>
+<td><p>Defines the pivot world position and the hinge axis (col 0 of
+<code class="docutils literal notranslate"><span class="pre">A_refJ</span></code>). Build it with <code class="docutils literal notranslate"><span class="pre">JointFrame::fromAxis(pivot,</span> <span class="pre">axis)</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">K_axis</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Torsional spring stiffness around the hinge axis (Nm/rad). <code class="docutils literal notranslate"><span class="pre">0</span></code> = free
+hinge; use a large value (e.g. 1e4) for a stiff rotational spring.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">D_axis</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Torsional damping around the hinge axis (Nms/rad). Light damping (e.g.
+0.1–1.0) prevents energy build-up in long simulations.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">K_trans</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">inf</span></code> × 3</p></td>
+<td><p>Translational spring stiffness in all three joint-frame directions (N/m).
+Default infinite = rigid; lower values create a compliant pivot.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">D_trans</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code></p></td>
+<td><p>Translational damping (Ns/m).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Internally <code class="docutils literal notranslate"><span class="pre">addHingeConstraint</span></code> creates a <code class="docutils literal notranslate"><span class="pre">TranslationRotationConstraint</span></code>
+with <code class="docutils literal notranslate"><span class="pre">K_rot</span> <span class="pre">=</span> <span class="pre">(K_axis,</span> <span class="pre">inf,</span> <span class="pre">inf)</span></code>. The infinite stiffness on the two
+transverse rotation axes is what locks out all rotations except the hinge
+axis.</p>
+</div>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Free hinge at world origin, rotating around Y</span>
+<span class="n">JointFrame</span><span class="w"> </span><span class="n">frame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitY</span><span class="p">());</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addHingeConstraint</span><span class="p">(</span><span class="n">base</span><span class="p">,</span><span class="w"> </span><span class="n">arm</span><span class="p">,</span><span class="w"> </span><span class="n">frame</span><span class="p">);</span>
+
+<span class="c1">// Spring hinge with damping; mimics a torsional rubber bushing</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addHingeConstraint</span><span class="p">(</span><span class="n">base</span><span class="p">,</span><span class="w"> </span><span class="n">arm</span><span class="p">,</span><span class="w"> </span><span class="n">frame</span><span class="p">,</span><span class="w"> </span><span class="mf">200.0</span><span class="p">,</span><span class="w"> </span><span class="mf">5.0</span><span class="p">);</span>
+
+<span class="c1">// Wall-mounted roller (body pinned to world)</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">addHingeConstraint</span><span class="p">(</span><span class="n">roller</span><span class="p">,</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">null</span><span class="p">,</span>
+<span class="w">    </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">rollerCenter</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitY</span><span class="p">()),</span>
+<span class="w">    </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.001</span><span class="p">);</span><span class="w">  </span><span class="c1">// near-frictionless rotation</span>
+</pre></div>
+</div>
+</section>
+<section id="addtranslationalconstraint">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">addTranslationalConstraint</a><a class="headerlink" href="#addtranslationalconstraint" title="Link to this heading"></a></h3>
+<p>Locks all translational DOF while leaving all three rotational DOF free
+(a ball-in-socket joint with translation removed).</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addTranslationalConstraint</span><span class="p">(</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">&amp;</span><span class="w"> </span><span class="n">frame</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">K_trans</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Constant</span><span class="p">(</span><span class="n">infinity</span><span class="p">),</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">D_trans</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">()</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>This is a <code class="docutils literal notranslate"><span class="pre">TranslationRotationConstraint</span></code> with <code class="docutils literal notranslate"><span class="pre">K_rot</span> <span class="pre">=</span> <span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">K_trans</span></code> set to the given values.</p>
+</section>
+<section id="addrotationconstraint">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">addRotationConstraint</a><a class="headerlink" href="#addrotationconstraint" title="Link to this heading"></a></h3>
+<p>Locks all rotational DOF while leaving all three translational DOF free.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addRotationConstraint</span><span class="p">(</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">&amp;</span><span class="w"> </span><span class="n">frame</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">K_rot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Constant</span><span class="p">(</span><span class="n">infinity</span><span class="p">),</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">D_rot</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">()</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="addtranslationrotationconstraint">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">addTranslationRotationConstraint</a><a class="headerlink" href="#addtranslationrotationconstraint" title="Link to this heading"></a></h3>
+<p>The generic 6-DOF spring-damper joint from which all the specialised joints
+above are derived. Each of the six DOF (3 translation, 3 rotation, all in the
+joint frame) can be independently stiffened or left free.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addTranslationRotationConstraint</span><span class="p">(</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">&amp;</span><span class="w"> </span><span class="n">frame</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">K_trans</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Constant</span><span class="p">(</span><span class="n">infinity</span><span class="p">),</span><span class="w">  </span><span class="c1">// [Kx, Ky, Kz] N/m</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">D_trans</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w">               </span><span class="c1">// [Dx, Dy, Dz] Ns/m</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">K_rot</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w">               </span><span class="c1">// [Krx, Kry, Krz] Nm/rad</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">D_rot</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">()</span><span class="w">                </span><span class="c1">// [Drx, Dry, Drz] Nms/rad</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>All six stiffness and damping components are expressed in the <strong>joint frame</strong>
+(the frame defined by <code class="docutils literal notranslate"><span class="pre">frame.A_refJ</span></code>):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">K_trans[0]</span></code> / <code class="docutils literal notranslate"><span class="pre">D_trans[0]</span></code> – spring/damper along joint x-axis</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">K_trans[1]</span></code> / <code class="docutils literal notranslate"><span class="pre">D_trans[1]</span></code> – spring/damper along joint y-axis</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">K_trans[2]</span></code> / <code class="docutils literal notranslate"><span class="pre">D_trans[2]</span></code> – spring/damper along joint z-axis</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">K_rot[0]</span></code>   / <code class="docutils literal notranslate"><span class="pre">D_rot[0]</span></code>    – torsion/damper about joint x-axis</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">K_rot[1]</span></code>   / <code class="docutils literal notranslate"><span class="pre">D_rot[1]</span></code>    – bending/damper about joint y-axis</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">K_rot[2]</span></code>   / <code class="docutils literal notranslate"><span class="pre">D_rot[2]</span></code>    – bending/damper about joint z-axis</p></li>
+</ul>
+<p>Example: a 3-DOF translational spring (compliant joint, rotation free):</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">addTranslationRotationConstraint</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">frame</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">1e3</span><span class="p">,</span><span class="w"> </span><span class="mf">1e3</span><span class="p">,</span><span class="w"> </span><span class="mf">1e3</span><span class="p">),</span><span class="w">  </span><span class="c1">// 1 kN/m in all directions</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">),</span><span class="w">     </span><span class="c1">// 10 Ns/m damping</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w">         </span><span class="c1">// no rotational stiffness</span>
+<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">()</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="addbeamconstraint">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">addBeamConstraint</a><a class="headerlink" href="#addbeamconstraint" title="Link to this heading"></a></h3>
+<p>Connects two beam-segment entities with the Cosserat-rod spring model.
+This is called automatically by <code class="docutils literal notranslate"><span class="pre">createBeam</span></code>; you only need it when
+assembling beam chains manually.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addBeamConstraint</span><span class="p">(</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">BeamSpringParams</span><span class="o">&amp;</span><span class="w"> </span><span class="n">springs</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">BeamCrossSection</span><span class="o">&amp;</span><span class="w"> </span><span class="n">section</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="beams.html"><span class="doc">Beams and Flexible Rods</span></a> for full documentation of <code class="docutils literal notranslate"><span class="pre">BeamSpringParams</span></code> and
+<code class="docutils literal notranslate"><span class="pre">BeamCrossSection</span></code>.</p>
+</section>
+</section>
+<section id="driving-constraint-velocities-at-runtime">
+<h2><a class="toc-backref" href="#id11" role="doc-backlink">Driving constraint velocities at runtime</a><a class="headerlink" href="#driving-constraint-velocities-at-runtime" title="Link to this heading"></a></h2>
+<p>Three setters let you prescribe a target velocity for a constraint pattern.
+They are typically called inside <code class="docutils literal notranslate"><span class="pre">SceneBase::updateScene</span></code>.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Single scalar velocity (for LinearDistanceConstraint)</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">setConstraintScalarVelocity</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span><span class="w"> </span><span class="n">v</span><span class="p">);</span>
+
+<span class="c1">// Linear velocity in joint frame (for TranslationRotationConstraint)</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">setConstraintLinearVelocity</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="n">vx</span><span class="p">,</span><span class="w"> </span><span class="n">vy</span><span class="p">,</span><span class="w"> </span><span class="n">vz</span><span class="p">));</span>
+
+<span class="c1">// Angular velocity in joint frame</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">setConstraintAngularVelocity</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="n">wx</span><span class="p">,</span><span class="w"> </span><span class="n">wy</span><span class="p">,</span><span class="w"> </span><span class="n">wz</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>Example: prismatic actuator extending at 0.1 m/s along the joint x-axis:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">prismatic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addTranslationalConstraint</span><span class="p">(</span><span class="n">base</span><span class="p">,</span><span class="w"> </span><span class="n">slider</span><span class="p">,</span>
+<span class="w">    </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">anchorPos</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitX</span><span class="p">()));</span>
+
+<span class="c1">// In updateScene:</span>
+<span class="n">engine</span><span class="p">.</span><span class="n">setConstraintLinearVelocity</span><span class="p">(</span><span class="n">prismatic</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">));</span>
+</pre></div>
+</div>
+</section>
+<section id="quick-constraint-type-reference">
+<h2><a class="toc-backref" href="#id12" role="doc-backlink">Quick constraint-type reference</a><a class="headerlink" href="#quick-constraint-type-reference" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 15.0%" />
+<col style="width: 55.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>DOF locked</p></th>
+<th class="head"><p>Typical use</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">addRigidConstraint</span></code></p></td>
+<td><p>6 / 6</p></td>
+<td><p>Weld two bodies together.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">addHingeConstraint</span></code></p></td>
+<td><p>5 / 6</p></td>
+<td><p>Revolute joint (door hinge, wheel axle, pendulum pin).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">addTranslationalConstraint</span></code></p></td>
+<td><p>3 trans / 3</p></td>
+<td><p>Lock position, allow free rotation (ball socket without translation).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">addRotationConstraint</span></code></p></td>
+<td><p>3 rot / 3</p></td>
+<td><p>Lock orientation, allow free translation (prismatic guide).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">addTranslationRotationConstraint</span></code></p></td>
+<td><p>configurable</p></td>
+<td><p>Generic spring-damper joint with full per-axis control.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">addLinearDistanceConstraint</span></code></p></td>
+<td><p>1 (distance)</p></td>
+<td><p>Inextensible cable or spring between two attachment points.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">addBeamConstraint</span></code></p></td>
+<td><p>6 (compliant)</p></td>
+<td><p>Cosserat-rod link between two beam segments.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="bodies.html" class="btn btn-neutral float-left" title="Bodies" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="trajectories.html" class="btn btn-neutral float-right" title="Trajectories and Kinematic Control" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

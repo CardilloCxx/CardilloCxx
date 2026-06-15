@@ -1,0 +1,14 @@
+.. _exhale_function_transformations_8hpp_1a2b19406a0156b2a911f3f702a2d5b995:
+
+Function cardillo::transform::detail::sanitizeQuaternion
+========================================================
+
+- Defined in :ref:`file_src_rigid_body_transformations.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: cardillo::transform::detail::sanitizeQuaternion(const Quaternion4r&)
+   :project: Cardillo

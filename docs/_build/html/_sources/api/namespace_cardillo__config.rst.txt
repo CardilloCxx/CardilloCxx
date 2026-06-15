@@ -1,0 +1,33 @@
+
+.. _namespace_cardillo__config:
+
+Namespace cardillo::config
+==========================
+
+
+
+Classes
+-------
+
+
+- :ref:`exhale_struct_structcardillo_1_1config_1_1Config`
+
+- :ref:`exhale_class_classcardillo_1_1config_1_1ConfigReader`
+
+
+Enums
+-----
+
+
+- :ref:`exhale_enum_config_8hpp_1a458b79649d6e626590d6374440aa027d`
+
+- :ref:`exhale_enum_config_8hpp_1a5a2b26bb9208185a713a6a40901597dd`
+
+
+Functions
+---------
+
+
+- :ref:`exhale_function_config_8cpp_1a1689db6dee421fdd28963687bb46ff03`
+
+- :ref:`exhale_function_config_8cpp_1acb8ba7c3776d41f2b793dc65d499c240`

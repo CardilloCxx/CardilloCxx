@@ -1,0 +1,23 @@
+.. _exhale_class_classcardillo_1_1misc_1_1TimingManager_1_1Scope:
+
+Class TimingManager::Scope
+==========================
+
+- Defined in :ref:`file_src_misc_timings_TimingManager.hpp`
+
+
+Nested Relationships
+--------------------
+
+This class is a nested type of :ref:`exhale_class_classcardillo_1_1misc_1_1TimingManager`.
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: cardillo::misc::TimingManager::Scope
+   :project: Cardillo
+   :members:
+   :protected-members:
+   :undoc-members:
