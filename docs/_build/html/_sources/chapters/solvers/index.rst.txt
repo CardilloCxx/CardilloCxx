@@ -1,0 +1,70 @@
+Solvers
+=======
+
+Solving the contact problem is the research core of Cardillo. Each time step
+produces a set of assembled operators from the collision and constraint pipeline
+(see :doc:`../physics_pipeline`) and the solver's job is to find a new velocity
+state that satisfies the equations of motion while respecting all contact and
+constraint conditions simultaneously.
+
+The contact problem is inherently non-smooth: contact forces only push (never
+pull), and friction forces are bounded by a cone. Different solver architectures
+handle this non-smooth feasibility problem in very different ways, which is why
+the engine supports multiple backends.
+
+All solvers share the same input from the assembler:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - Symbol
+     - Meaning
+   * - **M**
+     - Block-diagonal mass matrix (3x3 translational + 3x3 inertia per body)
+   * - **u**
+     - Stacked body velocities at the start of the step
+   * - **f**
+     - External and gyroscopic forces
+   * - **Wg**, **Wgamma**
+     - Constraint Jacobians (spring rows and damper rows)
+   * - **C**, **A**
+     - Compliance diagonals (spring and damper inverses)
+   * - **W**
+     - Contact Jacobian (one row per contact scalar)
+   * - **mu**
+     - Per-contact friction coefficients
+
+And all solvers return the same output: the stacked body velocity vector **u**
+for the new state, plus updated constraint multipliers **lambda_g** and
+**lambda_gamma** for use in the next step.
+
+Select a solver via ``solver.type`` in the config file:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 30 40
+
+   * - Config value
+     - Backend
+     - Notes
+   * - ``projected_jacobi`` (default)
+     - :doc:`projected_jacobi`
+     - General purpose, most reliable
+   * - ``projected_gauss_seidel``
+     - :doc:`projected_gauss_seidel`
+     - Can be faster than ``projected_jacobi`` for large systems
+   * - ``conjugate_gradient``
+     - :doc:`conjugate_gradient`
+     - Constraint-only scenes (no contact)
+   * - ``qoco / clarabel``
+     - :doc:`interior_point`
+     - Interior-point, exact cone projection
+
+.. toctree::
+   :hidden:
+
+   projected_jacobi
+   projected_gauss_seidel
+   conjugate_gradient
+   interior_point

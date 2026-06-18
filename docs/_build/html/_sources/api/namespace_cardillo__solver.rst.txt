@@ -37,9 +37,9 @@ Functions
 
 - :ref:`exhale_function_projected__jacobi_8cpp_1a843a651efab9cfa2c10d48e68b603394`
 
-- :ref:`exhale_function_projected__jacobi_8cpp_1af6074798ebf08e45d0ea842fabb0716d`
-
 - :ref:`exhale_function_projected__gauss__seidel_8cpp_1ae412e230eaa3b6f97f1c08bac15755c5`
+
+- :ref:`exhale_function_projected__jacobi_8cpp_1af6074798ebf08e45d0ea842fabb0716d`
 
 - :ref:`exhale_function_projected__gauss__seidel_8cpp_1a61e029ba684ad8ccb69474d8eef12344`
 

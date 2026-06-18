@@ -15,6 +15,8 @@ A rigid-body physics engine for non-smooth contact problems.
 
    chapters/getting_started
    chapters/ecs
+   chapters/physics_pipeline
+   chapters/solvers/index
    chapters/using_the_engine
 
 .. toctree::

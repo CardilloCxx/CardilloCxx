@@ -23,7 +23,9 @@
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Solvers" href="solvers/index.html" />
+    <link rel="prev" title="Entity Component System" href="ecs.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -46,9 +48,21 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ecs.html">Entity Component System</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Physics Pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sync-world-state">1 - Sync world state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advance-positions-first-half">2 - Advance positions, first half</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#drive-trajectories-and-derived-geometry">3 - Drive trajectories and derived geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#detect-collisions">4 - Detect collisions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#assemble-contact-and-constraint-operators">5 - Assemble contact and constraint operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#solve-for-new-velocities">6 - Solve for new velocities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#write-back-velocities-and-finish-positions">7 - Write back velocities and finish positions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#write-output">8 - Write output</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="using_the_engine.html">Using The Engine</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -82,51 +96,206 @@
              
   <section id="physics-pipeline">
 <h1>Physics Pipeline<a class="headerlink" href="#physics-pipeline" title="Link to this heading"></a></h1>
-<p>The pipeline is the step-by-step program flow that turns the current ECS state into one simulation increment. It owns the collision manager, dynamics assembler, solver, integrator, and output writers.</p>
-<section id="high-level-flow">
-<h2>High-level flow<a class="headerlink" href="#high-level-flow" title="Link to this heading"></a></h2>
-<p>The current step order is:</p>
-<ol class="arabic simple">
-<li><p>refresh the dynamics state</p></li>
-<li><p>drift the configuration by <code class="docutils literal notranslate"><span class="pre">(1</span> <span class="pre">-</span> <span class="pre">theta)</span> <span class="pre">*</span> <span class="pre">dt</span></code></p></li>
-<li><p>rebuild state-dependent terms at the midpoint configuration</p></li>
-<li><p>solve for the new velocity / impulse increment</p></li>
-<li><p>drift the configuration by <code class="docutils literal notranslate"><span class="pre">theta</span> <span class="pre">*</span> <span class="pre">dt</span></code></p></li>
-<li><p>write VTK and tracked CSV output, then update the progress bar</p></li>
-</ol>
-<p>The relevant midpoint drift is what keeps collision frames, spring directions, and other state-dependent matrices aligned with the Moreau theta scheme.</p>
-</section>
-<section id="midpoint-assembly">
-<h2>Midpoint assembly<a class="headerlink" href="#midpoint-assembly" title="Link to this heading"></a></h2>
-<p>Let <code class="docutils literal notranslate"><span class="pre">q_n</span></code> be the configuration and <code class="docutils literal notranslate"><span class="pre">u_n</span></code> the generalized velocity. The pipeline advances the midpoint state first:</p>
-<div class="math notranslate nohighlight">
-\[q_{n+\theta} = q_n + (1 - \theta)\,\Delta t\,u_n\]</div>
-<p>The dynamics assembler then updates all terms that depend on the current configuration, including collision geometry, contact Jacobians, and spring matrices. After the solver returns the corrected velocity increment, the engine completes the final drift:</p>
-<div class="math notranslate nohighlight">
-\[q_{n+1} = q_{n+\theta} + \theta\,\Delta t\,u_{n+1}\]</div>
-<p>That split is the main reason the code can evaluate contact and spring data at the midpoint while still using a first-order Moreau-style update.</p>
-</section>
-<section id="where-collisions-fit">
-<h2>Where collisions fit<a class="headerlink" href="#where-collisions-fit" title="Link to this heading"></a></h2>
-<p>Collisions are not assembled once at the start of a run. They are refreshed every step because the contact set can change as the configuration evolves. The pipeline therefore treats the collision manager as a live subsystem rather than a static precomputation.</p>
-<p>The practical effect is:</p>
+<p>Every call to <code class="docutils literal notranslate"><span class="pre">engine.step()</span></code> drives the simulation forward by one fixed time
+step. Below is a map of what happens inside that step. Each numbered box
+corresponds to a section on this page.</p>
+<nav class="contents local" id="steps">
+<p class="topic-title">Steps</p>
 <ul class="simple">
-<li><p>contact normals and patch data are rebuilt from the current midpoint configuration</p></li>
-<li><p>warmstarting can reuse the previous step when contact pairs persist</p></li>
-<li><p>spring and beam contributions are assembled from the same updated geometry</p></li>
+<li><p><a class="reference internal" href="#sync-world-state" id="id1">1 - Sync world state</a></p></li>
+<li><p><a class="reference internal" href="#advance-positions-first-half" id="id2">2 - Advance positions, first half</a></p></li>
+<li><p><a class="reference internal" href="#drive-trajectories-and-derived-geometry" id="id3">3 - Drive trajectories and derived geometry</a></p></li>
+<li><p><a class="reference internal" href="#detect-collisions" id="id4">4 - Detect collisions</a></p></li>
+<li><p><a class="reference internal" href="#assemble-contact-and-constraint-operators" id="id5">5 - Assemble contact and constraint operators</a></p></li>
+<li><p><a class="reference internal" href="#solve-for-new-velocities" id="id6">6 - Solve for new velocities</a></p></li>
+<li><p><a class="reference internal" href="#write-back-velocities-and-finish-positions" id="id7">7 - Write back velocities and finish positions</a></p></li>
+<li><p><a class="reference internal" href="#write-output" id="id8">8 - Write output</a></p></li>
 </ul>
+</nav>
+<hr class="docutils" />
+<section id="sync-world-state">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">1 - Sync world state</a><a class="headerlink" href="#sync-world-state" title="Link to this heading"></a></h2>
+<p>Before any math runs, the pipeline checks whether the scene has changed since
+the last step. Three lazy flags are tracked on the world:</p>
+<ul class="simple">
+<li><p><strong>Structure changed</strong> - a body or constraint was added or removed. Triggers a
+full reassignment of body indices, mass matrix rebuild, and collision scene
+rebuild.</p></li>
+<li><p><strong>State changed</strong> - a position or velocity was set from outside the solver (e.g.
+a teleport or an initial condition). Triggers re-reading all ECS positions and
+velocities into flat global vectors.</p></li>
+<li><p><strong>Forces changed</strong> - gravity was changed or an external force was applied.
+Triggers rebuilding the force vector, then immediately clears the
+per-entity force and torque components so they do not carry over to the next
+step.</p></li>
+</ul>
+<p>Only the dirty paths are re-evaluated; a step with no scene changes skips all
+three.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">DynamicsAssembler::refreshState()</span></code> consumes these flags and holds the flat
+numerical representation of the world: stacked position vector <strong>q</strong>, velocity
+vector <strong>v</strong>, force vector <strong>f</strong>, and the diagonal mass/inertia data.</p>
+</div>
 </section>
-<section id="integrator-choice">
-<h2>Integrator choice<a class="headerlink" href="#integrator-choice" title="Link to this heading"></a></h2>
-<p>The code currently routes through the Moreau integrator. The config options that affect the update are <code class="docutils literal notranslate"><span class="pre">moreau.theta</span></code>, <code class="docutils literal notranslate"><span class="pre">moreau.implicit_gyroscopy</span></code>, and <code class="docutils literal notranslate"><span class="pre">moreau.lambda_theta</span></code>.</p>
-<p>When you document a new solver or integrator later, this page is the right place to describe how it plugs into the existing pipeline stages.</p>
+<hr class="docutils" />
+<section id="advance-positions-first-half">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">2 - Advance positions, first half</a><a class="headerlink" href="#advance-positions-first-half" title="Link to this heading"></a></h2>
+<p>Positions and orientations are updated <em>explicitly</em> from the current velocity
+using a fraction of the time step: <code class="docutils literal notranslate"><span class="pre">(1</span> <span class="pre">-</span> <span class="pre">theta)</span> <span class="pre">*</span> <span class="pre">dt</span></code>.</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">theta</span> <span class="pre">=</span> <span class="pre">1.0</span></code> (the default, fully implicit Moreau) this term is zero and
+the first half-step does nothing. For <code class="docutils literal notranslate"><span class="pre">theta</span> <span class="pre">=</span> <span class="pre">0.5</span></code> (midpoint) positions move
+forward by half a step before collision is evaluated.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The Moreau theta parameter is set via <code class="docutils literal notranslate"><span class="pre">moreau.theta</span></code> in the config.</p>
+</div>
+</section>
+<hr class="docutils" />
+<section id="drive-trajectories-and-derived-geometry">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">3 - Drive trajectories and derived geometry</a><a class="headerlink" href="#drive-trajectories-and-derived-geometry" title="Link to this heading"></a></h2>
+<p>Before collision sees the world, three derived-state updates run:</p>
+<dl class="simple">
+<dt><strong>Trajectories</strong></dt><dd><p>Every entity carrying a trajectory component has its pose and velocity
+overwritten by evaluating the user callback at the current elapsed time.
+If only a position function was supplied, the velocity is computed by
+finite-differencing the position at <code class="docutils literal notranslate"><span class="pre">t</span></code> and <code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">+</span> <span class="pre">dt</span></code>. This is the point
+where kinematic actors, conveyor slats, and scripted grippers update.</p>
+</dd>
+<dt><strong>Rigid state cache</strong></dt><dd><p>A cached copy of each entity’s pose is refreshed so downstream systems
+(constraints, collision) use consistent data.</p>
+</dd>
+<dt><strong>Beam segment geometry</strong></dt><dd><p>Each beam segment’s current length is recomputed from its neighbours’
+positions. If the length changed enough to alter the collider dimensions,
+the collision scene is flagged dirty so it will be rebuilt in the next step.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">DerivedEntitySync::updateEntities</span></code> orchestrates these three jobs;
+trajectory evaluation is in <code class="docutils literal notranslate"><span class="pre">Trajectory::update</span></code>.</p>
+</div>
+</section>
+<hr class="docutils" />
+<section id="detect-collisions">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">4 - Detect collisions</a><a class="headerlink" href="#detect-collisions" title="Link to this heading"></a></h2>
+<p>The collision pipeline runs in three sub-stages:</p>
+<dl class="simple">
+<dt><strong>Rebuild scene (if dirty)</strong></dt><dd><p>If bodies were added, removed, or beam geometry changed, the COAL broad-phase
+scene is rebuilt from scratch: collision geometry is created for every entity
+that carries <code class="docutils literal notranslate"><span class="pre">C_Collidable</span></code>, registered with the broad-phase manager, and
+indexed for fast reverse lookup. Static geometry transforms are baked in here.</p>
+</dd>
+<dt><strong>Update transforms</strong></dt><dd><p>Only dynamic entities (physics objects and trajectory-driven bodies) have
+their AABB updated each step.</p>
+</dd>
+<dt><strong>Broad phase → narrow phase → contact patches</strong></dt><dd><p>The broad phase produces candidate pairs. Each pair is passed to COAL’s
+narrow-phase collision check to find actual penetrating contacts and compute
+contact patches. Disabled pairs and static-static pairs are skipped.</p>
+</dd>
+</dl>
+<p>The output is a flat list of contact structs, one per contact point, each
+carrying the two entities involved, contact normal and tangent directions, body-local
+attachment points, penetration depth, friction coefficient (combined from
+per-body values), and the last-step impulse for warmstarting.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">CollisionCoal::detectAll()</span></code> runs the full pipeline and owns the
+authoritative contact buffer. The contact tracker inside matches current
+contacts to previous-step contacts to transfer warmstart impulses.</p>
+</div>
+</section>
+<hr class="docutils" />
+<section id="assemble-contact-and-constraint-operators">
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">5 - Assemble contact and constraint operators</a><a class="headerlink" href="#assemble-contact-and-constraint-operators" title="Link to this heading"></a></h2>
+<p>With contacts and current poses known, the pipeline builds the numerical
+operators the solver needs.</p>
+<dl class="simple">
+<dt><strong>Contact Jacobian W</strong></dt><dd><p>A sparse matrix with one row per contact scalar (1 for frictionless contacts,
+3 for frictional: normal plus two tangent directions). Each row maps a body’s
+velocity DOFs to the relative velocity at the contact point. Dynamic bodies
+contribute columns; static bodies contribute a constant velocity bias term
+instead.</p>
+</dd>
+<dt><strong>Constraint Jacobians Wg and W-gamma</strong></dt><dd><p>Each constraint pattern (hinge, beam, distance, etc.) contributes rows that
+encode how the constraint gap changes with velocity. The split into Wg
+(spring rows) and W-gamma (damper rows) lets the solver treat position
+restoration and velocity damping separately.</p>
+</dd>
+<dt><strong>Compliance diagonals</strong></dt><dd><p>Each spring row has a compliance value <code class="docutils literal notranslate"><span class="pre">C</span> <span class="pre">=</span> <span class="pre">1/K</span></code> and each damper row a
+compliance <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">=</span> <span class="pre">1/D</span></code>. Hard constraints (infinite stiffness) appear as zero
+compliance and are assembled as equality constraints.</p>
+</dd>
+<dt><strong>Position error</strong></dt><dd><p>For compliant constraints the current position error is stored. A small
+Baumgarte correction term (scaled by <code class="docutils literal notranslate"><span class="pre">constraint_bias_factor</span></code>) is built from
+this when forming the solver right-hand side, which gently corrects constraint
+drift over time without adding energy.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">rebuildW_()</span></code> builds the contact Jacobian. <code class="docutils literal notranslate"><span class="pre">rebuildInteractionW_()</span></code> builds
+constraint Jacobians and compliance data by calling <code class="docutils literal notranslate"><span class="pre">getConstraint()</span></code> on
+every <code class="docutils literal notranslate"><span class="pre">ConstraintPattern</span></code>.</p>
+</div>
+</section>
+<hr class="docutils" />
+<section id="solve-for-new-velocities">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">6 - Solve for new velocities</a><a class="headerlink" href="#solve-for-new-velocities" title="Link to this heading"></a></h2>
+<p>The solver receives all the operators from step 5 and computes a new velocity
+state that simultaneously satisfies the equations of motion, the constraint
+forces, and the contact non-penetration condition.</p>
+<p>All solvers operate on the same extended variable vector:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}x = \begin{pmatrix} v \\ \lambda_g \\ \lambda_\gamma \end{pmatrix}\end{split}\]</div>
+<p>where <span class="math notranslate nohighlight">\(v\)</span> is the new body velocity, <span class="math notranslate nohighlight">\(\lambda_g\)</span> are spring/hard
+constraint multipliers, and <span class="math notranslate nohighlight">\(\lambda_\gamma\)</span> are damper multipliers.</p>
+<p>The right-hand side encodes the current velocity, external and gyroscopic forces,
+carry-over constraint multipliers from the previous step, and the Baumgarte
+position correction.</p>
+<p>Frictionless contact impulses are constrained to be non-negative (pushing
+only). Frictional contacts additionally enforce the Coulomb friction cone.</p>
+<p>Different solver backends approach the contact problem differently. See
+<a class="reference internal" href="solvers/index.html"><span class="doc">Solvers</span></a> for a per-solver breakdown.</p>
+<p>At the end of the solve, spring and damper multipliers are stored for the next
+step’s right-hand side, and contact impulses are stored for warmstarting.</p>
+</section>
+<hr class="docutils" />
+<section id="write-back-velocities-and-finish-positions">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">7 - Write back velocities and finish positions</a><a class="headerlink" href="#write-back-velocities-and-finish-positions" title="Link to this heading"></a></h2>
+<p>The velocity solution is scattered back into the ECS: linear velocity, angular
+velocity, and derived accelerations (computed from the velocity change) are
+written per entity.</p>
+<p>Positions are then advanced through a second implicit integration, covering
+the remaining <code class="docutils literal notranslate"><span class="pre">theta</span> <span class="pre">*</span> <span class="pre">dt</span></code> fraction of the step using the newly solved velocity.</p>
+</section>
+<hr class="docutils" />
+<section id="write-output">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">8 - Write output</a><a class="headerlink" href="#write-output" title="Link to this heading"></a></h2>
+<p>After the step is fully integrated, two output writers run:</p>
+<dl class="simple">
+<dt><strong>VTK files</strong></dt><dd><p>A <code class="docutils literal notranslate"><span class="pre">.vtk</span></code> file is written every <code class="docutils literal notranslate"><span class="pre">output.interval_steps</span></code> steps to the
+configured output folder. Each file contains the geometry and position of all
+entities tagged as visual. The step 0 frame is written <em>before</em> the first
+integration so the initial state is always captured.</p>
+</dd>
+<dt><strong>Tracked CSV</strong></dt><dd><p>Entities tagged with <code class="docutils literal notranslate"><span class="pre">engine.track(entity,</span> <span class="pre">&quot;name&quot;)</span></code> have their current
+position and orientation appended to a CSV file each step. This gives a
+per-step time series for selected bodies without loading the full VTK series.</p>
+</dd>
+</dl>
+<p>Both outputs are opened lazily on first write. If <code class="docutils literal notranslate"><span class="pre">output.interval_steps</span></code>
+is 0, VTK writing is disabled entirely.</p>
 </section>
 </section>
 
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ecs.html" class="btn btn-neutral float-left" title="Entity Component System" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="solvers/index.html" class="btn btn-neutral float-right" title="Solvers" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 

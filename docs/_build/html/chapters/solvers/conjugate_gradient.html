@@ -1,0 +1,262 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conjugate Gradient &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Interior-Point Solvers (QOCO and Clarabel)" href="interior_point.html" />
+    <link rel="prev" title="Projected Gauss-Seidel" href="projected_gauss_seidel.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Solvers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="projected_jacobi.html">Projected Jacobi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="projected_gauss_seidel.html">Projected Gauss-Seidel</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Conjugate Gradient</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-schur-complement-system">The Schur complement system</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-preconditioner">The preconditioner</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-pcg-algorithm">The PCG algorithm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#warmstart">Warmstart</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#limitations">Limitations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="interior_point.html">Interior-Point Solvers (QOCO and Clarabel)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Solvers</a></li>
+      <li class="breadcrumb-item active">Conjugate Gradient</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/solvers/conjugate_gradient.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="conjugate-gradient">
+<h1>Conjugate Gradient<a class="headerlink" href="#conjugate-gradient" title="Link to this heading"></a></h1>
+<nav class="contents local" id="on-this-page">
+<p class="topic-title">On this page</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#overview" id="id1">Overview</a></p></li>
+<li><p><a class="reference internal" href="#the-schur-complement-system" id="id2">The Schur complement system</a></p></li>
+<li><p><a class="reference internal" href="#the-preconditioner" id="id3">The preconditioner</a></p></li>
+<li><p><a class="reference internal" href="#the-pcg-algorithm" id="id4">The PCG algorithm</a></p></li>
+<li><p><a class="reference internal" href="#warmstart" id="id5">Warmstart</a></p></li>
+<li><p><a class="reference internal" href="#limitations" id="id6">Limitations</a></p></li>
+</ul>
+</nav>
+<section id="overview">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Overview</a><a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The Conjugate Gradient solver applies a preconditioned CG iteration to the
+Schur complement system that arises from the Moreau time step. It is
+constraint-only: if any contacts are active at call time the solver throws a
+runtime error. Use it for scenes that rely entirely on joints, beams, and
+springs with no dynamic collisions.</p>
+</section>
+<section id="the-schur-complement-system">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">The Schur complement system</a><a class="headerlink" href="#the-schur-complement-system" title="Link to this heading"></a></h2>
+<p>Starting from the same extended Moreau system as PGS (see
+<a class="reference internal" href="projected_gauss_seidel.html"><span class="doc">Projected Gauss-Seidel</span></a>), eliminating <span class="math notranslate nohighlight">\(u_{n+1}\)</span> by block
+elimination gives:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{S}\,\hat\Lambda = \tilde{b},
+\qquad
+\mathbf{S} = \hat{W}^\top M^{-1} \hat{W} - \hat{C}\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\hat\Lambda = (\Lambda_g^\top, \Lambda_\gamma^\top)^\top\)</span> are the
+stacked constraint multipliers</p></li>
+<li><p><span class="math notranslate nohighlight">\(\hat{W} = (W_g, W_\gamma)\)</span> is the stacked constraint Jacobian</p></li>
+<li><p><span class="math notranslate nohighlight">\(\hat{C} = \mathrm{diag}(-C/(\theta\,dt^2),\; -A/(\theta\,dt))\)</span> is
+the (negative) block-diagonal compliance matrix</p></li>
+<li><p><span class="math notranslate nohighlight">\(\tilde{b}\)</span> is the reduced right-hand side from the Schur complement
+of the full system</p></li>
+</ul>
+<p>Because <span class="math notranslate nohighlight">\(M^{-1}\)</span> is symmetric positive definite and the compliance
+diagonals <span class="math notranslate nohighlight">\(-C/(\theta\,dt^2)\)</span> and <span class="math notranslate nohighlight">\(-A/(\theta\,dt)\)</span> are
+non-positive, the full Schur complement <span class="math notranslate nohighlight">\(\mathbf{S}\)</span> is symmetric
+positive semi-definite. This makes it amenable to the conjugate gradient
+method.</p>
+<p>For hard constraints (<span class="math notranslate nohighlight">\(C \to 0\)</span>, <span class="math notranslate nohighlight">\(A \to 0\)</span>), the compliance
+diagonal vanishes and <span class="math notranslate nohighlight">\(\mathbf{S}\)</span> reduces to the classical Delassus
+operator <span class="math notranslate nohighlight">\(\hat{W}^\top M^{-1} \hat{W}\)</span>.</p>
+</section>
+<section id="the-preconditioner">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">The preconditioner</a><a class="headerlink" href="#the-preconditioner" title="Link to this heading"></a></h2>
+<p>The block-diagonal part of <span class="math notranslate nohighlight">\(\mathbf{S}\)</span> is used as a preconditioner.
+For each constraint pattern <span class="math notranslate nohighlight">\(j\)</span>, the preconditioner block is:</p>
+<div class="math notranslate nohighlight">
+\[D_j = \hat{W}_j^\top M^{-1} \hat{W}_j - \hat{C}_j\]</div>
+<p>This is the same per-constraint block diagonal assembled by the PGS solver.
+Preconditioning with <span class="math notranslate nohighlight">\(D^{-1}\)</span> clusters the eigenvalues of
+<span class="math notranslate nohighlight">\(D^{-1}\mathbf{S}\)</span> near 1, which is the condition for CG to converge
+quickly.</p>
+<p>The matrix-vector product <span class="math notranslate nohighlight">\(\mathbf{S}\,p\)</span> is evaluated implicitly
+without ever forming <span class="math notranslate nohighlight">\(\mathbf{S}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[u_\mathrm{tmp} = M^{-1} \hat{W}\,p,
+\qquad
+\mathbf{S}\,p = \hat{W}^\top u_\mathrm{tmp} - \hat{C}\,p\]</div>
+<p>This requires one sparse matrix-vector multiply with <span class="math notranslate nohighlight">\(\hat{W}\)</span> and one
+with <span class="math notranslate nohighlight">\(\hat{W}^\top\)</span> per CG iteration.</p>
+</section>
+<section id="the-pcg-algorithm">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">The PCG algorithm</a><a class="headerlink" href="#the-pcg-algorithm" title="Link to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Algorithm: Preconditioned Conjugate Gradient for Contact Impulses
+----------------------------------------------------------------
+Input : ˜b, Ŵ, Ĉ, D⁻¹, M⁻¹, λ_prev, k_max, tol_abs
+Output: u_{n+1}
+
+1.  λ ← λ_prev
+2.  u_corr ← M⁻¹ Ŵ λ
+3.  r ← ˜b − (Ŵᵀ u_corr − Ĉ λ)
+4.  z ← D⁻¹ r;   p ← z;   rz ← rᵀ z
+
+5.  for k = 0 to k_max do
+6.      u_tmp ← M⁻¹ Ŵ p
+7.      Sp    ← Ŵᵀ u_tmp − Ĉ p
+8.      α     ← rz / (pᵀ Sp)
+
+9.      λ ← λ + α p
+10.     r ← r − α Sp
+
+11.     if ||r|| &lt; tol_abs then break
+
+12.     z ← D⁻¹ r
+13.     rz_new ← rᵀ z
+14.     β ← rz_new / rz
+15.     p ← z + β p
+16.     rz ← rz_new
+
+17. u_corr ← M⁻¹ Ŵ λ
+18. u_{n+1} ← u_free − u_corr
+19. Store (λ, λ_prev) for next time-step
+</pre></div>
+</div>
+<p>Each iteration costs two sparse matrix-vector products (with <span class="math notranslate nohighlight">\(\hat{W}\)</span>
+and <span class="math notranslate nohighlight">\(\hat{W}^\top\)</span>) plus two preconditioner applications. For large
+sparse constraint systems this is much cheaper per iteration than a direct
+method. Even though the iteration should converge in at most <span class="math notranslate nohighlight">\(n_\lambda\)</span> steps (the number
+of multiplier unknowns), for stiff problems even with a preconditioner it might take longer.</p>
+</section>
+<section id="warmstart">
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">Warmstart</a><a class="headerlink" href="#warmstart" title="Link to this heading"></a></h2>
+<p>The multipliers from the previous step are used to initialise
+<span class="math notranslate nohighlight">\(\hat\Lambda^{(0)}\)</span>, which makes the initial residual small when the
+constraint forces change slowly between steps. This is the primary source of
+fast convergence in quasi-static or slowly varying scenes.</p>
+</section>
+<section id="limitations">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Limitations</a><a class="headerlink" href="#limitations" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>No contact support. The solver raises a runtime error if any contacts are
+present. Use PJ or PGS for scenes with collisions.</p></li>
+<li><p>Only symmetric problems. Implicit gyroscopy (<code class="docutils literal notranslate"><span class="pre">moreau.implicit_gyroscopy</span></code>)
+breaks the symmetry of <span class="math notranslate nohighlight">\(M_\mathrm{eff}\)</span> and is not supported; the
+solver falls back to treating the system as symmetric.</p></li>
+<li><p>Works best for scenes where the constraint network is large but well
+structured (beam assemblies, cable networks, kinematic chains) and contacts
+are disabled.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="projected_gauss_seidel.html" class="btn btn-neutral float-left" title="Projected Gauss-Seidel" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="interior_point.html" class="btn btn-neutral float-right" title="Interior-Point Solvers (QOCO and Clarabel)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

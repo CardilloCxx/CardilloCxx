@@ -1,0 +1,236 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QOCO &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Clarabel" href="clarabel.html" />
+    <link rel="prev" title="Conjugate Gradient" href="conjugate_gradient.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Solvers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="projected_jacobi.html">Projected Jacobi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="projected_gauss_seidel.html">Projected Gauss-Seidel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="conjugate_gradient.html">Conjugate Gradient</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">QOCO</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-problem">The problem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-it-solves">How it solves</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#backend-selection">Backend selection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#limitations">Limitations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#config-keys">Config keys</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="clarabel.html">Clarabel</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Solvers</a></li>
+      <li class="breadcrumb-item active">QOCO</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/solvers/qoco.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="qoco">
+<h1>QOCO<a class="headerlink" href="#qoco" title="Link to this heading"></a></h1>
+<p>QOCO is an interior-point second-order cone program (SOCP) solver. Instead of
+iterating projected impulses, it finds the exact solution to the contact and
+constraint problem in one interior-point solve by treating contact feasibility as
+a cone constraint in a convex program.</p>
+<p>QOCO is loaded dynamically at runtime and can run on CPU or CUDA depending on
+which backend library is available.</p>
+<section id="the-problem">
+<h2>The problem<a class="headerlink" href="#the-problem" title="Link to this heading"></a></h2>
+<p>The full step is cast as a convex quadratic program with cone constraints:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\min_{x} \quad &amp;\tfrac{1}{2} x^T P x + c^T x \\
+\text{subject to} \quad &amp;Ax = b \\
+                        &amp;Gx \in \mathcal{K}\end{split}\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(x = (v,\ \lambda_g,\ \lambda_\gamma)\)</span> is the combined velocity and
+multiplier vector</p></li>
+<li><p><span class="math notranslate nohighlight">\(P\)</span> is block-diagonal with the mass matrix, spring compliance, and
+damper compliance scaled by the time step</p></li>
+<li><p><span class="math notranslate nohighlight">\(c\)</span> encodes the negative momentum and external force contribution</p></li>
+<li><p><span class="math notranslate nohighlight">\(A\)</span>, <span class="math notranslate nohighlight">\(b\)</span> enforce the constraint equations (spring and damper rows)</p></li>
+<li><p><span class="math notranslate nohighlight">\(G\)</span>, <span class="math notranslate nohighlight">\(h\)</span> with cone <span class="math notranslate nohighlight">\(\mathcal{K}\)</span> enforce contact conditions</p></li>
+</ul>
+<p>The cone <span class="math notranslate nohighlight">\(\mathcal{K}\)</span> is a product of:</p>
+<ul class="simple">
+<li><p>a non-negative orthant for frictionless contacts (normal impulse &gt;= 0)</p></li>
+<li><p>one second-order cone of size 3 per frictional contact (Coulomb disk:
+tangential norm &lt;= mu * normal)</p></li>
+</ul>
+<p>This formulation gives an exact Coulomb friction cone rather than a linearised
+approximation.</p>
+</section>
+<section id="how-it-solves">
+<h2>How it solves<a class="headerlink" href="#how-it-solves" title="Link to this heading"></a></h2>
+<p>QOCO uses a primal-dual interior-point method. At each interior-point iteration:</p>
+<ol class="arabic simple">
+<li><p>Compute the search direction by solving the KKT system.</p></li>
+<li><p>Apply KKT regularization (static and dynamic) for numerical stability.</p></li>
+<li><p>Take a step that keeps all cone variables strictly inside the cone.</p></li>
+<li><p>Check primal and dual residuals and duality gap for convergence.</p></li>
+</ol>
+<p>Because the problem is convex, the interior-point method finds the global optimum
+without any projection heuristics.</p>
+</section>
+<section id="backend-selection">
+<h2>Backend selection<a class="headerlink" href="#backend-selection" title="Link to this heading"></a></h2>
+<p>QOCO is loaded at runtime via <code class="docutils literal notranslate"><span class="pre">dlopen</span></code>. The backend is selected by
+<code class="docutils literal notranslate"><span class="pre">qoco.backend</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">auto</span></code> (default) - tries CUDA first, falls back to CPU</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cpu</span></code> - uses the CPU library</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cuda</span></code> - uses the CUDA-accelerated library</p></li>
+</ul>
+<p>The library paths are set at build time via CMake.</p>
+</section>
+<section id="limitations">
+<h2>Limitations<a class="headerlink" href="#limitations" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>The solver is re-initialised every step because the contact sparsity pattern
+changes when contacts appear or disappear. There is no incremental update path.</p></li>
+<li><p>Implicit gyroscopy (<code class="docutils literal notranslate"><span class="pre">moreau.implicit_gyroscopy</span></code>) and lambda-theta integration
+(<code class="docutils literal notranslate"><span class="pre">moreau.lambda_theta</span></code>) are not supported; these config options are ignored
+with a warning.</p></li>
+<li><p>Warmstart stores previous contact impulses in the collision manager, but QOCO
+itself does not use them as an initial iterate (it starts from scratch each
+step).</p></li>
+</ul>
+</section>
+<section id="config-keys">
+<h2>Config keys<a class="headerlink" href="#config-keys" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 35.0%" />
+<col style="width: 65.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Effect</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">qoco.backend</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">auto</span></code> / <code class="docutils literal notranslate"><span class="pre">cpu</span></code> / <code class="docutils literal notranslate"><span class="pre">cuda</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">solver.max_iterations</span></code></p></td>
+<td><p>Maximum interior-point iterations</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">solver.tol_abs</span></code>, <code class="docutils literal notranslate"><span class="pre">solver.tol_rel</span></code></p></td>
+<td><p>Primal/dual feasibility and gap tolerances</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">solver.kkt_static_reg</span></code></p></td>
+<td><p>Static KKT regularisation constant</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">solver.kkt_dynamic_reg</span></code></p></td>
+<td><p>Dynamic KKT regularisation delta</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="conjugate_gradient.html" class="btn btn-neutral float-left" title="Conjugate Gradient" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="clarabel.html" class="btn btn-neutral float-right" title="Clarabel" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

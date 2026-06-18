@@ -1,0 +1,344 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Projected Gauss-Seidel &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Conjugate Gradient" href="conjugate_gradient.html" />
+    <link rel="prev" title="Projected Jacobi" href="projected_jacobi.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Solvers</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="projected_jacobi.html">Projected Jacobi</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Projected Gauss-Seidel</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-core-problem">The core problem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reducing-to-the-constraint-multiplier-space">Reducing to the constraint multiplier space</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#extending-to-contacts">Extending to contacts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-block-diagonal-preconditioner">The block diagonal preconditioner</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-pgs-algorithm">The PGS algorithm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#convergence-check">Convergence check</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#difference-from-projected-jacobi">Difference from Projected Jacobi</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#config-keys">Config keys</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="conjugate_gradient.html">Conjugate Gradient</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interior_point.html">Interior-Point Solvers (QOCO and Clarabel)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Solvers</a></li>
+      <li class="breadcrumb-item active">Projected Gauss-Seidel</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/chapters/solvers/projected_gauss_seidel.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="projected-gauss-seidel">
+<h1>Projected Gauss-Seidel<a class="headerlink" href="#projected-gauss-seidel" title="Link to this heading"></a></h1>
+<nav class="contents local" id="on-this-page">
+<p class="topic-title">On this page</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#the-core-problem" id="id1">The core problem</a></p></li>
+<li><p><a class="reference internal" href="#reducing-to-the-constraint-multiplier-space" id="id2">Reducing to the constraint multiplier space</a></p></li>
+<li><p><a class="reference internal" href="#extending-to-contacts" id="id3">Extending to contacts</a></p></li>
+<li><p><a class="reference internal" href="#the-block-diagonal-preconditioner" id="id4">The block diagonal preconditioner</a></p></li>
+<li><p><a class="reference internal" href="#the-pgs-algorithm" id="id5">The PGS algorithm</a></p></li>
+<li><p><a class="reference internal" href="#convergence-check" id="id6">Convergence check</a></p></li>
+<li><p><a class="reference internal" href="#difference-from-projected-jacobi" id="id7">Difference from Projected Jacobi</a></p></li>
+<li><p><a class="reference internal" href="#config-keys" id="id8">Config keys</a></p></li>
+</ul>
+</nav>
+<section id="the-core-problem">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">The core problem</a><a class="headerlink" href="#the-core-problem" title="Link to this heading"></a></h2>
+<p>The Moreau time-stepping scheme produces the following scaled linear system at
+each step (see <a class="reference internal" href="../physics_pipeline.html"><span class="doc">Physics Pipeline</span></a>, step 6):</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\underbrace{\begin{pmatrix}
+  M_\mathrm{eff} &amp; W_g &amp; W_\gamma \\
+  W_g^\top &amp; -\tfrac{C}{\theta\,dt^2} &amp; 0 \\
+  W_\gamma^\top &amp; 0 &amp; -\tfrac{A}{\theta\,dt}
+\end{pmatrix}}_{\mathcal{S}}
+\begin{pmatrix} u_{n+1} \\ \Lambda_g \\ \Lambda_\gamma \end{pmatrix}
+=
+\begin{pmatrix}
+  M u_n + dt\, f^\mathrm{ext} + W_{NT}\,\Lambda_{NT} \\
+  -\tfrac{C\,\Lambda_{g,n}}{\theta\,dt^2} - \tfrac{1-\theta}{\theta}W_g^\top u_n - \tfrac{1}{\theta}v_g \\
+  -\tfrac{1-\theta}{\theta}W_\gamma^\top u_n - \tfrac{1}{\theta}v_\gamma
+\end{pmatrix}\end{split}\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(u\)</span> is the stacked generalized velocity</p></li>
+<li><p><span class="math notranslate nohighlight">\(\Lambda_g = -dt\,\lambda_g\)</span> are scaled spring multipliers</p></li>
+<li><p><span class="math notranslate nohighlight">\(\Lambda_\gamma = -dt\,\lambda_\gamma\)</span> are scaled damper multipliers</p></li>
+<li><p><span class="math notranslate nohighlight">\(M_\mathrm{eff} = M - dt\,G(u_n)\)</span> is the effective mass including the optional implicit gyroscopic correction</p></li>
+<li><p><span class="math notranslate nohighlight">\(C = K^{-1}\)</span> and <span class="math notranslate nohighlight">\(A = D^{-1}\)</span> are the compliance and attenuation diagonals</p></li>
+<li><p><span class="math notranslate nohighlight">\(v_g\)</span>, <span class="math notranslate nohighlight">\(v_\gamma\)</span> are velocity source terms from trajectory-driven bodies</p></li>
+<li><p><span class="math notranslate nohighlight">\(\Lambda_{NT}\)</span> is the stacked contact impulse vector with normal and tangential components</p></li>
+</ul>
+</section>
+<section id="reducing-to-the-constraint-multiplier-space">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Reducing to the constraint multiplier space</a><a class="headerlink" href="#reducing-to-the-constraint-multiplier-space" title="Link to this heading"></a></h2>
+<p>Eliminating <span class="math notranslate nohighlight">\(u_{n+1}\)</span> from the second and third block rows via the Schur
+complement gives a reduced system purely in the constraint multipliers
+<span class="math notranslate nohighlight">\(\hat\Lambda = (\Lambda_g^\top, \Lambda_\gamma^\top)^\top\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{S}\,\hat\Lambda = \tilde{b},\]</div>
+<p>where the Schur complement matrix is:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{S} = \hat{W}^\top M_\mathrm{eff}^{-1} \hat{W} - \hat{C},\]</div>
+<p>with <span class="math notranslate nohighlight">\(\hat{W} = (W_g, W_\gamma)\)</span> and block-diagonal
+<span class="math notranslate nohighlight">\(\hat{C} = \mathrm{diag}(-C/(\theta\,dt^2),\; -A/(\theta\,dt))\)</span>.
+The right-hand side is:</p>
+<div class="math notranslate nohighlight">
+\[\tilde{b} = \hat{W}^\top M_\mathrm{eff}^{-1} b_u - \hat{b}\]</div>
+<p>where <span class="math notranslate nohighlight">\(b_u\)</span> and <span class="math notranslate nohighlight">\(\hat{b}\)</span> are the corresponding blocks of the full
+right-hand side. Once <span class="math notranslate nohighlight">\(\hat\Lambda\)</span> is known, the velocity is recovered as:</p>
+<div class="math notranslate nohighlight">
+\[u_{n+1} = \underbrace{M_\mathrm{eff}^{-1} b_u}_{u_\mathrm{free}}
+        - \underbrace{M_\mathrm{eff}^{-1} \hat{W}\,\hat\Lambda}_{u_\mathrm{corr}}\]</div>
+<p>The matrix-vector product <span class="math notranslate nohighlight">\(\mathbf{S}\hat\Lambda\)</span> is evaluated through
+the velocity correction:</p>
+<div class="math notranslate nohighlight">
+\[u_\mathrm{corr} = M_\mathrm{eff}^{-1}\hat{W}\hat\Lambda,
+\qquad
+\mathbf{S}\hat\Lambda = \hat{W}^\top u_\mathrm{corr} - \hat{C}\hat\Lambda.\]</div>
+<p>This avoids ever forming <span class="math notranslate nohighlight">\(\mathbf{S}\)</span> explicitly.</p>
+</section>
+<section id="extending-to-contacts">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Extending to contacts</a><a class="headerlink" href="#extending-to-contacts" title="Link to this heading"></a></h2>
+<p>Adding contacts appends the contact Jacobian <span class="math notranslate nohighlight">\(W_{NT}\)</span> as additional rows.
+The extended system becomes:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{pmatrix}
+  M_\mathrm{eff} &amp; \hat{W} &amp; W_{NT} \\
+  \hat{W}^\top &amp; -\hat{C} &amp; 0 \\
+  W_{NT}^\top &amp; 0 &amp; 0
+\end{pmatrix}
+\begin{pmatrix} u_{n+1} \\ \hat\Lambda \\ \Lambda_{NT} \end{pmatrix}
+=
+\begin{pmatrix} b_u \\ \hat{b} \\ b_{NT} \end{pmatrix}\end{split}\]</div>
+<p>The zero block in the lower right means contact rows have no compliance term.
+Contact impulses are not determined by this linear system alone; they are subject
+to the non-convex contact projection (Signorini + Coulomb):</p>
+<ul class="simple">
+<li><p><strong>frictionless</strong>: <span class="math notranslate nohighlight">\(\Lambda_{N} \geq 0\)</span></p></li>
+<li><p><strong>frictional</strong>: <span class="math notranslate nohighlight">\(\|\Lambda_{T}\| \leq \mu\,\Lambda_{N}\)</span></p></li>
+</ul>
+<p>The full multiplier vector in the implementation is therefore:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\lambda = \begin{pmatrix} \Lambda_g \\ \Lambda_\gamma \\ \Lambda_{NT} \end{pmatrix}\end{split}\]</div>
+</section>
+<section id="the-block-diagonal-preconditioner">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">The block diagonal preconditioner</a><a class="headerlink" href="#the-block-diagonal-preconditioner" title="Link to this heading"></a></h2>
+<p>PGS preconditions each block <span class="math notranslate nohighlight">\(j\)</span> with the diagonal of the Schur complement
+restricted to that block:</p>
+<div class="math notranslate nohighlight">
+\[D_j = \hat{W}_j^\top M_\mathrm{eff}^{-1} \hat{W}_j - \hat{C}_j\]</div>
+<p>For constraint patterns (hinges, beams, etc.) this is a small dense matrix
+(up to 6x6) that may be inverted implicitly using a Cholesky factorization.</p>
+</section>
+<section id="the-pgs-algorithm">
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">The PGS algorithm</a><a class="headerlink" href="#the-pgs-algorithm" title="Link to this heading"></a></h2>
+<p>PGS differs from Projected Jacobi in that it updates each block sequentially
+and propagates the velocity correction <span class="math notranslate nohighlight">\(u_\mathrm{corr}\)</span> immediately,
+so later blocks in the same sweep already see the effect of earlier updates.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Algorithm: Projected Gauss-Seidel for Contact Dynamics
+-------------------------------------------------------
+Input : rhs, W, M^{-1}, D^{-1}, k_max, relaxation
+Output: u_{n+1}
+
+1. Initialize λ ← λ_warm_start
+2. u_corr ← M^{-1} W^T λ
+
+3. for k = 0 to k_max do
+4.     for each block j in order do
+5.         r_j ← rhs_j - W_j u_corr - C_j λ_j
+6.         Δλ_j ← ω · D_j^{-1} · r_j
+7.         if j is contact block then Δλ_j ← α · Δλ_j
+
+8.         λ_j ← λ_j + Δλ_j
+
+9.         if j is frictionless then
+10.            λ_j ← min(λ_j, 0)
+11.        else if j is frictional then
+12.            λ_j ← ProjectToCoulombDisk(λ_j)
+
+13.        Δλ_j_proj ← λ_j - (λ_j_old)
+14.        u_corr ← u_corr + M^{-1} W_j^T Δλ_j_proj
+
+15.    check convergence (||Δλ|| &lt; ε)
+
+16. u_{n+1} ← u_free - u_corr
+17. store λ and warm-start data for next step
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The implementation stores normal contact impulses with
+a negative sign convention inherited from the way the contact Jacobian is
+assembled.</p>
+</div>
+</section>
+<section id="convergence-check">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Convergence check</a><a class="headerlink" href="#convergence-check" title="Link to this heading"></a></h2>
+<p>The same mixed absolute/relative residual is used as for Projected Jacobi:</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{res}^{(k)}
+= \frac{1}{\sqrt{n_u}}
+  \left\lVert
+    \frac{u^{(k+1)} - u^{(k)}}
+         {\varepsilon_\mathrm{abs}\,\mathbf{1} + \varepsilon_\mathrm{rel}\,\max(|u^{(k+1)}|,|u^{(k)}|)}
+  \right\rVert_2 \leq 1\]</div>
+<p>Nesterov acceleration and warmstart are supported with the same behaviour as
+Projected Jacobi (see <a class="reference internal" href="projected_jacobi.html"><span class="doc">Projected Jacobi</span></a>).</p>
+</section>
+<section id="difference-from-projected-jacobi">
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Difference from Projected Jacobi</a><a class="headerlink" href="#difference-from-projected-jacobi" title="Link to this heading"></a></h2>
+<p>Both solvers iterate on contact impulses and use the same preconditioner
+diagonal, but:</p>
+<ul class="simple">
+<li><p><strong>PJ</strong> updates all blocks using the velocity from the <em>previous</em> iteration
+and only then propagates the combined impulse change. This makes each sweep
+embarrassingly parallel.</p></li>
+<li><p><strong>PGS</strong> propagates each block’s impulse change to <span class="math notranslate nohighlight">\(u_\mathrm{corr}\)</span>
+immediately before moving to the next block. Later blocks therefore use more
+up-to-date information within the same sweep.</p></li>
+</ul>
+<p>In practice PGS hopes to achieve better asymptotic runtime than solving the full constraint matrix using LU decomposition.</p>
+</section>
+<section id="config-keys">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Config keys</a><a class="headerlink" href="#config-keys" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 35.0%" />
+<col style="width: 65.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Effect</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">solver.max_iterations</span></code></p></td>
+<td><p>Hard iteration cap (default 200000)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">solver.tol_abs</span></code>, <code class="docutils literal notranslate"><span class="pre">solver.tol_rel</span></code></p></td>
+<td><p>Convergence tolerances on the velocity residual</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">solver.relaxation</span></code></p></td>
+<td><p>Over-relaxation factor on all solver updates</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">solver.alpha</span></code></p></td>
+<td><p>Step-size multiplier for only contact impulse updates</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">solver.nesterov</span></code></p></td>
+<td><p>Enable Nesterov momentum (default false)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">solver.warmstart</span></code></p></td>
+<td><p>Reuse previous-step impulses as initial guess (default true)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="projected_jacobi.html" class="btn btn-neutral float-left" title="Projected Jacobi" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="conjugate_gradient.html" class="btn btn-neutral float-right" title="Conjugate Gradient" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
