@@ -91,3 +91,25 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
 
+# Documentation
+
+The documentation is built using Sphinx and Doxygen.
+
+## Prerequisites
+
+Install the required system tools:
+
+```bash
+sudo apt update && sudo apt install -y doxygen graphviz
+```
+
+## Build Instructions
+
+Run the build commands from the `docs` directory:
+
+```bash
+cd docs
+uv run make html
+```
+
+After the build completes, open `docs/_build/html/index.html` in your web browser to preview the site.
