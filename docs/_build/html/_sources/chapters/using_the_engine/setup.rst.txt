@@ -1,12 +1,12 @@
 Setup and Configuration
 =======================
 
-The ``config::Config`` struct (``src/config/config.hpp``) controls every global
+:cpp:struct:`config::Config <cardillo::config::Config>` struct controls every global
 parameter: time step, gravity, solver, collision settings, output, and more.
-A ``PhysicsEngine`` is always initialized from a ``Config``. It can be loaded via
-``ConfigReader::fromFile()`` or built in code.
+A :cpp:class:`PhysicsEngine <cardillo::physics::PhysicsEngine>` is always initialized from a :cpp:struct:`config::Config <cardillo::config::Config>`. It can be loaded via
+:cpp:func:`ConfigReader::fromFile <cardillo::config::ConfigReader::fromFile>` or built in code.
 
-Each config key has a **variable name** (the ``Config`` struct field) and one or
+Each config key has a **variable name** (the :cpp:struct:`Config <cardillo::config::Config>` struct field) and one or
 more **file keys** that can appear in the configuration file. In config files,
 key names are matched literally by ``ConfigReader``; boolean values are parsed
 case-insensitively. Comments use ``#``.
@@ -28,7 +28,7 @@ Loading a config
 
    cardillo::physics::PhysicsEngine engine(cfg);
 
-You can also build ``Config`` in code and call ``engine.initFromConfig(cfg)`` on a
+You can also build :cpp:struct:`Config <cardillo::config::Config>` in code and call :cpp:func:`engine.initFromConfig(cfg) <cardillo::physics::PhysicsEngine::initFromConfig>` on a
 default-constructed engine.
 
 All config keys
@@ -57,7 +57,7 @@ Simulation timing
    * - ``sim_gravity``
      - ``sim.gravity``
      - ``(0, 0, -9.81)``
-     - World-frame gravity vector (m/s²). In cfg.txt: three space- or comma-separated
+     - Inertial-frame gravity vector (m/s²). In cfg.txt: three space- or comma-separated
        values, e.g. ``sim.gravity = 0 0 -9.81``.
 
 Output settings
@@ -97,7 +97,7 @@ The simulation writes VTK output files that can be opened directly in
    * - ``output_contacts_body_vectors``
      - ``output.contacts_body_vectors``
      - ``false``
-     - Include per-contact body-frame normals/tangents/points in contact VTK.
+     - Include per-contact Body Basis normals/tangents/points in contact VTK.
 
 Collision settings
 ~~~~~~~~~~~~~~~~~~
@@ -146,7 +146,7 @@ Collision settings
    * - ``collision_min_pair_contact_distance``
      - ``collision.min_pair_contact_distance``
      - ``0.0``
-     - Contacts within the same entity pair closer than this distance are deduplicated (keeping deeper penetrations).
+     - Contacts within the same entity pair closer than this distance are deduplicated (keeping deeper penetrations)
        Set to 0 to disable; clamped to ≥ 0.
 
 Friction settings
@@ -397,8 +397,7 @@ After populating the engine you drive it with a simple while-loop:
 
 .. code-block:: cpp
 
-   cardillo::config::Config cfg =
-       cardillo::config::ConfigReader::fromFile(argv[1]);
+   cardillo::config::Config cfg = cardillo::config::ConfigReader::fromFile("config.txt");
    cardillo::physics::PhysicsEngine engine(cfg);
 
    myScene.populate(engine);
@@ -408,6 +407,6 @@ After populating the engine you drive it with a simple while-loop:
 
    while (!engine.isFinished()) {
        myScene.updateScene(engine, t, dt);
-       engine.step();                        // advance by cfg.sim_dt
+       engine.step();
        t += dt;
    }

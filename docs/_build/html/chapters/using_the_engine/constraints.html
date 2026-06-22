@@ -49,14 +49,15 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../solvers/index.html">Solvers</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="setup.html">Setup and Configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="bodies.html">Bodies</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Constraints and Joints</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#jointframe-specifying-where-and-how-a-joint-attaches">JointFrame (specifying where and how a joint attaches)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#how-stiffness-and-damping-work">How stiffness and damping work</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#constraint-types">Constraint types</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#addlineardistanceconstraint">addLinearDistanceConstraint</a></li>
@@ -113,37 +114,35 @@
   <section id="constraints-and-joints">
 <h1>Constraints and Joints<a class="headerlink" href="#constraints-and-joints" title="Link to this heading"></a></h1>
 <p>Constraints couple two bodies (or a body to the world) by restricting
-translation and/or rotation. Every factory method on <code class="docutils literal notranslate"><span class="pre">PhysicsEngine</span></code>
-delegates to <code class="docutils literal notranslate"><span class="pre">ConstraintFactory</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/constraints/</span></code>), inserts
-a <code class="docutils literal notranslate"><span class="pre">ConstraintPattern</span></code> into the world’s constraint list, and marks the
+translation and/or rotation. Every factory method on <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngineE" title="cardillo::physics::PhysicsEngine"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">PhysicsEngine</span></code></a>
+a <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1ConstraintFactory.html#_CPPv4N8cardillo7physics17ConstraintFactoryE" title="cardillo::physics::ConstraintFactory"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ConstraintFactory</span></code></a> inserts
+a <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1ConstraintPattern.html#_CPPv4N8cardillo7physics17ConstraintPatternE" title="cardillo::physics::ConstraintPattern"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">ConstraintPattern</span></code></a> into the world’s constraint list, and marks the
 world structure dirty so the next <code class="docutils literal notranslate"><span class="pre">step()</span></code> rebuilds the solver matrices.</p>
 <p>All factory methods return a <code class="docutils literal notranslate"><span class="pre">size_t</span></code> constraint index. Keep this index if
 you need to drive the constraint velocity at runtime with
 <code class="docutils literal notranslate"><span class="pre">setConstraintScalarVelocity</span></code> / <code class="docutils literal notranslate"><span class="pre">setConstraintLinearVelocity</span></code> /
-<code class="docutils literal notranslate"><span class="pre">setConstraintAngularVelocity</span></code>.</p>
+<a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine28setConstraintAngularVelocityE6size_tRK8Vector3r" title="cardillo::physics::PhysicsEngine::setConstraintAngularVelocity"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::setConstraintAngularVelocity</span></code></a>.</p>
 <nav class="contents local" id="on-this-page">
 <p class="topic-title">On this page</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="#jointframe-specifying-where-and-how-a-joint-attaches" id="id1">JointFrame (specifying where and how a joint attaches)</a></p></li>
-<li><p><a class="reference internal" href="#how-stiffness-and-damping-work" id="id2">How stiffness and damping work</a></p></li>
-<li><p><a class="reference internal" href="#constraint-types" id="id3">Constraint types</a></p>
+<li><p><a class="reference internal" href="#how-stiffness-and-damping-work" id="id1">How stiffness and damping work</a></p></li>
+<li><p><a class="reference internal" href="#constraint-types" id="id2">Constraint types</a></p>
 <ul>
-<li><p><a class="reference internal" href="#addlineardistanceconstraint" id="id4">addLinearDistanceConstraint</a></p></li>
-<li><p><a class="reference internal" href="#addrigidconstraint" id="id5">addRigidConstraint</a></p></li>
-<li><p><a class="reference internal" href="#addhingeconstraint" id="id6">addHingeConstraint</a></p></li>
-<li><p><a class="reference internal" href="#addtranslationalconstraint" id="id7">addTranslationalConstraint</a></p></li>
-<li><p><a class="reference internal" href="#addrotationconstraint" id="id8">addRotationConstraint</a></p></li>
-<li><p><a class="reference internal" href="#addtranslationrotationconstraint" id="id9">addTranslationRotationConstraint</a></p></li>
-<li><p><a class="reference internal" href="#addbeamconstraint" id="id10">addBeamConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addlineardistanceconstraint" id="id3">addLinearDistanceConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addrigidconstraint" id="id4">addRigidConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addhingeconstraint" id="id5">addHingeConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addtranslationalconstraint" id="id6">addTranslationalConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addrotationconstraint" id="id7">addRotationConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addtranslationrotationconstraint" id="id8">addTranslationRotationConstraint</a></p></li>
+<li><p><a class="reference internal" href="#addbeamconstraint" id="id9">addBeamConstraint</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#driving-constraint-velocities-at-runtime" id="id11">Driving constraint velocities at runtime</a></p></li>
-<li><p><a class="reference internal" href="#quick-constraint-type-reference" id="id12">Quick constraint-type reference</a></p></li>
+<li><p><a class="reference internal" href="#driving-constraint-velocities-at-runtime" id="id10">Driving constraint velocities at runtime</a></p></li>
+<li><p><a class="reference internal" href="#quick-constraint-type-reference" id="id11">Quick constraint-type reference</a></p></li>
 </ul>
 </nav>
-<section id="jointframe-specifying-where-and-how-a-joint-attaches">
-<h2><a class="toc-backref" href="#id1" role="doc-backlink">JointFrame (specifying where and how a joint attaches)</a><a class="headerlink" href="#jointframe-specifying-where-and-how-a-joint-attaches" title="Link to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">JointFrame</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/constraints/constraints.hpp</span></code>) describes the
+<p>JointFrame (specifying where and how a joint attaches)</p>
+<p><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1JointFrame.html#_CPPv4N8cardillo7physics10JointFrameE" title="cardillo::physics::JointFrame"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">JointFrame</span></code></a> describes the
 position and orientation of the joint in some reference frame:</p>
 <table class="docutils align-default">
 <colgroup>
@@ -160,7 +159,7 @@ position and orientation of the joint in some reference frame:</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">r_refJ</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code></p></td>
-<td><p>Joint origin expressed in the reference frame (or in world frame when
+<td><p>Joint origin expressed in the reference frame (or in inertial frame when
 <code class="docutils literal notranslate"><span class="pre">ref</span></code> is empty).</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">A_refJ</span></code></p></td>
@@ -172,25 +171,25 @@ Columns 1 and 2 are the blocked rotation axes.</p></td>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ref</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">nullopt</span></code></p></td>
 <td><p>Optional entity whose current frame defines <code class="docutils literal notranslate"><span class="pre">r_refJ</span></code> and <code class="docutils literal notranslate"><span class="pre">A_refJ</span></code>.
-When empty the values are taken directly in world coordinates.</p></td>
+When empty the values are taken directly in inertial coordinates.</p></td>
 </tr>
 </tbody>
 </table>
-<p>The most convenient constructor is <code class="docutils literal notranslate"><span class="pre">JointFrame::fromAxis</span></code>:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Build a joint frame at &#39;pivot&#39; whose x-column equals &#39;axis&#39;.</span>
-<span class="c1">// Columns 1 and 2 are filled in automatically as an orthonormal basis.</span>
+<p>The most convenient constructor is <a class="reference internal" href="../../api/structcardillo_1_1physics_1_1JointFrame.html#_CPPv4N8cardillo7physics10JointFrame8fromAxisERK8Vector3rRK8Vector3rNSt8optionalIN4entt6entityEEE" title="cardillo::physics::JointFrame::fromAxis"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">JointFrame::fromAxis</span></code></a> (also exposed in the API as <a class="reference internal" href="../../api/structcardillo_1_1physics_1_1JointFrame.html#_CPPv4N8cardillo7physics10JointFrame8fromAxisERK8Vector3rRK8Vector3rNSt8optionalIN4entt6entityEEE" title="cardillo::physics::JointFrame::fromAxis"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">JointFrame::fromAxis</span></code></a>):</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="w"> </span><span class="c1">// Build a joint frame at &#39;pivot&#39; whose x-column equals &#39;axis&#39;.</span>
+<span class="w"> </span><span class="c1">// Columns 1 and 2 are filled in automatically as an orthonormal basis.</span>
 <span class="n">JointFrame</span><span class="w"> </span><span class="n">jf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">Vector3r</span><span class="w"> </span><span class="n">pivot</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">axis</span><span class="p">,</span>
-<span class="w">                                     </span><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{});</span>
+<span class="w">                                      </span><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{});</span>
 
-<span class="c1">// Hinge at world origin, rotating around the Y axis</span>
-<span class="n">JointFrame</span><span class="w"> </span><span class="n">jf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitY</span><span class="p">());</span>
+<span class="w"> </span><span class="c1">// Hinge at world origin, rotating around the Y axis</span>
+<span class="w"> </span><span class="n">JointFrame</span><span class="w"> </span><span class="n">jf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitY</span><span class="p">());</span>
 
-<span class="c1">// Hinge at a world point, in body A&#39;s local frame</span>
-<span class="n">JointFrame</span><span class="w"> </span><span class="n">jf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span>
-<span class="w">    </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.02</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.035</span><span class="p">),</span><span class="w">   </span><span class="c1">// pivot in body A&#39;s frame</span>
-<span class="w">    </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitX</span><span class="p">(),</span><span class="w">            </span><span class="c1">// hinge axis in body A&#39;s frame</span>
-<span class="w">    </span><span class="n">bodyA</span><span class="w">                         </span><span class="c1">// reference entity</span>
-<span class="p">);</span>
+<span class="w"> </span><span class="c1">// Hinge at a world point, in body A&#39;s local frame</span>
+<span class="w"> </span><span class="n">JointFrame</span><span class="w"> </span><span class="n">jf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JointFrame</span><span class="o">::</span><span class="n">fromAxis</span><span class="p">(</span>
+<span class="w">     </span><span class="n">Vector3r</span><span class="p">(</span><span class="mf">0.02</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.035</span><span class="p">),</span><span class="w">   </span><span class="c1">// pivot in body A&#39;s frame</span>
+<span class="w">     </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitX</span><span class="p">(),</span><span class="w">            </span><span class="c1">// hinge axis in body A&#39;s frame</span>
+<span class="w">     </span><span class="n">bodyA</span><span class="w">                         </span><span class="c1">// reference entity</span>
+<span class="w"> </span><span class="p">);</span>
 </pre></div>
 </div>
 <p>You can also build a <code class="docutils literal notranslate"><span class="pre">JointFrame</span></code> directly from a world position and
@@ -205,9 +204,8 @@ are expressed in that entity’s <strong>current</strong> frame at constraint-cr
 Changes to the entity’s pose after creation do not retroactively update the
 stored attachment offsets.</p>
 </div>
-</section>
 <section id="how-stiffness-and-damping-work">
-<h2><a class="toc-backref" href="#id2" role="doc-backlink">How stiffness and damping work</a><a class="headerlink" href="#how-stiffness-and-damping-work" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">How stiffness and damping work</a><a class="headerlink" href="#how-stiffness-and-damping-work" title="Link to this heading"></a></h2>
 <p>All constraints except the beam use a <strong>compliant constraint</strong> formulation.
 Stiffness <code class="docutils literal notranslate"><span class="pre">K</span></code> and damping <code class="docutils literal notranslate"><span class="pre">D</span></code> are per-axis vectors in the joint frame.</p>
 <ul class="simple">
@@ -222,13 +220,13 @@ relative velocity.</p></li>
 Delassus operator directly; no special casing needed.</p>
 </section>
 <section id="constraint-types">
-<h2><a class="toc-backref" href="#id3" role="doc-backlink">Constraint types</a><a class="headerlink" href="#constraint-types" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Constraint types</a><a class="headerlink" href="#constraint-types" title="Link to this heading"></a></h2>
 <section id="addlineardistanceconstraint">
-<h3><a class="toc-backref" href="#id4" role="doc-backlink">addLinearDistanceConstraint</a><a class="headerlink" href="#addlineardistanceconstraint" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id3" role="doc-backlink">addLinearDistanceConstraint</a><a class="headerlink" href="#addlineardistanceconstraint" title="Link to this heading"></a></h3>
 <p>Maintains the Euclidean distance between two attachment points (one on each
 body) at its value at construction time. This is a single scalar constraint
 row (1 DOF).</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addLinearDistanceConstraint</span><span class="p">(</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="w">  </span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addLinearDistanceConstraint</span><span class="p">(</span>
 <span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w">                      </span><span class="c1">// body A (or entt::null for world)</span>
 <span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w">                      </span><span class="c1">// body B</span>
 <span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">rA_local</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">Zero</span><span class="p">(),</span><span class="w"> </span><span class="c1">// attachment offset in body A frame</span>
@@ -250,26 +248,26 @@ row (1 DOF).</p>
 </pre></div>
 </div>
 <p>The rest length <code class="docutils literal notranslate"><span class="pre">L₀</span></code> is computed at construction from the initial distance
-between the two attachment points. Drive the constraint with a constant
-scalar velocity using <code class="docutils literal notranslate"><span class="pre">engine.setConstraintScalarVelocity(idx,</span> <span class="pre">v)</span></code>.</p>
+between the two attachment points. Drive the constraint with a constant scalar
+velocity using <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine27setConstraintScalarVelocityE6size_t6real_t" title="cardillo::physics::PhysicsEngine::setConstraintScalarVelocity"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::setConstraintScalarVelocity</span></code></a>.</p>
 </section>
 <section id="addrigidconstraint">
-<h3><a class="toc-backref" href="#id5" role="doc-backlink">addRigidConstraint</a><a class="headerlink" href="#addrigidconstraint" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">addRigidConstraint</a><a class="headerlink" href="#addrigidconstraint" title="Link to this heading"></a></h3>
 <p>Fully welds body <code class="docutils literal notranslate"><span class="pre">b</span></code> to body <code class="docutils literal notranslate"><span class="pre">a</span></code> (or to the world when <code class="docutils literal notranslate"><span class="pre">b</span></code> is
 <code class="docutils literal notranslate"><span class="pre">entt::null</span></code>). Equivalent to locking all 6 DOF (3 translation + 3 rotation)
 with infinite stiffness. The joint position is taken as body <code class="docutils literal notranslate"><span class="pre">a</span></code>’s current
 world position at call time.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addRigidConstraint</span><span class="p">(</span>
-<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w">             </span><span class="c1">// reference body (or entt::null for world)</span>
-<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">null</span><span class="w"> </span><span class="c1">// body to pin (null → pins &#39;a&#39; to world)</span>
-<span class="p">);</span>
+<span class="w">     </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w">             </span><span class="c1">// reference body (or entt::null for world)</span>
+<span class="w">     </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">null</span><span class="w"> </span><span class="c1">// body to pin (null → pins &#39;a&#39; to world)</span>
+<span class="w"> </span><span class="p">);</span>
 
-<span class="n">engine</span><span class="p">.</span><span class="n">addRigidConstraint</span><span class="p">(</span><span class="n">wall</span><span class="p">,</span><span class="w"> </span><span class="n">bracket</span><span class="p">);</span><span class="w"> </span><span class="c1">// weld bracket to wall</span>
+<span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addRigidConstraint</span><span class="p">(</span><span class="n">wall</span><span class="p">,</span><span class="w"> </span><span class="n">bracket</span><span class="p">);</span><span class="w"> </span><span class="c1">// weld bracket to wall</span>
 </pre></div>
 </div>
 </section>
 <section id="addhingeconstraint">
-<h3><a class="toc-backref" href="#id6" role="doc-backlink">addHingeConstraint</a><a class="headerlink" href="#addhingeconstraint" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">addHingeConstraint</a><a class="headerlink" href="#addhingeconstraint" title="Link to this heading"></a></h3>
 <p>The most commonly used joint. Allows rotation around a single axis (the
 x-column of <code class="docutils literal notranslate"><span class="pre">frame.A_refJ</span></code>) while locking all other DOF. An optional torsional
 spring/damper can be added around the hinge axis.</p>
@@ -351,7 +349,7 @@ axis.</p>
 </div>
 </section>
 <section id="addtranslationalconstraint">
-<h3><a class="toc-backref" href="#id7" role="doc-backlink">addTranslationalConstraint</a><a class="headerlink" href="#addtranslationalconstraint" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">addTranslationalConstraint</a><a class="headerlink" href="#addtranslationalconstraint" title="Link to this heading"></a></h3>
 <p>Locks all translational DOF while leaving all three rotational DOF free
 (a ball-in-socket joint with translation removed).</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addTranslationalConstraint</span><span class="p">(</span>
@@ -367,7 +365,7 @@ axis.</p>
 <code class="docutils literal notranslate"><span class="pre">K_trans</span></code> set to the given values.</p>
 </section>
 <section id="addrotationconstraint">
-<h3><a class="toc-backref" href="#id8" role="doc-backlink">addRotationConstraint</a><a class="headerlink" href="#addrotationconstraint" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">addRotationConstraint</a><a class="headerlink" href="#addrotationconstraint" title="Link to this heading"></a></h3>
 <p>Locks all rotational DOF while leaving all three translational DOF free.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addRotationConstraint</span><span class="p">(</span>
 <span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">a</span><span class="p">,</span>
@@ -380,7 +378,7 @@ axis.</p>
 </div>
 </section>
 <section id="addtranslationrotationconstraint">
-<h3><a class="toc-backref" href="#id9" role="doc-backlink">addTranslationRotationConstraint</a><a class="headerlink" href="#addtranslationrotationconstraint" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">addTranslationRotationConstraint</a><a class="headerlink" href="#addtranslationrotationconstraint" title="Link to this heading"></a></h3>
 <p>The generic 6-DOF spring-damper joint from which all the specialised joints
 above are derived. Each of the six DOF (3 translation, 3 rotation, all in the
 joint frame) can be independently stiffened or left free.</p>
@@ -416,7 +414,7 @@ joint frame) can be independently stiffened or left free.</p>
 </div>
 </section>
 <section id="addbeamconstraint">
-<h3><a class="toc-backref" href="#id10" role="doc-backlink">addBeamConstraint</a><a class="headerlink" href="#addbeamconstraint" title="Link to this heading"></a></h3>
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">addBeamConstraint</a><a class="headerlink" href="#addbeamconstraint" title="Link to this heading"></a></h3>
 <p>Connects two beam-segment entities with the Cosserat-rod spring model.
 This is called automatically by <code class="docutils literal notranslate"><span class="pre">createBeam</span></code>; you only need it when
 assembling beam chains manually.</p>
@@ -428,12 +426,12 @@ assembling beam chains manually.</p>
 <span class="p">);</span>
 </pre></div>
 </div>
-<p>See <a class="reference internal" href="beams.html"><span class="doc">Beams and Flexible Rods</span></a> for full documentation of <code class="docutils literal notranslate"><span class="pre">BeamSpringParams</span></code> and
-<code class="docutils literal notranslate"><span class="pre">BeamCrossSection</span></code>.</p>
+<p>See <a class="reference internal" href="beams.html"><span class="doc">Beams and Flexible Rods</span></a> for full documentation of <a class="reference internal" href="../../api/structcardillo_1_1physics_1_1BeamSpringParams.html#_CPPv4N8cardillo7physics16BeamSpringParamsE" title="cardillo::physics::BeamSpringParams"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">BeamSpringParams</span></code></a> and
+<a class="reference internal" href="../../api/structcardillo_1_1physics_1_1BeamCrossSection.html#_CPPv4N8cardillo7physics16BeamCrossSectionE" title="cardillo::physics::BeamCrossSection"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">BeamCrossSection</span></code></a>.</p>
 </section>
 </section>
 <section id="driving-constraint-velocities-at-runtime">
-<h2><a class="toc-backref" href="#id11" role="doc-backlink">Driving constraint velocities at runtime</a><a class="headerlink" href="#driving-constraint-velocities-at-runtime" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id10" role="doc-backlink">Driving constraint velocities at runtime</a><a class="headerlink" href="#driving-constraint-velocities-at-runtime" title="Link to this heading"></a></h2>
 <p>Three setters let you prescribe a target velocity for a constraint pattern.
 They are typically called inside <code class="docutils literal notranslate"><span class="pre">SceneBase::updateScene</span></code>.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Single scalar velocity (for LinearDistanceConstraint)</span>
@@ -456,7 +454,7 @@ They are typically called inside <code class="docutils literal notranslate"><spa
 </div>
 </section>
 <section id="quick-constraint-type-reference">
-<h2><a class="toc-backref" href="#id12" role="doc-backlink">Quick constraint-type reference</a><a class="headerlink" href="#quick-constraint-type-reference" title="Link to this heading"></a></h2>
+<h2><a class="toc-backref" href="#id11" role="doc-backlink">Quick constraint-type reference</a><a class="headerlink" href="#quick-constraint-type-reference" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 30.0%" />
@@ -470,31 +468,31 @@ They are typically called inside <code class="docutils literal notranslate"><spa
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">addRigidConstraint</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine18addRigidConstraintEN4entt6entityEN4entt6entityE" title="cardillo::physics::PhysicsEngine::addRigidConstraint"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addRigidConstraint</span></code></a></p></td>
 <td><p>6 / 6</p></td>
 <td><p>Weld two bodies together.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">addHingeConstraint</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine18addHingeConstraintEN4entt6entityEN4entt6entityERK10JointFrame6real_t6real_tRK8Vector3rRK8Vector3r" title="cardillo::physics::PhysicsEngine::addHingeConstraint"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addHingeConstraint</span></code></a></p></td>
 <td><p>5 / 6</p></td>
 <td><p>Revolute joint (door hinge, wheel axle, pendulum pin).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">addTranslationalConstraint</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine26addTranslationalConstraintEN4entt6entityEN4entt6entityERK10JointFrameRK8Vector3rRK8Vector3r" title="cardillo::physics::PhysicsEngine::addTranslationalConstraint"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addTranslationalConstraint</span></code></a></p></td>
 <td><p>3 trans / 3</p></td>
 <td><p>Lock position, allow free rotation (ball socket without translation).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">addRotationConstraint</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine21addRotationConstraintEN4entt6entityEN4entt6entityERK10JointFrameRK8Vector3rRK8Vector3r" title="cardillo::physics::PhysicsEngine::addRotationConstraint"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addRotationConstraint</span></code></a></p></td>
 <td><p>3 rot / 3</p></td>
 <td><p>Lock orientation, allow free translation (prismatic guide).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">addTranslationRotationConstraint</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine32addTranslationRotationConstraintEN4entt6entityEN4entt6entityERK10JointFrameRK8Vector3rRK8Vector3rRK8Vector3rRK8Vector3r" title="cardillo::physics::PhysicsEngine::addTranslationRotationConstraint"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addTranslationRotationConstraint</span></code></a></p></td>
 <td><p>configurable</p></td>
 <td><p>Generic spring-damper joint with full per-axis control.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">addLinearDistanceConstraint</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine27addLinearDistanceConstraintEN4entt6entityEN4entt6entityERK8Vector3rRK8Vector3r6real_t6real_t" title="cardillo::physics::PhysicsEngine::addLinearDistanceConstraint"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addLinearDistanceConstraint</span></code></a></p></td>
 <td><p>1 (distance)</p></td>
 <td><p>Inextensible cable or spring between two attachment points.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">addBeamConstraint</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine17addBeamConstraintEN4entt6entityEN4entt6entityERK16BeamSpringParamsRK16BeamCrossSection" title="cardillo::physics::PhysicsEngine::addBeamConstraint"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addBeamConstraint</span></code></a></p></td>
 <td><p>6 (compliant)</p></td>
 <td><p>Cosserat-rod link between two beam segments.</p></td>
 </tr>

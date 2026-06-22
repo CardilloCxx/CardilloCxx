@@ -1,7 +1,7 @@
 Physics Pipeline
 ================
 
-Every call to ``engine.step()`` drives the simulation forward by one fixed time
+Every call to :cpp:func:`PhysicsEngine::step <cardillo::physics::PhysicsEngine::step>` drives the simulation forward by one fixed time
 step. Below is a map of what happens inside that step. Each numbered box
 corresponds to a section on this page.
 
@@ -32,7 +32,7 @@ Only the dirty paths are re-evaluated; a step with no scene changes skips all
 three.
 
 .. note::
-   ``DynamicsAssembler::refreshState()`` consumes these flags and holds the flat
+   :cpp:class:`DynamicsAssembler <cardillo::physics::DynamicsAssembler>` consumes these flags and holds the flat
    numerical representation of the world: stacked position vector **q**, velocity
    vector **v**, force vector **f**, and the diagonal mass/inertia data.
 
@@ -75,8 +75,8 @@ Before collision sees the world, three derived-state updates run:
    the collision scene is flagged dirty so it will be rebuilt in the next step.
 
 .. note::
-   ``DerivedEntitySync::updateEntities`` orchestrates these three jobs;
-   trajectory evaluation is in ``Trajectory::update``.
+   :cpp:class:`DerivedEntitySync <cardillo::physics::DerivedEntitySync>` orchestrates these three jobs;
+   trajectory evaluation is in :cpp:func:`Trajectory::update <cardillo::physics::Trajectory::update>`
 
 ----
 
@@ -88,7 +88,7 @@ The collision pipeline runs in three sub-stages:
 **Rebuild scene (if dirty)**
    If bodies were added, removed, or beam geometry changed, the COAL broad-phase
    scene is rebuilt from scratch: collision geometry is created for every entity
-   that carries ``C_Collidable``, registered with the broad-phase manager, and
+   that carries :cpp:struct:`C_Collidable <cardillo::C_Collidable>`, registered with the broad-phase manager, and
    indexed for fast reverse lookup. Static geometry transforms are baked in here.
 
 **Update transforms**
@@ -106,8 +106,8 @@ attachment points, penetration depth, friction coefficient (combined from
 per-body values), and the last-step impulse for warmstarting.
 
 .. note::
-   ``CollisionCoal::detectAll()`` runs the full pipeline and owns the
-   authoritative contact buffer. The contact tracker inside matches current
+   :cpp:class:`CollisionCoal <cardillo::collision::CollisionCoal>` runs the full pipeline and owns the
+   authoritative contact buffer. The :cpp:class:`ContactTracker <cardillo::collision::ContactTracker>` inside matches current
    contacts to previous-step contacts to transfer warmstart impulses.
 
 ----
@@ -143,9 +143,9 @@ operators the solver needs.
    drift over time without adding energy.
 
 .. note::
-   ``rebuildW_()`` builds the contact Jacobian. ``rebuildInteractionW_()`` builds
+   :cpp:func:`DynamicsAssembler::rebuildW_ <cardillo::physics::DynamicsAssembler::rebuildW_>` builds the contact Jacobian. :cpp:func:`DynamicsAssembler::rebuildInteractionW_ <cardillo::physics::DynamicsAssembler::rebuildInteractionW_>` builds
    constraint Jacobians and compliance data by calling ``getConstraint()`` on
-   every ``ConstraintPattern``.
+   every :cpp:struct:`ConstraintPattern <cardillo::physics::ConstraintPattern>`.
 
 ----
 
@@ -167,7 +167,9 @@ constraint multipliers, and :math:`\lambda_\gamma` are damper multipliers.
 
 The right-hand side encodes the current velocity, external and gyroscopic forces,
 carry-over constraint multipliers from the previous step, and the Baumgarte
-position correction.
+position correction. See :doc:`moreau_time_stepping` for the detailed
+derivation of the scaled system, the treatment of impulses, and the
+relationship between multipliers and accumulated impulses.
 
 Frictionless contact impulses are constrained to be non-negative (pushing
 only). Frictional contacts additionally enforce the Coulomb friction cone.
@@ -204,7 +206,7 @@ After the step is fully integrated, two output writers run:
    integration so the initial state is always captured.
 
 **Tracked CSV**
-   Entities tagged with ``engine.track(entity, "name")`` have their current
+   Entities tagged with :cpp:struct:`C_TrackTag <cardillo::C_TrackTag>` (set via :cpp:func:`PhysicsEngine::track <cardillo::physics::PhysicsEngine::track>`) have their current
    position and orientation appended to a CSV file each step. This gives a
    per-step time series for selected bodies without loading the full VTK series.
 

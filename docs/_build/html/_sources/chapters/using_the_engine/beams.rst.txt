@@ -11,11 +11,11 @@ post-processing tools work on them directly.
    :local:
    :depth: 2
 
-Cross-section (BeamCrossSection)
+Cross-section
 ---------------------------------
 
-``BeamCrossSection`` (``src/physics/api/physics_types.hpp``) defines the
-geometry of each beam segment and provides the derived section properties
+:cpp:struct:`BeamCrossSection <cardillo::physics::BeamCrossSection>` defines the
+gometry of each beam segment and provides the derived section properties
 used to compute stiffness:
 
 .. list-table::
@@ -41,11 +41,11 @@ used to compute stiffness:
 
 Derived section properties computed from these fields:
 
-- ``area()`` -- cross-sectional area A (m²)
-- ``Iy()``    -- second moment of area about the y-axis (m⁴)
-- ``Iz()``    -- second moment of area about the z-axis (m⁴)
-- ``Jp()``    -- polar moment of inertia ``Iy + Iz`` (m⁴)
-- ``sectionModulus()`` -- minimum section modulus (m³); used for yield checks
+- :cpp:member:`area() <cardillo::physics::BeamCrossSection::area>` -- cross-sectional area A (m²)
+- :cpp:member:`Iy() <cardillo::physics::BeamCrossSection::Iy>` -- second moment of area about the y-axis (m⁴)
+- :cpp:member:`Iz() <cardillo::physics::BeamCrossSection::Iz>` -- second moment of area about the z-axis (m⁴)
+- :cpp:member:`Jp() <cardillo::physics::BeamCrossSection::Jp>` -- polar moment of inertia ``Iy + Iz`` (m⁴)
+- :cpp:member:`sectionModulus() <cardillo::physics::BeamCrossSection::sectionModulus>` -- minimum section modulus (m³); used for yield checks
 
 .. code-block:: cpp
 
@@ -57,11 +57,11 @@ Derived section properties computed from these fields:
    // 1 cm diameter circular cross-section
    BeamCrossSection circSection(0.01, 0.01, BeamBodyType::Capsule);
 
-Material stiffness (BeamSpringParams)
+Material stiffness
 --------------------------------------
 
-``BeamSpringParams`` (``src/physics/api/physics_types.hpp``) describes the
-elastic and damping properties of the beam.
+:cpp:struct:`BeamSpringParams <cardillo::physics::BeamSpringParams>` describes the
+elastic and damping parameters of the beam.
 
 Fields
 ~~~~~~
@@ -170,10 +170,10 @@ length ``L``:
 where :math:`G = E / (2(1+\nu))`.
 
 Creating beams
---------------
+---------------
 
-createBeam (single spline)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+:cpp:func:`createBeam <cardillo::physics::PhysicsEngine::createBeam>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Samples a spline into ``segments`` rigid bodies and connects adjacent ones
 with beam constraints. Returns the root and tip entity handles.
@@ -196,10 +196,10 @@ The factory:
 
 1. Samples the spline at ``segments`` evenly-spaced parameter values.
 2. Creates a rigid body at each sample point (shape from ``section.type``).
-3. Connects every adjacent pair with ``addBeamConstraint``.
+3. Connects every adjacent pair with :cpp:func:`PhysicsEngine::addBeamConstraint <cardillo::physics::PhysicsEngine::addBeamConstraint>`.
 
-createBeams (multiple connected splines)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+:cpp:func:`createBeams <cardillo::physics::PhysicsEngine::createBeams>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Chains several splines into a single beam, with the tip of each spline
 connected to the root of the next. Returns the overall root and tip.
@@ -252,5 +252,5 @@ Complete example
 
 .. tip::
    Because beam segments are ordinary ECS entities, you can attach a
-   trajectory to the root segment to drive the beam's base, or apply
-   ``applyForce`` to any segment to impose point loads.
+  trajectory to the root segment to drive the beam's base, or call
+  :cpp:func:`applyForce() <cardillo::physics::PhysicsEngine::applyForce>` to impose point loads on any segment.

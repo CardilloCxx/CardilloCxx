@@ -1,0 +1,14 @@
+[project]
+name = "CardilloCxx"
+version = "0.1.0"
+description = "Python dependency for documentation of CardilloCxx"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "sphinx",
+    "breathe",
+    "exhale",
+    "sphinx-rtd-theme",
+    "sphinxcontrib-mermaid",
+    "sphinxcontrib.bibtex",
+]

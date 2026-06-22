@@ -50,36 +50,40 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../solvers/index.html">Solvers</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="setup.html">Setup and Configuration</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Bodies</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#rigidstate-initial-kinematics">RigidState (initial kinematics)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#rigidprops-mass-and-flags">RigidProps (mass and flags)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#shape-types">Shape types</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#cubeshape">CubeShape</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#sphereshape">SphereShape</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#capsuleshape">CapsuleShape</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#cylindershape">CylinderShape</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#coneshape">ConeShape</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#planeshape">PlaneShape</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#meshshape">MeshShape</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rigidstate">RigidState</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rigidprops">RigidProps</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#shape-types">Shape types</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#dynamic-vs-static-bodies">Dynamic vs. static bodies</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#addrigidbody"><code class="docutils literal notranslate"><span class="pre">addRigidBody</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#addstaticbody"><code class="docutils literal notranslate"><span class="pre">addStaticBody</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cubeshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CubeShape</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sphereshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">SphereShape</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#capsuleshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CapsuleShape</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cylindershape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CylinderShape</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#coneshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">ConeShape</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#planeshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">PlaneShape</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#meshshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">MeshShape</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dynamic-vs-static-bodies">Dynamic vs. static bodies</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#other-body-types">Other body types</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#point-masses">Point masses</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#height-field-obstacles">Height-field obstacles</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#soft-bodies">Soft bodies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#addrigidbody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">addRigidBody</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#addstaticbody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">addStaticBody</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#other-body-types">Other body types</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#disabling-collisions-between-a-pair">Disabling collisions between a pair</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#point-masses">Point masses</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#height-field-obstacles">Height-field obstacles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#soft-bodies">Soft bodies</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#disabling-collisions-between-a-pair">Disabling collisions between a pair</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="constraints.html">Constraints and Joints</a></li>
@@ -123,46 +127,14 @@
              
   <section id="bodies">
 <h1>Bodies<a class="headerlink" href="#bodies" title="Link to this heading"></a></h1>
-<p>All body-creation methods live on <code class="docutils literal notranslate"><span class="pre">PhysicsEngine</span></code> and delegate to the factory
-classes in <code class="docutils literal notranslate"><span class="pre">src/physics/assets/</span></code>. Rigid bodies, static bodies, point masses,
+<p>All body-creation methods live on <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngineE" title="cardillo::physics::PhysicsEngine"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">PhysicsEngine</span></code></a> and delegate to the factory
+classes in <code class="docutils literal notranslate"><span class="pre">physics/assets/</span></code>. Rigid bodies, static bodies, point masses,
 and height fields all return an <code class="docutils literal notranslate"><span class="pre">entt::entity</span></code> that you keep around to pass
 to constraint factories, trajectory setters, and state queries.</p>
-<nav class="contents local" id="on-this-page">
-<p class="topic-title">On this page</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="#rigidstate-initial-kinematics" id="id1">RigidState (initial kinematics)</a></p></li>
-<li><p><a class="reference internal" href="#rigidprops-mass-and-flags" id="id2">RigidProps (mass and flags)</a></p></li>
-<li><p><a class="reference internal" href="#shape-types" id="id3">Shape types</a></p>
-<ul>
-<li><p><a class="reference internal" href="#cubeshape" id="id4">CubeShape</a></p></li>
-<li><p><a class="reference internal" href="#sphereshape" id="id5">SphereShape</a></p></li>
-<li><p><a class="reference internal" href="#capsuleshape" id="id6">CapsuleShape</a></p></li>
-<li><p><a class="reference internal" href="#cylindershape" id="id7">CylinderShape</a></p></li>
-<li><p><a class="reference internal" href="#coneshape" id="id8">ConeShape</a></p></li>
-<li><p><a class="reference internal" href="#planeshape" id="id9">PlaneShape</a></p></li>
-<li><p><a class="reference internal" href="#meshshape" id="id10">MeshShape</a></p></li>
-</ul>
-</li>
-<li><p><a class="reference internal" href="#dynamic-vs-static-bodies" id="id11">Dynamic vs. static bodies</a></p>
-<ul>
-<li><p><a class="reference internal" href="#addrigidbody" id="id12"><code class="docutils literal notranslate"><span class="pre">addRigidBody</span></code></a></p></li>
-<li><p><a class="reference internal" href="#addstaticbody" id="id13"><code class="docutils literal notranslate"><span class="pre">addStaticBody</span></code></a></p></li>
-</ul>
-</li>
-<li><p><a class="reference internal" href="#other-body-types" id="id14">Other body types</a></p>
-<ul>
-<li><p><a class="reference internal" href="#point-masses" id="id15">Point masses</a></p></li>
-<li><p><a class="reference internal" href="#height-field-obstacles" id="id16">Height-field obstacles</a></p></li>
-<li><p><a class="reference internal" href="#soft-bodies" id="id17">Soft bodies</a></p></li>
-</ul>
-</li>
-<li><p><a class="reference internal" href="#disabling-collisions-between-a-pair" id="id18">Disabling collisions between a pair</a></p></li>
-</ul>
-</nav>
-<section id="rigidstate-initial-kinematics">
-<h2><a class="toc-backref" href="#id1" role="doc-backlink">RigidState (initial kinematics)</a><a class="headerlink" href="#rigidstate-initial-kinematics" title="Link to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">RigidState</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_types.hpp</span></code>) describes where a body
-starts in the world and how fast it is moving:</p>
+<section id="rigidstate">
+<h2>RigidState<a class="headerlink" href="#rigidstate" title="Link to this heading"></a></h2>
+<p><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1RigidState.html#_CPPv4N8cardillo7physics10RigidStateE" title="cardillo::physics::RigidState"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">RigidState</span></code></a> describes where a body
+starts in the inertial system and how fast it is moving:</p>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 19.2%" />
@@ -178,11 +150,11 @@ starts in the world and how fast it is moving:</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">position</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code></p></td>
-<td><p>World-frame centre-of-mass position in metres.</p></td>
+<td><p>Inertial-frame centre-of-mass position in metres.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">orientation</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Identity</span></code></p></td>
-<td><p>World-frame orientation as a unit quaternion
+<td><p>Inertial-frame orientation as a unit quaternion
 (<code class="docutils literal notranslate"><span class="pre">Eigen::Quaternion&lt;real_t&gt;</span></code>).</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">rotation</span></code></p></td>
@@ -193,11 +165,11 @@ you must update <code class="docutils literal notranslate"><span class="pre">rot
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">linearVelocity</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code></p></td>
-<td><p>World-frame linear velocity in m/s.</p></td>
+<td><p>Inertial-frame linear velocity in m/s.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">angularVelocity</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0,</span> <span class="pre">0)</span></code></p></td>
-<td><p>Body-frame angular velocity in rad/s.</p></td>
+<td><p>Body Basis angular velocity in rad/s.</p></td>
 </tr>
 </tbody>
 </table>
@@ -235,9 +207,9 @@ orientation from the mesh’s principal-axes frame. The values you pass in
 centre of mass.</p>
 </div>
 </section>
-<section id="rigidprops-mass-and-flags">
-<h2><a class="toc-backref" href="#id2" role="doc-backlink">RigidProps (mass and flags)</a><a class="headerlink" href="#rigidprops-mass-and-flags" title="Link to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">RigidProps</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_types.hpp</span></code>) controls mass, friction,
+<section id="rigidprops">
+<h2>RigidProps<a class="headerlink" href="#rigidprops" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">RigidProps</span></code> controls mass, friction,
 and pipeline participation:</p>
 <table class="docutils align-default">
 <colgroup>
@@ -290,13 +262,14 @@ invisible constraint anchors or bodies that must never touch anything.</p></td>
 <span class="n">RigidProps</span><span class="w"> </span><span class="n">p4</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RigidProps</span><span class="o">::</span><span class="n">withDensity</span><span class="p">(</span><span class="mf">7750.0</span><span class="p">);</span><span class="w"> </span><span class="c1">// steel</span>
 </pre></div>
 </div>
-</section>
 <section id="shape-types">
-<h2><a class="toc-backref" href="#id3" role="doc-backlink">Shape types</a><a class="headerlink" href="#shape-types" title="Link to this heading"></a></h2>
-<p>The second argument to <code class="docutils literal notranslate"><span class="pre">addRigidBody</span></code> / <code class="docutils literal notranslate"><span class="pre">addStaticBody</span></code> is a <code class="docutils literal notranslate"><span class="pre">RigidShape</span></code>
-variant. All shapes are defined in <code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_types.hpp</span></code>.</p>
+<h3>Shape types<a class="headerlink" href="#shape-types" title="Link to this heading"></a></h3>
+<p>The second argument to <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine12addRigidBodyERK10RigidShapeRK10RigidStateRK10RigidProps" title="cardillo::physics::PhysicsEngine::addRigidBody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addRigidBody</span></code></a> / <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine13addStaticBodyERK10RigidShapeRK10RigidState" title="cardillo::physics::PhysicsEngine::addStaticBody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addStaticBody</span></code></a> is a <code class="docutils literal notranslate"><span class="pre">RigidShape</span></code>
+variant. All shapes are defined in <code class="docutils literal notranslate"><span class="pre">physics/api/physics_types.hpp</span></code>.</p>
+</section>
+</section>
 <section id="cubeshape">
-<h3><a class="toc-backref" href="#id4" role="doc-backlink">CubeShape</a><a class="headerlink" href="#cubeshape" title="Link to this heading"></a></h3>
+<h2><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1CubeShape.html#_CPPv4N8cardillo7physics9CubeShapeE" title="cardillo::physics::CubeShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CubeShape</span></code></a><a class="headerlink" href="#cubeshape" title="Link to this heading"></a></h2>
 <p>An axis-aligned box. The collision geometry and visual quad both follow the
 body’s orientation quaternion.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Half-extents: the box extends ±hx along x, ±hy along y, ±hz along z</span>
@@ -321,7 +294,7 @@ body’s orientation quaternion.</p>
 <span class="math notranslate nohighlight">\(I_{xx} = m(h_y^2 + h_z^2)/3\)</span>, etc.</p>
 </section>
 <section id="sphereshape">
-<h3><a class="toc-backref" href="#id5" role="doc-backlink">SphereShape</a><a class="headerlink" href="#sphereshape" title="Link to this heading"></a></h3>
+<h2><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1SphereShape.html#_CPPv4N8cardillo7physics11SphereShapeE" title="cardillo::physics::SphereShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">SphereShape</span></code></a><a class="headerlink" href="#sphereshape" title="Link to this heading"></a></h2>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">SphereShape</span><span class="p">(</span><span class="n">real_t</span><span class="w"> </span><span class="n">radius</span><span class="p">)</span>
 
 <span class="n">SphereShape</span><span class="w"> </span><span class="n">s</span><span class="p">(</span><span class="mf">0.05</span><span class="p">);</span><span class="w">  </span><span class="c1">// 5 cm radius sphere</span>
@@ -330,9 +303,9 @@ body’s orientation quaternion.</p>
 <p>Inertia: <span class="math notranslate nohighlight">\(I = \frac{2}{5} m r^2\)</span> along all axes.</p>
 </section>
 <section id="capsuleshape">
-<h3><a class="toc-backref" href="#id6" role="doc-backlink">CapsuleShape</a><a class="headerlink" href="#capsuleshape" title="Link to this heading"></a></h3>
+<h2><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1CapsuleShape.html#_CPPv4N8cardillo7physics12CapsuleShapeE" title="cardillo::physics::CapsuleShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CapsuleShape</span></code></a><a class="headerlink" href="#capsuleshape" title="Link to this heading"></a></h2>
 <p>A cylinder capped with two hemispheres. The long axis runs along the body’s
-local <strong>z-axis</strong>. Rotate the body’s <code class="docutils literal notranslate"><span class="pre">orientation</span></code> to align it in world space.</p>
+local <strong>z-axis</strong>. Rotate the body’s <code class="docutils literal notranslate"><span class="pre">orientation</span></code> to align it in inertial space.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CapsuleShape</span><span class="p">(</span><span class="n">real_t</span><span class="w"> </span><span class="n">radius</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">halfLength</span><span class="p">)</span>
 
 <span class="c1">// radius = 0.05 m (cap radius), halfLength = 0.45 m</span>
@@ -361,7 +334,7 @@ local <strong>z-axis</strong>. Rotate the body’s <code class="docutils literal
 which accounts for both the cylindrical shaft and the two end caps.</p>
 </section>
 <section id="cylindershape">
-<h3><a class="toc-backref" href="#id7" role="doc-backlink">CylinderShape</a><a class="headerlink" href="#cylindershape" title="Link to this heading"></a></h3>
+<h2><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1CylinderShape.html#_CPPv4N8cardillo7physics13CylinderShapeE" title="cardillo::physics::CylinderShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CylinderShape</span></code></a><a class="headerlink" href="#cylindershape" title="Link to this heading"></a></h2>
 <p>A flat-ended cylinder. Long axis along the body’s local <strong>z-axis</strong>.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CylinderShape</span><span class="p">(</span><span class="n">real_t</span><span class="w"> </span><span class="n">radius</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">halfLength</span><span class="p">)</span>
 </pre></div>
@@ -386,7 +359,7 @@ which accounts for both the cylindrical shaft and the two end caps.</p>
 <span class="math notranslate nohighlight">\(I_{xx} = I_{yy} = \frac{m(3r^2 + (2h)^2)}{12}\)</span>.</p>
 </section>
 <section id="coneshape">
-<h3><a class="toc-backref" href="#id8" role="doc-backlink">ConeShape</a><a class="headerlink" href="#coneshape" title="Link to this heading"></a></h3>
+<h2><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1ConeShape.html#_CPPv4N8cardillo7physics9ConeShapeE" title="cardillo::physics::ConeShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">ConeShape</span></code></a><a class="headerlink" href="#coneshape" title="Link to this heading"></a></h2>
 <p>A right circular cone. Tip points along the body’s local <strong>+z</strong> axis.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">ConeShape</span><span class="p">(</span><span class="n">real_t</span><span class="w"> </span><span class="n">radius</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">height</span><span class="p">)</span>
 
@@ -395,9 +368,9 @@ which accounts for both the cylindrical shaft and the two end caps.</p>
 </div>
 </section>
 <section id="planeshape">
-<h3><a class="toc-backref" href="#id9" role="doc-backlink">PlaneShape</a><a class="headerlink" href="#planeshape" title="Link to this heading"></a></h3>
+<h2><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1PlaneShape.html#_CPPv4N8cardillo7physics10PlaneShapeE" title="cardillo::physics::PlaneShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">PlaneShape</span></code></a><a class="headerlink" href="#planeshape" title="Link to this heading"></a></h2>
 <p>An infinite (collision-wise) flat surface. The visual quad has finite size.
-Typically used with <code class="docutils literal notranslate"><span class="pre">addStaticBody</span></code>.</p>
+Typically used with <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine13addStaticBodyERK10RigidShapeRK10RigidState" title="cardillo::physics::PhysicsEngine::addStaticBody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">addStaticBody()</span></code></a>.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">PlaneShape</span><span class="p">(</span><span class="n">Vector3r</span><span class="w"> </span><span class="n">normal</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">up</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">sizeX</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">sizeY</span><span class="p">)</span>
 
 <span class="c1">// Horizontal floor in the xy-plane, facing +z</span>
@@ -412,7 +385,7 @@ Typically used with <code class="docutils literal notranslate"><span class="pre"
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">normal</span></code></p></td>
-<td><p>World-space outward normal direction (the “above” side of the plane).</p></td>
+<td><p>Inertial-space outward normal direction (the “above” side of the plane).</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">up</span></code></p></td>
 <td><p>Up direction for the visual quad, used to orient the rendered mesh.</p></td>
@@ -428,13 +401,13 @@ and <code class="docutils literal notranslate"><span class="pre">up</span></code
 </table>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
-<p><code class="docutils literal notranslate"><span class="pre">PlaneShape</span></code> has no mass or inertia. Passing it to <code class="docutils literal notranslate"><span class="pre">addRigidBody</span></code>
+<p><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1PlaneShape.html#_CPPv4N8cardillo7physics10PlaneShapeE" title="cardillo::physics::PlaneShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">PlaneShape</span></code></a> has no mass or inertia. Passing it to <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine12addRigidBodyERK10RigidShapeRK10RigidStateRK10RigidProps" title="cardillo::physics::PhysicsEngine::addRigidBody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">addRigidBody()</span></code></a>
 with a non-zero mass will produce an undefined inertia. Always use
-<code class="docutils literal notranslate"><span class="pre">addStaticBody</span></code> for floor planes.</p>
+<a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine13addStaticBodyERK10RigidShapeRK10RigidState" title="cardillo::physics::PhysicsEngine::addStaticBody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">addStaticBody()</span></code></a> for floor planes.</p>
 </div>
 </section>
 <section id="meshshape">
-<h3><a class="toc-backref" href="#id10" role="doc-backlink">MeshShape</a><a class="headerlink" href="#meshshape" title="Link to this heading"></a></h3>
+<h2><a class="reference internal" href="../../api/structcardillo_1_1physics_1_1MeshShape.html#_CPPv4N8cardillo7physics9MeshShapeE" title="cardillo::physics::MeshShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">MeshShape</span></code></a><a class="headerlink" href="#meshshape" title="Link to this heading"></a></h2>
 <p>A triangle mesh loaded from an OBJ or STL file. The engine normalises the
 mesh to its principal axes and volume-weighted centre of mass before
 computing inertia. Mesh assets are cached so the same path can be used by
@@ -485,37 +458,36 @@ offset from the model’s mesh origin, and the actual world position/orientation
 are adjusted by the mesh’s computed centre-of-mass offset and principal-axes
 rotation. Inspect <code class="docutils literal notranslate"><span class="pre">debug.mesh</span> <span class="pre">=</span> <span class="pre">true</span></code> in the config to print these values.</p>
 </div>
-</section>
-</section>
 <section id="dynamic-vs-static-bodies">
-<h2><a class="toc-backref" href="#id11" role="doc-backlink">Dynamic vs. static bodies</a><a class="headerlink" href="#dynamic-vs-static-bodies" title="Link to this heading"></a></h2>
+<h3>Dynamic vs. static bodies<a class="headerlink" href="#dynamic-vs-static-bodies" title="Link to this heading"></a></h3>
+</section>
+</section>
 <section id="addrigidbody">
-<h3><a class="toc-backref" href="#id12" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">addRigidBody</span></code></a><a class="headerlink" href="#addrigidbody" title="Link to this heading"></a></h3>
+<h2><a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine12addRigidBodyERK10RigidShapeRK10RigidStateRK10RigidProps" title="cardillo::physics::PhysicsEngine::addRigidBody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">addRigidBody</span></code></a><a class="headerlink" href="#addrigidbody" title="Link to this heading"></a></h2>
 <p>Creates a body that becomes <strong>dynamic</strong> only when the resolved mass is
 positive. If mass and density are both unset (or resolve to zero), the factory
 still creates the body’s pose, shape, visual, and collision components, but it
-does not add <code class="docutils literal notranslate"><span class="pre">C_PhysicsObject</span></code> / rigid-body mass-inertia data, so the solver
+does not add <a class="reference internal" href="../../api/structcardillo_1_1C__PhysicsObject.html#_CPPv4N8cardillo15C_PhysicsObjectE" title="cardillo::C_PhysicsObject"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_PhysicsObject</span></code></a> / rigid-body mass-inertia data, so the solver
 treats the body as static.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addRigidBody</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span><span class="w"> </span><span class="n">state</span><span class="p">,</span><span class="w"> </span><span class="n">props</span><span class="p">);</span>
 </pre></div>
 </div>
 </section>
 <section id="addstaticbody">
-<h3><a class="toc-backref" href="#id13" role="doc-backlink"><code class="docutils literal notranslate"><span class="pre">addStaticBody</span></code></a><a class="headerlink" href="#addstaticbody" title="Link to this heading"></a></h3>
+<h2><a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine13addStaticBodyERK10RigidShapeRK10RigidState" title="cardillo::physics::PhysicsEngine::addStaticBody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">addStaticBody</span></code></a><a class="headerlink" href="#addstaticbody" title="Link to this heading"></a></h2>
 <p>Creates a <strong>static</strong> obstacle with zero mass. It participates in collision
-detection but never moves under forces or constraints. Internally this calls
-<code class="docutils literal notranslate"><span class="pre">addRigidBody</span></code> with <code class="docutils literal notranslate"><span class="pre">RigidProps(0)</span></code>.</p>
+detection but never moves under forces or constraints.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">floor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addStaticBody</span><span class="p">(</span>
 <span class="w">    </span><span class="n">PlaneShape</span><span class="p">(</span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitZ</span><span class="p">(),</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">::</span><span class="n">UnitY</span><span class="p">(),</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">),</span>
 <span class="w">    </span><span class="n">RigidState</span><span class="p">{});</span><span class="w">  </span><span class="c1">// at origin, default orientation</span>
 </pre></div>
 </div>
-</section>
-</section>
 <section id="other-body-types">
-<h2><a class="toc-backref" href="#id14" role="doc-backlink">Other body types</a><a class="headerlink" href="#other-body-types" title="Link to this heading"></a></h2>
+<h3>Other body types<a class="headerlink" href="#other-body-types" title="Link to this heading"></a></h3>
+</section>
+</section>
 <section id="point-masses">
-<h3><a class="toc-backref" href="#id15" role="doc-backlink">Point masses</a><a class="headerlink" href="#point-masses" title="Link to this heading"></a></h3>
+<h2>Point masses<a class="headerlink" href="#point-masses" title="Link to this heading"></a></h2>
 <p>A point particle with translational (but no rotational) degrees of freedom.
 Useful for simple particle simulations or as massless probe points.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">point</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addPointMass</span><span class="p">(</span>
@@ -528,7 +500,7 @@ Useful for simple particle simulations or as massless probe points.</p>
 </div>
 </section>
 <section id="height-field-obstacles">
-<h3><a class="toc-backref" href="#id16" role="doc-backlink">Height-field obstacles</a><a class="headerlink" href="#height-field-obstacles" title="Link to this heading"></a></h3>
+<h2>Height-field obstacles<a class="headerlink" href="#height-field-obstacles" title="Link to this heading"></a></h2>
 <p>A static terrain surface loaded from an OpenEXR file.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">hf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addObstacleHeightField</span><span class="p">(</span>
 <span class="w">    </span><span class="n">Vector3r</span><span class="w"> </span><span class="n">position</span><span class="p">,</span><span class="w">         </span><span class="c1">// world position of the field&#39;s origin</span>
@@ -543,7 +515,7 @@ Useful for simple particle simulations or as massless probe points.</p>
 </div>
 </section>
 <section id="soft-bodies">
-<h3><a class="toc-backref" href="#id17" role="doc-backlink">Soft bodies</a><a class="headerlink" href="#soft-bodies" title="Link to this heading"></a></h3>
+<h2>Soft bodies<a class="headerlink" href="#soft-bodies" title="Link to this heading"></a></h2>
 <p>A deformable body assembled from a surface mesh. Each triangle vertex becomes
 a point mass; edges become spring constraints.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="o">&gt;</span><span class="w"> </span><span class="n">nodes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">addSoftBody</span><span class="p">(</span>
@@ -561,15 +533,14 @@ a point mass; edges become spring constraints.</p>
 </div>
 <p>The returned vector contains one <code class="docutils literal notranslate"><span class="pre">entt::entity</span></code> per mesh vertex. You can
 attach constraints or trajectories to individual nodes.</p>
-</section>
-</section>
 <section id="disabling-collisions-between-a-pair">
-<h2><a class="toc-backref" href="#id18" role="doc-backlink">Disabling collisions between a pair</a><a class="headerlink" href="#disabling-collisions-between-a-pair" title="Link to this heading"></a></h2>
+<h3>Disabling collisions between a pair<a class="headerlink" href="#disabling-collisions-between-a-pair" title="Link to this heading"></a></h3>
 <p>After adding bodies, suppress specific pairs that you know will never (or
 should never) collide, most commonly a body and its constraint anchor:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">disableCollisionBetween</span><span class="p">(</span><span class="n">anchor</span><span class="p">,</span><span class="w"> </span><span class="n">arm</span><span class="p">);</span>
 </pre></div>
 </div>
+</section>
 </section>
 </section>
 

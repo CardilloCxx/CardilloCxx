@@ -1,9 +1,7 @@
 Entity Component System
 =======================
 
-Cardillo uses EnTT to describe every simulation object as a plain entity
-(``entt::entity``) carrying only the data it needs. Instead of classes or inheritance, just components and tags are queried by systems. All public component definitions live in
-``src/physics/ecs_types.hpp``.
+Cardillo uses EnTT to describe every simulation object as a plain entity :cpp:any:`entt::entity` carrying only the data it needs. Instead of classes or inheritance, just components and tags are queried by systems. All public component definitions live in ``ecs_types.hpp`` (see the physics API headers).
 
 .. contents:: On this page
    :local:
@@ -15,10 +13,10 @@ The ECS mental model
 A system does not own objects; it **reads** the combination of components that
 identify a behaviour:
 
-- ``C_RigidBodyTag + C_Mass + C_PhysicsObject`` → rigid body, participate in dynamics.
-- ``C_Collidable`` → include in collision detection.
-- ``C_VisualObject`` → export to VTK output.
-- ``C_BeamElement`` → connect into a beam chain.
+ - :cpp:struct:`C_RigidBodyTag <cardillo::C_RigidBodyTag>` + :cpp:struct:`C_Mass <cardillo::C_Mass>` + :cpp:struct:`C_PhysicsObject <cardillo::C_PhysicsObject>` → rigid body, participate in dynamics.
+ - :cpp:struct:`C_Collidable <cardillo::C_Collidable>` → include in collision detection.
+ - :cpp:struct:`C_VisualObject <cardillo::C_VisualObject>` → export to VTK output.
+ - :cpp:struct:`C_BeamElement <cardillo::C_BeamElement>` → connect into a beam chain.
 
 The engine's own systems (collision broad-phase, solver assembly, integrator,
 VTK writer) are all just views over the registry.
@@ -26,7 +24,7 @@ VTK writer) are all just views over the registry.
 Composing an entity: rigid body factory snippet
 ------------------------------------------------
 
-Here is how ``RigidBodyFactory::create`` (``src/physics/assets/rigid_body_factory.cpp``)
+Here is how :cpp:func:`RigidBodyFactory::create <cardillo::physics::RigidBodyFactory::create>`
 builds a dynamic capsule from scratch:
 
 .. code-block:: cpp
@@ -87,15 +85,15 @@ Position and orientation
    * - Component
      - Fields
      - Meaning
-   * - ``C_Position3``
-     - ``Vector3r value``
-     - World-space position (m).
-   * - ``C_Orientation``
-     - ``Quaternion4r value``
-     - World-space orientation as a unit quaternion.
-   * - ``C_DirectorTriad``
+   * - :cpp:struct:`C_Position3 <cardillo::C_Position3>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` value
+     - Inertial-space position (m).
+   * - :cpp:struct:`C_Orientation <cardillo::C_Orientation>`
+     - :cpp:type:`Quaternion4r <cardillo::Quaternion4r>` value
+     - Inertial-space orientation as a unit quaternion.
+   * - :cpp:struct:`C_DirectorTriad <cardillo::C_DirectorTriad>`
      - ``Matrix33r value``
-     - Body-frame triad (used for director-type bodies).
+     - Body Basis triad (used for director-type bodies).
 
 Velocity and acceleration
 """""""""""""""""""""""""
@@ -107,17 +105,17 @@ Velocity and acceleration
    * - Component
      - Fields
      - Meaning
-   * - ``C_LinearVelocity3``
-     - ``Vector3r value``
-     - World-space linear velocity (m/s).
-   * - ``C_AngularVelocity3``
-     - ``Vector3r value``
-     - Body-frame angular velocity (rad/s).
-   * - ``C_LinearAcceleration3``
-     - ``Vector3r value``
+   * - :cpp:struct:`C_LinearVelocity3 <cardillo::C_LinearVelocity3>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` value
+     - Inertial-space linear velocity (m/s).
+   * - :cpp:struct:`C_AngularVelocity3 <cardillo::C_AngularVelocity3>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` value
+     - Body Basis angular velocity (rad/s).
+   * - :cpp:struct:`C_LinearAcceleration3 <cardillo::C_LinearAcceleration3>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` value
      - Current linear acceleration accumulator.
-   * - ``C_AngularAcceleration3``
-     - ``Vector3r value``
+   * - :cpp:struct:`C_AngularAcceleration3 <cardillo::C_AngularAcceleration3>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` value
      - Current angular acceleration accumulator.
 
 Mass and inertia
@@ -130,17 +128,17 @@ Mass and inertia
    * - Component
      - Fields
      - Meaning
-   * - ``C_Mass``
+   * - :cpp:struct:`C_Mass <cardillo::C_Mass>`
      - ``real_t m``
      - Body mass (kg). Zero → static body.
-   * - ``C_InertiaDiag``
-     - ``Vector3r I``
-     - Body-frame diagonal inertia: :math:`[I_{xx},\, I_{yy},\, I_{zz}]`.
+   * - :cpp:struct:`C_InertiaDiag <cardillo::C_InertiaDiag>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` I
+     - Body Basis diagonal inertia: :math:`[I_{xx},\, I_{yy},\, I_{zz}]`.
 
 Shape data components
 """""""""""""""""""""
 
-Rigid-body primitives (local geometry in the body frame):
+Rigid-body primitives (local geometry in the Body Basis):
 
 .. list-table::
    :header-rows: 1
@@ -149,20 +147,20 @@ Rigid-body primitives (local geometry in the body frame):
    * - Component
      - Fields
      - Meaning
-   * - ``C_Cube``
-     - ``Vector3r center``, ``halfExtents``, ``Quaternion4r q``
+   * - :cpp:struct:`C_Cube <cardillo::C_Cube>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` center, :cpp:type:`Vector3r <cardillo::Vector3r>` halfExtents, :cpp:type:`Quaternion4r <cardillo::Quaternion4r>` q
      - Box geometry + pose.
-   * - ``C_Capsule``
+   * - :cpp:struct:`C_Capsule <cardillo::C_Capsule>`
      - ``real_t radius``, ``halfLength``
      - Capsule shape (z-axis long).
-   * - ``C_Cylinder``
+   * - :cpp:struct:`C_Cylinder <cardillo::C_Cylinder>`
      - ``real_t radius``, ``halfLength``
      - Cylinder shape (z-axis long).
-   * - ``C_Cone``
+   * - :cpp:struct:`C_Cone <cardillo::C_Cone>`
      - ``real_t radius``, ``height``
      - Cone shape. Tip along +z.
-   * - ``C_Plane``
-     - ``Vector3r normal``, ``up``, ``sizeX``, ``sizeY``
+   * - :cpp:struct:`C_Plane <cardillo::C_Plane>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` normal, ``up``, ``sizeX``, ``sizeY``
      - Plane surface for visualisation.
 
 Rigid-body collision primitives (used by the collision manager):
@@ -174,25 +172,25 @@ Rigid-body collision primitives (used by the collision manager):
    * - Component
      - Fields
      - Meaning
-   * - ``C_RB_Cube``
-     - ``Vector3r center``, ``halfExtents``, ``q``
+   * - :cpp:struct:`C_RB_Cube <cardillo::C_RB_Cube>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` center, :cpp:type:`Vector3r <cardillo::Vector3r>` halfExtents, ``q``
      - AABB-aligned cube collider.
-   * - ``C_RB_Plane``
+   * - :cpp:struct:`C_RB_Plane <cardillo::C_RB_Plane>`
      - ``normal``, ``up``, ``sizeX``, ``sizeY``
      - Plane collider.
-   * - ``C_RB_Capsule``
+   * - :cpp:struct:`C_RB_Capsule <cardillo::C_RB_Capsule>`
      - ``real_t radius``, ``halfLength``
      - Capsule collider (via COAL).
-   * - ``C_RB_Cylinder``
+   * - :cpp:struct:`C_RB_Cylinder <cardillo::C_RB_Cylinder>`
      - ``real_t radius``, ``halfLength``
      - Cylinder collider via COAL.
-   * - ``C_RB_Cone``
+   * - :cpp:struct:`C_RB_Cone <cardillo::C_RB_Cone>`
      - ``real_t radius``, ``height``
      - Cone collider via COAL.
-   * - ``C_RB_Sphere``
+   * - :cpp:type:`C_RB_Sphere <cardillo::C_RB_Sphere>`
      - *(none)*
      - Marker: this body has a sphere collider.
-   * - ``C_RB_Mesh``
+   * - :cpp:type:`C_RB_Mesh <cardillo::C_RB_Mesh>`
      - *(none)*
      - Marker: this body has a mesh (BVH) collider.
 
@@ -205,16 +203,16 @@ Other shape-related data components:
    * - Component
      - Fields
      - Meaning
-   * - ``C_Radius``
+   * - :cpp:struct:`C_Radius <cardillo::C_Radius>`
      - ``real_t r``
      - Visual/collision sphere radius (used by capsule visualisation).
-   * - ``C_Mesh``
-     - ``std::string path``, ``Vector3r scale``
+   * - :cpp:struct:`C_Mesh <cardillo::C_Mesh>`
+     - ``std::string path``, :cpp:type:`Vector3r <cardillo::Vector3r>` scale
      - Mesh asset path and per-axis scale.
-   * - ``C_HeightField``
+   * - :cpp:struct:`C_HeightField <cardillo::C_HeightField>`
      - ``path``, ``x_dim``, ``y_dim``, ``z_scale``, ``min_height``
      - Height-field terrain parameters.
-   * - ``C_SoftBodySurface``
+   * - :cpp:struct:`C_SoftBodySurface <cardillo::C_SoftBodySurface>`
      - ``triangles`` (``Vector3i[]``), ``nodes`` (``entity[]``)
      - Surface mesh for a soft body: one triangle per face, one node per vertex.
 
@@ -228,7 +226,7 @@ Physical property data components
    * - Component
      - Fields
      - Meaning
-   * - ``C_Friction``
+   * - :cpp:struct:`C_Friction <cardillo::C_Friction>`
      - ``real_t mu``
      - Coulomb friction coefficient for this body.
 
@@ -242,7 +240,7 @@ Trajectory data component
    * - Component
      - Fields
      - Meaning
-   * - ``C_StaticTrajectory``
+   * - :cpp:struct:`C_StaticTrajectory <cardillo::C_StaticTrajectory>`
      - ``positionFunc``, ``velocityFunc``, ``elapsed``, ``initialized``, ``previousPosition``
      - Kinematic override. When present the integrator writes pose/velocity from the function instead of solving forces.
 
@@ -258,12 +256,12 @@ These are written by external callers and read by the Moreau integrator each ste
    * - Component
      - Fields
      - Meaning
-   * - ``C_ExternalForce``
-     - ``Vector3r f``
-     - World-frame force applied this step (N).
-   * - ``C_ExternalTorque``
-     - ``Vector3r tau``
-     - World-frame torque applied this step (Nm).
+   * - :cpp:struct:`C_ExternalForce <cardillo::C_ExternalForce>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` f
+     - Inertial-frame force applied this step (N).
+   * - :cpp:struct:`C_ExternalTorque <cardillo::C_ExternalTorque>`
+     - :cpp:type:`Vector3r <cardillo::Vector3r>` tau
+     - Inertial-frame torque applied this step (Nm).
 
 Output and bookkeeping data components
 """""""""""""""""""""""""""""""""""""""
@@ -275,9 +273,9 @@ Output and bookkeeping data components
    * - Component
      - Fields
      - Meaning
-   * - ``C_TrackTag``
+   * - :cpp:struct:`C_TrackTag <cardillo::C_TrackTag>`
      - ``std::string name``
-     - Label for CSV track output. Set via ``engine.track(entity, name)``.
+     - Label for CSV track output. Set via :cpp:func:`PhysicsEngine::track <cardillo::physics::PhysicsEngine::track>`.
    * - ``C_BodyIndex``
      - ``int b``
      - Body index in the assembled mass matrix (set during pipeline assembly).

@@ -49,8 +49,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="solvers/index.html">Solvers</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Using The Engine</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="using_the_engine/setup.html">Setup and Configuration</a></li>
@@ -95,19 +97,20 @@
              
   <section id="using-the-engine">
 <h1>Using The Engine<a class="headerlink" href="#using-the-engine" title="Link to this heading"></a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">PhysicsEngine</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/api/physics_engine.hpp</span></code>) is the single public entry point for
+<p><a class="reference internal" href="../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngineE" title="cardillo::physics::PhysicsEngine"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">PhysicsEngine</span></code></a> is the single public entry point for
 building and advancing simulations. It owns the ECS world, the collision manager,
 and the physics pipeline, and exposes them through a clear set of factory methods
 and runtime controls.</p>
-<p>The mental model is simple: you create entities through factory methods, connect
+<blockquote>
+<div><p>The mental model is simple: you create entities through factory methods, connect
 them with constraints or trajectories, then advance the whole ECS-based world in
-a fixed-step loop with <code class="docutils literal notranslate"><span class="pre">step()</span></code>. The engine handles collision detection,
-assembly, solving, and output, while you focus on scene construction and runtime
+a fixed-step loop with <a class="reference internal" href="../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine4stepEv" title="cardillo::physics::PhysicsEngine::step"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::step</span></code></a>. The engine handles collision detection,</p>
+</div></blockquote>
+<p>assembly, solving, and output, while you focus on scene construction and runtime
 control.</p>
 <p>The chapters below go through each part of the API in detail. Parameter meanings
-are derived directly from the source headers in <code class="docutils literal notranslate"><span class="pre">src/physics/api/</span></code> and
-<code class="docutils literal notranslate"><span class="pre">src/physics/constraints/</span></code>. The final chapter solves a concrete problem
-(a swinging pendulum) from scratch.</p>
+are derived from the public API headers and documentation. The final chapter
+solves a concrete problem (a swinging pendulum) from scratch.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="using_the_engine/setup.html">Setup and Configuration</a><ul>
@@ -118,16 +121,23 @@ are derived directly from the source headers in <code class="docutils literal no
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="using_the_engine/bodies.html">Bodies</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#rigidstate-initial-kinematics">RigidState (initial kinematics)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#rigidprops-mass-and-flags">RigidProps (mass and flags)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#shape-types">Shape types</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#dynamic-vs-static-bodies">Dynamic vs. static bodies</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#other-body-types">Other body types</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#disabling-collisions-between-a-pair">Disabling collisions between a pair</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#rigidstate">RigidState</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#rigidprops">RigidProps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#cubeshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CubeShape</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#sphereshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">SphereShape</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#capsuleshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CapsuleShape</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#cylindershape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CylinderShape</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#coneshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">ConeShape</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#planeshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">PlaneShape</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#meshshape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">MeshShape</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#addrigidbody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">addRigidBody</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#addstaticbody"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">addStaticBody</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#point-masses">Point masses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#height-field-obstacles">Height-field obstacles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/bodies.html#soft-bodies">Soft bodies</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="using_the_engine/constraints.html">Constraints and Joints</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="using_the_engine/constraints.html#jointframe-specifying-where-and-how-a-joint-attaches">JointFrame (specifying where and how a joint attaches)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="using_the_engine/constraints.html#how-stiffness-and-damping-work">How stiffness and damping work</a></li>
 <li class="toctree-l2"><a class="reference internal" href="using_the_engine/constraints.html#constraint-types">Constraint types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="using_the_engine/constraints.html#driving-constraint-velocities-at-runtime">Driving constraint velocities at runtime</a></li>
@@ -152,8 +162,8 @@ are derived directly from the source headers in <code class="docutils literal no
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="using_the_engine/beams.html">Beams and Flexible Rods</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="using_the_engine/beams.html#cross-section-beamcrosssection">Cross-section (BeamCrossSection)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="using_the_engine/beams.html#material-stiffness-beamspringparams">Material stiffness (BeamSpringParams)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/beams.html#cross-section">Cross-section</a></li>
+<li class="toctree-l2"><a class="reference internal" href="using_the_engine/beams.html#material-stiffness">Material stiffness</a></li>
 <li class="toctree-l2"><a class="reference internal" href="using_the_engine/beams.html#creating-beams">Creating beams</a></li>
 </ul>
 </li>
@@ -177,6 +187,7 @@ are derived directly from the source headers in <code class="docutils literal no
 </li>
 </ul>
 </div>
+<p>For a complete list of all types, shapes, and components, see <a class="reference internal" href="types.html"><span class="doc">Types Reference</span></a>.</p>
 </section>
 
 

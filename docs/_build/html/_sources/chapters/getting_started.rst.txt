@@ -45,3 +45,5 @@ The documentation is generated with Sphinx, Breathe, and Exhale. Rebuild it from
 .. code-block:: bash
 
 	uv run make html
+
+For details on all types (vectors, matrices, shapes, components), see :doc:`types`.

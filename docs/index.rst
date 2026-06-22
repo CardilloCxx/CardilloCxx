@@ -14,8 +14,10 @@ A rigid-body physics engine for non-smooth contact problems.
    :caption: User Guide
 
    chapters/getting_started
+   chapters/types
    chapters/ecs
    chapters/physics_pipeline
+   chapters/moreau_time_stepping
    chapters/solvers/index
    chapters/using_the_engine
 

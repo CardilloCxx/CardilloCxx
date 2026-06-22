@@ -2,24 +2,23 @@ Constraints and Joints
 ======================
 
 Constraints couple two bodies (or a body to the world) by restricting
-translation and/or rotation. Every factory method on ``PhysicsEngine``
-delegates to ``ConstraintFactory`` (``src/physics/constraints/``), inserts
-a ``ConstraintPattern`` into the world's constraint list, and marks the
+translation and/or rotation. Every factory method on :cpp:class:`PhysicsEngine <cardillo::physics::PhysicsEngine>`
+a :cpp:class:`ConstraintFactory <cardillo::physics::ConstraintFactory>` inserts
+a :cpp:struct:`ConstraintPattern <cardillo::physics::ConstraintPattern>` into the world's constraint list, and marks the
 world structure dirty so the next ``step()`` rebuilds the solver matrices.
 
 All factory methods return a ``size_t`` constraint index. Keep this index if
 you need to drive the constraint velocity at runtime with
 ``setConstraintScalarVelocity`` / ``setConstraintLinearVelocity`` /
-``setConstraintAngularVelocity``.
+:cpp:func:`PhysicsEngine::setConstraintAngularVelocity <cardillo::physics::PhysicsEngine::setConstraintAngularVelocity>`.
 
 .. contents:: On this page
    :local:
    :depth: 2
 
 JointFrame (specifying where and how a joint attaches)
--------------------------------------------------------
 
-``JointFrame`` (``src/physics/constraints/constraints.hpp``) describes the
+:cpp:struct:`JointFrame <cardillo::physics::JointFrame>` describes the
 position and orientation of the joint in some reference frame:
 
 .. list-table::
@@ -31,7 +30,7 @@ position and orientation of the joint in some reference frame:
      - Meaning
    * - ``r_refJ``
      - ``(0, 0, 0)``
-     - Joint origin expressed in the reference frame (or in world frame when
+     - Joint origin expressed in the reference frame (or in inertial frame when
        ``ref`` is empty).
    * - ``A_refJ``
      - ``Identity``
@@ -41,15 +40,15 @@ position and orientation of the joint in some reference frame:
    * - ``ref``
      - ``nullopt``
      - Optional entity whose current frame defines ``r_refJ`` and ``A_refJ``.
-       When empty the values are taken directly in world coordinates.
+       When empty the values are taken directly in inertial coordinates.
 
-The most convenient constructor is ``JointFrame::fromAxis``:
+The most convenient constructor is :cpp:func:`JointFrame::fromAxis <cardillo::physics::JointFrame::fromAxis>` (also exposed in the API as :cpp:func:`JointFrame::fromAxis <cardillo::physics::JointFrame::fromAxis>`):
 
 .. code-block:: cpp
 
    // Build a joint frame at 'pivot' whose x-column equals 'axis'.
    // Columns 1 and 2 are filled in automatically as an orthonormal basis.
-   JointFrame jf = JointFrame::fromAxis(Vector3r pivot, Vector3r axis,
+  JointFrame jf = JointFrame::fromAxis(Vector3r pivot, Vector3r axis,
                                         std::optional<entt::entity> ref = {});
 
    // Hinge at world origin, rotating around the Y axis
@@ -103,7 +102,7 @@ row (1 DOF).
 
 .. code-block:: cpp
 
-   size_t idx = engine.addLinearDistanceConstraint(
+     size_t idx = engine.addLinearDistanceConstraint(
        entt::entity a,                      // body A (or entt::null for world)
        entt::entity b,                      // body B
        Vector3r rA_local = Vector3r::Zero(), // attachment offset in body A frame
@@ -124,8 +123,8 @@ row (1 DOF).
    );
 
 The rest length ``L₀`` is computed at construction from the initial distance
-between the two attachment points. Drive the constraint with a constant
-scalar velocity using ``engine.setConstraintScalarVelocity(idx, v)``.
+between the two attachment points. Drive the constraint with a constant scalar
+velocity using :cpp:func:`PhysicsEngine::setConstraintScalarVelocity <cardillo::physics::PhysicsEngine::setConstraintScalarVelocity>`.
 
 addRigidConstraint
 ~~~~~~~~~~~~~~~~~~
@@ -137,7 +136,7 @@ world position at call time.
 
 .. code-block:: cpp
 
-   size_t idx = engine.addRigidConstraint(
+  size_t idx = engine.addRigidConstraint(
        entt::entity a,             // reference body (or entt::null for world)
        entt::entity b = entt::null // body to pin (null → pins 'a' to world)
    );
@@ -306,8 +305,8 @@ assembling beam chains manually.
        const BeamCrossSection& section
    );
 
-See :doc:`beams` for full documentation of ``BeamSpringParams`` and
-``BeamCrossSection``.
+See :doc:`beams` for full documentation of :cpp:struct:`BeamSpringParams <cardillo::physics::BeamSpringParams>` and
+:cpp:struct:`BeamCrossSection <cardillo::physics::BeamCrossSection>`.
 
 Driving constraint velocities at runtime
 -----------------------------------------
@@ -346,24 +345,24 @@ Quick constraint-type reference
    * - Method
      - DOF locked
      - Typical use
-   * - ``addRigidConstraint``
+   * - :cpp:func:`PhysicsEngine::addRigidConstraint <cardillo::physics::PhysicsEngine::addRigidConstraint>`
      - 6 / 6
      - Weld two bodies together.
-   * - ``addHingeConstraint``
+   * - :cpp:func:`PhysicsEngine::addHingeConstraint <cardillo::physics::PhysicsEngine::addHingeConstraint>`
      - 5 / 6
      - Revolute joint (door hinge, wheel axle, pendulum pin).
-   * - ``addTranslationalConstraint``
+   * - :cpp:func:`PhysicsEngine::addTranslationalConstraint <cardillo::physics::PhysicsEngine::addTranslationalConstraint>`
      - 3 trans / 3
      - Lock position, allow free rotation (ball socket without translation).
-   * - ``addRotationConstraint``
+   * - :cpp:func:`PhysicsEngine::addRotationConstraint <cardillo::physics::PhysicsEngine::addRotationConstraint>`
      - 3 rot / 3
      - Lock orientation, allow free translation (prismatic guide).
-   * - ``addTranslationRotationConstraint``
+   * - :cpp:func:`PhysicsEngine::addTranslationRotationConstraint <cardillo::physics::PhysicsEngine::addTranslationRotationConstraint>`
      - configurable
      - Generic spring-damper joint with full per-axis control.
-   * - ``addLinearDistanceConstraint``
+   * - :cpp:func:`PhysicsEngine::addLinearDistanceConstraint <cardillo::physics::PhysicsEngine::addLinearDistanceConstraint>`
      - 1 (distance)
      - Inextensible cable or spring between two attachment points.
-   * - ``addBeamConstraint``
+   * - :cpp:func:`PhysicsEngine::addBeamConstraint <cardillo::physics::PhysicsEngine::addBeamConstraint>`
      - 6 (compliant)
      - Cosserat-rod link between two beam segments.

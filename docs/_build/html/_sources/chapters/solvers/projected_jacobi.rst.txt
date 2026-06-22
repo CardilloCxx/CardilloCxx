@@ -10,46 +10,72 @@ The problem
 -----------
 
 The solver minimises the kinetic energy deviation from the unconstrained
-(free-motion) step subject to contact feasibility. Concretely it solves:
+(free-motion) step subject to contact feasibility. It solves the scaled
+system introduced in the Moreau chapter :doc:`../moreau_time_stepping`:
 
 .. math::
 
-   S \begin{pmatrix} u \\ \lambda_g \\ \lambda_\gamma \end{pmatrix} = b
+   \mathcal{S}\,\mathbf{x}_{n+1} = \mathbf{b}_n,
 
-where the extended system matrix is:
+where :math:`\mathcal{S}` is the scaled system matrix and :math:`\mathbf{b}_n` is the
+assembled right-hand side (see the Moreau chapter for the exact block
+structure, the Baumgarte correction and the trajectory source-velocity
+contributions). Contact impulses :math:`\Lambda_{NT}` enter the velocity block
+of :math:`\mathbf{b}_n` via the term :math:`\mathbf{W}_{NT}\,\Lambda_{NT}`.
 
-.. math::
+Fixed-point formulation and iteration
+-------------------------------------
 
-   S =
-   \begin{bmatrix}
-   M & W_g^T & W_\gamma^T \\
-   W_g & -\tfrac{C}{\theta \, dt^2} & 0 \\
-   W_\gamma & 0 & -\tfrac{A}{\theta \, dt}
-   \end{bmatrix}
-
-and the right-hand side **b** encodes the current velocity, external forces,
-carry-over multipliers, velocity source terms, and the Baumgarte position
-correction.
-
-When contacts are present, the contact impulses :math:`\Lambda_{NT}` enter through the velocity
-correction:
+We treat contact impulses :math:`\mathbf{\Lambda}_{NT}` as the primary unknowns. The 
+system is governed by the Delassus operator :math:`\mathbf{G}`, defined as the 
+Schur complement of the system matrix :math:`\mathcal{S}` projected onto the 
+contact space:
 
 .. math::
 
-   u = S^{-1}(b + W^T \Lambda_{NT})
+   \mathbf{G} = \mathbf{W}_{NT}^\top\,\mathcal{S}^{-1}\,\bar{\mathbf{W}}_{NT}
 
-subject to the feasibility conditions on the contact impulses :math:`\Lambda_{NT}`, given by
+This allows us to express the contact-space velocity :math:`\boldsymbol{\gamma}` as 
+an affine map of the impulses:
 
 .. math::
-    \begin{aligned}
-        &0 \le \gamma_{N}^+ \ \perp\ \Lambda_{N} \ge 0,\\
-        &\lVert\boldsymbol{\Lambda}_{T,j}\rVert \le \mu_j\,\Lambda_{N,j},\\
-        &\boldsymbol{\gamma}_{T,j}=\mathbf{0}\ \Rightarrow\ \lVert\boldsymbol{\Lambda}_{T,j}\rVert \le \mu_j\,\Lambda_{N,j}\qquad\text{(sticking)},\\
-        &\boldsymbol{\gamma}^+_{T,j}\neq\mathbf{0}\ \Rightarrow\ \boldsymbol{\Lambda}_{T,j} = -\mu_j\,\Lambda_{N,j}\,\dfrac{\boldsymbol{\gamma}^+_{T,j}}{\lVert\boldsymbol{\gamma}^+_{T,j}\rVert}
-        \quad\text{and}\quad \lVert\boldsymbol{\Lambda}_{T,j}\rVert = \mu_j\,\Lambda_{N,j}\qquad\text{(sliding)}.
-    \end{aligned}
 
-with post impact contact velocity :math:`\gamma_{NT}^{+}`.
+   \boldsymbol{\gamma}(\mathbf{\Lambda}_{NT}) = \mathbf{G}\,\mathbf{\Lambda}_{NT} + \mathbf{v}_{NT}
+
+where :math:`\mathbf{v}_{NT}` is the contact-space velocity induced by 
+external forces and the unconstrained system motion.
+
+The Projected Jacobi iteration updates the impulses :math:`\mathbf{\Lambda}_{NT}` 
+by moving toward the root of this map and projecting onto the feasible contact set 
+:math:`\mathcal{P}`:
+
+1. **Jacobi Sweep**:
+   Update the current guess :math:`\mathbf{\Lambda}_{NT}^{(k)}` using the 
+   diagonal step-size matrix :math:`\mathbf{R} \approx \text{diag}(\mathbf{G})^{-1}`:
+
+   .. math::
+
+      \mathbf{\Lambda}_{NT}^{(*)} = \mathbf{\Lambda}_{NT}^{(k)} - \mathbf{R}\,\boldsymbol{\gamma}(\mathbf{\Lambda}_{NT}^{(k)})
+
+2. **Projection**:
+   Project the result onto the feasible set :math:`\mathcal{P}` (Signorini for 
+   normals, Coulomb friction for tangents):
+
+   .. math::
+
+      \mathbf{\Lambda}_{NT}^{(k+1)} = \mathcal{P}\left(\mathbf{\Lambda}_{NT}^{(*)}\right)
+
+3. **Velocity Update**:
+   Update the system state based on the change in impulses:
+
+   .. math::
+
+      \mathbf{x}^{(k+1)} = \mathbf{x}^{(k)} + \mathcal{S}^{-1}\,\bar{\mathbf{W}}_{NT}\,\left(\mathbf{\Lambda}_{NT}^{(k+1)} - \mathbf{\Lambda}_{NT}^{(k)}\right)
+
+The implementation warm-starts :math:`\mathbf{\Lambda}_{NT}^{(0)}` from the 
+previous time step. It can be shown that the fixed point of this iteration 
+satisfies the feasibility conditions for contact complementarity 
+and Coulomb friction.
 
 
 How it solves

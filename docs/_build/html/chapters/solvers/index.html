@@ -24,7 +24,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="Projected Jacobi" href="projected_jacobi.html" />
-    <link rel="prev" title="Physics Pipeline" href="../physics_pipeline.html" /> 
+    <link rel="prev" title="Time-Stepping for Non-Smooth Mechanical Systems" href="../moreau_time_stepping.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -49,8 +49,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Solvers</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="projected_jacobi.html">Projected Jacobi</a></li>
 <li class="toctree-l2"><a class="reference internal" href="projected_gauss_seidel.html">Projected Gauss-Seidel</a></li>
@@ -94,6 +96,9 @@
 <p>Solving the contact problem is the research core of Cardillo. Each time step
 produces a set of assembled operators from the collision and constraint pipeline
 (see <a class="reference internal" href="../physics_pipeline.html"><span class="doc">Physics Pipeline</span></a>) and the solver’s job is to find a new velocity
+that satisfies the discrete Moreau time-stepping equations (see
+<a class="reference internal" href="../moreau_time_stepping.html"><span class="doc">Time-Stepping for Non-Smooth Mechanical Systems</span></a> for the derivation of the scaled system and RHS
+terms such as Baumgarte position correction and trajectory source velocities).
 state that satisfies the equations of motion while respecting all contact and
 constraint conditions simultaneously.</p>
 <p>The contact problem is inherently non-smooth: contact forces only push (never
@@ -138,7 +143,7 @@ the engine supports multiple backends.</p>
 <p>And all solvers return the same output: the stacked body velocity vector <strong>u</strong>
 for the new state, plus updated constraint multipliers <strong>lambda_g</strong> and
 <strong>lambda_gamma</strong> for use in the next step.</p>
-<p>Select a solver via <code class="docutils literal notranslate"><span class="pre">solver.type</span></code> in the config file:</p>
+<p>Select a solver via <code class="docutils literal notranslate"><span class="pre">solver.type</span></code> in the config file (see <a class="reference internal" href="../../api/structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6ConfigE" title="cardillo::config::Config"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">Config</span></code></a>):</p>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 30.0%" />
@@ -153,19 +158,19 @@ for the new state, plus updated constraint multipliers <strong>lambda_g</strong>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">projected_jacobi</span></code> (default)</p></td>
-<td><p><a class="reference internal" href="projected_jacobi.html"><span class="doc">Projected Jacobi</span></a></p></td>
+<td><p><a class="reference internal" href="projected_jacobi.html"><span class="doc">Projected Jacobi</span></a> (<a class="reference internal" href="../../api/classcardillo_1_1solver_1_1ProjectedJacobiSolver.html#_CPPv4N8cardillo6solver21ProjectedJacobiSolverE" title="cardillo::solver::ProjectedJacobiSolver"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ProjectedJacobiSolver</span></code></a>)</p></td>
 <td><p>General purpose, most reliable</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">projected_gauss_seidel</span></code></p></td>
-<td><p><a class="reference internal" href="projected_gauss_seidel.html"><span class="doc">Projected Gauss-Seidel</span></a></p></td>
+<td><p><a class="reference internal" href="projected_gauss_seidel.html"><span class="doc">Projected Gauss-Seidel</span></a> (<a class="reference internal" href="../../api/classcardillo_1_1solver_1_1ProjectedGaussSeidelSolver.html#_CPPv4N8cardillo6solver26ProjectedGaussSeidelSolverE" title="cardillo::solver::ProjectedGaussSeidelSolver"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ProjectedGaussSeidelSolver</span></code></a>)</p></td>
 <td><p>Can be faster than <code class="docutils literal notranslate"><span class="pre">projected_jacobi</span></code> for large systems</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">conjugate_gradient</span></code></p></td>
-<td><p><a class="reference internal" href="conjugate_gradient.html"><span class="doc">Conjugate Gradient</span></a></p></td>
+<td><p><a class="reference internal" href="conjugate_gradient.html"><span class="doc">Conjugate Gradient</span></a> (<a class="reference internal" href="../../api/classcardillo_1_1solver_1_1ConjugateGradientSolver.html#_CPPv4N8cardillo6solver23ConjugateGradientSolverE" title="cardillo::solver::ConjugateGradientSolver"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ConjugateGradientSolver</span></code></a>)</p></td>
 <td><p>Constraint-only scenes (no contact)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">qoco</span> <span class="pre">/</span> <span class="pre">clarabel</span></code></p></td>
-<td><p><a class="reference internal" href="interior_point.html"><span class="doc">Interior-Point Solvers (QOCO and Clarabel)</span></a></p></td>
+<td><p><a class="reference internal" href="interior_point.html"><span class="doc">Interior-Point Solvers (QOCO and Clarabel)</span></a> (<a class="reference internal" href="../../api/classcardillo_1_1solver_1_1QocoSolver.html#_CPPv4N8cardillo6solver10QocoSolverE" title="cardillo::solver::QocoSolver"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">QocoSolver</span></code></a>, <a class="reference internal" href="../../api/classcardillo_1_1solver_1_1ClarabelSolver.html#_CPPv4N8cardillo6solver14ClarabelSolverE" title="cardillo::solver::ClarabelSolver"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ClarabelSolver</span></code></a>)</p></td>
 <td><p>Interior-point, exact cone projection</p></td>
 </tr>
 </tbody>
@@ -178,7 +183,7 @@ for the new state, plus updated constraint multipliers <strong>lambda_g</strong>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../physics_pipeline.html" class="btn btn-neutral float-left" title="Physics Pipeline" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../moreau_time_stepping.html" class="btn btn-neutral float-left" title="Time-Stepping for Non-Smooth Mechanical Systems" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="projected_jacobi.html" class="btn btn-neutral float-right" title="Projected Jacobi" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

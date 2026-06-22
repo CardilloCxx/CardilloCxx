@@ -24,7 +24,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Solvers" href="solvers/index.html" />
+    <link rel="next" title="Time-Stepping for Non-Smooth Mechanical Systems" href="moreau_time_stepping.html" />
     <link rel="prev" title="Entity Component System" href="ecs.html" /> 
 </head>
 
@@ -50,6 +50,7 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ecs.html">Entity Component System</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Physics Pipeline</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#sync-world-state">1 - Sync world state</a></li>
@@ -62,6 +63,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#write-output">8 - Write output</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -96,7 +98,7 @@
              
   <section id="physics-pipeline">
 <h1>Physics Pipeline<a class="headerlink" href="#physics-pipeline" title="Link to this heading"></a></h1>
-<p>Every call to <code class="docutils literal notranslate"><span class="pre">engine.step()</span></code> drives the simulation forward by one fixed time
+<p>Every call to <a class="reference internal" href="../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine4stepEv" title="cardillo::physics::PhysicsEngine::step"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::step</span></code></a> drives the simulation forward by one fixed time
 step. Below is a map of what happens inside that step. Each numbered box
 corresponds to a section on this page.</p>
 <nav class="contents local" id="steps">
@@ -133,7 +135,7 @@ step.</p></li>
 three.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code class="docutils literal notranslate"><span class="pre">DynamicsAssembler::refreshState()</span></code> consumes these flags and holds the flat
+<p><a class="reference internal" href="../api/classcardillo_1_1physics_1_1DynamicsAssembler.html#_CPPv4N8cardillo7physics17DynamicsAssemblerE" title="cardillo::physics::DynamicsAssembler"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">DynamicsAssembler</span></code></a> consumes these flags and holds the flat
 numerical representation of the world: stacked position vector <strong>q</strong>, velocity
 vector <strong>v</strong>, force vector <strong>f</strong>, and the diagonal mass/inertia data.</p>
 </div>
@@ -172,8 +174,8 @@ the collision scene is flagged dirty so it will be rebuilt in the next step.</p>
 </dl>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code class="docutils literal notranslate"><span class="pre">DerivedEntitySync::updateEntities</span></code> orchestrates these three jobs;
-trajectory evaluation is in <code class="docutils literal notranslate"><span class="pre">Trajectory::update</span></code>.</p>
+<p><a class="reference internal" href="../api/classcardillo_1_1physics_1_1DerivedEntitySync.html#_CPPv4N8cardillo7physics17DerivedEntitySyncE" title="cardillo::physics::DerivedEntitySync"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">DerivedEntitySync</span></code></a> orchestrates these three jobs;
+trajectory evaluation is in <a class="reference internal" href="../api/classcardillo_1_1physics_1_1Trajectory.html#_CPPv4N8cardillo7physics10Trajectory6updateER5World6real_t" title="cardillo::physics::Trajectory::update"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">Trajectory::update</span></code></a></p>
 </div>
 </section>
 <hr class="docutils" />
@@ -183,7 +185,7 @@ trajectory evaluation is in <code class="docutils literal notranslate"><span cla
 <dl class="simple">
 <dt><strong>Rebuild scene (if dirty)</strong></dt><dd><p>If bodies were added, removed, or beam geometry changed, the COAL broad-phase
 scene is rebuilt from scratch: collision geometry is created for every entity
-that carries <code class="docutils literal notranslate"><span class="pre">C_Collidable</span></code>, registered with the broad-phase manager, and
+that carries <a class="reference internal" href="../api/structcardillo_1_1C__Collidable.html#_CPPv4N8cardillo12C_CollidableE" title="cardillo::C_Collidable"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Collidable</span></code></a>, registered with the broad-phase manager, and
 indexed for fast reverse lookup. Static geometry transforms are baked in here.</p>
 </dd>
 <dt><strong>Update transforms</strong></dt><dd><p>Only dynamic entities (physics objects and trajectory-driven bodies) have
@@ -200,8 +202,8 @@ attachment points, penetration depth, friction coefficient (combined from
 per-body values), and the last-step impulse for warmstarting.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code class="docutils literal notranslate"><span class="pre">CollisionCoal::detectAll()</span></code> runs the full pipeline and owns the
-authoritative contact buffer. The contact tracker inside matches current
+<p><a class="reference internal" href="../api/classcardillo_1_1collision_1_1CollisionCoal.html#_CPPv4N8cardillo9collision13CollisionCoalE" title="cardillo::collision::CollisionCoal"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">CollisionCoal</span></code></a> runs the full pipeline and owns the
+authoritative contact buffer. The <a class="reference internal" href="../api/classcardillo_1_1collision_1_1ContactTracker.html#_CPPv4N8cardillo9collision14ContactTrackerE" title="cardillo::collision::ContactTracker"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ContactTracker</span></code></a> inside matches current
 contacts to previous-step contacts to transfer warmstart impulses.</p>
 </div>
 </section>
@@ -234,9 +236,9 @@ drift over time without adding energy.</p>
 </dl>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code class="docutils literal notranslate"><span class="pre">rebuildW_()</span></code> builds the contact Jacobian. <code class="docutils literal notranslate"><span class="pre">rebuildInteractionW_()</span></code> builds
+<p><a class="reference internal" href="../api/classcardillo_1_1physics_1_1DynamicsAssembler.html#_CPPv4N8cardillo7physics17DynamicsAssembler9rebuildW_Ev" title="cardillo::physics::DynamicsAssembler::rebuildW_"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">DynamicsAssembler::rebuildW_</span></code></a> builds the contact Jacobian. <a class="reference internal" href="../api/classcardillo_1_1physics_1_1DynamicsAssembler.html#_CPPv4N8cardillo7physics17DynamicsAssembler20rebuildInteractionW_Ev" title="cardillo::physics::DynamicsAssembler::rebuildInteractionW_"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">DynamicsAssembler::rebuildInteractionW_</span></code></a> builds
 constraint Jacobians and compliance data by calling <code class="docutils literal notranslate"><span class="pre">getConstraint()</span></code> on
-every <code class="docutils literal notranslate"><span class="pre">ConstraintPattern</span></code>.</p>
+every <a class="reference internal" href="../api/classcardillo_1_1physics_1_1ConstraintPattern.html#_CPPv4N8cardillo7physics17ConstraintPatternE" title="cardillo::physics::ConstraintPattern"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">ConstraintPattern</span></code></a>.</p>
 </div>
 </section>
 <hr class="docutils" />
@@ -252,7 +254,9 @@ forces, and the contact non-penetration condition.</p>
 constraint multipliers, and <span class="math notranslate nohighlight">\(\lambda_\gamma\)</span> are damper multipliers.</p>
 <p>The right-hand side encodes the current velocity, external and gyroscopic forces,
 carry-over constraint multipliers from the previous step, and the Baumgarte
-position correction.</p>
+position correction. See <a class="reference internal" href="moreau_time_stepping.html"><span class="doc">Time-Stepping for Non-Smooth Mechanical Systems</span></a> for the detailed
+derivation of the scaled system, the treatment of impulses, and the
+relationship between multipliers and accumulated impulses.</p>
 <p>Frictionless contact impulses are constrained to be non-negative (pushing
 only). Frictional contacts additionally enforce the Coulomb friction cone.</p>
 <p>Different solver backends approach the contact problem differently. See
@@ -279,7 +283,7 @@ configured output folder. Each file contains the geometry and position of all
 entities tagged as visual. The step 0 frame is written <em>before</em> the first
 integration so the initial state is always captured.</p>
 </dd>
-<dt><strong>Tracked CSV</strong></dt><dd><p>Entities tagged with <code class="docutils literal notranslate"><span class="pre">engine.track(entity,</span> <span class="pre">&quot;name&quot;)</span></code> have their current
+<dt><strong>Tracked CSV</strong></dt><dd><p>Entities tagged with <a class="reference internal" href="../api/structcardillo_1_1C__TrackTag.html#_CPPv4N8cardillo10C_TrackTagE" title="cardillo::C_TrackTag"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_TrackTag</span></code></a> (set via <a class="reference internal" href="../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine5trackEN4entt6entityERKNSt6stringE" title="cardillo::physics::PhysicsEngine::track"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::track</span></code></a>) have their current
 position and orientation appended to a CSV file each step. This gives a
 per-step time series for selected bodies without loading the full VTK series.</p>
 </dd>
@@ -294,7 +298,7 @@ is 0, VTK writing is disabled entirely.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="ecs.html" class="btn btn-neutral float-left" title="Entity Component System" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="solvers/index.html" class="btn btn-neutral float-right" title="Solvers" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="moreau_time_stepping.html" class="btn btn-neutral float-right" title="Time-Stepping for Non-Smooth Mechanical Systems" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
