@@ -31,7 +31,7 @@ All solvers share the same input from the assembler:
    * - **C**, **A**
      - Compliance diagonals (spring and damper inverses)
    * - **W**
-     - Contact Jacobian (one row per contact scalar)
+     - Contact Jacobian
    * - **mu**
      - Per-contact friction coefficients
 
