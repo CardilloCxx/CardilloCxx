@@ -1,6 +1,6 @@
-# CardilloMPI
+# CardilloCxx
 
-CardilloMPI is a C++ physics engine with contact handling, multiple solver backends and many example scenes.
+CardilloCxx is a C++ physics engine with contact handling, multiple solver backends and many example scenes.
 
 ## What this project builds
 
