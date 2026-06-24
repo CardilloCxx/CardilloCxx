@@ -27,13 +27,11 @@ Fixed-point formulation and iteration
 -------------------------------------
 
 We treat contact impulses :math:`\mathbf{\Lambda}_{NT}` as the primary unknowns. The 
-system is governed by the Delassus operator :math:`\mathbf{G}`, defined as the 
-Schur complement of the system matrix :math:`\mathcal{S}` projected onto the 
-contact space:
+system is governed by the Delassus operator :math:`\mathbf{G}`:
 
 .. math::
 
-   \mathbf{G} = \mathbf{W}_{NT}^\top\,\mathcal{S}^{-1}\,\bar{\mathbf{W}}_{NT}
+   \mathbf{G} = \mathbf{W}_{NT}^\top\,\mathcal{S}^{-1}\,\mathbf{W}_{NT}
 
 This allows us to express the contact-space velocity :math:`\boldsymbol{\gamma}` as 
 an affine map of the impulses:
@@ -43,7 +41,7 @@ an affine map of the impulses:
    \boldsymbol{\gamma}(\mathbf{\Lambda}_{NT}) = \mathbf{G}\,\mathbf{\Lambda}_{NT} + \mathbf{v}_{NT}
 
 where :math:`\mathbf{v}_{NT}` is the contact-space velocity induced by 
-external forces and the unconstrained system motion.
+movement of non-physics bodies and motors.
 
 The Projected Jacobi iteration updates the impulses :math:`\mathbf{\Lambda}_{NT}` 
 by moving toward the root of this map and projecting onto the feasible contact set 
