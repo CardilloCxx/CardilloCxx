@@ -57,11 +57,7 @@ class PhysicsEngine {
     /// Create a point mass with an optional visual radius.
     inline entt::entity addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05) { return BodyFactory::addPointMass(*m_world, mass, x0, v0, radius); }
 
-    /// Spawn a static height-field obstacle from an EXR file.
-    inline entt::entity addObstacleHeightField(const Vector3r& position, const Quaternion4r& orientation, const std::string& exrPath, real_t x_dim, real_t y_dim, real_t z_scale = (real_t)1.0,
-                                          real_t min_height = (real_t)0.0) {
-        return BodyFactory::addObstacleHeightField(*m_world, position, orientation, exrPath, x_dim, y_dim, z_scale, min_height);
-    }
+    
 
     /// Create a soft body from an OBJ mesh.
     inline std::vector<entt::entity> addSoftBody(const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position = Vector3r::Zero(),

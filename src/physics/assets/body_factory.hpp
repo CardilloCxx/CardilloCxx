@@ -38,8 +38,6 @@ class BodyFactory {
 
     static entt::entity addPointMass(World& sys, real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);
 
-    static entt::entity addObstacleHeightField(World& sys, const Vector3r& position, const Quaternion4r& orientation, const std::string& exrPath, real_t x_dim, real_t y_dim, real_t z_scale = (real_t)1.0,
-                                          real_t min_height = (real_t)0.0);
 
     static std::vector<entt::entity> addSoftBody(World& sys, const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position = Vector3r::Zero(),
                                                  const Quaternion4r& orientation = Quaternion4r::Identity(), const Vector3r& linearVelocity = Vector3r::Zero(),

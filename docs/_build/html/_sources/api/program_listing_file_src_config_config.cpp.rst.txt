@@ -208,11 +208,7 @@ Program Listing for File config.cpp
                    cfg.output_interval_steps = std::max(1, std::stoi(val));
                } catch (...) {
                }
-           } else if (key == "output.heightfield_stride") {
-               try {
-                   cfg.output_heightfield_stride = std::max(1, std::stoi(val));
-               } catch (...) {
-               }
+           
            } else if (key == "output.contacts_body_vectors") {
                std::string v = val;
                std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });

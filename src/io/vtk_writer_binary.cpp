@@ -61,7 +61,7 @@ void VtkWriterBinary::write(int step, real_t /*time*/, const cardillo::World& sy
     auto vis = reg.view<cardillo::C_VisualObject>();
     for (auto e : vis) {
         EntityMesh mesh;
-        if (MeshGenerator::buildEntityMesh(sys, static_cast<entt::entity>(e), m_hfStride, mesh)) {
+        if (MeshGenerator::buildEntityMesh(sys, static_cast<entt::entity>(e), mesh)) {
             meshes.push_back(std::move(mesh));
         }
     }

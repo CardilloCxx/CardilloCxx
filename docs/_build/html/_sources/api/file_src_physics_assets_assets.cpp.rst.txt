@@ -25,8 +25,6 @@ Includes
 --------
 
 
-- ``../../io/heightmap_loader.hpp``
-
 - ``assets.hpp`` (:ref:`file_src_physics_assets_assets.hpp`)
 
 - ``coal/mesh_loader/loader.h``

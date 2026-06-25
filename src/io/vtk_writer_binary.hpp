@@ -30,7 +30,6 @@ class VtkWriterBinary {
           m_outputDir(cfg.output_folder),
           m_baseName(cfg.output_filename_prefix),
           m_frequency(cfg.output_interval_steps),
-          m_hfStride(cfg.output_heightfield_stride),
           m_writeContacts(cfg.output_write_contacts),
           m_contactsBase(cfg.output_filename_prefix + std::string("_contacts")),
           m_writeSprings(true),
@@ -42,8 +41,7 @@ class VtkWriterBinary {
     void setOutputDir(const std::string& dir);
     void setBaseName(const std::string& name);
     void setFrequency(int freq);
-    void setHeightFieldStride(int s) { m_hfStride = s > 0 ? s : 1; }
-
+    
     void maybeWrite(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
                     cardillo::physics::DynamicsAssembler* dyn = nullptr);
     void write(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
@@ -63,7 +61,6 @@ class VtkWriterBinary {
     std::string m_outputDir;
     std::string m_baseName;
     int m_frequency{1};
-    int m_hfStride{8};
     bool m_writeContacts{false};
     std::string m_contactsBase{"contacts"};
     bool m_writeSprings{false};

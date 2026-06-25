@@ -49,8 +49,6 @@ Includes
 
 - ``coal/collision_object.h``
 
-- ``coal/hfield.h``
-
 - ``ecs_types.hpp`` (:ref:`file_src_physics_ecs_types.hpp`)
 
 - ``entt/entt.hpp``

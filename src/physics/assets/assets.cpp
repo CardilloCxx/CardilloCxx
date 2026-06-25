@@ -3,7 +3,6 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
-#include "../../io/heightmap_loader.hpp"
 
 namespace cardillo {
 
@@ -13,13 +12,6 @@ std::string PhysicsAssets::meshKey_(const std::string& path, const Vector3r& s, 
     ss.setf(std::ios::fixed);
     ss << std::setprecision(6);
     ss << path << "|" << (double)s.x() << "," << (double)s.y() << "," << (double)s.z() << "|norm=" << (normalized ? 1 : 0);
-    return ss.str();
-}
-std::string PhysicsAssets::hfKey_(const std::string& path, real_t xd, real_t yd, real_t zs, real_t minh) {
-    std::ostringstream ss;
-    ss.setf(std::ios::fixed);
-    ss << std::setprecision(6);
-    ss << path << "|xd=" << (double)xd << ",yd=" << (double)yd << ",zs=" << (double)zs << ",min=" << (double)minh;
     return ss.str();
 }
 
@@ -241,35 +233,7 @@ MeshAsset PhysicsAssets::buildMeshAsset_(const std::string& path, const Vector3r
     return asset;
 }
 
-HeightFieldAsset PhysicsAssets::buildHFAsset_(const std::string& path, real_t xd, real_t yd, real_t zs, real_t minh) const {
-    HeightFieldAsset asset;
-    asset.path = path;
-    asset.x_dim = xd;
-    asset.y_dim = yd;
-    asset.z_scale = zs;
-    asset.min_height = minh;
-    try {
-        Eigen::Matrix<coal::CoalScalar, Eigen::Dynamic, Eigen::Dynamic> H;
-        int rows = 0, cols = 0;
-        if (io::load_exr_heightmap(path, H, rows, cols)) {
-            if (zs != (real_t)1.0) H *= (coal::CoalScalar)zs;
-        } else {
-            rows = cols = 2;
-            H = Eigen::Matrix<coal::CoalScalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(rows, cols);
-            std::printf("[Assets] HeightField fallback flat 2x2 for: %s\n", path.c_str());
-        }
-        if (rows >= 2 && cols >= 2) {
-            auto hf = std::make_shared<coal::HeightField<coal::AABB>>((coal::CoalScalar)xd, (coal::CoalScalar)yd, H, (coal::CoalScalar)minh);
-            hf->computeLocalAABB();
-            asset.hf = hf;
-            asset.rows = rows;
-            asset.cols = cols;
-        }
-    } catch (...) {
-        std::printf("[Assets] Warning: heightfield build failed: %s\n", path.c_str());
-    }
-    return asset;
-}
+
 
 // Public API -------------------------------------------------------
 const MeshAsset& PhysicsAssets::getMesh(const std::string& path, const Vector3r& scale, bool normalized) const {
@@ -282,19 +246,11 @@ const MeshAsset& PhysicsAssets::getMesh(const std::string& path, const Vector3r&
     return it2->second;
 }
 
-const HeightFieldAsset& PhysicsAssets::getHeightField(const std::string& exrPath, real_t x_dim, real_t y_dim, real_t z_scale, real_t min_height) const {
-    const std::string key = hfKey_(exrPath, x_dim, y_dim, z_scale, min_height);
-    auto it = m_hfCache.find(key);
-    if (it != m_hfCache.end()) return it->second;
-    HeightFieldAsset asset = buildHFAsset_(exrPath, x_dim, y_dim, z_scale, min_height);
-    auto [it2, ok] = m_hfCache.emplace(key, std::move(asset));
-    (void)ok;
-    return it2->second;
-}
+
 
 void PhysicsAssets::clear() {
     m_meshCache.clear();
-    m_hfCache.clear();
+    
 }
 
 }  // namespace cardillo

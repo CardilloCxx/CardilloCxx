@@ -17,8 +17,6 @@ Files
 -----
 
 - :ref:`file_src_io_csv_writer.hpp`
-- :ref:`file_src_io_heightmap_loader.cpp`
-- :ref:`file_src_io_heightmap_loader.hpp`
 - :ref:`file_src_io_mesh_generator.cpp`
 - :ref:`file_src_io_mesh_generator.hpp`
 - :ref:`file_src_io_softbody_loader.cpp`

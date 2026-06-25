@@ -9,7 +9,6 @@
 #include <coal/shape/geometric_shapes.h>
 
 #include "../../io/csv_writer.hpp"
-#include "../../io/heightmap_loader.hpp"
 #include "../../io/softbody_loader.hpp"
 #include "../constraints/constraint_factory.hpp"
 #include "../constraints/constraints.hpp"
@@ -38,24 +37,6 @@ entt::entity BodyFactory::addPointMass(World& sys, real_t mass, const Vector3r& 
     return e;
 }
 
-entt::entity BodyFactory::addObstacleHeightField(World& sys, const Vector3r& position, const Quaternion4r& orientation, const std::string& exrPath, real_t x_dim, real_t y_dim, real_t z_scale,
-                                            real_t min_height) {
-    auto& reg = sys.ecs();
-    auto e = reg.create();
-    if (!sys.config().collision_disable_all) reg.emplace<cardillo::C_Collidable>(e);
-    reg.emplace<cardillo::C_VisualObject>(e);
-    reg.emplace<cardillo::C_Position3>(e, cardillo::C_Position3{position});
-    reg.emplace<cardillo::C_Orientation>(e, cardillo::C_Orientation{orientation});
-    reg.emplace<cardillo::C_HeightFieldVisualTag>(e);
-    reg.emplace<cardillo::C_HeightField>(e, cardillo::C_HeightField{exrPath, x_dim, y_dim, z_scale, min_height});
-    if (!sys.config().collision_disable_all) reg.emplace<cardillo::C_RB_HeightField>(e);
-    if (!reg.any_of<cardillo::C_Friction>(e)) {
-        reg.emplace<cardillo::C_Friction>(e, cardillo::C_Friction{sys.config().friction_default_mu});
-    }
-    sys.markStructureDirty();
-    (void)sys.getHeightFieldAsset(e);
-    return e;
-}
 
 std::vector<entt::entity> BodyFactory::addSoftBody(World& sys, const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position, const Quaternion4r& orientation,
                                                    const Vector3r& linearVelocity, const Vector3r& angularVelocity, real_t totalMass, real_t nodeRadius,

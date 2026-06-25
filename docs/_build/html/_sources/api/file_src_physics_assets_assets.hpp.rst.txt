@@ -31,8 +31,6 @@ Includes
 
 - ``coal/BVH/BVH_model.h``
 
-- ``coal/hfield.h``
-
 - ``memory``
 
 - ``string``
@@ -68,8 +66,6 @@ Namespaces
 Classes
 -------
 
-
-- :ref:`exhale_struct_structcardillo_1_1HeightFieldAsset`
 
 - :ref:`exhale_struct_structcardillo_1_1MeshAsset`
 

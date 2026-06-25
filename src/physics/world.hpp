@@ -3,7 +3,6 @@
 #include <coal/BVH/BVH_model.h>
 #include <coal/broadphase/broadphase.h>
 #include <coal/collision_object.h>
-#include <coal/hfield.h>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <entt/entt.hpp>
@@ -94,8 +93,7 @@ class World {
 
     // Shared asset access (wrappers over PhysicsAssets using entity components)
     const ::cardillo::MeshAsset& getMeshAsset(entt::entity e) const;
-    const ::cardillo::HeightFieldAsset& getHeightFieldAsset(entt::entity e) const;
-
+    
     // Expose ECS for external querying (read-only)
     const entt::registry& ecs() const { return m_reg; }
     // Mutable ECS access when external systems need to emplace components
