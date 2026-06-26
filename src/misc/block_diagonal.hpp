@@ -2,7 +2,6 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
-#include <iostream>
 #include "types.hpp"
 
 namespace cardillo {
@@ -27,7 +26,6 @@ class BlockDiagonal {
         BlockDiagonal inverse;
 
         for (const auto& block : blocks_) {
-
             if (is_diag_) {
                 inverse.addBlockDiag(block.diagonal().cwiseInverse());
                 continue;
@@ -57,7 +55,7 @@ class BlockDiagonal {
         if (vec.size() != n_) throw std::invalid_argument("Dimension mismatch." + std::to_string(vec.size()) + " vs " + std::to_string(n_));
 
         if (is_diag_ && vec.size() == diag_.size()) {
-            return diag_.cwiseProduct(vec); 
+            return diag_.cwiseProduct(vec);
         }
 
         VectorXr result(n_);

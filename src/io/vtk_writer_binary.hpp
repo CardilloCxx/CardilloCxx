@@ -41,7 +41,7 @@ class VtkWriterBinary {
     void setOutputDir(const std::string& dir);
     void setBaseName(const std::string& name);
     void setFrequency(int freq);
-    
+
     void maybeWrite(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
                     cardillo::physics::DynamicsAssembler* dyn = nullptr);
     void write(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,

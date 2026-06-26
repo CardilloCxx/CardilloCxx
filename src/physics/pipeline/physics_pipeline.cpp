@@ -72,7 +72,6 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Confi
     }
 }
 
-
 /**
  * @brief Advances the simulation by one time step of size dt. This method is responsible for:
  * 1. Refreshing the dynamics assembler state

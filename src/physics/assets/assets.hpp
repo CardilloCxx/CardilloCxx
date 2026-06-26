@@ -22,8 +22,6 @@ struct MeshAsset {
     bool normalized = false;                // if true: COM-centered & PA-aligned
 };
 
-
-
 class PhysicsAssets {
    public:
     PhysicsAssets() = default;
@@ -32,13 +30,10 @@ class PhysicsAssets {
     // aligned.
     const MeshAsset& getMesh(const std::string& path, const Vector3r& scale = Vector3r::Ones(), bool normalized = false) const;
 
-    
-
     void clear();
 
    private:
     mutable std::unordered_map<std::string, MeshAsset> m_meshCache;
-    
 
     static std::string meshKey_(const std::string& path, const Vector3r& s, bool normalized);
 
