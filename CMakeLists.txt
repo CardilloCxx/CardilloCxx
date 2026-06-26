@@ -268,6 +268,21 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Clarabel_cpp)
 
+find_program(CLANG_FORMAT_EXE NAMES clang-format)
+
+if(CLANG_FORMAT_EXE)
+    file(GLOB_RECURSE ALL_SOURCE_FILES
+        ${CMAKE_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/*.hpp
+    )
+
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXE} -i ${ALL_SOURCE_FILES}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Formatting source files with clang-format"
+    )
+endif()
+
 # Add subdirs
 add_subdirectory(src)
 if(TARGET qoco_project)
