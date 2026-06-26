@@ -67,10 +67,6 @@ Classes
 
 - :ref:`exhale_struct_structcardillo_1_1C__Friction`
 
-- :ref:`exhale_struct_structcardillo_1_1C__HeightField`
-
-- :ref:`exhale_struct_structcardillo_1_1C__HeightFieldVisualTag`
-
 - :ref:`exhale_struct_structcardillo_1_1C__InertiaDiag`
 
 - :ref:`exhale_struct_structcardillo_1_1C__LinearAcceleration3`
@@ -107,8 +103,6 @@ Classes
 
 - :ref:`exhale_struct_structcardillo_1_1C__RB__Cylinder`
 
-- :ref:`exhale_struct_structcardillo_1_1C__RB__HeightField`
-
 - :ref:`exhale_struct_structcardillo_1_1C__RB__Mesh`
 
 - :ref:`exhale_struct_structcardillo_1_1C__RB__Plane`
@@ -128,8 +122,6 @@ Classes
 - :ref:`exhale_struct_structcardillo_1_1C__TrackTag`
 
 - :ref:`exhale_struct_structcardillo_1_1C__VisualObject`
-
-- :ref:`exhale_struct_structcardillo_1_1HeightFieldAsset`
 
 - :ref:`exhale_struct_structcardillo_1_1MeshAsset`
 

@@ -12,7 +12,6 @@
 
 // Scenes
 #include "scenes/SceneBase.hpp"
-#include "scenes/heightmap/HeightmapScene.hpp"
 #include "scenes/domino/DominoScene.hpp"
 #include "scenes/cardhouse/CardhouseScene.hpp"
 #include "scenes/painleve/painleveScene.hpp"
@@ -46,7 +45,6 @@
 #include "scenes/conveyor/ConveyorScene.hpp"
 #include "scenes/double_pendulum/DoublePendulumScene.hpp"
 #include "scenes/fabric/FabricScene.hpp"
-#include "scenes/heightmap/HeightmapScene.hpp"
 #include "scenes/leaningTower/LeaningTowerScene.hpp"
 #include "scenes/sphere_packing/SpherePackingScene.hpp"
 #include "scenes/stringTest/StringTestScene.hpp"
@@ -76,7 +74,6 @@ int main(int argc, char** argv) {
 
     // Construct all available scenes and select the one matching cfg.scene_name
     std::vector<std::unique_ptr<SceneBase>> scenes;
-    scenes.emplace_back(std::make_unique<HeightmapScene>());
     scenes.emplace_back(std::make_unique<StackedSpheresScene>());
     scenes.emplace_back(std::make_unique<DominoScene>());
     scenes.emplace_back(std::make_unique<CardhouseScene>());
@@ -106,7 +103,6 @@ int main(int argc, char** argv) {
     scenes.emplace_back(std::make_unique<ConstraintTestScene>());
     scenes.emplace_back(std::make_unique<CantileverScene>());
     scenes.emplace_back(std::make_unique<FabricScene>());
-    scenes.emplace_back(std::make_unique<HeightmapScene>());
     scenes.emplace_back(std::make_unique<DoublePendulumScene>());
     scenes.emplace_back(std::make_unique<SpherePackingScene>());
     scenes.emplace_back(std::make_unique<TubeScene>());

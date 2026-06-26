@@ -25,6 +25,7 @@ extensions = [
     "sphinx.ext.mathjax",  # LaTeX math support
     "sphinx.ext.graphviz",  # call graphs
     "sphinxcontrib.mermaid",  # Mermaid flow diagrams
+    "sphinxcontrib.bibtex",
 ]
 
 html_theme = "sphinx_rtd_theme"
@@ -60,3 +61,6 @@ mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
 
 # --- Mermaid ---
 mermaid_version = "11.4.1"
+
+# --- Bibliography ---
+bibtex_bibfiles = ["refs.bib"]

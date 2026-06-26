@@ -50,8 +50,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Solvers</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="projected_jacobi.html">Projected Jacobi</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Projected Gauss-Seidel</a><ul>
@@ -118,31 +120,12 @@
 </nav>
 <section id="the-core-problem">
 <h2><a class="toc-backref" href="#id1" role="doc-backlink">The core problem</a><a class="headerlink" href="#the-core-problem" title="Link to this heading"></a></h2>
-<p>The Moreau time-stepping scheme produces the following scaled linear system at
-each step (see <a class="reference internal" href="../physics_pipeline.html"><span class="doc">Physics Pipeline</span></a>, step 6):</p>
+<p>The Moreau time-stepping scheme produces the scaled linear system used by
+the solvers. In compact form:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\underbrace{\begin{pmatrix}
-  M_\mathrm{eff} &amp; W_g &amp; W_\gamma \\
-  W_g^\top &amp; -\tfrac{C}{\theta\,dt^2} &amp; 0 \\
-  W_\gamma^\top &amp; 0 &amp; -\tfrac{A}{\theta\,dt}
-\end{pmatrix}}_{\mathcal{S}}
-\begin{pmatrix} u_{n+1} \\ \Lambda_g \\ \Lambda_\gamma \end{pmatrix}
-=
-\begin{pmatrix}
-  M u_n + dt\, f^\mathrm{ext} + W_{NT}\,\Lambda_{NT} \\
-  -\tfrac{C\,\Lambda_{g,n}}{\theta\,dt^2} - \tfrac{1-\theta}{\theta}W_g^\top u_n - \tfrac{1}{\theta}v_g \\
-  -\tfrac{1-\theta}{\theta}W_\gamma^\top u_n - \tfrac{1}{\theta}v_\gamma
-\end{pmatrix}\end{split}\]</div>
-<p>where:</p>
-<ul class="simple">
-<li><p><span class="math notranslate nohighlight">\(u\)</span> is the stacked generalized velocity</p></li>
-<li><p><span class="math notranslate nohighlight">\(\Lambda_g = -dt\,\lambda_g\)</span> are scaled spring multipliers</p></li>
-<li><p><span class="math notranslate nohighlight">\(\Lambda_\gamma = -dt\,\lambda_\gamma\)</span> are scaled damper multipliers</p></li>
-<li><p><span class="math notranslate nohighlight">\(M_\mathrm{eff} = M - dt\,G(u_n)\)</span> is the effective mass including the optional implicit gyroscopic correction</p></li>
-<li><p><span class="math notranslate nohighlight">\(C = K^{-1}\)</span> and <span class="math notranslate nohighlight">\(A = D^{-1}\)</span> are the compliance and attenuation diagonals</p></li>
-<li><p><span class="math notranslate nohighlight">\(v_g\)</span>, <span class="math notranslate nohighlight">\(v_\gamma\)</span> are velocity source terms from trajectory-driven bodies</p></li>
-<li><p><span class="math notranslate nohighlight">\(\Lambda_{NT}\)</span> is the stacked contact impulse vector with normal and tangential components</p></li>
-</ul>
+\[\mathcal{S}\,\mathbf{x}_{n+1} = \mathbf{b}_n\]</div>
+<p>See the Moreau chapter <a class="reference internal" href="../moreau_time_stepping.html"><span class="doc">Time-Stepping for Non-Smooth Mechanical Systems</span></a> for the full derivation and the detailed block
+definitions of <span class="math notranslate nohighlight">\(\mathcal{S}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{b}_n\)</span>.</p>
 </section>
 <section id="reducing-to-the-constraint-multiplier-space">
 <h2><a class="toc-backref" href="#id2" role="doc-backlink">Reducing to the constraint multiplier space</a><a class="headerlink" href="#reducing-to-the-constraint-multiplier-space" title="Link to this heading"></a></h2>
@@ -153,21 +136,21 @@ complement gives a reduced system purely in the constraint multipliers
 \[\mathbf{S}\,\hat\Lambda = \tilde{b},\]</div>
 <p>where the Schur complement matrix is:</p>
 <div class="math notranslate nohighlight">
-\[\mathbf{S} = \hat{W}^\top M_\mathrm{eff}^{-1} \hat{W} - \hat{C},\]</div>
+\[\mathbf{S} = \hat{W}^\top M^{-1} \hat{W} - \hat{C},\]</div>
 <p>with <span class="math notranslate nohighlight">\(\hat{W} = (W_g, W_\gamma)\)</span> and block-diagonal
 <span class="math notranslate nohighlight">\(\hat{C} = \mathrm{diag}(-C/(\theta\,dt^2),\; -A/(\theta\,dt))\)</span>.
 The right-hand side is:</p>
 <div class="math notranslate nohighlight">
-\[\tilde{b} = \hat{W}^\top M_\mathrm{eff}^{-1} b_u - \hat{b}\]</div>
+\[\tilde{b} = \hat{W}^\top M^{-1} b_u - \hat{b}\]</div>
 <p>where <span class="math notranslate nohighlight">\(b_u\)</span> and <span class="math notranslate nohighlight">\(\hat{b}\)</span> are the corresponding blocks of the full
 right-hand side. Once <span class="math notranslate nohighlight">\(\hat\Lambda\)</span> is known, the velocity is recovered as:</p>
 <div class="math notranslate nohighlight">
-\[u_{n+1} = \underbrace{M_\mathrm{eff}^{-1} b_u}_{u_\mathrm{free}}
-        - \underbrace{M_\mathrm{eff}^{-1} \hat{W}\,\hat\Lambda}_{u_\mathrm{corr}}\]</div>
+\[u_{n+1} = \underbrace{M^{-1} b_u}_{u_\mathrm{free}}
+        - \underbrace{M^{-1} \hat{W}\,\hat\Lambda}_{u_\mathrm{corr}}\]</div>
 <p>The matrix-vector product <span class="math notranslate nohighlight">\(\mathbf{S}\hat\Lambda\)</span> is evaluated through
 the velocity correction:</p>
 <div class="math notranslate nohighlight">
-\[u_\mathrm{corr} = M_\mathrm{eff}^{-1}\hat{W}\hat\Lambda,
+\[u_\mathrm{corr} = M^{-1}\hat{W}\hat\Lambda,
 \qquad
 \mathbf{S}\hat\Lambda = \hat{W}^\top u_\mathrm{corr} - \hat{C}\hat\Lambda.\]</div>
 <p>This avoids ever forming <span class="math notranslate nohighlight">\(\mathbf{S}\)</span> explicitly.</p>
@@ -178,7 +161,7 @@ the velocity correction:</p>
 The extended system becomes:</p>
 <div class="math notranslate nohighlight">
 \[\begin{split}\begin{pmatrix}
-  M_\mathrm{eff} &amp; \hat{W} &amp; W_{NT} \\
+  M &amp; \hat{W} &amp; W_{NT} \\
   \hat{W}^\top &amp; -\hat{C} &amp; 0 \\
   W_{NT}^\top &amp; 0 &amp; 0
 \end{pmatrix}
@@ -186,22 +169,18 @@ The extended system becomes:</p>
 =
 \begin{pmatrix} b_u \\ \hat{b} \\ b_{NT} \end{pmatrix}\end{split}\]</div>
 <p>The zero block in the lower right means contact rows have no compliance term.
-Contact impulses are not determined by this linear system alone; they are subject
-to the non-convex contact projection (Signorini + Coulomb):</p>
-<ul class="simple">
-<li><p><strong>frictionless</strong>: <span class="math notranslate nohighlight">\(\Lambda_{N} \geq 0\)</span></p></li>
-<li><p><strong>frictional</strong>: <span class="math notranslate nohighlight">\(\|\Lambda_{T}\| \leq \mu\,\Lambda_{N}\)</span></p></li>
-</ul>
+Contact impulses are not determined by this linear system alone; they are
+subject to the non-smooth contact projection (Signorini + Coulomb).</p>
 <p>The full multiplier vector in the implementation is therefore:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\lambda = \begin{pmatrix} \Lambda_g \\ \Lambda_\gamma \\ \Lambda_{NT} \end{pmatrix}\end{split}\]</div>
+\[\begin{split}\begin{pmatrix} \Lambda_g \\ \Lambda_\gamma \\ \Lambda_{NT} \end{pmatrix}\end{split}\]</div>
 </section>
 <section id="the-block-diagonal-preconditioner">
 <h2><a class="toc-backref" href="#id4" role="doc-backlink">The block diagonal preconditioner</a><a class="headerlink" href="#the-block-diagonal-preconditioner" title="Link to this heading"></a></h2>
 <p>PGS preconditions each block <span class="math notranslate nohighlight">\(j\)</span> with the diagonal of the Schur complement
 restricted to that block:</p>
 <div class="math notranslate nohighlight">
-\[D_j = \hat{W}_j^\top M_\mathrm{eff}^{-1} \hat{W}_j - \hat{C}_j\]</div>
+\[D_j = \hat{W}_j^\top M^{-1} \hat{W}_j - \hat{C}_j\]</div>
 <p>For constraint patterns (hinges, beams, etc.) this is a small dense matrix
 (up to 6x6) that may be inverted implicitly using a Cholesky factorization.</p>
 </section>

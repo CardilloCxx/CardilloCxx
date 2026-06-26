@@ -47,8 +47,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -132,7 +134,7 @@
 
 <span class="w">    </span><span class="c1">// Extract a renderable mesh for a visual entity in world coordinates.</span>
 <span class="w">    </span><span class="c1">// Returns false if the entity has no supported visual geometry.</span>
-<span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="nf">buildEntityMesh</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">cardillo</span><span class="o">::</span><span class="n">World</span><span class="o">&amp;</span><span class="w"> </span><span class="n">sys</span><span class="p">,</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">heightFieldStride</span><span class="p">,</span><span class="w"> </span><span class="n">EntityMesh</span><span class="o">&amp;</span><span class="w"> </span><span class="n">out</span><span class="p">);</span>
+<span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="nf">buildEntityMesh</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">cardillo</span><span class="o">::</span><span class="n">World</span><span class="o">&amp;</span><span class="w"> </span><span class="n">sys</span><span class="p">,</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">,</span><span class="w"> </span><span class="n">EntityMesh</span><span class="o">&amp;</span><span class="w"> </span><span class="n">out</span><span class="p">);</span>
 <span class="p">};</span>
 
 <span class="p">}</span><span class="w">  </span><span class="c1">// namespace cardillo::io</span>

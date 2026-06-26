@@ -47,8 +47,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -232,7 +234,7 @@
 <span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">fillCompliance3</span><span class="p">(</span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">dst</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">offset</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&amp;</span><span class="w"> </span><span class="n">K</span><span class="p">);</span>
 <span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">setCompliance1</span><span class="p">(</span><span class="n">VectorXr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">dst</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">idx</span><span class="p">,</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="n">k</span><span class="p">);</span>
 
-<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">registry</span><span class="o">*</span><span class="w"> </span><span class="n">m_reg</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">registry</span><span class="o">*</span><span class="w"> </span><span class="n">m_reg</span><span class="p">{</span><span class="nb">nullptr</span><span class="p">};</span>
 <span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">m_a</span><span class="p">{</span><span class="n">entt</span><span class="o">::</span><span class="n">null</span><span class="p">};</span>
 <span class="w">    </span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">m_b</span><span class="p">{</span><span class="n">entt</span><span class="o">::</span><span class="n">null</span><span class="p">};</span>
 

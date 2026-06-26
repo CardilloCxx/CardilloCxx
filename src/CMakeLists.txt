@@ -7,8 +7,8 @@ add_library(${PROJECT_NAME} STATIC ${CARDILLO_SOURCES})
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${entt_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/lib/third_party/tinyexr
 )
+
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
@@ -53,11 +53,4 @@ if(TARGET libclarabel_c_shared)
     target_link_libraries(${PROJECT_NAME} PUBLIC libclarabel_c_shared)
 endif()
 
-# Optional: enable EXR loading via tinyexr (header-only). Define CARDILLO_USE_TINYEXR to turn it on if header is provided.
-# Users can set -DCARDILLO_USE_TINYEXR=ON when configuring to enable.
-option(CARDILLO_USE_TINYEXR "Enable EXR heightmap loading via tinyexr" OFF)
-if (CARDILLO_USE_TINYEXR)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC CARDILLO_USE_TINYEXR=1)
-    find_package(ZLIB REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ZLIB::ZLIB)
-endif()
+

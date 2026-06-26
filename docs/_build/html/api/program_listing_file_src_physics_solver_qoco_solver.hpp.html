@@ -47,8 +47,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -112,9 +114,9 @@
 <span class="w">    </span><span class="n">cardillo</span><span class="o">::</span><span class="n">physics</span><span class="o">::</span><span class="n">assembly</span><span class="o">::</span><span class="n">QocoAssembler</span><span class="w"> </span><span class="n">m_assembler</span><span class="p">{</span><span class="n">m_dyn</span><span class="p">};</span>
 <span class="w">    </span><span class="n">cardillo</span><span class="o">::</span><span class="n">config</span><span class="o">::</span><span class="n">Config</span><span class="w"> </span><span class="n">m_cfg</span><span class="p">;</span>
 
-<span class="w">    </span><span class="n">QOCOSolver</span><span class="o">*</span><span class="w"> </span><span class="n">m_qoco_solver</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="n">QOCOSolver</span><span class="o">*</span><span class="w"> </span><span class="n">m_qoco_solver</span><span class="p">{</span><span class="nb">nullptr</span><span class="p">};</span>
 
-<span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">m_qoco_lib_handle</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">m_qoco_lib_handle</span><span class="p">{</span><span class="nb">nullptr</span><span class="p">};</span>
 <span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">m_loaded_backend</span><span class="p">{</span><span class="s">&quot;uninitialized&quot;</span><span class="p">};</span>
 
 <span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="n">SetDefaultSettingsFn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="n">QOCOSettings</span><span class="o">*</span><span class="p">);</span>
@@ -123,10 +125,10 @@
 <span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="n">QocoSolveFn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">QOCOInt</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="n">QOCOSolver</span><span class="o">*</span><span class="p">);</span>
 <span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="n">QocoCleanupFn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">QOCOInt</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="n">QOCOSolver</span><span class="o">*</span><span class="p">);</span>
 
-<span class="w">    </span><span class="n">SetDefaultSettingsFn</span><span class="w"> </span><span class="n">m_set_default_settings</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
-<span class="w">    </span><span class="n">QocoSetupFn</span><span class="w"> </span><span class="n">m_qoco_setup</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
-<span class="w">    </span><span class="n">QocoSolveFn</span><span class="w"> </span><span class="n">m_qoco_solve</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
-<span class="w">    </span><span class="n">QocoCleanupFn</span><span class="w"> </span><span class="n">m_qoco_cleanup</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="n">SetDefaultSettingsFn</span><span class="w"> </span><span class="n">m_set_default_settings</span><span class="p">{</span><span class="nb">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="n">QocoSetupFn</span><span class="w"> </span><span class="n">m_qoco_setup</span><span class="p">{</span><span class="nb">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="n">QocoSolveFn</span><span class="w"> </span><span class="n">m_qoco_solve</span><span class="p">{</span><span class="nb">nullptr</span><span class="p">};</span>
+<span class="w">    </span><span class="n">QocoCleanupFn</span><span class="w"> </span><span class="n">m_qoco_cleanup</span><span class="p">{</span><span class="nb">nullptr</span><span class="p">};</span>
 <span class="p">};</span>
 
 <span class="p">}</span><span class="w">  </span><span class="c1">// namespace cardillo::solver</span>

@@ -47,8 +47,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -89,7 +91,6 @@
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;coal/BVH/BVH_model.h&gt;</span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;coal/broadphase/broadphase.h&gt;</span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;coal/collision_object.h&gt;</span>
-<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;coal/hfield.h&gt;</span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;Eigen/Dense&gt;</span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;Eigen/Sparse&gt;</span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;entt/entt.hpp&gt;</span>
@@ -180,7 +181,6 @@
 
 <span class="w">    </span><span class="c1">// Shared asset access (wrappers over PhysicsAssets using entity components)</span>
 <span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="o">::</span><span class="n">cardillo</span><span class="o">::</span><span class="n">MeshAsset</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">getMeshAsset</span><span class="p">(</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
-<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="o">::</span><span class="n">cardillo</span><span class="o">::</span><span class="n">HeightFieldAsset</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">getHeightFieldAsset</span><span class="p">(</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
 
 <span class="w">    </span><span class="c1">// Expose ECS for external querying (read-only)</span>
 <span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">entt</span><span class="o">::</span><span class="n">registry</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">ecs</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">m_reg</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>

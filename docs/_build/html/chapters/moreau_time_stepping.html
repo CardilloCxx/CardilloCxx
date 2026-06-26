@@ -1,0 +1,252 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time-Stepping for Non-Smooth Mechanical Systems &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Solvers" href="solvers/index.html" />
+    <link rel="prev" title="Physics Pipeline" href="physics_pipeline.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="types.html">Types Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Time-Stepping for Non-Smooth Mechanical Systems</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#symbols-and-notation">Symbols and Notation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#continuous-equations-of-motion">Continuous Equations of Motion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#velocity-level-splitting">Velocity-Level Splitting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#discrete-constraint-and-contact-laws">Discrete Constraint and Contact Laws</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#scaled-block-linear-system">Scaled Block Linear System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="solvers/index.html">Solvers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Time-Stepping for Non-Smooth Mechanical Systems</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/chapters/moreau_time_stepping.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="time-stepping-for-non-smooth-mechanical-systems">
+<h1>Time-Stepping for Non-Smooth Mechanical Systems<a class="headerlink" href="#time-stepping-for-non-smooth-mechanical-systems" title="Link to this heading"></a></h1>
+<p>This chapter details the discrete equations used in Cardillo’s Moreau-style
+time-stepping integrator for rigid bodies subject to unilateral constraints and
+friction <span class="bibtex-citation" id="id1">[<a class="reference internal" href="#id3" title="Jean-Jacques Moreau. Unilateral contact and dry friction in finite freedom mechanical systems: a differential inclusion approach. In R.I. Leine, editor, Nonsmooth Mechanics and Applications, pages 1–82. Springer, 1988. URL: https://hal.science/hal-01713847/file/JJMU.pdf.">1</a>]</span>. The integrator employs a <strong>Velocity-level splitting</strong> scheme with a generalized <span class="math notranslate nohighlight">\(\theta\)</span>-method for velocity updates.</p>
+<p>Non-smooth mechanical systems are characterized by abrupt velocity changes and impulsive reactions. The Moreau time-stepping scheme integrates the
+system at the velocity level, which naturally accommodates impulsive constraints while maintaining stability during smooth phases.</p>
+<section id="symbols-and-notation">
+<h2>Symbols and Notation<a class="headerlink" href="#symbols-and-notation" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\mathbf{M}\)</span>: Block-diagonal mass/inertia matrix.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mathbf{u}\)</span>: Stacked generalized velocity vector.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mathbf{W}_g, \mathbf{W}_\gamma\)</span>: Constraint Jacobian blocks (spring and damper rows).</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mathbf{W}_{NT}\)</span>: Contact Jacobian (stacked normal and tangential rows).</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mathbf{\Lambda}_{NT}\)</span>: Accumulated contact impulses over the step.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\boldsymbol{\gamma}_{NT}^+\)</span>: Post-impact contact velocity in Normal and Tangential directions.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mathbf{f}^{\mathrm{ext}}\)</span>: External forces (e.g. gravity).</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mathbf{v}_g, \mathbf{v}_\gamma\)</span>: Velocity-source terms from trajectory-driven bodies.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mathbf{C}, \mathbf{A}\)</span>: Compliance/attenuation diagonals.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\boldsymbol\lambda_g, \boldsymbol\lambda_\gamma\)</span>: Lagrange multiplier densities.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mathbf{\Lambda}_g, \mathbf{\Lambda}_\gamma\)</span>: Solver-scaled impulses, defined as <span class="math notranslate nohighlight">\(\mathbf{\Lambda}_g = -\Delta t\,\boldsymbol\lambda_g\)</span> and <span class="math notranslate nohighlight">\(\mathbf{\Lambda}_\gamma = -\Delta t\,\boldsymbol\lambda_{\gamma}\)</span>.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\boldsymbol{\gamma}_{\text{stab}}\)</span>: Baumgarte position-correction term.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\theta, \Delta t\)</span>: Integration parameter and time-step size.</p></li>
+</ul>
+</section>
+<section id="continuous-equations-of-motion">
+<h2>Continuous Equations of Motion<a class="headerlink" href="#continuous-equations-of-motion" title="Link to this heading"></a></h2>
+<p>The system is governed by the following measure-differential equations:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+  \dot{\mathbf{q}} &amp;= \mathbf{B}(\mathbf{q}) \mathbf{u} \\
+  \mathbf{M} \operatorname{d}\!{\mathbf{u}} &amp;= \bigl[\mathbf{f}^\mathrm{ext}(t, \mathbf{q}) + \mathbf{f}^\mathrm{gyr}(\mathbf{u})\bigr] \operatorname{d}\!t + \mathbf{W}_g(\mathbf{q}) \operatorname{d}\!{\boldsymbol{\pi}_g} + \mathbf{W}_\gamma(\mathbf{q}) \operatorname{d}\!{\boldsymbol{\pi}_\gamma} + \mathbf{W}_N(\mathbf{q}) \operatorname{d}\!\boldsymbol{\pi}_N + \mathbf{W}_T(\mathbf{q}) \operatorname{d}\!\boldsymbol{\pi}_T \\
+  \mathbf{0} &amp;= \mathbf{C} \dot{\boldsymbol{\lambda}}_g + \mathbf{W}_g^\top(\mathbf{q}) \mathbf{u} \\
+  \mathbf{0} &amp;= \mathbf{A} \boldsymbol{\lambda}_\gamma + \mathbf{W}_\gamma^\top(\mathbf{q}) \mathbf{u}
+\end{aligned}\end{split}\]</div>
+</section>
+<section id="velocity-level-splitting">
+<h2>Velocity-Level Splitting<a class="headerlink" href="#velocity-level-splitting" title="Link to this heading"></a></h2>
+<p>The time step is decomposed into three phases using an intermediate configuration
+<span class="math notranslate nohighlight">\(\mathbf{q}_{n+\theta}\)</span>.</p>
+<p><strong>1. First Phase (Explicit Position Update):</strong>
+Updates configuration based on the current velocity:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{q}_{n+\theta} = \mathbf{q}_n + (1-\theta)\,\Delta t\,\mathbf{B}(\mathbf{q}_n)\,\mathbf{u}_n\]</div>
+<p><strong>2. Second Phase (Implicit Velocity Update) at</strong> <span class="math notranslate nohighlight">\(n+\theta\)</span>:
+The momentum balance is solved using a generalized <span class="math notranslate nohighlight">\(\theta\)</span>-method.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>While <span class="math notranslate nohighlight">\(\theta=0.5\)</span> is often desired for second-order accuracy,
+choosing <span class="math notranslate nohighlight">\(\theta \in (0.5, 1]\)</span> introduces numerical damping, which
+improves stability for stiff mechanical systems (e.g., beam elements).</p>
+</div>
+<p>Approximating the gyroscopic term as <span class="math notranslate nohighlight">\(\mathbf{f}^{\mathrm{gyr}} \approx \mathbf{G}(\mathbf{u}_n)\mathbf{u}_{n+1}\)</span> and defining
+<span class="math notranslate nohighlight">\(\mathbf{M}_{\mathrm{eff}} := \mathbf{M} - \Delta t\,\mathbf{G}(\mathbf{u}_n)\)</span>, we use the backward Euler
+approximation for impulses:</p>
+<div class="math notranslate nohighlight">
+\[\Delta \boldsymbol{\pi}_{g,n+1} = -\Delta t\,\boldsymbol{\lambda}_{g,n+1}, \quad
+\Delta \boldsymbol{\pi}_{\gamma,n+1} = -\Delta t\,\boldsymbol{\lambda}_{\gamma,n+1}.\]</div>
+<p>The discrete momentum equation becomes:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{M}_{\mathrm{eff}}\mathbf{u}_{n+1} = \mathbf{M}\mathbf{u}_n + \Delta t\,\mathbf{f}^{\mathrm{ext}}_{n+\theta} + \mathbf{W}_{NT}\,\boldsymbol{\Lambda}_{NT} + \mathbf{W}_g \boldsymbol{\Lambda}_g + \mathbf{W}_\gamma \boldsymbol{\Lambda}_\gamma\]</div>
+<p><strong>3. Third Phase (Second Drift):</strong>
+Updates configuration for the next time step:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{q}_{n+1} = \mathbf{q}_{n+\theta} + \theta\,\Delta t\,\mathbf{B}(\mathbf{q}_{n+\theta})\,\mathbf{u}_{n+1}\]</div>
+</section>
+<section id="discrete-constraint-and-contact-laws">
+<h2>Discrete Constraint and Contact Laws<a class="headerlink" href="#discrete-constraint-and-contact-laws" title="Link to this heading"></a></h2>
+<p>The constraint evolution laws evaluated at <span class="math notranslate nohighlight">\(n+\theta\)</span> are:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{C}\,(\boldsymbol{\lambda}_{g,n+1}-\boldsymbol{\lambda}_{g,n}) + \Delta t\,\mathbf{W}_{g}^\top\bigl((1-\theta)\,\mathbf{u}_n + \theta\,\mathbf{u}_{n+1}\bigr) = \mathbf{0}\]</div>
+<div class="math notranslate nohighlight">
+\[\mathbf{A}\,\boldsymbol{\lambda}_{\gamma,n+1} + \mathbf{W}_{\gamma}^\top\bigl((1-\theta)\,\mathbf{u}_n + \theta\,\mathbf{u}_{n+1}\bigr) = \mathbf{0}\]</div>
+<p>For contact constraints with friction, the following complementarity/feasibility conditions apply at each contact <span class="math notranslate nohighlight">\(j\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{aligned}
+    &amp;0 \le \gamma_{N,j}^+ \ \perp\ \Lambda_{N,j} \ge 0, \\
+    &amp;\lVert\boldsymbol{\Lambda}_{T,j}\rVert \le \mu_j\,\Lambda_{N,j}, \\
+    &amp;\boldsymbol{\gamma}_{T,j}=\mathbf{0}\ \Rightarrow\ \lVert\boldsymbol{\Lambda}_{T,j}\rVert \le \mu_j\,\Lambda_{N,j}\qquad\text{(sticking)}, \\
+    &amp;\boldsymbol{\gamma}^+_{T,j}\neq\mathbf{0}\ \Rightarrow\ \boldsymbol{\Lambda}_{T,j} = -\mu_j\,\Lambda_{N,j}\,\dfrac{\boldsymbol{\gamma}^+_{T,j}}{\lVert\boldsymbol{\gamma}^+_{T,j}\rVert} \quad\text{and}\quad \lVert\boldsymbol{\Lambda}_{T,j}\rVert = \mu_j\,\Lambda_{N,j}\qquad\text{(sliding)}.
+\end{aligned}\end{split}\]</div>
+</section>
+<section id="scaled-block-linear-system">
+<h2>Scaled Block Linear System<a class="headerlink" href="#scaled-block-linear-system" title="Link to this heading"></a></h2>
+<p>Using the Baumgarte stabilization term <span class="math notranslate nohighlight">\(\boldsymbol{\gamma}_{\text{stab}} = (\mathbf{C} \boldsymbol{\lambda}_{g,n} + \mathbf{g}(t, \mathbf{q})) \cdot \frac{\beta}{\Delta t \, \theta}\)</span>,
+the discrete equations can be rearranged into the following scaled block linear system:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\underbrace{%
+\begin{pmatrix}
+\mathbf{M}_{\mathrm{eff}} &amp; \mathbf{W}_g &amp; \mathbf{W}_{\gamma} \\
+\mathbf{W}_g^\top &amp; -\dfrac{1}{\theta\,\Delta t^2}\mathbf{C} &amp; \mathbf{0} \\
+\mathbf{W}_{\gamma}^\top &amp; \mathbf{0} &amp; -\dfrac{1}{\theta\,\Delta t}\mathbf{A}
+\end{pmatrix}%
+}_{\mathcal{S}(\mathbf{q}_{n+\theta},\Delta t,\theta)}\;
+\underbrace{%
+\begin{pmatrix}
+\mathbf{u}_{n+1} \\
+\boldsymbol{\Lambda}_{g,n+1} \\
+\boldsymbol{\Lambda}_{\gamma,n+1}
+\end{pmatrix}%
+}_{\mathbf{x}_{n+1}}
+=
+\underbrace{%
+\begin{pmatrix}
+\mathbf{M}\mathbf{u}_n + \Delta t\,\mathbf{f}^{\mathrm{ext}}_{n+\theta} + \mathbf{W}_{NT}\boldsymbol{\Lambda}_{NT} \\
+-\dfrac{C\,\boldsymbol{\Lambda}_{g,n}}{\theta\,\Delta t^2} - \dfrac{1-\theta}{\theta}\mathbf{W}_g^\top \mathbf{u}_n - \dfrac{1}{\theta}\mathbf{v}_g + \boldsymbol{\gamma}_{\text{stab}} \\
+-\dfrac{1-\theta}{\theta}\mathbf{W}_\gamma^\top \mathbf{u}_n - \dfrac{1}{\theta}\mathbf{v}_\gamma
+\end{pmatrix}%
+}_{\mathbf{b}_n(\mathbf{q}_{n+\theta},\mathbf{x}_n,\Delta t,\theta,\boldsymbol{\Lambda}_{NT})}\end{split}\]</div>
+<p>The different solver backends all solve this same linear system in some form.</p>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading"></a></h2>
+<div class="docutils container" id="id2">
+<div role="list" class="citation-list">
+<div class="citation" id="id3" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Jean-Jacques Moreau. Unilateral contact and dry friction in finite freedom mechanical systems: a differential inclusion approach. In R.I. Leine, editor, <em>Nonsmooth Mechanics and Applications</em>, pages 1–82. Springer, 1988. URL: <a class="reference external" href="https://hal.science/hal-01713847/file/JJMU.pdf">https://hal.science/hal-01713847/file/JJMU.pdf</a>.</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="physics_pipeline.html" class="btn btn-neutral float-left" title="Physics Pipeline" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="solvers/index.html" class="btn btn-neutral float-right" title="Solvers" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

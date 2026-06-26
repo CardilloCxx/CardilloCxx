@@ -1,7 +1,7 @@
 Stepping and Runtime Control
 =============================
 
-Once bodies and constraints are in place, ``step()`` advances the simulation.
+Once bodies and constraints are in place, :cpp:func:`step() <cardillo::physics::PhysicsEngine::step>` advances the simulation.
 Everything else in this chapter covers runtime modifications: applying external
 forces, reading and overriding state, labelling bodies for output, and freezing
 or releasing bodies mid-simulation.
@@ -9,11 +9,10 @@ or releasing bodies mid-simulation.
 Advancing the simulation
 ------------------------
 
-``engine.step()``
+:cpp:class:`PhysicsEngine <cardillo::physics::PhysicsEngine>`
 ~~~~~~~~~~~~~~~~~
 
-Advances by the configured time step ``cfg.sim_dt``. This is the standard call
-inside the main loop:
+:cpp:func:`step() <cardillo::physics::PhysicsEngine::step>` advances by the configured time step :cpp:member:`sim_dt <cardillo::config::Config::sim_dt>`. This is the standard call inside the main loop:
 
 .. code-block:: cpp
 
@@ -33,7 +32,7 @@ Advances by an explicit ``dt``, ignoring ``cfg.sim_dt`` for this one step:
 Useful for variable-rate drivers or when you want a single warmup step at a
 different resolution before the main loop.
 
-``engine.isFinished()``
+:cpp:func:`isFinished() <cardillo::physics::PhysicsEngine::isFinished>`
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Returns ``true`` when the pipeline has executed the configured number of
@@ -45,7 +44,7 @@ configured step count rather than accumulated wall-clock simulation time.
 Gravity
 -------
 
-Gravity is set during ``initFromConfig`` from ``cfg.sim_gravity``. Change it at
+Gravity is set during :cpp:func:`initFromConfig() <cardillo::physics::PhysicsEngine::initFromConfig>` from ``cfg.sim_gravity``. Change it at
 any time:
 
 .. code-block:: cpp
@@ -65,13 +64,13 @@ persistent loads:
 
 .. code-block:: cpp
 
-   // Apply a world-frame force and torque to entity e
+   // Apply an inertial-frame force and torque to entity e
    engine.applyForce(e,
-       Vector3r(0, 0, 100),    // force in N (world frame)
-       Vector3r::Zero()        // torque in Nm (world frame)
+       Vector3r(0, 0, 100),    // force in N (inertial frame)
+       Vector3r::Zero()        // torque in Nm (inertial frame)
    );
 
-   // Apply a pure torque defined in world (inertial) frame
+   // Apply a pure torque defined in inertial frame
    engine.applyInertialTorque(e, Vector3r(0, 0, 5));
 
 .. note::
@@ -85,13 +84,13 @@ Reading state
 .. code-block:: cpp
 
    VectorXr q = engine.getPosition(e);        // generalised position (7 for RB)
-   MatrixXXr M = engine.getMass(e);            // 6×6 or 3×3 mass matrix
-   Vector3r  I = engine.getInertiaDiag(e);     // body-frame inertia diagonal
-   real_t   Ek = engine.getKineticEnergy(e);   // translational + rotational KE
+      MatrixXXr M = engine.getMass(e);            // 6×6 or 3×3 mass matrix
+      Vector3r  I = engine.getInertiaDiag(e);     // Body Basis inertia diagonal
+      real_t   Ek = engine.getKineticEnergy(e);   // translational + rotational KE
 
-For rigid bodies the generalised position vector is
+   For rigid bodies the generalised position vector is
 ``[px, py, pz, qx, qy, qz, qw]`` because it is returned from
-``Quaternion4r::coeffs()``.
+:cpp:type:`Quaternion4r <cardillo::Quaternion4r>`.
 
 Setting state
 -------------
@@ -149,7 +148,7 @@ Convert a dynamic body into a static obstacle without removing it:
    engine.makeStatic(body);
 
 This removes the entity's dynamic physics components (including
-``C_PhysicsObject``, rigid/point-mass tags, body index, mass, inertia, and any
+:cpp:struct:`C_PhysicsObject <cardillo::C_PhysicsObject>`, rigid/point-mass tags, body index, mass, inertia, and any
 queued external force/torque data) and marks the structure dirty. Useful for
 staged simulations where a body should be settled, locked in place, and then
 other bodies dropped on top.
@@ -158,7 +157,7 @@ Accessing the ECS registry
 ---------------------------
 
 For custom queries or one-off component reads that are not exposed by the
-``PhysicsEngine`` API, access the underlying EnTT registry directly:
+:cpp:class:`PhysicsEngine <cardillo::physics::PhysicsEngine>` API, access the underlying EnTT registry directly:
 
 .. code-block:: cpp
 
@@ -172,4 +171,4 @@ For custom queries or one-off component reads that are not exposed by the
 .. caution::
    Modifying ECS components directly (adding, removing, or overwriting them)
    bypasses the engine's dirty flags. If you change any component that affects
-   assembly, call ``engine.markStructureDirty()`` afterwards.
+   assembly, call :cpp:func:`markStructureDirty() <cardillo::physics::PhysicsEngine::markStructureDirty>` afterwards.

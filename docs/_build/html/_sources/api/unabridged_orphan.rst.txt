@@ -245,16 +245,6 @@ Files
 .. toctree::
    :maxdepth: 5
 
-   file_src_io_heightmap_loader.cpp.rst
-
-.. toctree::
-   :maxdepth: 5
-
-   file_src_io_heightmap_loader.hpp.rst
-
-.. toctree::
-   :maxdepth: 5
-
    file_src_physics_integration_integration_base.cpp.rst
 
 .. toctree::

@@ -1,0 +1,540 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Types Reference &mdash; Cardillo Documentation 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+      <link rel="stylesheet" type="text/css" href="../_static/collapsible-lists/css/tree_view.css?v=a885cde7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js?v=73120307"></script>
+      <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js?v=660e4f45"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Entity Component System" href="ecs.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Cardillo Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Types Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#core-scalar-and-index-types">Core scalar and index types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#eigen-vector-aliases">Eigen vector aliases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#eigen-matrix-aliases">Eigen matrix aliases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quaternion-and-rotation">Quaternion and rotation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dynamic-size-arrays">Dynamic-size arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references-pass-by-reference-helpers">References (pass-by-reference helpers)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#maps-non-owning-views-into-external-memory">Maps (non-owning views into external memory)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sparse-matrices">Sparse matrices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stl-container-aliases">STL container aliases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#physics-specific-types-cardillo-physics">Physics-specific types (<code class="docutils literal notranslate"><span class="pre">cardillo::physics</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#initial-kinematics">Initial kinematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#shape-types">Shape types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#body-properties">Body properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#beam-types">Beam types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#other-types">Other types</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ecs.html">Entity Component System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="solvers/index.html">Solvers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using_the_engine.html">Using The Engine</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/library_root.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cardillo Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Types Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/chapters/types.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="types-reference">
+<h1>Types Reference<a class="headerlink" href="#types-reference" title="Link to this heading"></a></h1>
+<p>Cardillo builds on a thin layer of type aliases over <strong>Eigen</strong> and the C++ STL. This chapter explains every publicly relevant type and shows where it lives in the codebase. All names link to the generated API reference.</p>
+<p>The types are defined in <cite>misc/types.hpp</cite> and
+<cite>physics/api/physics_types.hpp</cite>.</p>
+<section id="core-scalar-and-index-types">
+<h2>Core scalar and index types<a class="headerlink" href="#core-scalar-and-index-types" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">real_t</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">double</span></code>. The engine’s floating-point type everywhere (positions, velocities, forces, configuration values).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">index_t</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code>. Used for entity indices, array indices, and loop counters.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="eigen-vector-aliases">
+<h2>Eigen vector aliases<a class="headerlink" href="#eigen-vector-aliases" title="Link to this heading"></a></h2>
+<p>Fixed-size vectors (most commonly used):</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 30.0%" />
+<col style="width: 45.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Type</p></th>
+<th class="head"><p>Dimensions</p></th>
+<th class="head"><p>Typical use</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a8b674dbc5d60f60c508e4a1d55a03999.html#_CPPv4N8cardillo8Vector2rE" title="cardillo::Vector2r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector2r</span></code></a></p></td>
+<td><p>2x1</p></td>
+<td><p>Rarely used directly; mostly for image/spline intermediates.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a></p></td>
+<td><p>3x1</p></td>
+<td><p>The workhorse: positions, velocities, normals, forces, torques.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a7dbc62db1ab13c27388d583c4b5aeb5f.html#_CPPv4N8cardillo8Vector4rE" title="cardillo::Vector4r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector4r</span></code></a></p></td>
+<td><p>4x1</p></td>
+<td><p>Extended state vectors.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a293f9796c371f0bd468ae9902288619f.html#_CPPv4N8cardillo8VectorXrE" title="cardillo::VectorXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">VectorXr</span></code></a></p></td>
+<td><p>Dynamic</p></td>
+<td><p>Stack of all body states, force vectors, impulse vectors.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Integer variants:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 35.7%" />
+<col style="width: 64.3%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><code class="docutils literal notranslate"><span class="pre">Vector3i</span></code>, <code class="docutils literal notranslate"><span class="pre">VectorXi</span></code></p></th>
+<th class="head"><p>Integer versions for indices and mesh vertex IDs.</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Array3b</span></code>, <code class="docutils literal notranslate"><span class="pre">VectorXb</span></code></p></td>
+<td><p>Boolean masks (e.g. collision flags).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="eigen-matrix-aliases">
+<h2>Eigen matrix aliases<a class="headerlink" href="#eigen-matrix-aliases" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22.7%" />
+<col style="width: 36.4%" />
+<col style="width: 40.9%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Type</p></th>
+<th class="head"><p>Dimensions</p></th>
+<th class="head"><p>Typical use</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a98e632c151b319d021e2129ba54cf621.html#_CPPv4N8cardillo9Matrix33rE" title="cardillo::Matrix33r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Matrix33r</span></code></a></p></td>
+<td><p>3x3</p></td>
+<td><p>Inertia tensors, rotation matrices, Jacobian blocks.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a6bf99e1d488c5e2602fc6525cfce8a53.html#_CPPv4N8cardillo9Matrix44rE" title="cardillo::Matrix44r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Matrix44r</span></code></a></p></td>
+<td><p>4x4</p></td>
+<td><p>Homogeneous transforms.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1ab85948a2c4ef69e14af22fe0709b9e5c.html#_CPPv4N8cardillo9MatrixXXrE" title="cardillo::MatrixXXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">MatrixXXr</span></code></a></p></td>
+<td><p>DynamicxDynamic</p></td>
+<td><p>Full mass matrix, assembled constraint matrices.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Skew-symmetric helper:</p>
+<p>A 3x3 matrix representing the cross-product operator, constructed via the helper function <a class="reference internal" href="../api/function_misc_2types_8hpp_1a2bc31cba3d14129d8f3920f17377c68e.html#_CPPv4N8cardillo16skew_from_vectorERK8Vector3r" title="cardillo::skew_from_vector"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">skew_from_vector</span></code></a>.</p>
+</section>
+<section id="quaternion-and-rotation">
+<h2>Quaternion and rotation<a class="headerlink" href="#quaternion-and-rotation" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a8ea46386683084285ff4577cdf654088.html#_CPPv4N8cardillo12Quaternion4rE" title="cardillo::Quaternion4r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Quaternion4r</span></code></a></p></th>
+<th class="head"><p>Unit quaternion for orientation storage and interpolation.</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a8d9ecc8ded5924661e7c8a9879d64d9d.html#_CPPv4N8cardillo11AngleAxis3rE" title="cardillo::AngleAxis3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">AngleAxis3r</span></code></a></p></td>
+<td><p>Axis-angle representation; convenient for building rotations from an axis and an angle.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="dynamic-size-arrays">
+<h2>Dynamic-size arrays<a class="headerlink" href="#dynamic-size-arrays" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a15a3da3a6189d08b9ff7f1524532456a.html#_CPPv4N8cardillo7ArrayXrE" title="cardillo::ArrayXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">ArrayXr</span></code></a></p></th>
+<th class="head"><p>Dynamic Eigen array (element-wise operations).</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1ae68e2c013a7e1fec86a036887e2f7bee.html#_CPPv4N8cardillo8ArrayXXrE" title="cardillo::ArrayXXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">ArrayXXr</span></code></a></p></td>
+<td><p>Dynamic Eigen matrix for array-style math.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a636f4da822bbd476451db394ca311866.html#_CPPv4N8cardillo8VectorXiE" title="cardillo::VectorXi"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">VectorXi</span></code></a></p></td>
+<td><p>Dynamic integer vector.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a952535a56aa30767b04c2954926969cc.html#_CPPv4N8cardillo7ArrayXiE" title="cardillo::ArrayXi"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">ArrayXi</span></code></a></p></td>
+<td><p>Dynamic integer array.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="references-pass-by-reference-helpers">
+<h2>References (pass-by-reference helpers)<a class="headerlink" href="#references-pass-by-reference-helpers" title="Link to this heading"></a></h2>
+<p>These are thin wrappers over <code class="docutils literal notranslate"><span class="pre">Eigen::Ref</span></code> that let you pass dynamically-sized data to functions without copying:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a1a29d8b30f36c16c301c7ca7c6864a4c.html#_CPPv4N8cardillo11RefVectorXrE" title="cardillo::RefVectorXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">RefVectorXr</span></code></a></p></th>
+<th class="head"><p>Read-only reference to a dynamic <code class="docutils literal notranslate"><span class="pre">VectorXr</span></code>.</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1af01ce77559c9f0963e0c6d3d9626f888.html#_CPPv4N8cardillo11RefVectorXiE" title="cardillo::RefVectorXi"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">RefVectorXi</span></code></a></p></td>
+<td><p>Read-only reference to a dynamic <code class="docutils literal notranslate"><span class="pre">VectorXi</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1adf86ffc7da721a5c4480bf364ff529da.html#_CPPv4N8cardillo12RefMatrixXXrE" title="cardillo::RefMatrixXXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">RefMatrixXXr</span></code></a></p></td>
+<td><p>Read-only reference to a dynamic <code class="docutils literal notranslate"><span class="pre">MatrixXXr</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="maps-non-owning-views-into-external-memory">
+<h2>Maps (non-owning views into external memory)<a class="headerlink" href="#maps-non-owning-views-into-external-memory" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a88b040389ca0b9349fbb2433e7c93411.html#_CPPv4N8cardillo11MapVectorXrE" title="cardillo::MapVectorXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">MapVectorXr</span></code></a></p></th>
+<th class="head"><p>Non-owning view onto an externally allocated <code class="docutils literal notranslate"><span class="pre">VectorXr</span></code> buffer.</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a694db605dec00ef50a2151e16cd7d1ac.html#_CPPv4N8cardillo12MapMatrixXXrE" title="cardillo::MapMatrixXXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">MapMatrixXXr</span></code></a></p></td>
+<td><p>Non-owning view onto an externally allocated <code class="docutils literal notranslate"><span class="pre">MatrixXXr</span></code> buffer.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="sparse-matrices">
+<h2>Sparse matrices<a class="headerlink" href="#sparse-matrices" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a450392cfeb9ce773a495cf607a9fb3ac.html#_CPPv4N8cardillo9CscMatrixE" title="cardillo::CscMatrix"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">CscMatrix</span></code></a></p></th>
+<th class="head"><p>Compressed Sparse Column format (default for the solver).</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1ad83a076c846be3102d6b8ee3266b7db4.html#_CPPv4N8cardillo9CsrMatrixE" title="cardillo::CsrMatrix"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">CsrMatrix</span></code></a></p></td>
+<td><p>Compressed Sparse Row format.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a76f32c0d1a60cfee66a4867c4bf9a50e.html#_CPPv4I_iEN8cardillo12SparseMatrixE" title="cardillo::SparseMatrix"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">SparseMatrix</span></code></a></p></td>
+<td><p>Generic sparse matrix template alias.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="stl-container-aliases">
+<h2>STL container aliases<a class="headerlink" href="#stl-container-aliases" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a4dc6577a8bdf0cfc04d235bad9f36f9f.html#_CPPv4N8cardillo11StlVectorXrE" title="cardillo::StlVectorXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">StlVectorXr</span></code></a></p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">std::vector&lt;real_t&gt;</span></code> — generic real arrays.</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a7e53254a08ff9e4f8e25907be1ef6be7.html#_CPPv4N8cardillo11StlVectorXiE" title="cardillo::StlVectorXi"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">StlVectorXi</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">std::vector&lt;index_t&gt;</span></code> — generic integer arrays.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a02f77f85d9fdfefe2bd6b80df9053192.html#_CPPv4N8cardillo17StlVectorVectorXrE" title="cardillo::StlVectorVectorXr"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">StlVectorVectorXr</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">std::vector&lt;VectorXr&gt;</span></code> — list of vectors (e.g. per-body data).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="physics-specific-types-cardillo-physics">
+<h2>Physics-specific types (<code class="docutils literal notranslate"><span class="pre">cardillo::physics</span></code>)<a class="headerlink" href="#physics-specific-types-cardillo-physics" title="Link to this heading"></a></h2>
+<p>These live in <code class="docutils literal notranslate"><span class="pre">physics/api/physics_types.hpp</span></code> and are the primary types users interact with:</p>
+<section id="initial-kinematics">
+<h3>Initial kinematics<a class="headerlink" href="#initial-kinematics" title="Link to this heading"></a></h3>
+<p>The primary initial state type for a rigid body:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1RigidState.html#_CPPv4N8cardillo7physics10RigidStateE" title="cardillo::physics::RigidState"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">RigidState</span></code></a> — describes where a body starts (position, orientation, linear velocity, angular velocity).</p></li>
+</ul>
+</section>
+<section id="shape-types">
+<h3>Shape types<a class="headerlink" href="#shape-types" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1CubeShape.html#_CPPv4N8cardillo7physics9CubeShapeE" title="cardillo::physics::CubeShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CubeShape</span></code></a></p></th>
+<th class="head"><p>Axis-aligned box (half-extents).</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1SphereShape.html#_CPPv4N8cardillo7physics11SphereShapeE" title="cardillo::physics::SphereShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">SphereShape</span></code></a></p></td>
+<td><p>Sphere.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1CapsuleShape.html#_CPPv4N8cardillo7physics12CapsuleShapeE" title="cardillo::physics::CapsuleShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CapsuleShape</span></code></a></p></td>
+<td><p>Cylinder capped with hemispheres.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1CylinderShape.html#_CPPv4N8cardillo7physics13CylinderShapeE" title="cardillo::physics::CylinderShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">CylinderShape</span></code></a></p></td>
+<td><p>Flat-ended cylinder.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1ConeShape.html#_CPPv4N8cardillo7physics9ConeShapeE" title="cardillo::physics::ConeShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">ConeShape</span></code></a></p></td>
+<td><p>Right circular cone.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1PlaneShape.html#_CPPv4N8cardillo7physics10PlaneShapeE" title="cardillo::physics::PlaneShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">PlaneShape</span></code></a></p></td>
+<td><p>Infinite flat surface (visual quad is finite).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1MeshShape.html#_CPPv4N8cardillo7physics9MeshShapeE" title="cardillo::physics::MeshShape"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">MeshShape</span></code></a></p></td>
+<td><p>Triangle mesh loaded from OBJ/STL.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The union type:</p>
+<p><a class="reference internal" href="../api/typedef_physics__types_8hpp_1a06928ce4422162b661e309e712c1320d.html#_CPPv4N8cardillo7physics10RigidShapeE" title="cardillo::physics::RigidShape"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">RigidShape</span></code></a> is <code class="docutils literal notranslate"><span class="pre">std::variant&lt;CubeShape,</span> <span class="pre">PlaneShape,</span> <span class="pre">CapsuleShape,</span> <span class="pre">CylinderShape,</span> <span class="pre">ConeShape,</span> <span class="pre">SphereShape,</span> <span class="pre">MeshShape&gt;</span></code> — a shape can be any of the above.</p>
+</section>
+<section id="body-properties">
+<h3>Body properties<a class="headerlink" href="#body-properties" title="Link to this heading"></a></h3>
+<p>The primary properties type for a rigid body:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1RigidProps.html#_CPPv4N8cardillo7physics10RigidPropsE" title="cardillo::physics::RigidProps"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">RigidProps</span></code></a> — mass, density, friction coefficient, collidable and visual flags.</p></li>
+</ul>
+</section>
+<section id="beam-types">
+<h3>Beam types<a class="headerlink" href="#beam-types" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/enum_physics__types_8hpp_1ab76a9b09e1483649c651eb224aa37350.html#_CPPv4N8cardillo7physics12BeamBodyTypeE" title="cardillo::physics::BeamBodyType"><code class="xref cpp cpp-enum docutils literal notranslate"><span class="pre">BeamBodyType</span></code></a></p></th>
+<th class="head"><p>Enum: <code class="docutils literal notranslate"><span class="pre">Cube</span></code>, <code class="docutils literal notranslate"><span class="pre">Capsule</span></code>, <code class="docutils literal notranslate"><span class="pre">Cylinder</span></code> — controls the collision/visual shape of beam segments.</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1BeamCrossSection.html#_CPPv4N8cardillo7physics16BeamCrossSectionE" title="cardillo::physics::BeamCrossSection"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">BeamCrossSection</span></code></a></p></td>
+<td><p>Cross-section geometry (width, height, type) with derived properties (area, moments of inertia).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1physics_1_1BeamSpringParams.html#_CPPv4N8cardillo7physics16BeamSpringParamsE" title="cardillo::physics::BeamSpringParams"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">BeamSpringParams</span></code></a></p></td>
+<td><p>Elastic and damping parameters for the Cosserat-rod beam model.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="other-types">
+<h2>Other types<a class="headerlink" href="#other-types" title="Link to this heading"></a></h2>
+<p>Configuration:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6ConfigE" title="cardillo::config::Config"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">Config</span></code></a></p></th>
+<th class="head"><p>All global simulation parameters (time step, gravity, solver settings, output).</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/classcardillo_1_1config_1_1ConfigReader.html#_CPPv4N8cardillo6config12ConfigReaderE" title="cardillo::config::ConfigReader"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ConfigReader</span></code></a></p></td>
+<td><p>Loads <code class="docutils literal notranslate"><span class="pre">Config</span></code> from a text file.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Collision:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/structcardillo_1_1collision_1_1Contact.html#_CPPv4N8cardillo9collision7ContactE" title="cardillo::collision::Contact"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">Contact</span></code></a></p></th>
+<th class="head"><p>Information for a single pairwise contact (points, normals, impulses).</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/typedef_collision_2types_8hpp_1ae516225b98a5dc43dea663c0df3414c6.html#_CPPv4N8cardillo9collision11ContactListE" title="cardillo::collision::ContactList"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">ContactList</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">std::vector&lt;Contact&gt;</span></code> — list of all contacts for a step.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1collision_1_1SphereCollider.html#_CPPv4N8cardillo9collision14SphereColliderE" title="cardillo::collision::SphereCollider"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">SphereCollider</span></code></a></p></td>
+<td><p>Sphere collider resolved from ECS components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1collision_1_1PlaneCollider.html#_CPPv4N8cardillo9collision13PlaneColliderE" title="cardillo::collision::PlaneCollider"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">PlaneCollider</span></code></a></p></td>
+<td><p>Plane collider resolved from ECS components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1collision_1_1AabbCollider.html#_CPPv4N8cardillo9collision12AabbColliderE" title="cardillo::collision::AabbCollider"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">AabbCollider</span></code></a></p></td>
+<td><p>AABB collider resolved from ECS components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1collision_1_1ObbCollider.html#_CPPv4N8cardillo9collision11ObbColliderE" title="cardillo::collision::ObbCollider"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">ObbCollider</span></code></a></p></td>
+<td><p>OBB collider resolved from ECS components.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Splines:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><a class="reference internal" href="../api/classcardillo_1_1misc_1_1SplinePattern.html#_CPPv4N8cardillo4misc13SplinePatternE" title="cardillo::misc::SplinePattern"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">SplinePattern</span></code></a></p></th>
+<th class="head"><p>Abstract base for all spline types.</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1misc_1_1SplineSample.html#_CPPv4N8cardillo4misc12SplineSampleE" title="cardillo::misc::SplineSample"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">SplineSample</span></code></a></p></td>
+<td><p>Result of sampling a spline: position, tangent, normal, binormal.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/classcardillo_1_1misc_1_1LinearSpline.html#_CPPv4N8cardillo4misc12LinearSplineE" title="cardillo::misc::LinearSpline"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">LinearSpline</span></code></a></p></td>
+<td><p>Straight-line spline between two points.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/classcardillo_1_1misc_1_1CircleSpline.html#_CPPv4N8cardillo4misc12CircleSplineE" title="cardillo::misc::CircleSpline"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">CircleSpline</span></code></a></p></td>
+<td><p>Circular arc spline.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/classcardillo_1_1misc_1_1HelixSpline.html#_CPPv4N8cardillo4misc11HelixSplineE" title="cardillo::misc::HelixSpline"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">HelixSpline</span></code></a></p></td>
+<td><p>Helical path spline.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/classcardillo_1_1misc_1_1CatmullRomSpline.html#_CPPv4N8cardillo4misc16CatmullRomSplineE" title="cardillo::misc::CatmullRomSpline"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">CatmullRomSpline</span></code></a></p></td>
+<td><p>Catmull-Rom spline through control points.</p></td>
+</tr>
+</tbody>
+</table>
+<p>ECS components: all public component definitions live in <code class="docutils literal notranslate"><span class="pre">ecs_types.hpp</span></code>. Each <code class="docutils literal notranslate"><span class="pre">C_*</span></code> type is a data component or tag in the <code class="docutils literal notranslate"><span class="pre">cardillo</span></code> namespace. For example:</p>
+<ul class="simple">
+<li><p>Data components: <a class="reference internal" href="../api/structcardillo_1_1C__Position3.html#_CPPv4N8cardillo11C_Position3E" title="cardillo::C_Position3"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">C_Position3</span></code></a>, <a class="reference internal" href="../api/structcardillo_1_1C__Mass.html#_CPPv4N8cardillo6C_MassE" title="cardillo::C_Mass"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">C_Mass</span></code></a>, etc.</p></li>
+<li><p>Tags: <a class="reference internal" href="../api/structcardillo_1_1C__PhysicsObject.html#_CPPv4N8cardillo15C_PhysicsObjectE" title="cardillo::C_PhysicsObject"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">C_PhysicsObject</span></code></a>, <a class="reference internal" href="../api/structcardillo_1_1C__Collidable.html#_CPPv4N8cardillo12C_CollidableE" title="cardillo::C_Collidable"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">C_Collidable</span></code></a>, etc.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ecs.html" class="btn btn-neutral float-right" title="Entity Component System" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Jan Kautz, Jonas Breuling.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

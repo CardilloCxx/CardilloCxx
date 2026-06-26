@@ -48,8 +48,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -94,6 +96,20 @@
 <li class="toctree-l2"><a class="reference internal" href="chapters/getting_started.html#docs-build">Docs build</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="chapters/types.html">Types Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#core-scalar-and-index-types">Core scalar and index types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#eigen-vector-aliases">Eigen vector aliases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#eigen-matrix-aliases">Eigen matrix aliases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#quaternion-and-rotation">Quaternion and rotation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#dynamic-size-arrays">Dynamic-size arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#references-pass-by-reference-helpers">References (pass-by-reference helpers)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#maps-non-owning-views-into-external-memory">Maps (non-owning views into external memory)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#sparse-matrices">Sparse matrices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#stl-container-aliases">STL container aliases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#physics-specific-types-cardillo-physics">Physics-specific types (<code class="docutils literal notranslate"><span class="pre">cardillo::physics</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/types.html#other-types">Other types</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="chapters/ecs.html">Entity Component System</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="chapters/ecs.html#the-ecs-mental-model">The ECS mental model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="chapters/ecs.html#composing-an-entity-rigid-body-factory-snippet">Composing an entity: rigid body factory snippet</a></li>
@@ -112,6 +128,15 @@
 <li class="toctree-l2"><a class="reference internal" href="chapters/physics_pipeline.html#solve-for-new-velocities">6 - Solve for new velocities</a></li>
 <li class="toctree-l2"><a class="reference internal" href="chapters/physics_pipeline.html#write-back-velocities-and-finish-positions">7 - Write back velocities and finish positions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="chapters/physics_pipeline.html#write-output">8 - Write output</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="chapters/moreau_time_stepping.html#symbols-and-notation">Symbols and Notation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/moreau_time_stepping.html#continuous-equations-of-motion">Continuous Equations of Motion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/moreau_time_stepping.html#velocity-level-splitting">Velocity-Level Splitting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/moreau_time_stepping.html#discrete-constraint-and-contact-laws">Discrete Constraint and Contact Laws</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/moreau_time_stepping.html#scaled-block-linear-system">Scaled Block Linear System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapters/moreau_time_stepping.html#references">References</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="chapters/solvers/index.html">Solvers</a></li>

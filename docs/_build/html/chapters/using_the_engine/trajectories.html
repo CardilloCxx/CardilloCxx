@@ -49,8 +49,11 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../solvers/index.html">Solvers</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../using_the_engine.html">Using The Engine</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="setup.html">Setup and Configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="bodies.html">Bodies</a></li>
@@ -103,28 +106,21 @@
              
   <section id="trajectories-and-kinematic-control">
 <h1>Trajectories and Kinematic Control<a class="headerlink" href="#trajectories-and-kinematic-control" title="Link to this heading"></a></h1>
-<p>A trajectory lets you drive an entity from a callback instead of from the
-contact/constraint solve. Internally the engine stores a <code class="docutils literal notranslate"><span class="pre">C_StaticTrajectory</span></code>
-component and updates the entity once per step in
-<code class="docutils literal notranslate"><span class="pre">src/physics/synchronization/trajectory.cpp</span></code>.</p>
-<div class="admonition important">
-<p class="admonition-title">Important</p>
-<p>Calling <code class="docutils literal notranslate"><span class="pre">engine.addTrajectory(...)</span></code> on a dynamic body first makes that body
-static by removing its dynamic mass/inertia tags. The body can still remain
-collidable and visible, but gravity and solver-driven motion no longer act on
-it.</p>
-</div>
+<p>A trajectory lets you drive an entity from a callback instead of from the contact/constraint solve. The engine stores a <a class="reference internal" href="../../api/structcardillo_1_1C__StaticTrajectory.html#_CPPv4N8cardillo18C_StaticTrajectoryE" title="cardillo::C_StaticTrajectory"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_StaticTrajectory</span></code></a> component and updates the entity once per step in the trajectory synchronization code.</p>
+<p>Calling <a class="reference internal" href="../../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine13addTrajectoryEN4entt6entityENSt8optionalINSt8functionIF14TrajectoryPose6real_tEEEEENSt8optionalINSt8functionIF15TrajectoryTwist6real_tEEEEE" title="cardillo::physics::PhysicsEngine::addTrajectory"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::addTrajectory</span></code></a> on a dynamic body first makes that body static by removing its dynamic mass/inertia tags. The body can still remain collidable and visible, but gravity and solver-driven motion no longer act on it.</p>
 <section id="trajectory-callback-types">
 <h2>Trajectory callback types<a class="headerlink" href="#trajectory-callback-types" title="Link to this heading"></a></h2>
-<p>The callback aliases are defined in <code class="docutils literal notranslate"><span class="pre">src/physics/ecs_types.hpp</span></code>:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">TrajectoryPose</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Vector3r</span><span class="p">,</span><span class="w"> </span><span class="n">Quaternion4r</span><span class="o">&gt;</span><span class="p">;</span>
+<p>The callback aliases are defined in the ECS headers; the public typedefs are
+<a href="#id1"><span class="problematic" id="id2">:cpp:typedef:`TrajectoryPose &lt;cardillo::TrajectoryPose&gt;`</span></a> and
+<a href="#id3"><span class="problematic" id="id4">:cpp:typedef:`TrajectoryTwist &lt;cardillo::TrajectoryTwist&gt;`</span></a>.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">TrajectoryPose</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Vector3r</span><span class="p">,</span><span class="w"> </span><span class="o">:</span><span class="n">cpp</span><span class="o">:</span><span class="n">type</span><span class="o">:</span><span class="err">`</span><span class="n">Quaternion4r</span><span class="w"> </span><span class="o">&lt;</span><span class="n">cardillo</span><span class="o">::</span><span class="n">Quaternion4r</span><span class="o">&gt;</span><span class="err">`</span><span class="o">&gt;</span><span class="p">;</span>
 <span class="k">using</span><span class="w"> </span><span class="n">TrajectoryTwist</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">Vector3r</span><span class="p">,</span><span class="w"> </span><span class="n">Vector3r</span><span class="o">&gt;</span><span class="p">;</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">TrajectoryPose</span></code> is <code class="docutils literal notranslate"><span class="pre">(position,</span> <span class="pre">orientation)</span></code>.
 <code class="docutils literal notranslate"><span class="pre">TrajectoryTwist</span></code> is <code class="docutils literal notranslate"><span class="pre">(linearVelocity,</span> <span class="pre">angularVelocity)</span></code> where linear
-velocity is in world frame and angular velocity follows the engine’s usual
-body-frame convention.</p>
+velocity is in inertial frame and angular velocity follows the engine’s usual
+Body Basis convention.</p>
 </section>
 <section id="how-the-engine-uses-them">
 <h2>How the engine uses them<a class="headerlink" href="#how-the-engine-uses-them" title="Link to this heading"></a></h2>
@@ -226,8 +222,8 @@ part is ignored.</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">engine</span><span class="p">.</span><span class="n">removeTrajectory</span><span class="p">(</span><span class="n">body</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>This only removes the <code class="docutils literal notranslate"><span class="pre">C_StaticTrajectory</span></code> component. It does <strong>not</strong> recreate
-<code class="docutils literal notranslate"><span class="pre">C_PhysicsObject</span></code>, mass, or inertia for a body that was made static when the
+<p>This only removes the <code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_StaticTrajectory</span></code> component. It does <strong>not</strong> recreate
+<code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_PhysicsObject</span></code>, mass, or inertia for a body that was made static when the
 trajectory was attached.</p>
 <p>In practice that means:</p>
 <ul class="simple">

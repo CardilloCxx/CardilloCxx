@@ -49,8 +49,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -77,8 +79,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalForce.html">Struct C_ExternalForce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalTorque.html">Struct C_ExternalTorque</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Friction.html">Struct C_Friction</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html">Struct C_HeightField</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html">Struct C_HeightFieldVisualTag</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html">Struct C_InertiaDiag</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearAcceleration3.html">Struct C_LinearAcceleration3</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearVelocity3.html">Struct C_LinearVelocity3</a></li>
@@ -97,7 +97,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cone.html">Struct C_RB_Cone</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cube.html">Struct C_RB_Cube</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cylinder.html">Struct C_RB_Cylinder</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html">Struct C_RB_HeightField</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Mesh.html">Struct C_RB_Mesh</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Plane.html">Struct C_RB_Plane</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Sphere.html">Struct C_RB_Sphere</a></li>
@@ -116,7 +115,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1PlaneCollider.html">Struct PlaneCollider</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1SphereCollider.html">Struct SphereCollider</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html">Struct Config</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html">Struct HeightFieldAsset</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1MeshGenerator_1_1EntityMesh.html">Struct MeshGenerator::EntityMesh</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1SoftBodyMesh.html">Struct SoftBodyMesh</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1MeshAsset.html">Struct MeshAsset</a></li>
@@ -269,8 +267,8 @@
 <dd></dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityEiR10EntityMesh">
-<span id="_CPPv3N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityEiR10EntityMesh"></span><span id="_CPPv2N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityEiR10EntityMesh"></span><span id="cardillo::io::MeshGenerator::buildEntityMesh__cardillo::WorldCR.entt::entity.i.EntityMeshR"></span><span class="target" id="classcardillo_1_1io_1_1MeshGenerator_1a80706c7a20d21a89b54209cc7ec1c805"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">buildEntityMesh</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">cardillo</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="classcardillo_1_1World.html#_CPPv4N8cardillo5WorldE" title="cardillo::World"><span class="n"><span class="pre">World</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">sys</span></span>, <span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">heightFieldStride</span></span>, <a class="reference internal" href="#_CPPv4N8cardillo2io13MeshGenerator10EntityMeshE" title="cardillo::io::MeshGenerator::EntityMesh"><span class="n"><span class="pre">EntityMesh</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityEiR10EntityMesh" title="Link to this definition"></a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv4N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityER10EntityMesh">
+<span id="_CPPv3N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityER10EntityMesh"></span><span id="_CPPv2N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityER10EntityMesh"></span><span id="cardillo::io::MeshGenerator::buildEntityMesh__cardillo::WorldCR.entt::entity.EntityMeshR"></span><span class="target" id="classcardillo_1_1io_1_1MeshGenerator_1a36b7d2c266d1be9fcaa61b3bd02fb147"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">buildEntityMesh</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">cardillo</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="classcardillo_1_1World.html#_CPPv4N8cardillo5WorldE" title="cardillo::World"><span class="n"><span class="pre">World</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">sys</span></span>, <span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span>, <a class="reference internal" href="#_CPPv4N8cardillo2io13MeshGenerator10EntityMeshE" title="cardillo::io::MeshGenerator::EntityMesh"><span class="n"><span class="pre">EntityMesh</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityER10EntityMesh" title="Link to this definition"></a><br /></dt>
 <dd></dd></dl>
 
 </div>

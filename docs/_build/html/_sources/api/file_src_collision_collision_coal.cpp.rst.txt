@@ -49,8 +49,6 @@ Includes
 
 - ``coal/contact_patch.h``
 
-- ``coal/hfield.h``
-
 - ``coal/math/transform.h``
 
 - ``coal/shape/geometric_shapes.h``
@@ -59,7 +57,7 @@ Includes
 
 - ``limits``
 
-- ``map`` (:ref:`file_src_io_heightmap_loader.cpp`)
+- ``map``
 
 - ``memory``
 

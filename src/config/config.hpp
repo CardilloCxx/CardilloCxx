@@ -18,7 +18,6 @@ struct Config {
 
     // Output settings
     int output_interval_steps{50};                // output.interval_steps - VTK write interval in steps
-    int output_heightfield_stride{8};             // output.heightfield_stride - decimation factor for HeightField VTK
     bool output_contacts_body_vectors{false};     // output.contacts_body_vectors
     std::string output_folder{"./vtk_out"};       // output.folder
     std::string output_filename_prefix{"scene"};  // output.filename_prefix

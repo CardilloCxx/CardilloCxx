@@ -47,8 +47,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -118,7 +120,7 @@
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
 <span class="p">}</span>
 
-<span class="kr">inline</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="nf">computeVolume</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">RigidShape</span><span class="o">&amp;</span><span class="w"> </span><span class="n">shape</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">World</span><span class="o">*</span><span class="w"> </span><span class="n">system</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">nullptr</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="kr">inline</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="nf">computeVolume</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">RigidShape</span><span class="o">&amp;</span><span class="w"> </span><span class="n">shape</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">World</span><span class="o">*</span><span class="w"> </span><span class="n">system</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">visit</span><span class="p">(</span>
 <span class="w">        </span><span class="p">[</span><span class="n">system</span><span class="p">](</span><span class="k">auto</span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">real_t</span><span class="w"> </span><span class="p">{</span>
 <span class="w">            </span><span class="k">using</span><span class="w"> </span><span class="n">T</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">decay_t</span><span class="o">&lt;</span><span class="k">decltype</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">&gt;</span><span class="p">;</span>

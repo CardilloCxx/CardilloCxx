@@ -49,8 +49,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -93,8 +95,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalForce.html">Struct C_ExternalForce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalTorque.html">Struct C_ExternalTorque</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Friction.html">Struct C_Friction</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html">Struct C_HeightField</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html">Struct C_HeightFieldVisualTag</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html">Struct C_InertiaDiag</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearAcceleration3.html">Struct C_LinearAcceleration3</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearVelocity3.html">Struct C_LinearVelocity3</a></li>
@@ -113,7 +113,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cone.html">Struct C_RB_Cone</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cube.html">Struct C_RB_Cube</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cylinder.html">Struct C_RB_Cylinder</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html">Struct C_RB_HeightField</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Mesh.html">Struct C_RB_Mesh</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Plane.html">Struct C_RB_Plane</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Sphere.html">Struct C_RB_Sphere</a></li>
@@ -132,7 +131,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1PlaneCollider.html">Struct PlaneCollider</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1SphereCollider.html">Struct SphereCollider</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html">Struct Config</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html">Struct HeightFieldAsset</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1MeshGenerator_1_1EntityMesh.html">Struct MeshGenerator::EntityMesh</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1SoftBodyMesh.html">Struct SoftBodyMesh</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1MeshAsset.html">Struct MeshAsset</a></li>
@@ -217,7 +215,6 @@
 <li class="toctree-l4"><a class="reference internal" href="function_tangent__frame_8hpp_1a0549728b2a560f86eade0c4772acd77f.html">Function cardillo::collision::tangentFrameFromNormal</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_config_8cpp_1a1689db6dee421fdd28963687bb46ff03.html">Function cardillo::config::iequals</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_config_8cpp_1acb8ba7c3776d41f2b793dc65d499c240.html">Function cardillo::config::trim</a></li>
-<li class="toctree-l4"><a class="reference internal" href="function_heightmap__loader_8cpp_1a93d1831d8d3e246a8bc9ee7bd1e98952.html">Function cardillo::io::load_exr_heightmap</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_softbody__loader_8cpp_1ab21bc378cef623aad80954e9bd463f1e.html">Function cardillo::io::load_obj_softbody</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_spline_8cpp_1a754c8656de3e7871f7073c0c4c044c73.html">Function cardillo::misc::loadSplinesFromBCC</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_spline_8cpp_1a37a250371bd718a9f766cfe064c5ec14.html">Function cardillo::misc::makeFrameFromTangent</a></li>
@@ -728,35 +725,6 @@
 </div>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="structcardillo_1_1C__HeightField.html">Struct C_HeightField</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="structcardillo_1_1C__HeightField.html#struct-documentation">Struct Documentation</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="structcardillo_1_1C__HeightField.html#_CPPv4N8cardillo13C_HeightFieldE"><code class="docutils literal notranslate"><span class="pre">cardillo::C_HeightField</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html#_CPPv4N8cardillo13C_HeightField4pathE"><code class="docutils literal notranslate"><span class="pre">path</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html#_CPPv4N8cardillo13C_HeightField5x_dimE"><code class="docutils literal notranslate"><span class="pre">x_dim</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html#_CPPv4N8cardillo13C_HeightField5y_dimE"><code class="docutils literal notranslate"><span class="pre">y_dim</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html#_CPPv4N8cardillo13C_HeightField7z_scaleE"><code class="docutils literal notranslate"><span class="pre">z_scale</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html#_CPPv4N8cardillo13C_HeightField10min_heightE"><code class="docutils literal notranslate"><span class="pre">min_height</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html">Struct C_HeightFieldVisualTag</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html#struct-documentation">Struct Documentation</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html#_CPPv4N8cardillo22C_HeightFieldVisualTagE"><code class="docutils literal notranslate"><span class="pre">cardillo::C_HeightFieldVisualTag</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<ul>
 <li class="toctree-l1"><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html">Struct C_InertiaDiag</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html#struct-documentation">Struct Documentation</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html#_CPPv4N8cardillo13C_InertiaDiagE"><code class="docutils literal notranslate"><span class="pre">cardillo::C_InertiaDiag</span></code></a><ul>
@@ -995,17 +963,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cylinder.html#_CPPv4N8cardillo13C_RB_Cylinder10halfLengthE"><code class="docutils literal notranslate"><span class="pre">halfLength</span></code></a></li>
 </ul>
 </li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html">Struct C_RB_HeightField</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html#struct-documentation">Struct Documentation</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html#_CPPv4N8cardillo16C_RB_HeightFieldE"><code class="docutils literal notranslate"><span class="pre">cardillo::C_RB_HeightField</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -1285,7 +1242,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config6sim_dtE"><code class="docutils literal notranslate"><span class="pre">sim_dt</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config11sim_gravityE"><code class="docutils literal notranslate"><span class="pre">sim_gravity</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config21output_interval_stepsE"><code class="docutils literal notranslate"><span class="pre">output_interval_steps</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config25output_heightfield_strideE"><code class="docutils literal notranslate"><span class="pre">output_heightfield_stride</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config28output_contacts_body_vectorsE"><code class="docutils literal notranslate"><span class="pre">output_contacts_body_vectors</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config13output_folderE"><code class="docutils literal notranslate"><span class="pre">output_folder</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config22output_filename_prefixE"><code class="docutils literal notranslate"><span class="pre">output_filename_prefix</span></code></a></li>
@@ -1331,27 +1287,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config25moreau_implicit_gyroscopyE"><code class="docutils literal notranslate"><span class="pre">moreau_implicit_gyroscopy</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config19moreau_lambda_thetaE"><code class="docutils literal notranslate"><span class="pre">moreau_lambda_theta</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html#_CPPv4N8cardillo6config6Config10scene_nameE"><code class="docutils literal notranslate"><span class="pre">scene_name</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html">Struct HeightFieldAsset</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#struct-documentation">Struct Documentation</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAssetE"><code class="docutils literal notranslate"><span class="pre">cardillo::HeightFieldAsset</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAsset2hfE"><code class="docutils literal notranslate"><span class="pre">hf</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAsset4rowsE"><code class="docutils literal notranslate"><span class="pre">rows</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAsset4colsE"><code class="docutils literal notranslate"><span class="pre">cols</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAsset5x_dimE"><code class="docutils literal notranslate"><span class="pre">x_dim</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAsset5y_dimE"><code class="docutils literal notranslate"><span class="pre">y_dim</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAsset7z_scaleE"><code class="docutils literal notranslate"><span class="pre">z_scale</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAsset10min_heightE"><code class="docutils literal notranslate"><span class="pre">min_height</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAsset4pathE"><code class="docutils literal notranslate"><span class="pre">path</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -2098,7 +2033,7 @@
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html#_CPPv4N8cardillo2io13MeshGenerator19generateCapsuleMeshEiii6real_t6real_tRNSt6vectorI8Vector3rEERNSt6vectorIN5Eigen8Vector3iEEE"><code class="docutils literal notranslate"><span class="pre">generateCapsuleMesh()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html#_CPPv4N8cardillo2io13MeshGenerator20generateCylinderMeshEi6real_t6real_tRNSt6vectorI8Vector3rEERNSt6vectorIN5Eigen8Vector3iEEE"><code class="docutils literal notranslate"><span class="pre">generateCylinderMesh()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html#_CPPv4N8cardillo2io13MeshGenerator16generateConeMeshEi6real_t6real_tRNSt6vectorI8Vector3rEERNSt6vectorIN5Eigen8Vector3iEEE"><code class="docutils literal notranslate"><span class="pre">generateConeMesh()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html#_CPPv4N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityEiR10EntityMesh"><code class="docutils literal notranslate"><span class="pre">buildEntityMesh()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html#_CPPv4N8cardillo2io13MeshGenerator15buildEntityMeshERKN8cardillo5WorldEN4entt6entityER10EntityMesh"><code class="docutils literal notranslate"><span class="pre">buildEntityMesh()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html#_CPPv4N8cardillo2io13MeshGenerator10EntityMeshE"><code class="docutils literal notranslate"><span class="pre">cardillo::io::MeshGenerator::EntityMesh</span></code></a><ul>
 <li class="toctree-l5"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html#_CPPv4N8cardillo2io13MeshGenerator10EntityMesh6entityE"><code class="docutils literal notranslate"><span class="pre">entity</span></code></a></li>
 <li class="toctree-l5"><a class="reference internal" href="classcardillo_1_1io_1_1MeshGenerator.html#_CPPv4N8cardillo2io13MeshGenerator10EntityMesh9isDynamicE"><code class="docutils literal notranslate"><span class="pre">isDynamic</span></code></a></li>
@@ -2137,7 +2072,6 @@
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html#_CPPv4N8cardillo2io15VtkWriterBinary12setOutputDirERKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">setOutputDir()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html#_CPPv4N8cardillo2io15VtkWriterBinary11setBaseNameERKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">setBaseName()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html#_CPPv4N8cardillo2io15VtkWriterBinary12setFrequencyEi"><code class="docutils literal notranslate"><span class="pre">setFrequency()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html#_CPPv4N8cardillo2io15VtkWriterBinary20setHeightFieldStrideEi"><code class="docutils literal notranslate"><span class="pre">setHeightFieldStride()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html#_CPPv4N8cardillo2io15VtkWriterBinary10maybeWriteEi6real_tRKN8cardillo5WorldEPN8cardillo9collision13CollisionCoalEPN8cardillo4misc13TimingManagerEPN8cardillo7physics17DynamicsAssemblerE"><code class="docutils literal notranslate"><span class="pre">maybeWrite()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html#_CPPv4N8cardillo2io15VtkWriterBinary5writeEi6real_tRKN8cardillo5WorldEPN8cardillo9collision13CollisionCoalEPN8cardillo4misc13TimingManagerEPN8cardillo7physics17DynamicsAssemblerE"><code class="docutils literal notranslate"><span class="pre">write()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1io_1_1VtkWriterBinary.html#_CPPv4N8cardillo2io15VtkWriterBinary20enableContactsOutputEbRKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">enableContactsOutput()</span></code></a></li>
@@ -2520,7 +2454,6 @@
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BodyFactory.html#_CPPv4N8cardillo7physics11BodyFactory10createBeamER5WorldRKN4misc13SplinePatternERKN7physics16BeamCrossSectionERKN7physics16BeamSpringParamsERKN7physics10RigidStateERKN7physics10RigidPropsE6size_tPN8cardillo9collision13CollisionCoalE"><code class="docutils literal notranslate"><span class="pre">createBeam()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BodyFactory.html#_CPPv4N8cardillo7physics11BodyFactory11createBeamsER5WorldRKNSt6vectorIPKN4misc13SplinePatternEEERKN7physics16BeamCrossSectionERKN7physics16BeamSpringParamsERKN7physics10RigidStateERKN7physics10RigidPropsE6size_tPN8cardillo9collision13CollisionCoalE"><code class="docutils literal notranslate"><span class="pre">createBeams()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BodyFactory.html#_CPPv4N8cardillo7physics11BodyFactory12addPointMassER5World6real_tRK8Vector3rRK8Vector3r6real_t"><code class="docutils literal notranslate"><span class="pre">addPointMass()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BodyFactory.html#_CPPv4N8cardillo7physics11BodyFactory22addObstacleHeightFieldER5WorldRK8Vector3rRK12Quaternion4rRKNSt6stringE6real_t6real_t6real_t6real_t"><code class="docutils literal notranslate"><span class="pre">addObstacleHeightField()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1BodyFactory.html#_CPPv4N8cardillo7physics11BodyFactory11addSoftBodyER5WorldRKNSt6stringE6real_t6real_tRK8Vector3rRK12Quaternion4rRK8Vector3rRK8Vector3r6real_t6real_tPN8cardillo9collision13CollisionCoalE"><code class="docutils literal notranslate"><span class="pre">addSoftBody()</span></code></a></li>
 </ul>
 </li>
@@ -2718,7 +2651,6 @@
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine12addRigidBodyERK10RigidShapeRK10RigidStateRK10RigidProps"><code class="docutils literal notranslate"><span class="pre">addRigidBody()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine13addStaticBodyERK10RigidShapeRK10RigidState"><code class="docutils literal notranslate"><span class="pre">addStaticBody()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine12addPointMassE6real_tRK8Vector3rRK8Vector3r6real_t"><code class="docutils literal notranslate"><span class="pre">addPointMass()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine22addObstacleHeightFieldERK8Vector3rRK12Quaternion4rRKNSt6stringE6real_t6real_t6real_t6real_t"><code class="docutils literal notranslate"><span class="pre">addObstacleHeightField()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine11addSoftBodyERKNSt6stringE6real_t6real_tRK8Vector3rRK12Quaternion4rRK8Vector3rRK8Vector3r6real_t6real_t"><code class="docutils literal notranslate"><span class="pre">addSoftBody()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine10createBeamERKN8cardillo4misc13SplinePatternERK16BeamCrossSectionRK16BeamSpringParamsRK10RigidStateRK10RigidProps6size_t"><code class="docutils literal notranslate"><span class="pre">createBeam()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine11createBeamsERKNSt6vectorIPKN8cardillo4misc13SplinePatternEEERK16BeamCrossSectionRK16BeamSpringParamsRK10RigidStateRK10RigidProps6size_t"><code class="docutils literal notranslate"><span class="pre">createBeams()</span></code></a></li>
@@ -2842,7 +2774,6 @@
 <li class="toctree-l3"><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html#_CPPv4N8cardillo13PhysicsAssetsE"><code class="docutils literal notranslate"><span class="pre">cardillo::PhysicsAssets</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html#_CPPv4N8cardillo13PhysicsAssets13PhysicsAssetsEv"><code class="docutils literal notranslate"><span class="pre">PhysicsAssets()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html#_CPPv4NK8cardillo13PhysicsAssets7getMeshERKNSt6stringERK8Vector3rb"><code class="docutils literal notranslate"><span class="pre">getMesh()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html#_CPPv4NK8cardillo13PhysicsAssets14getHeightFieldERKNSt6stringE6real_t6real_t6real_t6real_t"><code class="docutils literal notranslate"><span class="pre">getHeightField()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1PhysicsAssets.html#_CPPv4N8cardillo13PhysicsAssets5clearEv"><code class="docutils literal notranslate"><span class="pre">clear()</span></code></a></li>
 </ul>
 </li>
@@ -3055,7 +2986,6 @@
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1World.html#_CPPv4NK8cardillo5World18getForceGyroscopicEN4entt6entityE"><code class="docutils literal notranslate"><span class="pre">getForceGyroscopic()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1World.html#_CPPv4NK8cardillo5World16getKineticEnergyEN4entt6entityE"><code class="docutils literal notranslate"><span class="pre">getKineticEnergy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1World.html#_CPPv4NK8cardillo5World12getMeshAssetEN4entt6entityE"><code class="docutils literal notranslate"><span class="pre">getMeshAsset()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1World.html#_CPPv4NK8cardillo5World19getHeightFieldAssetEN4entt6entityE"><code class="docutils literal notranslate"><span class="pre">getHeightFieldAsset()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1World.html#_CPPv4NK8cardillo5World3ecsEv"><code class="docutils literal notranslate"><span class="pre">ecs()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1World.html#_CPPv4N8cardillo5World3ecsEv"><code class="docutils literal notranslate"><span class="pre">ecs()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="classcardillo_1_1World.html#_CPPv4N8cardillo5World18constraintPatternsEv"><code class="docutils literal notranslate"><span class="pre">constraintPatterns()</span></code></a></li>
@@ -3180,17 +3110,6 @@
 <li class="toctree-l1"><a class="reference internal" href="function_config_8cpp_1acb8ba7c3776d41f2b793dc65d499c240.html">Function cardillo::config::trim</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="function_config_8cpp_1acb8ba7c3776d41f2b793dc65d499c240.html#function-documentation">Function Documentation</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="function_config_8cpp_1acb8ba7c3776d41f2b793dc65d499c240.html#_CPPv4N8cardillo6config4trimERKNSt6stringE"><code class="docutils literal notranslate"><span class="pre">trim()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="function_heightmap__loader_8cpp_1a93d1831d8d3e246a8bc9ee7bd1e98952.html">Function cardillo::io::load_exr_heightmap</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="function_heightmap__loader_8cpp_1a93d1831d8d3e246a8bc9ee7bd1e98952.html#function-documentation">Function Documentation</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="function_heightmap__loader_8cpp_1a93d1831d8d3e246a8bc9ee7bd1e98952.html#_CPPv4N8cardillo2io18load_exr_heightmapERKNSt6stringERN5Eigen6MatrixIN4coal10CoalScalarEN5Eigen7DynamicEN5Eigen7DynamicEEERiRi"><code class="docutils literal notranslate"><span class="pre">load_exr_heightmap()</span></code></a></li>
 </ul>
 </li>
 </ul>

@@ -3,10 +3,10 @@ Splines
 
 Splines are reusable geometric paths used by the engine in two main places:
 
-- as input geometry for ``createBeam`` / ``createBeams``
-- as looping kinematic paths for ``addTrajectory(entity, spline, period)``
+ - as input geometry for :cpp:func:`PhysicsEngine::createBeam <cardillo::physics::PhysicsEngine::createBeam>` / :cpp:func:`PhysicsEngine::createBeams <cardillo::physics::PhysicsEngine::createBeams>`
+ - as looping kinematic paths for :cpp:func:`PhysicsEngine::addTrajectory <cardillo::physics::PhysicsEngine::addTrajectory>`
 
-All spline types live in ``src/misc/spline.hpp`` under ``cardillo::misc``.
+All spline types live in ``misc/spline.hpp`` under ``cardillo::misc``.
 
 .. contents:: On this page
    :local:
@@ -15,7 +15,7 @@ All spline types live in ``src/misc/spline.hpp`` under ``cardillo::misc``.
 The common interface
 --------------------
 
-All spline classes derive from ``misc::SplinePattern``:
+All spline classes derive from :cpp:class:`SplinePattern <cardillo::misc::SplinePattern>` (`misc::SplinePattern`):
 
 .. code-block:: cpp
 
@@ -25,10 +25,10 @@ All spline classes derive from ``misc::SplinePattern``:
        virtual real_t totalLength() const = 0;
        virtual bool isLoop() const = 0;
        virtual SplineSample sample(real_t alpha) const = 0;
-       virtual Vector3r centerOfMass() const = 0;
+       virtual Vector3r centerOfCompass() const = 0;
    };
 
-``sample(alpha)`` returns a ``SplineSample``:
+``sample(alpha)`` returns a :cpp:struct:`SplineSample <cardillo::misc::SplineSample>`:
 
 .. code-block:: cpp
 
@@ -45,7 +45,7 @@ implementations.
 Built-in spline types
 ---------------------
 
-LinearSpline
+:cpp:class:`LinearSpline <cardillo::misc::LinearSpline>`
 ~~~~~~~~~~~~
 
 A straight segment between two points.
@@ -66,7 +66,7 @@ Properties:
 - ``isLoop()`` is always ``false``
 - ``centerOfMass()`` is the midpoint
 
-CircleSpline
+:cpp:class:`CircleSpline <cardillo::misc::CircleSpline>`
 ~~~~~~~~~~~~
 
 A circular arc in a plane, or a full loop if the angle span is ``2π``.
@@ -100,7 +100,7 @@ Notes:
 - ``isLoop()`` is true only when ``|thetaSpan|`` is effectively ``2π``
 - ``centerOfMass()`` returns the circle center
 
-HelixSpline
+:cpp:class:`HelixSpline <cardillo::misc::HelixSpline>`
 ~~~~~~~~~~~
 
 A helical path around an axis.
@@ -134,7 +134,7 @@ Notes:
 - ``turns`` is the total number of revolutions
 - ``isLoop()`` is always ``false``
 
-CatmullRomSpline
+:cpp:class:`CatmullRomSpline <cardillo::misc::CatmullRomSpline>`
 ~~~~~~~~~~~~~~~~
 
 A smooth curve through a list of control points.

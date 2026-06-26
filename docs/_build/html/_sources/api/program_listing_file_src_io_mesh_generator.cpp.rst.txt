@@ -252,7 +252,7 @@ Program Listing for File mesh_generator.cpp
    
    namespace {
    
-   enum class MeshKind { Unsupported, SoftBody, Plane, Cube, Capsule, Cylinder, Cone, MeshAsset, HeightField, Sphere };
+   enum class MeshKind { Unsupported, SoftBody, Plane, Cube, Capsule, Cylinder, Cone, MeshAsset, Sphere };
    
    MeshKind detectMeshKind(const entt::registry& reg, entt::entity e) {
        if (reg.any_of<cardillo::C_SoftBodySurface>(e)) return MeshKind::SoftBody;
@@ -262,7 +262,6 @@ Program Listing for File mesh_generator.cpp
        if (reg.any_of<cardillo::C_Cylinder>(e)) return MeshKind::Cylinder;
        if (reg.any_of<cardillo::C_Cone>(e)) return MeshKind::Cone;
        if (reg.any_of<cardillo::C_Mesh>(e)) return MeshKind::MeshAsset;
-       if (reg.any_of<cardillo::C_HeightField>(e)) return MeshKind::HeightField;
        if (reg.any_of<cardillo::C_RB_Sphere, cardillo::C_Radius>(e)) return MeshKind::Sphere;
        return MeshKind::Unsupported;
    }
@@ -437,61 +436,7 @@ Program Listing for File mesh_generator.cpp
        }
    }
    
-   bool buildHeightFieldTriangles(const cardillo::World& sys, entt::entity e, int heightFieldStride, cardillo::io::MeshGenerator::EntityMesh& out) {
-       try {
-           const auto& asset = sys.getHeightFieldAsset(e);
-           if (!asset.hf) return false;
-   
-           const auto& hf = *asset.hf;
-           const auto& X = hf.getXGrid();
-           const auto& Y = hf.getYGrid();
-           const auto& H = hf.getHeights();
-           const int rows = (int)H.rows();
-           const int cols = (int)H.cols();
-           if (rows <= 1 || cols <= 1) return false;
-   
-           const int s = std::max(1, heightFieldStride);
-           std::vector<int> xIdx;
-           std::vector<int> yIdx;
-           for (int x = 0; x < cols; x += s) xIdx.push_back(x);
-           if (!xIdx.empty() && xIdx.back() != cols - 1) xIdx.push_back(cols - 1);
-           for (int y = 0; y < rows; y += s) yIdx.push_back(y);
-           if (!yIdx.empty() && yIdx.back() != rows - 1) yIdx.push_back(rows - 1);
-   
-           const int nxs = (int)xIdx.size();
-           const int nys = (int)yIdx.size();
-           out.vertices.reserve((size_t)nxs * (size_t)nys);
-           out.uvs.reserve((size_t)nxs * (size_t)nys);
-   
-           for (int yi = 0; yi < nys; ++yi) {
-               int y = yIdx[yi];
-               float vf = nys > 1 ? (float)yi / (float)(nys - 1) : 0.f;
-               for (int xi = 0; xi < nxs; ++xi) {
-                   int x = xIdx[xi];
-                   float uf = nxs > 1 ? (float)xi / (float)(nxs - 1) : 0.f;
-                   Vector3r pLocal((real_t)X[x], (real_t)Y[y], (real_t)H(y, x));
-                   out.vertices.push_back(out.R * pLocal + out.center);
-                   out.uvs.emplace_back(uf, 1.0f - vf);
-               }
-           }
-           out.hasUV = true;
-   
-           out.triangles.reserve((size_t)(nxs - 1) * (size_t)(nys - 1) * 2);
-           for (int yi = 0; yi < nys - 1; ++yi) {
-               for (int xi = 0; xi < nxs - 1; ++xi) {
-                   int i0 = yi * nxs + xi;
-                   int i1 = i0 + 1;
-                   int i2 = i0 + nxs;
-                   int i3 = i2 + 1;
-                   out.triangles.emplace_back(i0, i1, i2);
-                   out.triangles.emplace_back(i1, i3, i2);
-               }
-           }
-           return true;
-       } catch (...) {
-           return false;
-       }
-   }
+   // HeightField mesh generation removed
    
    bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
        const real_t radius = reg.get<cardillo::C_Radius>(e).r;
@@ -514,7 +459,7 @@ Program Listing for File mesh_generator.cpp
    
    }  // namespace
    
-   bool MeshGenerator::buildEntityMesh(const cardillo::World& sys, entt::entity e, int heightFieldStride, EntityMesh& out) {
+   bool MeshGenerator::buildEntityMesh(const cardillo::World& sys, entt::entity e, EntityMesh& out) {
        const auto& reg = sys.ecs();
        if (!reg.valid(e) || !reg.any_of<cardillo::C_VisualObject>(e)) {
            return false;
@@ -537,8 +482,6 @@ Program Listing for File mesh_generator.cpp
                return buildConeMeshTriangles(reg, e, out);
            case MeshKind::MeshAsset:
                return buildMeshAssetTriangles(sys, e, out);
-           case MeshKind::HeightField:
-               return buildHeightFieldTriangles(sys, e, heightFieldStride, out);
            case MeshKind::Sphere:
                return buildSphereMeshTriangles(reg, e, out);
            case MeshKind::Unsupported:

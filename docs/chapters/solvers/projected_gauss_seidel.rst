@@ -8,33 +8,15 @@ Projected Gauss-Seidel
 The core problem
 ----------------
 
-The Moreau time-stepping scheme produces the following scaled linear system at
-each step (see :doc:`../physics_pipeline`, step 6):
+The Moreau time-stepping scheme produces the scaled linear system used by
+the solvers. In compact form:
 
 .. math::
 
-   \underbrace{\begin{pmatrix}
-     M_\mathrm{eff} & W_g & W_\gamma \\
-     W_g^\top & -\tfrac{C}{\theta\,dt^2} & 0 \\
-     W_\gamma^\top & 0 & -\tfrac{A}{\theta\,dt}
-   \end{pmatrix}}_{\mathcal{S}}
-   \begin{pmatrix} u_{n+1} \\ \Lambda_g \\ \Lambda_\gamma \end{pmatrix}
-   =
-   \begin{pmatrix}
-     M u_n + dt\, f^\mathrm{ext} + W_{NT}\,\Lambda_{NT} \\
-     -\tfrac{C\,\Lambda_{g,n}}{\theta\,dt^2} - \tfrac{1-\theta}{\theta}W_g^\top u_n - \tfrac{1}{\theta}v_g \\
-     -\tfrac{1-\theta}{\theta}W_\gamma^\top u_n - \tfrac{1}{\theta}v_\gamma
-   \end{pmatrix}
+  \mathcal{S}\,\mathbf{x}_{n+1} = \mathbf{b}_n
 
-where:
-
-- :math:`u` is the stacked generalized velocity
-- :math:`\Lambda_g = -dt\,\lambda_g` are scaled spring multipliers
-- :math:`\Lambda_\gamma = -dt\,\lambda_\gamma` are scaled damper multipliers
-- :math:`M_\mathrm{eff} = M - dt\,G(u_n)` is the effective mass including the optional implicit gyroscopic correction
-- :math:`C = K^{-1}` and :math:`A = D^{-1}` are the compliance and attenuation diagonals
-- :math:`v_g`, :math:`v_\gamma` are velocity source terms from trajectory-driven bodies
-- :math:`\Lambda_{NT}` is the stacked contact impulse vector with normal and tangential components
+See the Moreau chapter :doc:`../moreau_time_stepping` for the full derivation and the detailed block
+definitions of :math:`\mathcal{S}` and :math:`\mathbf{b}_n`.
 
 Reducing to the constraint multiplier space
 -------------------------------------------
@@ -51,7 +33,7 @@ where the Schur complement matrix is:
 
 .. math::
 
-   \mathbf{S} = \hat{W}^\top M_\mathrm{eff}^{-1} \hat{W} - \hat{C},
+   \mathbf{S} = \hat{W}^\top M^{-1} \hat{W} - \hat{C},
 
 with :math:`\hat{W} = (W_g, W_\gamma)` and block-diagonal
 :math:`\hat{C} = \mathrm{diag}(-C/(\theta\,dt^2),\; -A/(\theta\,dt))`.
@@ -59,22 +41,22 @@ The right-hand side is:
 
 .. math::
 
-   \tilde{b} = \hat{W}^\top M_\mathrm{eff}^{-1} b_u - \hat{b}
+   \tilde{b} = \hat{W}^\top M^{-1} b_u - \hat{b}
 
 where :math:`b_u` and :math:`\hat{b}` are the corresponding blocks of the full
 right-hand side. Once :math:`\hat\Lambda` is known, the velocity is recovered as:
 
 .. math::
 
-   u_{n+1} = \underbrace{M_\mathrm{eff}^{-1} b_u}_{u_\mathrm{free}}
-           - \underbrace{M_\mathrm{eff}^{-1} \hat{W}\,\hat\Lambda}_{u_\mathrm{corr}}
+   u_{n+1} = \underbrace{M^{-1} b_u}_{u_\mathrm{free}}
+           - \underbrace{M^{-1} \hat{W}\,\hat\Lambda}_{u_\mathrm{corr}}
 
 The matrix-vector product :math:`\mathbf{S}\hat\Lambda` is evaluated through
 the velocity correction:
 
 .. math::
 
-   u_\mathrm{corr} = M_\mathrm{eff}^{-1}\hat{W}\hat\Lambda,
+   u_\mathrm{corr} = M^{-1}\hat{W}\hat\Lambda,
    \qquad
    \mathbf{S}\hat\Lambda = \hat{W}^\top u_\mathrm{corr} - \hat{C}\hat\Lambda.
 
@@ -89,7 +71,7 @@ The extended system becomes:
 .. math::
 
    \begin{pmatrix}
-     M_\mathrm{eff} & \hat{W} & W_{NT} \\
+     M & \hat{W} & W_{NT} \\
      \hat{W}^\top & -\hat{C} & 0 \\
      W_{NT}^\top & 0 & 0
    \end{pmatrix}
@@ -98,17 +80,14 @@ The extended system becomes:
    \begin{pmatrix} b_u \\ \hat{b} \\ b_{NT} \end{pmatrix}
 
 The zero block in the lower right means contact rows have no compliance term.
-Contact impulses are not determined by this linear system alone; they are subject
-to the non-convex contact projection (Signorini + Coulomb):
-
-- **frictionless**: :math:`\Lambda_{N} \geq 0`
-- **frictional**: :math:`\|\Lambda_{T}\| \leq \mu\,\Lambda_{N}`
+Contact impulses are not determined by this linear system alone; they are
+subject to the non-smooth contact projection (Signorini + Coulomb). 
 
 The full multiplier vector in the implementation is therefore:
 
 .. math::
 
-   \lambda = \begin{pmatrix} \Lambda_g \\ \Lambda_\gamma \\ \Lambda_{NT} \end{pmatrix}
+  \begin{pmatrix} \Lambda_g \\ \Lambda_\gamma \\ \Lambda_{NT} \end{pmatrix}
 
 The block diagonal preconditioner
 ----------------------------------
@@ -118,7 +97,7 @@ restricted to that block:
 
 .. math::
 
-   D_j = \hat{W}_j^\top M_\mathrm{eff}^{-1} \hat{W}_j - \hat{C}_j
+   D_j = \hat{W}_j^\top M^{-1} \hat{W}_j - \hat{C}_j
 
 For constraint patterns (hinges, beams, etc.) this is a small dense matrix
 (up to 6x6) that may be inverted implicitly using a Cholesky factorization.

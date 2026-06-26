@@ -29,8 +29,6 @@ Includes
 
 - ``../../io/csv_writer.hpp``
 
-- ``../../io/heightmap_loader.hpp``
-
 - ``../../io/softbody_loader.hpp``
 
 - ``../constraints/constraint_factory.hpp``

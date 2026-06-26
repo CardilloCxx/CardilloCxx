@@ -1,20 +1,16 @@
 Bodies
 ======
 
-All body-creation methods live on ``PhysicsEngine`` and delegate to the factory
-classes in ``src/physics/assets/``. Rigid bodies, static bodies, point masses,
+All body-creation methods live on :cpp:class:`PhysicsEngine <cardillo::physics::PhysicsEngine>` and delegate to the factory
+classes in ``physics/assets/``. Rigid bodies, static bodies, point masses,
 and height fields all return an ``entt::entity`` that you keep around to pass
-to constraint factories, trajectory setters, and state queries. 
+to constraint factories, trajectory setters, and state queries.
 
-.. contents:: On this page
-   :local:
-   :depth: 2
+RigidState
+~~~~~~~~~~
 
-RigidState (initial kinematics)
----------------------------------
-
-``RigidState`` (``src/physics/api/physics_types.hpp``) describes where a body
-starts in the world and how fast it is moving:
+:cpp:struct:`RigidState <cardillo::physics::RigidState>` describes where a body
+starts in the inertial system and how fast it is moving:
 
 .. list-table::
    :header-rows: 1
@@ -25,10 +21,10 @@ starts in the world and how fast it is moving:
      - Meaning
    * - ``position``
      - ``(0, 0, 0)``
-     - World-frame centre-of-mass position in metres.
+     - Inertial-frame centre-of-mass position in metres.
    * - ``orientation``
      - ``Identity``
-     - World-frame orientation as a unit quaternion
+     - Inertial-frame orientation as a unit quaternion
        (``Eigen::Quaternion<real_t>``).
    * - ``rotation``
      - ``Identity``
@@ -37,10 +33,10 @@ starts in the world and how fast it is moving:
        you must update ``rotation`` as well (or prefer the constructors).
    * - ``linearVelocity``
      - ``(0, 0, 0)``
-     - World-frame linear velocity in m/s.
+     - Inertial-frame linear velocity in m/s.
    * - ``angularVelocity``
      - ``(0, 0, 0)``
-     - Body-frame angular velocity in rad/s.
+     - Body Basis angular velocity in rad/s.
 
 ``RigidState`` provides several convenience constructors so you rarely need
 to set every field manually:
@@ -76,10 +72,10 @@ to set every field manually:
    ``RigidState`` are treated as an offset from the model origin, not the
    centre of mass.
 
-RigidProps (mass and flags)
------------------------------
+RigidProps
+~~~~~~~~~~
 
-``RigidProps`` (``src/physics/api/physics_types.hpp``) controls mass, friction,
+``RigidProps`` controls mass, friction,
 and pipeline participation:
 
 .. list-table::
@@ -125,10 +121,10 @@ and pipeline participation:
 Shape types
 -----------
 
-The second argument to ``addRigidBody`` / ``addStaticBody`` is a ``RigidShape``
-variant. All shapes are defined in ``src/physics/api/physics_types.hpp``.
+The second argument to :cpp:func:`PhysicsEngine::addRigidBody <cardillo::physics::PhysicsEngine::addRigidBody>` / :cpp:func:`PhysicsEngine::addStaticBody <cardillo::physics::PhysicsEngine::addStaticBody>` is a ``RigidShape``
+variant. All shapes are defined in ``physics/api/physics_types.hpp``.
 
-CubeShape
+:cpp:struct:`CubeShape <cardillo::physics::CubeShape>`
 ~~~~~~~~~
 
 An axis-aligned box. The collision geometry and visual quad both follow the
@@ -152,7 +148,7 @@ body's orientation quaternion.
 Inertia is computed as a solid box:
 :math:`I_{xx} = m(h_y^2 + h_z^2)/3`, etc.
 
-SphereShape
+:cpp:struct:`SphereShape <cardillo::physics::SphereShape>`
 ~~~~~~~~~~~
 
 .. code-block:: cpp
@@ -163,11 +159,11 @@ SphereShape
 
 Inertia: :math:`I = \frac{2}{5} m r^2` along all axes.
 
-CapsuleShape
+:cpp:struct:`CapsuleShape <cardillo::physics::CapsuleShape>`
 ~~~~~~~~~~~~
 
 A cylinder capped with two hemispheres. The long axis runs along the body's
-local **z-axis**. Rotate the body's ``orientation`` to align it in world space.
+local **z-axis**. Rotate the body's ``orientation`` to align it in inertial space.
 
 .. code-block:: cpp
 
@@ -193,7 +189,7 @@ The full extent of the capsule along its local z-axis is
 Inertia is computed via COAL's ``coal::Capsule::computeMomentofInertia()``,
 which accounts for both the cylindrical shaft and the two end caps.
 
-CylinderShape
+:cpp:struct:`CylinderShape <cardillo::physics::CylinderShape>`
 ~~~~~~~~~~~~~
 
 A flat-ended cylinder. Long axis along the body's local **z-axis**.
@@ -216,7 +212,7 @@ Inertia:
 :math:`I_{zz} = \frac{1}{2}mr^2`,
 :math:`I_{xx} = I_{yy} = \frac{m(3r^2 + (2h)^2)}{12}`.
 
-ConeShape
+:cpp:struct:`ConeShape <cardillo::physics::ConeShape>`
 ~~~~~~~~~
 
 A right circular cone. Tip points along the body's local **+z** axis.
@@ -227,11 +223,11 @@ A right circular cone. Tip points along the body's local **+z** axis.
 
    ConeShape c(0.1, 0.3);  // base radius 10 cm, height 30 cm
 
-PlaneShape
+:cpp:struct:`PlaneShape <cardillo::physics::PlaneShape>`
 ~~~~~~~~~~
 
 An infinite (collision-wise) flat surface. The visual quad has finite size.
-Typically used with ``addStaticBody``.
+Typically used with :cpp:func:`addStaticBody() <cardillo::physics::PhysicsEngine::addStaticBody>`.
 
 .. code-block:: cpp
 
@@ -246,7 +242,7 @@ Typically used with ``addStaticBody``.
    * - Field
      - Meaning
    * - ``normal``
-     - World-space outward normal direction (the "above" side of the plane).
+     - Inertial-space outward normal direction (the "above" side of the plane).
    * - ``up``
      - Up direction for the visual quad, used to orient the rendered mesh.
    * - ``sizeX``
@@ -256,11 +252,11 @@ Typically used with ``addStaticBody``.
      - Visual half-extent along ``up``.
 
 .. important::
-   ``PlaneShape`` has no mass or inertia. Passing it to ``addRigidBody``
-   with a non-zero mass will produce an undefined inertia. Always use
-   ``addStaticBody`` for floor planes.
+  :cpp:struct:`PlaneShape <cardillo::physics::PlaneShape>` has no mass or inertia. Passing it to :cpp:func:`addRigidBody() <cardillo::physics::PhysicsEngine::addRigidBody>`
+  with a non-zero mass will produce an undefined inertia. Always use
+  :cpp:func:`addStaticBody() <cardillo::physics::PhysicsEngine::addStaticBody>` for floor planes.
 
-MeshShape
+:cpp:struct:`MeshShape <cardillo::physics::MeshShape>`
 ~~~~~~~~~
 
 A triangle mesh loaded from an OBJ or STL file. The engine normalises the
@@ -310,25 +306,24 @@ multiple bodies without re-loading.
 Dynamic vs. static bodies
 --------------------------
 
-``addRigidBody``
+:cpp:func:`addRigidBody <cardillo::physics::PhysicsEngine::addRigidBody>`
 ~~~~~~~~~~~~~~~~
 
 Creates a body that becomes **dynamic** only when the resolved mass is
 positive. If mass and density are both unset (or resolve to zero), the factory
 still creates the body's pose, shape, visual, and collision components, but it
-does not add ``C_PhysicsObject`` / rigid-body mass-inertia data, so the solver
+does not add :cpp:struct:`C_PhysicsObject <cardillo::C_PhysicsObject>` / rigid-body mass-inertia data, so the solver
 treats the body as static.
 
 .. code-block:: cpp
 
    entt::entity body = engine.addRigidBody(shape, state, props);
 
-``addStaticBody``
+:cpp:func:`addStaticBody <cardillo::physics::PhysicsEngine::addStaticBody>`
 ~~~~~~~~~~~~~~~~~
 
 Creates a **static** obstacle with zero mass. It participates in collision
-detection but never moves under forces or constraints. Internally this calls
-``addRigidBody`` with ``RigidProps(0)``.
+detection but never moves under forces or constraints.
 
 .. code-block:: cpp
 

@@ -47,8 +47,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -147,7 +149,7 @@
 <span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">vis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reg</span><span class="p">.</span><span class="n">view</span><span class="o">&lt;</span><span class="n">cardillo</span><span class="o">::</span><span class="n">C_VisualObject</span><span class="o">&gt;</span><span class="p">();</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">vis</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="n">EntityMesh</span><span class="w"> </span><span class="n">mesh</span><span class="p">;</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">MeshGenerator</span><span class="o">::</span><span class="n">buildEntityMesh</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="o">&gt;</span><span class="p">(</span><span class="n">e</span><span class="p">),</span><span class="w"> </span><span class="n">m_hfStride</span><span class="p">,</span><span class="w"> </span><span class="n">mesh</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">MeshGenerator</span><span class="o">::</span><span class="n">buildEntityMesh</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">entt</span><span class="o">::</span><span class="n">entity</span><span class="o">&gt;</span><span class="p">(</span><span class="n">e</span><span class="p">),</span><span class="w"> </span><span class="n">mesh</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
 <span class="w">            </span><span class="n">meshes</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">mesh</span><span class="p">));</span>
 <span class="w">        </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>

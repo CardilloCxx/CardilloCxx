@@ -486,11 +486,14 @@ window.runMermaid = runMermaid;</script>
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Solvers</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Projected Jacobi</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#the-problem">The problem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fixed-point-formulation-and-iteration">Fixed-point formulation and iteration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#how-it-solves">How it solves</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#optional-nesterov-acceleration">Optional Nesterov acceleration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#warmstart">Warmstart</a></li>
@@ -544,34 +547,54 @@ apply repeatedly.</p>
 <section id="the-problem">
 <h2>The problem<a class="headerlink" href="#the-problem" title="Link to this heading"></a></h2>
 <p>The solver minimises the kinetic energy deviation from the unconstrained
-(free-motion) step subject to contact feasibility. Concretely it solves:</p>
+(free-motion) step subject to contact feasibility. It solves the scaled
+system introduced in the Moreau chapter <a class="reference internal" href="../moreau_time_stepping.html"><span class="doc">Time-Stepping for Non-Smooth Mechanical Systems</span></a>:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}S \begin{pmatrix} u \\ \lambda_g \\ \lambda_\gamma \end{pmatrix} = b\end{split}\]</div>
-<p>where the extended system matrix is:</p>
+\[\mathcal{S}\,\mathbf{x}_{n+1} = \mathbf{b}_n,\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathcal{S}\)</span> is the scaled system matrix and <span class="math notranslate nohighlight">\(\mathbf{b}_n\)</span> is the
+assembled right-hand side (see the Moreau chapter for the exact block
+structure, the Baumgarte correction and the trajectory source-velocity
+contributions). Contact impulses <span class="math notranslate nohighlight">\(\Lambda_{NT}\)</span> enter the velocity block
+of <span class="math notranslate nohighlight">\(\mathbf{b}_n\)</span> via the term <span class="math notranslate nohighlight">\(\mathbf{W}_{NT}\,\Lambda_{NT}\)</span>.</p>
+</section>
+<section id="fixed-point-formulation-and-iteration">
+<h2>Fixed-point formulation and iteration<a class="headerlink" href="#fixed-point-formulation-and-iteration" title="Link to this heading"></a></h2>
+<p>We treat contact impulses <span class="math notranslate nohighlight">\(\mathbf{\Lambda}_{NT}\)</span> as the primary unknowns. The
+system is governed by the Delassus operator <span class="math notranslate nohighlight">\(\mathbf{G}\)</span>:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}S =
-\begin{bmatrix}
-M &amp; W_g^T &amp; W_\gamma^T \\
-W_g &amp; -\tfrac{C}{\theta \, dt^2} &amp; 0 \\
-W_\gamma &amp; 0 &amp; -\tfrac{A}{\theta \, dt}
-\end{bmatrix}\end{split}\]</div>
-<p>and the right-hand side <strong>b</strong> encodes the current velocity, external forces,
-carry-over multipliers, velocity source terms, and the Baumgarte position
-correction.</p>
-<p>When contacts are present, the contact impulses <span class="math notranslate nohighlight">\(\Lambda_{NT}\)</span> enter through the velocity
-correction:</p>
+\[\mathbf{G} = \mathbf{W}_{NT}^\top\,\mathcal{S}^{-1}\,\mathbf{W}_{NT}\]</div>
+<p>This allows us to express the contact-space velocity <span class="math notranslate nohighlight">\(\boldsymbol{\gamma}\)</span> as
+an affine map of the impulses:</p>
 <div class="math notranslate nohighlight">
-\[u = S^{-1}(b + W^T \Lambda_{NT})\]</div>
-<p>subject to the feasibility conditions on the contact impulses <span class="math notranslate nohighlight">\(\Lambda_{NT}\)</span>, given by</p>
+\[\boldsymbol{\gamma}(\mathbf{\Lambda}_{NT}) = \mathbf{G}\,\mathbf{\Lambda}_{NT} + \mathbf{v}_{NT}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{v}_{NT}\)</span> is the contact-space velocity induced by
+movement of non-physics bodies and motors.</p>
+<p>The Projected Jacobi iteration updates the impulses <span class="math notranslate nohighlight">\(\mathbf{\Lambda}_{NT}\)</span>
+by moving toward the root of this map and projecting onto the feasible contact set
+<span class="math notranslate nohighlight">\(\mathcal{P}\)</span>:</p>
+<ol class="arabic">
+<li><p><strong>Jacobi Sweep</strong>:
+Update the current guess <span class="math notranslate nohighlight">\(\mathbf{\Lambda}_{NT}^{(k)}\)</span> using the
+diagonal step-size matrix <span class="math notranslate nohighlight">\(\mathbf{R} \approx \text{diag}(\mathbf{G})^{-1}\)</span>:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\begin{aligned}
-    &amp;0 \le \gamma_{N}^+ \ \perp\ \Lambda_{N} \ge 0,\\
-    &amp;\lVert\boldsymbol{\Lambda}_{T,j}\rVert \le \mu_j\,\Lambda_{N,j},\\
-    &amp;\boldsymbol{\gamma}_{T,j}=\mathbf{0}\ \Rightarrow\ \lVert\boldsymbol{\Lambda}_{T,j}\rVert \le \mu_j\,\Lambda_{N,j}\qquad\text{(sticking)},\\
-    &amp;\boldsymbol{\gamma}^+_{T,j}\neq\mathbf{0}\ \Rightarrow\ \boldsymbol{\Lambda}_{T,j} = -\mu_j\,\Lambda_{N,j}\,\dfrac{\boldsymbol{\gamma}^+_{T,j}}{\lVert\boldsymbol{\gamma}^+_{T,j}\rVert}
-    \quad\text{and}\quad \lVert\boldsymbol{\Lambda}_{T,j}\rVert = \mu_j\,\Lambda_{N,j}\qquad\text{(sliding)}.
-\end{aligned}\end{split}\]</div>
-<p>with post impact contact velocity <span class="math notranslate nohighlight">\(\gamma_{NT}^{+}\)</span>.</p>
+\[\mathbf{\Lambda}_{NT}^{(*)} = \mathbf{\Lambda}_{NT}^{(k)} - \mathbf{R}\,\boldsymbol{\gamma}(\mathbf{\Lambda}_{NT}^{(k)})\]</div>
+</li>
+<li><p><strong>Projection</strong>:
+Project the result onto the feasible set <span class="math notranslate nohighlight">\(\mathcal{P}\)</span> (Signorini for
+normals, Coulomb friction for tangents):</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{\Lambda}_{NT}^{(k+1)} = \mathcal{P}\left(\mathbf{\Lambda}_{NT}^{(*)}\right)\]</div>
+</li>
+<li><p><strong>Velocity Update</strong>:
+Update the system state based on the change in impulses:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{x}^{(k+1)} = \mathbf{x}^{(k)} + \mathcal{S}^{-1}\,\bar{\mathbf{W}}_{NT}\,\left(\mathbf{\Lambda}_{NT}^{(k+1)} - \mathbf{\Lambda}_{NT}^{(k)}\right)\]</div>
+</li>
+</ol>
+<p>The implementation warm-starts <span class="math notranslate nohighlight">\(\mathbf{\Lambda}_{NT}^{(0)}\)</span> from the
+previous time step. It can be shown that the fixed point of this iteration
+satisfies the feasibility conditions for contact complementarity
+and Coulomb friction.</p>
 </section>
 <section id="how-it-solves">
 <h2>How it solves<a class="headerlink" href="#how-it-solves" title="Link to this heading"></a></h2>

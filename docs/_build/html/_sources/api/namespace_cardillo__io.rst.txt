@@ -25,6 +25,4 @@ Functions
 ---------
 
 
-- :ref:`exhale_function_heightmap__loader_8cpp_1a93d1831d8d3e246a8bc9ee7bd1e98952`
-
 - :ref:`exhale_function_softbody__loader_8cpp_1ab21bc378cef623aad80954e9bd463f1e`

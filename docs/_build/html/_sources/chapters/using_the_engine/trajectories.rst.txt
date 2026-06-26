@@ -1,31 +1,27 @@
 Trajectories and Kinematic Control
 =================================
 
-A trajectory lets you drive an entity from a callback instead of from the
-contact/constraint solve. Internally the engine stores a ``C_StaticTrajectory``
-component and updates the entity once per step in
-``src/physics/synchronization/trajectory.cpp``.
+A trajectory lets you drive an entity from a callback instead of from the contact/constraint solve. The engine stores a :cpp:struct:`C_StaticTrajectory <cardillo::C_StaticTrajectory>` component and updates the entity once per step in the trajectory synchronization code.
 
 .. important::
-   Calling ``engine.addTrajectory(...)`` on a dynamic body first makes that body
-   static by removing its dynamic mass/inertia tags. The body can still remain
-   collidable and visible, but gravity and solver-driven motion no longer act on
-   it.
+Calling :cpp:func:`PhysicsEngine::addTrajectory <cardillo::physics::PhysicsEngine::addTrajectory>` on a dynamic body first makes that body static by removing its dynamic mass/inertia tags. The body can still remain collidable and visible, but gravity and solver-driven motion no longer act on it.
 
 Trajectory callback types
 -------------------------
 
-The callback aliases are defined in ``src/physics/ecs_types.hpp``:
+The callback aliases are defined in the ECS headers; the public typedefs are
+:cpp:typedef:`TrajectoryPose <cardillo::TrajectoryPose>` and
+:cpp:typedef:`TrajectoryTwist <cardillo::TrajectoryTwist>`.
 
 .. code-block:: cpp
 
-   using TrajectoryPose  = std::pair<Vector3r, Quaternion4r>;
-   using TrajectoryTwist = std::pair<Vector3r, Vector3r>;
+    using TrajectoryPose  = std::pair<Vector3r, :cpp:type:`Quaternion4r <cardillo::Quaternion4r>`>;
+    using TrajectoryTwist = std::pair<Vector3r, Vector3r>;
 
 ``TrajectoryPose`` is ``(position, orientation)``.
 ``TrajectoryTwist`` is ``(linearVelocity, angularVelocity)`` where linear
-velocity is in world frame and angular velocity follows the engine's usual
-body-frame convention.
+velocity is in inertial frame and angular velocity follows the engine's usual
+Body Basis convention.
 
 How the engine uses them
 ------------------------
@@ -137,8 +133,8 @@ Removing a trajectory
 
    engine.removeTrajectory(body);
 
-This only removes the ``C_StaticTrajectory`` component. It does **not** recreate
-``C_PhysicsObject``, mass, or inertia for a body that was made static when the
+This only removes the :cpp:struct:`C_StaticTrajectory` component. It does **not** recreate
+:cpp:struct:`C_PhysicsObject`, mass, or inertia for a body that was made static when the
 trajectory was attached.
 
 In practice that means:

@@ -96,14 +96,7 @@ struct C_Mesh {
     Vector3r scale{1, 1, 1};
 };
 struct C_MeshVisualTag {};
-struct C_HeightField {
-    std::string path;
-    real_t x_dim{1}, y_dim{1};
-    real_t z_scale{1};
-    real_t min_height{0};
-};
-struct C_HeightFieldVisualTag {};
-struct C_RB_HeightField {};
+
 
 struct C_RB_Cube {
     Vector3r center{Vector3r::Zero()};

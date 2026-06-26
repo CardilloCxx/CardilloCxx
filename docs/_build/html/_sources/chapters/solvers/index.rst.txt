@@ -4,6 +4,9 @@ Solvers
 Solving the contact problem is the research core of Cardillo. Each time step
 produces a set of assembled operators from the collision and constraint pipeline
 (see :doc:`../physics_pipeline`) and the solver's job is to find a new velocity
+that satisfies the discrete Moreau time-stepping equations (see
+:doc:`../moreau_time_stepping` for the derivation of the scaled system and RHS
+terms such as Baumgarte position correction and trajectory source velocities).
 state that satisfies the equations of motion while respecting all contact and
 constraint conditions simultaneously.
 
@@ -31,7 +34,7 @@ All solvers share the same input from the assembler:
    * - **C**, **A**
      - Compliance diagonals (spring and damper inverses)
    * - **W**
-     - Contact Jacobian (one row per contact scalar)
+     - Contact Jacobian
    * - **mu**
      - Per-contact friction coefficients
 
@@ -39,7 +42,7 @@ And all solvers return the same output: the stacked body velocity vector **u**
 for the new state, plus updated constraint multipliers **lambda_g** and
 **lambda_gamma** for use in the next step.
 
-Select a solver via ``solver.type`` in the config file:
+Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config <cardillo::config::Config>`):
 
 .. list-table::
    :header-rows: 1
@@ -49,16 +52,16 @@ Select a solver via ``solver.type`` in the config file:
      - Backend
      - Notes
    * - ``projected_jacobi`` (default)
-     - :doc:`projected_jacobi`
+     - :doc:`projected_jacobi` (:cpp:class:`ProjectedJacobiSolver <cardillo::solver::ProjectedJacobiSolver>`)
      - General purpose, most reliable
    * - ``projected_gauss_seidel``
-     - :doc:`projected_gauss_seidel`
+     - :doc:`projected_gauss_seidel` (:cpp:class:`ProjectedGaussSeidelSolver <cardillo::solver::ProjectedGaussSeidelSolver>`)
      - Can be faster than ``projected_jacobi`` for large systems
    * - ``conjugate_gradient``
-     - :doc:`conjugate_gradient`
+     - :doc:`conjugate_gradient` (:cpp:class:`ConjugateGradientSolver <cardillo::solver::ConjugateGradientSolver>`)
      - Constraint-only scenes (no contact)
    * - ``qoco / clarabel``
-     - :doc:`interior_point`
+     - :doc:`interior_point` (:cpp:class:`QocoSolver <cardillo::solver::QocoSolver>`, :cpp:class:`ClarabelSolver <cardillo::solver::ClarabelSolver>`)
      - Interior-point, exact cone projection
 
 .. toctree::

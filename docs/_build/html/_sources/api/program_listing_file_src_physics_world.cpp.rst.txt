@@ -421,17 +421,12 @@ Program Listing for File world.cpp
        }
    }
    
-   // ---------- Mesh / HeightField asset access ----------
+   // ---------- Mesh asset access ----------
    
    const ::cardillo::MeshAsset& World::getMeshAsset(entt::entity e) const {
        if (!m_reg.any_of<C_Mesh>(e)) throw std::runtime_error("getMeshAsset(entity): entity has no C_Mesh");
        const auto& cm = m_reg.get<C_Mesh>(e);
        const bool isDynamic = m_reg.any_of<C_PhysicsObject>(e);
        return assets().getMesh(cm.path, cm.scale, /*normalized*/ isDynamic);
-   }
-   const ::cardillo::HeightFieldAsset& World::getHeightFieldAsset(entt::entity e) const {
-       if (!m_reg.any_of<C_HeightField>(e)) throw std::runtime_error("getHeightFieldAsset(entity): entity has no C_HeightField");
-       const auto& ch = m_reg.get<C_HeightField>(e);
-       return assets().getHeightField(ch.path, ch.x_dim, ch.y_dim, ch.z_scale, ch.min_height);
    }
    }  // namespace cardillo

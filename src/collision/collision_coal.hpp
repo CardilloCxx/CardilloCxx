@@ -34,7 +34,7 @@ namespace cardillo::collision {
 
 class CollisionCoal {
    private:
-    enum class ColliderKind { Box, Sphere, Halfspace, Mesh, HeightField, Capsule, Cylinder, Cone };
+    enum class ColliderKind { Box, Sphere, Halfspace, Mesh, Capsule, Cylinder, Cone };
 
     // Helpers
     void ensureBroadphaseFromConfig_();

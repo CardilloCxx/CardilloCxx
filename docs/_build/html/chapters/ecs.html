@@ -25,7 +25,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Physics Pipeline" href="physics_pipeline.html" />
-    <link rel="prev" title="Getting Started" href="getting_started.html" /> 
+    <link rel="prev" title="Types Reference" href="types.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -50,6 +50,7 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="types.html">Types Reference</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Entity Component System</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#the-ecs-mental-model">The ECS mental model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#composing-an-entity-rigid-body-factory-snippet">Composing an entity: rigid body factory snippet</a></li>
@@ -78,6 +79,8 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="using_the_engine.html">Using The Engine</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -111,9 +114,7 @@
              
   <section id="entity-component-system">
 <h1>Entity Component System<a class="headerlink" href="#entity-component-system" title="Link to this heading"></a></h1>
-<p>Cardillo uses EnTT to describe every simulation object as a plain entity
-(<code class="docutils literal notranslate"><span class="pre">entt::entity</span></code>) carrying only the data it needs. Instead of classes or inheritance, just components and tags are queried by systems. All public component definitions live in
-<code class="docutils literal notranslate"><span class="pre">src/physics/ecs_types.hpp</span></code>.</p>
+<p>Cardillo uses EnTT to describe every simulation object as a plain entity <code class="xref cpp cpp-any docutils literal notranslate"><span class="pre">entt::entity</span></code> carrying only the data it needs. Instead of classes or inheritance, just components and tags are queried by systems. All public component definitions live in <code class="docutils literal notranslate"><span class="pre">ecs_types.hpp</span></code> (see the physics API headers).</p>
 <nav class="contents local" id="on-this-page">
 <p class="topic-title">On this page</p>
 <ul class="simple">
@@ -134,18 +135,20 @@
 <h2><a class="toc-backref" href="#id1" role="doc-backlink">The ECS mental model</a><a class="headerlink" href="#the-ecs-mental-model" title="Link to this heading"></a></h2>
 <p>A system does not own objects; it <strong>reads</strong> the combination of components that
 identify a behaviour:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">C_RigidBodyTag</span> <span class="pre">+</span> <span class="pre">C_Mass</span> <span class="pre">+</span> <span class="pre">C_PhysicsObject</span></code> → rigid body, participate in dynamics.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">C_Collidable</span></code> → include in collision detection.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">C_VisualObject</span></code> → export to VTK output.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">C_BeamElement</span></code> → connect into a beam chain.</p></li>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference internal" href="../api/structcardillo_1_1C__RigidBodyTag.html#_CPPv4N8cardillo14C_RigidBodyTagE" title="cardillo::C_RigidBodyTag"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_RigidBodyTag</span></code></a> + <a class="reference internal" href="../api/structcardillo_1_1C__Mass.html#_CPPv4N8cardillo6C_MassE" title="cardillo::C_Mass"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Mass</span></code></a> + <a class="reference internal" href="../api/structcardillo_1_1C__PhysicsObject.html#_CPPv4N8cardillo15C_PhysicsObjectE" title="cardillo::C_PhysicsObject"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_PhysicsObject</span></code></a> → rigid body, participate in dynamics.</p></li>
+<li><p><a class="reference internal" href="../api/structcardillo_1_1C__Collidable.html#_CPPv4N8cardillo12C_CollidableE" title="cardillo::C_Collidable"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Collidable</span></code></a> → include in collision detection.</p></li>
+<li><p><a class="reference internal" href="../api/structcardillo_1_1C__VisualObject.html#_CPPv4N8cardillo14C_VisualObjectE" title="cardillo::C_VisualObject"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_VisualObject</span></code></a> → export to VTK output.</p></li>
+<li><p><a class="reference internal" href="../api/structcardillo_1_1C__BeamElement.html#_CPPv4N8cardillo13C_BeamElementE" title="cardillo::C_BeamElement"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_BeamElement</span></code></a> → connect into a beam chain.</p></li>
 </ul>
+</div></blockquote>
 <p>The engine’s own systems (collision broad-phase, solver assembly, integrator,
 VTK writer) are all just views over the registry.</p>
 </section>
 <section id="composing-an-entity-rigid-body-factory-snippet">
 <h2><a class="toc-backref" href="#id2" role="doc-backlink">Composing an entity: rigid body factory snippet</a><a class="headerlink" href="#composing-an-entity-rigid-body-factory-snippet" title="Link to this heading"></a></h2>
-<p>Here is how <code class="docutils literal notranslate"><span class="pre">RigidBodyFactory::create</span></code> (<code class="docutils literal notranslate"><span class="pre">src/physics/assets/rigid_body_factory.cpp</span></code>)
+<p>Here is how <a class="reference internal" href="../api/structcardillo_1_1physics_1_1RigidBodyFactory.html#_CPPv4N8cardillo7physics16RigidBodyFactory6createER5WorldRKN7physics10RigidShapeERKN7physics10RigidStateERKN7physics10RigidPropsE" title="cardillo::physics::RigidBodyFactory::create"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">RigidBodyFactory::create</span></code></a>
 builds a dynamic capsule from scratch:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// RigidBodyFactory::create in rigid_body_factory.cpp</span>
 <span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">reg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">system</span><span class="p">.</span><span class="n">ecs</span><span class="p">();</span>
@@ -205,17 +208,17 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_Position3</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">value</span></code></p></td>
-<td><p>World-space position (m).</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Position3.html#_CPPv4N8cardillo11C_Position3E" title="cardillo::C_Position3"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Position3</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> value</p></td>
+<td><p>Inertial-space position (m).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_Orientation</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Quaternion4r</span> <span class="pre">value</span></code></p></td>
-<td><p>World-space orientation as a unit quaternion.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Orientation.html#_CPPv4N8cardillo13C_OrientationE" title="cardillo::C_Orientation"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Orientation</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a8ea46386683084285ff4577cdf654088.html#_CPPv4N8cardillo12Quaternion4rE" title="cardillo::Quaternion4r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Quaternion4r</span></code></a> value</p></td>
+<td><p>Inertial-space orientation as a unit quaternion.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_DirectorTriad</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__DirectorTriad.html#_CPPv4N8cardillo15C_DirectorTriadE" title="cardillo::C_DirectorTriad"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_DirectorTriad</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Matrix33r</span> <span class="pre">value</span></code></p></td>
-<td><p>Body-frame triad (used for director-type bodies).</p></td>
+<td><p>Body Basis triad (used for director-type bodies).</p></td>
 </tr>
 </tbody>
 </table>
@@ -235,20 +238,20 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_LinearVelocity3</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">value</span></code></p></td>
-<td><p>World-space linear velocity (m/s).</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__LinearVelocity3.html#_CPPv4N8cardillo17C_LinearVelocity3E" title="cardillo::C_LinearVelocity3"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_LinearVelocity3</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> value</p></td>
+<td><p>Inertial-space linear velocity (m/s).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_AngularVelocity3</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">value</span></code></p></td>
-<td><p>Body-frame angular velocity (rad/s).</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__AngularVelocity3.html#_CPPv4N8cardillo18C_AngularVelocity3E" title="cardillo::C_AngularVelocity3"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_AngularVelocity3</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> value</p></td>
+<td><p>Body Basis angular velocity (rad/s).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_LinearAcceleration3</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">value</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__LinearAcceleration3.html#_CPPv4N8cardillo21C_LinearAcceleration3E" title="cardillo::C_LinearAcceleration3"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_LinearAcceleration3</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> value</p></td>
 <td><p>Current linear acceleration accumulator.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_AngularAcceleration3</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">value</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__AngularAcceleration3.html#_CPPv4N8cardillo22C_AngularAcceleration3E" title="cardillo::C_AngularAcceleration3"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_AngularAcceleration3</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> value</p></td>
 <td><p>Current angular acceleration accumulator.</p></td>
 </tr>
 </tbody>
@@ -269,20 +272,20 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_Mass</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Mass.html#_CPPv4N8cardillo6C_MassE" title="cardillo::C_Mass"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Mass</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">real_t</span> <span class="pre">m</span></code></p></td>
 <td><p>Body mass (kg). Zero → static body.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_InertiaDiag</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">I</span></code></p></td>
-<td><p>Body-frame diagonal inertia: <span class="math notranslate nohighlight">\([I_{xx},\, I_{yy},\, I_{zz}]\)</span>.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__InertiaDiag.html#_CPPv4N8cardillo13C_InertiaDiagE" title="cardillo::C_InertiaDiag"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_InertiaDiag</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> I</p></td>
+<td><p>Body Basis diagonal inertia: <span class="math notranslate nohighlight">\([I_{xx},\, I_{yy},\, I_{zz}]\)</span>.</p></td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="shape-data-components">
 <h4>Shape data components<a class="headerlink" href="#shape-data-components" title="Link to this heading"></a></h4>
-<p>Rigid-body primitives (local geometry in the body frame):</p>
+<p>Rigid-body primitives (local geometry in the Body Basis):</p>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 25.0%" />
@@ -296,24 +299,24 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_Cube</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">center</span></code>, <code class="docutils literal notranslate"><span class="pre">halfExtents</span></code>, <code class="docutils literal notranslate"><span class="pre">Quaternion4r</span> <span class="pre">q</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Cube.html#_CPPv4N8cardillo6C_CubeE" title="cardillo::C_Cube"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Cube</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> center, <a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> halfExtents, <a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a8ea46386683084285ff4577cdf654088.html#_CPPv4N8cardillo12Quaternion4rE" title="cardillo::Quaternion4r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Quaternion4r</span></code></a> q</p></td>
 <td><p>Box geometry + pose.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_Capsule</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Capsule.html#_CPPv4N8cardillo9C_CapsuleE" title="cardillo::C_Capsule"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Capsule</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">real_t</span> <span class="pre">radius</span></code>, <code class="docutils literal notranslate"><span class="pre">halfLength</span></code></p></td>
 <td><p>Capsule shape (z-axis long).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_Cylinder</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Cylinder.html#_CPPv4N8cardillo10C_CylinderE" title="cardillo::C_Cylinder"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Cylinder</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">real_t</span> <span class="pre">radius</span></code>, <code class="docutils literal notranslate"><span class="pre">halfLength</span></code></p></td>
 <td><p>Cylinder shape (z-axis long).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_Cone</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Cone.html#_CPPv4N8cardillo6C_ConeE" title="cardillo::C_Cone"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Cone</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">real_t</span> <span class="pre">radius</span></code>, <code class="docutils literal notranslate"><span class="pre">height</span></code></p></td>
 <td><p>Cone shape. Tip along +z.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_Plane</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">normal</span></code>, <code class="docutils literal notranslate"><span class="pre">up</span></code>, <code class="docutils literal notranslate"><span class="pre">sizeX</span></code>, <code class="docutils literal notranslate"><span class="pre">sizeY</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Plane.html#_CPPv4N8cardillo7C_PlaneE" title="cardillo::C_Plane"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Plane</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> normal, <code class="docutils literal notranslate"><span class="pre">up</span></code>, <code class="docutils literal notranslate"><span class="pre">sizeX</span></code>, <code class="docutils literal notranslate"><span class="pre">sizeY</span></code></p></td>
 <td><p>Plane surface for visualisation.</p></td>
 </tr>
 </tbody>
@@ -332,31 +335,31 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_RB_Cube</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">center</span></code>, <code class="docutils literal notranslate"><span class="pre">halfExtents</span></code>, <code class="docutils literal notranslate"><span class="pre">q</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__RB__Cube.html#_CPPv4N8cardillo9C_RB_CubeE" title="cardillo::C_RB_Cube"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_RB_Cube</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> center, <a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> halfExtents, <code class="docutils literal notranslate"><span class="pre">q</span></code></p></td>
 <td><p>AABB-aligned cube collider.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_RB_Plane</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__RB__Plane.html#_CPPv4N8cardillo10C_RB_PlaneE" title="cardillo::C_RB_Plane"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_RB_Plane</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">normal</span></code>, <code class="docutils literal notranslate"><span class="pre">up</span></code>, <code class="docutils literal notranslate"><span class="pre">sizeX</span></code>, <code class="docutils literal notranslate"><span class="pre">sizeY</span></code></p></td>
 <td><p>Plane collider.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_RB_Capsule</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__RB__Capsule.html#_CPPv4N8cardillo12C_RB_CapsuleE" title="cardillo::C_RB_Capsule"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_RB_Capsule</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">real_t</span> <span class="pre">radius</span></code>, <code class="docutils literal notranslate"><span class="pre">halfLength</span></code></p></td>
 <td><p>Capsule collider (via COAL).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_RB_Cylinder</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__RB__Cylinder.html#_CPPv4N8cardillo13C_RB_CylinderE" title="cardillo::C_RB_Cylinder"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_RB_Cylinder</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">real_t</span> <span class="pre">radius</span></code>, <code class="docutils literal notranslate"><span class="pre">halfLength</span></code></p></td>
 <td><p>Cylinder collider via COAL.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_RB_Cone</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__RB__Cone.html#_CPPv4N8cardillo9C_RB_ConeE" title="cardillo::C_RB_Cone"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_RB_Cone</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">real_t</span> <span class="pre">radius</span></code>, <code class="docutils literal notranslate"><span class="pre">height</span></code></p></td>
 <td><p>Cone collider via COAL.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_RB_Sphere</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__RB__Sphere.html#_CPPv4N8cardillo11C_RB_SphereE" title="cardillo::C_RB_Sphere"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">C_RB_Sphere</span></code></a></p></td>
 <td><p><em>(none)</em></p></td>
 <td><p>Marker: this body has a sphere collider.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_RB_Mesh</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__RB__Mesh.html#_CPPv4N8cardillo9C_RB_MeshE" title="cardillo::C_RB_Mesh"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">C_RB_Mesh</span></code></a></p></td>
 <td><p><em>(none)</em></p></td>
 <td><p>Marker: this body has a mesh (BVH) collider.</p></td>
 </tr>
@@ -376,19 +379,19 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_Radius</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Radius.html#_CPPv4N8cardillo8C_RadiusE" title="cardillo::C_Radius"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Radius</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">real_t</span> <span class="pre">r</span></code></p></td>
 <td><p>Visual/collision sphere radius (used by capsule visualisation).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_Mesh</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">std::string</span> <span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">scale</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Mesh.html#_CPPv4N8cardillo6C_MeshE" title="cardillo::C_Mesh"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Mesh</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">std::string</span> <span class="pre">path</span></code>, <a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> scale</p></td>
 <td><p>Mesh asset path and per-axis scale.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_HeightField</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_HeightField</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">x_dim</span></code>, <code class="docutils literal notranslate"><span class="pre">y_dim</span></code>, <code class="docutils literal notranslate"><span class="pre">z_scale</span></code>, <code class="docutils literal notranslate"><span class="pre">min_height</span></code></p></td>
 <td><p>Height-field terrain parameters.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_SoftBodySurface</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__SoftBodySurface.html#_CPPv4N8cardillo17C_SoftBodySurfaceE" title="cardillo::C_SoftBodySurface"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_SoftBodySurface</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">triangles</span></code> (<code class="docutils literal notranslate"><span class="pre">Vector3i[]</span></code>), <code class="docutils literal notranslate"><span class="pre">nodes</span></code> (<code class="docutils literal notranslate"><span class="pre">entity[]</span></code>)</p></td>
 <td><p>Surface mesh for a soft body: one triangle per face, one node per vertex.</p></td>
 </tr>
@@ -410,7 +413,7 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_Friction</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__Friction.html#_CPPv4N8cardillo10C_FrictionE" title="cardillo::C_Friction"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_Friction</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">real_t</span> <span class="pre">mu</span></code></p></td>
 <td><p>Coulomb friction coefficient for this body.</p></td>
 </tr>
@@ -432,7 +435,7 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_StaticTrajectory</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__StaticTrajectory.html#_CPPv4N8cardillo18C_StaticTrajectoryE" title="cardillo::C_StaticTrajectory"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_StaticTrajectory</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">positionFunc</span></code>, <code class="docutils literal notranslate"><span class="pre">velocityFunc</span></code>, <code class="docutils literal notranslate"><span class="pre">elapsed</span></code>, <code class="docutils literal notranslate"><span class="pre">initialized</span></code>, <code class="docutils literal notranslate"><span class="pre">previousPosition</span></code></p></td>
 <td><p>Kinematic override. When present the integrator writes pose/velocity from the function instead of solving forces.</p></td>
 </tr>
@@ -455,13 +458,13 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_ExternalForce</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">f</span></code></p></td>
-<td><p>World-frame force applied this step (N).</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__ExternalForce.html#_CPPv4N8cardillo15C_ExternalForceE" title="cardillo::C_ExternalForce"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_ExternalForce</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> f</p></td>
+<td><p>Inertial-frame force applied this step (N).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_ExternalTorque</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Vector3r</span> <span class="pre">tau</span></code></p></td>
-<td><p>World-frame torque applied this step (Nm).</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__ExternalTorque.html#_CPPv4N8cardillo16C_ExternalTorqueE" title="cardillo::C_ExternalTorque"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_ExternalTorque</span></code></a></p></td>
+<td><p><a class="reference internal" href="../api/typedef_misc_2types_8hpp_1a3b35d2f552db8e20907d2f7bff9c4b1f.html#_CPPv4N8cardillo8Vector3rE" title="cardillo::Vector3r"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">Vector3r</span></code></a> tau</p></td>
+<td><p>Inertial-frame torque applied this step (Nm).</p></td>
 </tr>
 </tbody>
 </table>
@@ -481,9 +484,9 @@ are grouped together; data components show their fields and units.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">C_TrackTag</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../api/structcardillo_1_1C__TrackTag.html#_CPPv4N8cardillo10C_TrackTagE" title="cardillo::C_TrackTag"><code class="xref cpp cpp-struct docutils literal notranslate"><span class="pre">C_TrackTag</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">std::string</span> <span class="pre">name</span></code></p></td>
-<td><p>Label for CSV track output. Set via <code class="docutils literal notranslate"><span class="pre">engine.track(entity,</span> <span class="pre">name)</span></code>.</p></td>
+<td><p>Label for CSV track output. Set via <a class="reference internal" href="../api/classcardillo_1_1physics_1_1PhysicsEngine.html#_CPPv4N8cardillo7physics13PhysicsEngine5trackEN4entt6entityERKNSt6stringE" title="cardillo::physics::PhysicsEngine::track"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">PhysicsEngine::track</span></code></a>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">C_BodyIndex</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">b</span></code></p></td>
@@ -687,7 +690,7 @@ live in <code class="docutils literal notranslate"><span class="pre">World::m_co
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="types.html" class="btn btn-neutral float-left" title="Types Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="physics_pipeline.html" class="btn btn-neutral float-right" title="Physics Pipeline" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

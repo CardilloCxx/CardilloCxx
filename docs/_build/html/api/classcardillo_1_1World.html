@@ -49,8 +49,10 @@
               <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/types.html">Types Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/ecs.html">Entity Component System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/physics_pipeline.html">Physics Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../chapters/moreau_time_stepping.html">Time-Stepping for Non-Smooth Mechanical Systems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/solvers/index.html">Solvers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../chapters/using_the_engine.html">Using The Engine</a></li>
 </ul>
@@ -77,8 +79,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalForce.html">Struct C_ExternalForce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__ExternalTorque.html">Struct C_ExternalTorque</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__Friction.html">Struct C_Friction</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightField.html">Struct C_HeightField</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__HeightFieldVisualTag.html">Struct C_HeightFieldVisualTag</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__InertiaDiag.html">Struct C_InertiaDiag</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearAcceleration3.html">Struct C_LinearAcceleration3</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__LinearVelocity3.html">Struct C_LinearVelocity3</a></li>
@@ -97,7 +97,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cone.html">Struct C_RB_Cone</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cube.html">Struct C_RB_Cube</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Cylinder.html">Struct C_RB_Cylinder</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__HeightField.html">Struct C_RB_HeightField</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Mesh.html">Struct C_RB_Mesh</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Plane.html">Struct C_RB_Plane</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1C__RB__Sphere.html">Struct C_RB_Sphere</a></li>
@@ -116,7 +115,6 @@
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1PlaneCollider.html">Struct PlaneCollider</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1collision_1_1SphereCollider.html">Struct SphereCollider</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1config_1_1Config.html">Struct Config</a></li>
-<li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html">Struct HeightFieldAsset</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1MeshGenerator_1_1EntityMesh.html">Struct MeshGenerator::EntityMesh</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1io_1_1SoftBodyMesh.html">Struct SoftBodyMesh</a></li>
 <li class="toctree-l4"><a class="reference internal" href="structcardillo_1_1MeshAsset.html">Struct MeshAsset</a></li>
@@ -327,11 +325,6 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World12getMeshAssetEN4entt6entityE">
 <span id="_CPPv3NK8cardillo5World12getMeshAssetEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World12getMeshAssetEN4entt6entityE"></span><span id="cardillo::World::getMeshAsset__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1a98fdc5e5e72279e30f80be64b8599a05"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">cardillo</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="structcardillo_1_1MeshAsset.html#_CPPv4N8cardillo9MeshAssetE" title="cardillo::MeshAsset"><span class="n"><span class="pre">MeshAsset</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">getMeshAsset</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World12getMeshAssetEN4entt6entityE" title="Link to this definition"></a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4NK8cardillo5World19getHeightFieldAssetEN4entt6entityE">
-<span id="_CPPv3NK8cardillo5World19getHeightFieldAssetEN4entt6entityE"></span><span id="_CPPv2NK8cardillo5World19getHeightFieldAssetEN4entt6entityE"></span><span id="cardillo::World::getHeightFieldAsset__entt::entityC"></span><span class="target" id="classcardillo_1_1World_1ac623fa956415abfd45d884d2bb90b6df"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">cardillo</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="structcardillo_1_1HeightFieldAsset.html#_CPPv4N8cardillo16HeightFieldAssetE" title="cardillo::HeightFieldAsset"><span class="n"><span class="pre">HeightFieldAsset</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">getHeightFieldAsset</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">entt</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">entity</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">e</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4NK8cardillo5World19getHeightFieldAssetEN4entt6entityE" title="Link to this definition"></a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp function">
