@@ -165,6 +165,7 @@ VectorXr TranslationRotationConstraint::getPositionError(Vector3r g, ConstraintR
     VectorXr posErr(6);
     posErr.head<3>() = g;
     const auto R = -(res.WgA.block<3, 3>(3, 3)).transpose() * res.WgB.block<3, 3>(3, 3);
+    // TODO: Use correct constraint here!
     // posErr.tail<3>() = Vector3r(R(2, 1) - R(1, 2), R(0, 2) - R(2, 0), R(1, 0) - R(0, 1)) * (real_t)0.5;
     posErr.tail<3>() = Vector3r::Zero();
     return posErr - m_g0;

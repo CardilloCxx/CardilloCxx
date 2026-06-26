@@ -227,8 +227,12 @@ endif()
 
 ExternalProject_Add(qoco_project_cpu
     GIT_REPOSITORY https://github.com/qoco-org/qoco.git
-    # GIT_TAG gc/qoco-robustness
-    GIT_TAG v0.2.7
+    # # GIT_TAG gc/qoco-robustness
+    # # GIT_TAG v0.2.7
+    # GIT_TAG v0.3.2
+    GIT_TAG main
+    # GIT_REPOSITORY https://github.com/JonasBreuling/qoco.git
+    # GIT_TAG ruiz
     PREFIX ${CMAKE_BINARY_DIR}/_deps/qoco-cpu
     GIT_SHALLOW TRUE
     UPDATE_DISCONNECTED TRUE
