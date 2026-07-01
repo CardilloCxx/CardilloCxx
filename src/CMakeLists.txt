@@ -16,7 +16,7 @@ FetchContent_Declare(eigen GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git 
 FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.2)
 FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG main)
 FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.0)
-FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.2.7)
+FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
 FetchContent_MakeAvailable(eigen coal entt clarabel qoco)
 
 # --- 2. Engine Targets ---
