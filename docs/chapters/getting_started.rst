@@ -12,6 +12,13 @@ Required on Linux:
 - A C++17 compiler such as GCC or Clang
 - Python 3
 
+Coal also needs Assimp and Octomap development packages on many Linux setups:
+
+.. code-block:: bash
+
+	sudo apt update
+	sudo apt install libassimp-dev liboctomap-dev
+
 From the repository root:
 
 .. code-block:: bash
@@ -28,11 +35,11 @@ If you want the Clarabel backend, install Rust and Cargo before configuring the 
 Run an example
 --------------
 
-Each example scene is driven by a config file that sets the scene name, output folder, solver, and time step. For example:
+Each example scene is driven by a config file that sets the output folder, solver, and time step. Run the executable that matches the scene name. For example:
 
 .. code-block:: bash
 
-	./build/bin/main ./examples/scenes/wilberforce/scene.config
+	./build/bin/wilberforce ./examples/scenes/wilberforce/scene.config
 
 If you want a compact code walkthrough after building the project, see the
 worked pendulum example in :doc:`using_the_engine/example`.

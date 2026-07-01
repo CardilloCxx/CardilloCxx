@@ -1,7 +1,7 @@
 #pragma once
 
-#include <qoco/qoco_linalg.h>
-#include <qoco/structs.h>
+#include <qoco_linalg.h>
+#include <structs.h>
 #include <Eigen/SparseCore>
 #include <vector>
 #include "../../misc/triplet_matrix.hpp"

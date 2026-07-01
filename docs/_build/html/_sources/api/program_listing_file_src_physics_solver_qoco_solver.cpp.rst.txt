@@ -19,7 +19,7 @@ Program Listing for File qoco_solver.cpp
    #include <utility>
    #include <vector>
    
-   #include <qoco/qoco.h>
+   #include <qoco.h>
    
    namespace cardillo::solver {
    

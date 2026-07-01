@@ -31,7 +31,7 @@ Includes
 
 - ``iostream``
 
-- ``qoco/qoco.h``
+- ``qoco.h``
 
 - ``qoco_solver.hpp`` (:ref:`file_src_physics_solver_qoco_solver.hpp`)
 

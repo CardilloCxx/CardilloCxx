@@ -1,0 +1,14 @@
+.. _exhale_define_misc_2types_8hpp_1a8ccc7da29890b04398c9e223c1328249:
+
+Define CARDILLO_API
+===================
+
+- Defined in :ref:`file_src_misc_types.hpp`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: CARDILLO_API
+   :project: Cardillo

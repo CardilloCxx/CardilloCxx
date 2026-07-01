@@ -101,6 +101,11 @@
 <li><p>A C++17 compiler such as GCC or Clang</p></li>
 <li><p>Python 3</p></li>
 </ul>
+<p>Coal also needs Assimp and Octomap development packages on many Linux setups:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>update
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>libassimp-dev<span class="w"> </span>liboctomap-dev
+</pre></div>
+</div>
 <p>From the repository root:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
 cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</span>
@@ -113,8 +118,8 @@ cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"
 </section>
 <section id="run-an-example">
 <h2>Run an example<a class="headerlink" href="#run-an-example" title="Link to this heading"></a></h2>
-<p>Each example scene is driven by a config file that sets the scene name, output folder, solver, and time step. For example:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./build/bin/main<span class="w"> </span>./examples/scenes/wilberforce/scene.config
+<p>Each example scene is driven by a config file that sets the output folder, solver, and time step. Run the executable that matches the scene name. For example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./build/bin/wilberforce<span class="w"> </span>./examples/scenes/wilberforce/scene.config
 </pre></div>
 </div>
 <p>If you want a compact code walkthrough after building the project, see the

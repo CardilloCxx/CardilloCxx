@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include <qoco/qoco.h>
+#include <qoco.h>
 
 namespace cardillo::solver {
 

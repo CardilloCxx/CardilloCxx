@@ -93,6 +93,12 @@
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;Eigen/SparseCore&gt;</span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span>
 
+<span class="cp">#if defined _WIN32 || defined __CYGWIN__</span>
+<span class="w">    </span><span class="cp">#define CARDILLO_API __declspec(dllexport)</span>
+<span class="cp">#else</span>
+<span class="w">  </span><span class="cp">#define CARDILLO_API __attribute__ ((visibility (&quot;default&quot;)))</span>
+<span class="cp">#endif</span>
+
 <span class="k">namespace</span><span class="w"> </span><span class="nn">cardillo</span><span class="w"> </span><span class="p">{</span>
 
 <span class="cp">#define real_t double</span>

@@ -5,6 +5,12 @@
 #include <Eigen/SparseCore>
 #include <vector>
 
+#if defined _WIN32 || defined __CYGWIN__
+    #define CARDILLO_API __declspec(dllexport)
+#else
+  #define CARDILLO_API __attribute__ ((visibility ("default")))
+#endif
+
 namespace cardillo {
 
 #define real_t double

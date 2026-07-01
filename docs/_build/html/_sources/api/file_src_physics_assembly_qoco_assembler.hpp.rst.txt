@@ -31,9 +31,9 @@ Includes
 
 - ``Eigen/SparseCore``
 
-- ``qoco/qoco_linalg.h``
+- ``qoco_linalg.h``
 
-- ``qoco/structs.h``
+- ``structs.h``
 
 - ``vector``
 

@@ -48,7 +48,7 @@ Program Listing for File physics_engine.hpp
    namespace cardillo {
    namespace physics {
    
-   class PhysicsEngine {
+   class CARDILLO_API PhysicsEngine {
       public:
        PhysicsEngine();
        ~PhysicsEngine();

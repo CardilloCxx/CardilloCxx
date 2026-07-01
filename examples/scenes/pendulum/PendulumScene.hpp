@@ -69,7 +69,14 @@ public:
         Vector3r k_axis1 = Vector3r::Constant(std::numeric_limits<real_t>::max());
         k_axis1(2) = 1e-1; // small stiffness on y-axis
         Vector3r d_axis1 = Vector3r::Zero(); // no damping
-        engine.addRigidConstraint(floor, capsule1, Vector3r::Zero(), std::nullopt, k_axis1, d_axis1);
+        engine.addTranslationRotationConstraint(
+            floor,
+            capsule1,
+            physics::JointFrame(Vector3r::Zero()),
+            Vector3r::Constant(std::numeric_limits<real_t>::max()),
+            Vector3r::Zero(),
+            k_axis1,
+            d_axis1);
 
         // hinge capsule1 <> capsule2
         // sys.addRigidConstraint(capsule1, capsule2, Vector3r(2 * l1,0,0));
@@ -77,7 +84,14 @@ public:
         k_axis2(2) = 1e2; // moderate stiffness on y-axis
         Vector3r d_axis2 = Vector3r::Zero();
         // d_axis2(2) = 1e-3; // small stiffness on y-axis
-        engine.addRigidConstraint(capsule1, capsule2, Vector3r(2 * l1,0,0), std::nullopt, k_axis2, d_axis2);
+        engine.addTranslationRotationConstraint(
+            capsule1,
+            capsule2,
+            physics::JointFrame(Vector3r(2 * l1, 0, 0)),
+            Vector3r::Constant(std::numeric_limits<real_t>::max()),
+            Vector3r::Zero(),
+            k_axis2,
+            d_axis2);
     }
 
     // void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {

@@ -7,6 +7,7 @@
 // Jenga scene: builds a layered block tower using the existing helper logic.
 class JengaScene : public SceneBase {
 public:
+    const char* sceneName() const override { return "jenga"; }
     JengaScene() = default;
     ~JengaScene() override = default;
 

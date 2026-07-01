@@ -5,7 +5,7 @@ CardilloCxx is a C++ physics engine with contact handling, multiple solver backe
 ## What this project builds
 
 - Core static library: `cardillo`
-- Main executable: `build/bin/main`
+- One executable per scene under `build/bin/`
 - Scene/example and benchmark targets
 - Optional interior-point solvers:
    - QOCO (CPU and optional CUDA backend)
@@ -25,6 +25,13 @@ Typical Ubuntu packages:
 sudo apt update
 sudo apt install -y build-essential cmake ninja-build git curl pkg-config \
    python3 python3-dev python3-pip libeigen3-dev
+```
+
+Coal also needs Assimp and Octomap headers on many Linux setups:
+
+```bash
+sudo apt update
+sudo apt install libassimp-dev liboctomap-dev
 ```
 
 ## Install Rust/Cargo (needed for Clarabel)
@@ -78,7 +85,7 @@ Runtime backend selection is controlled by config key `qoco.backend`:
 ## Running examples
 
 ```bash
-./build/bin/main ./examples/scenes/wilberforce/scene.config
+./build/bin/wilberforce ./examples/scenes/wilberforce/scene.config
 ```
 
 ## Troubleshooting

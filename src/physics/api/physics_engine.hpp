@@ -37,7 +37,7 @@ namespace cardillo {
 namespace physics {
 
 /// High-level facade for building scenes and advancing the simulation.
-class PhysicsEngine {
+class CARDILLO_API PhysicsEngine {
    public:
     /// Construct an empty engine. Call initFromConfig before stepping.
     PhysicsEngine();
