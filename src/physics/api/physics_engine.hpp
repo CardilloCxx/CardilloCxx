@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cmath>
 #include <limits>
 #include <memory>
-#include <cmath>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -56,8 +56,6 @@ class CARDILLO_API PhysicsEngine {
 
     /// Create a point mass with an optional visual radius.
     inline entt::entity addPointMass(real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05) { return BodyFactory::addPointMass(*m_world, mass, x0, v0, radius); }
-
-    
 
     /// Create a soft body from an OBJ mesh.
     inline std::vector<entt::entity> addSoftBody(const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position = Vector3r::Zero(),
@@ -178,27 +176,27 @@ class CARDILLO_API PhysicsEngine {
             },
             std::nullopt);
     }
-            /// Remove an entity trajectory.
+    /// Remove an entity trajectory.
     void removeTrajectory(entt::entity e) { m_world->removeTrajectory(e); }
 
-            /// Set the world gravity vector.
+    /// Set the world gravity vector.
     void setGravity(const Vector3r& g) { m_world->setGravity(g); }
-            /// Get the world gravity vector.
+    /// Get the world gravity vector.
     const Vector3r& gravity() const { return m_world->gravity(); }
 
-            /// Mark the world structure dirty so the next step rebuilds derived state.
+    /// Mark the world structure dirty so the next step rebuilds derived state.
     void markStructureDirty() { m_world->markStructureDirty(); }
-            /// Attach a tracking label to an entity for output.
+    /// Attach a tracking label to an entity for output.
     void track(entt::entity e, const std::string& name) { m_world->track(e, name); }
 
-            /// Advance the simulation pipeline by dt seconds.
+    /// Advance the simulation pipeline by dt seconds.
     void step(real_t dt);
 
-            /// Access the collision manager owned by the engine.
+    /// Access the collision manager owned by the engine.
     collision::CollisionCoal& collisionManager();
-            /// Access the timing manager owned by the engine.
+    /// Access the timing manager owned by the engine.
     cardillo::misc::TimingManager& timings();
-            /// Query whether the pipeline reached the configured simulation end time.
+    /// Query whether the pipeline reached the configured simulation end time.
     bool isFinished() const;
 
    private:

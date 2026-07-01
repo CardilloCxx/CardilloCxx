@@ -1,10 +1,10 @@
 #include "projected_gauss_seidel.hpp"
 
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <vector>
-#include <chrono>
 
 namespace cardillo::solver {
 
@@ -122,8 +122,8 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     auto residual = [&](const VectorXr& u_corr_k, const VectorXr& u_corr_k1) -> real_t {
         const int Nv = (int)u_corr_k.size();
         res_diff.noalias() = u_corr_k1 - u_corr_k;
-        res_v0.noalias()   = u_free - u_corr_k;
-        res_v1.noalias()   = u_free - u_corr_k1;
+        res_v0.noalias() = u_free - u_corr_k;
+        res_v1.noalias() = u_free - u_corr_k1;
         res_q.array() = res_v0.cwiseAbs().cwiseMax(res_v1.cwiseAbs()).array() * m_cfg.pj_tol_rel + m_cfg.pj_tol_abs;
         return (real_t)(1.0 / std::sqrt((double)Nv) * res_diff.cwiseQuotient(res_q).norm());
     };
@@ -133,7 +133,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
         if (std::isnan(res_norm) || std::isinf(res_norm)) {
             std::cerr << "[ProjectedGaussSeidel] Divergence detected after " << iter << " iterations. Residual norm: " << res_norm << std::endl;
             throw std::runtime_error("Projected Gauss-Seidel diverged");
-        } 
+        }
         if (m_cfg.debug_pj && iter % 1000 == 0) std::cout << "PGS iter " << iter << ", residual norm: " << res_norm << std::endl;
         return res_norm;
     };
@@ -142,7 +142,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     auto pgs_sweep = [&](int iter) -> void {
         auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
         // real_t res_norm_sq = 0;
-        const bool backward = false; 
+        const bool backward = false;
 
         for (int bi = 0; bi < nBlocks; ++bi) {
             int i = backward ? (nBlocks - 1 - bi) : bi;
@@ -169,7 +169,9 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     auto pj_sweep = [&](int iter) -> void {
         auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
 
-        res = rhs; res -= W_row * u_corr; res -= C_vec.cwiseProduct(lambda);
+        res = rhs;
+        res -= W_row * u_corr;
+        res -= C_vec.cwiseProduct(lambda);
         dlambda = DinvMatrix * res * m_cfg.pj_relaxation;
         if (nSprings + nDampers < numLambda) dlambda.tail(numLambda - nSprings - nDampers) *= alpha;
 
@@ -178,7 +180,6 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
         u_corr.noalias() += MiW_T * dlambda;
     };
 
-
     if (!m_cfg.pj_nesterov) {
         VectorXr u_k = u_corr;
 
@@ -186,7 +187,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
             pgs_sweep(iter);
             m_last_iters = iter + 1;
 
-            if (check_residual(u_k, u_corr, iter)<1.0) break;
+            if (check_residual(u_k, u_corr, iter) < 1.0) break;
             u_k = u_corr;
         }
     } else {

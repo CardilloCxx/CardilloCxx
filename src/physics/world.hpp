@@ -93,7 +93,7 @@ class World {
 
     // Shared asset access (wrappers over PhysicsAssets using entity components)
     const ::cardillo::MeshAsset& getMeshAsset(entt::entity e) const;
-    
+
     // Expose ECS for external querying (read-only)
     const entt::registry& ecs() const { return m_reg; }
     // Mutable ECS access when external systems need to emplace components

@@ -2,8 +2,8 @@
 #include "collision_coal.hpp"
 #include "../config/config.hpp"
 #include "../misc/timings/TimingManager.hpp"
-#include "../rigid_body/transformations.hpp"
 #include "../physics/world.hpp"
+#include "../rigid_body/transformations.hpp"
 #include "types.hpp"
 
 #include <coal/broadphase/broadphase.h>
@@ -213,7 +213,7 @@ CollisionCoal::ColliderKind CollisionCoal::inferKind_(entt::entity e) const {
     if (reg.any_of<cardillo::C_RB_Plane>(e)) return ColliderKind::Halfspace;
     if ((reg.any_of<cardillo::C_PointMassTag>(e) || reg.any_of<cardillo::C_RB_Sphere>(e)) && reg.any_of<cardillo::C_Radius>(e)) return ColliderKind::Sphere;
     if (reg.any_of<cardillo::C_RB_Mesh>(e) && reg.any_of<cardillo::C_Mesh>(e)) return ColliderKind::Mesh;
-    
+
     throw std::runtime_error("CollisionCoal: unsupported collider entity; add appropriate tag/geometry.");
 }
 
@@ -252,7 +252,6 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
             if (!asset.bvh) throw std::runtime_error("COAL MeshLoader failed to load BVH for mesh entity");
             return asset.bvh;
         }
-
     }
     throw std::runtime_error("CollisionCoal: unknown collider kind");
 }

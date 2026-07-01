@@ -131,17 +131,29 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
     settings->verbose = m_cfg.debug_pj ? 1 : 0;
     settings->abstol = m_cfg.pj_tol_abs;
     settings->reltol = m_cfg.pj_tol_rel;
-    settings->kkt_static_reg = m_cfg.ip_kkt_static_reg;
+    settings->abstol_inacc = m_cfg.pj_tol_abs;
+    settings->reltol_inacc = m_cfg.pj_tol_rel;
+    // TODO: Add different regularizations for these parts in config
+    // I think only the G part should be regularized due to rank deficiency
+    settings->kkt_static_reg_P = 1e-30;  // no perturbation
+    settings->kkt_static_reg_A = 1e-30;  // no perturbation
+    settings->kkt_static_reg_G = m_cfg.ip_kkt_static_reg;
     settings->kkt_dynamic_reg = m_cfg.ip_kkt_dynamic_reg;
+    // TODO: Adapt to new iterative refinement settings
     // settings->iter_ref_iters = m_cfg.ip_iter_ref_iters;
+    settings->ir_tol = m_cfg.pj_tol_abs;  // default 1e-6
+    settings->max_ir_iters = 10;          // default 5
     settings->max_iters = m_cfg.pj_max_iterations;
+    settings->ruiz_iters = 2;  // default 0
 
     if (first_init) {
         std::cout << "Initializing QOCO solver with settings:\n";
         std::cout << "  Absolute tolerance: " << settings->abstol << "\n";
         std::cout << "  Relative tolerance: " << settings->reltol << "\n";
         std::cout << "  Max iterations: " << settings->max_iters << "\n";
-        std::cout << "  KKT static regularization: " << settings->kkt_static_reg << "\n";
+        std::cout << "  KKT static regularization P: " << settings->kkt_static_reg_P << "\n";
+        std::cout << "  KKT static regularization A: " << settings->kkt_static_reg_A << "\n";
+        std::cout << "  KKT static regularization G: " << settings->kkt_static_reg_G << "\n";
         std::cout << "  KKT dynamic regularization: " << settings->kkt_dynamic_reg << "\n";
         std::cout << "  Problem dimensions: n=" << n << ", m=" << m << ", p=" << p << ", l=" << l << ", nsoc=" << nsoc << "\n";
 

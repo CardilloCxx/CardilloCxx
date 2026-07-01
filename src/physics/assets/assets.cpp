@@ -233,8 +233,6 @@ MeshAsset PhysicsAssets::buildMeshAsset_(const std::string& path, const Vector3r
     return asset;
 }
 
-
-
 // Public API -------------------------------------------------------
 const MeshAsset& PhysicsAssets::getMesh(const std::string& path, const Vector3r& scale, bool normalized) const {
     const std::string key = meshKey_(path, scale, normalized);
@@ -246,11 +244,8 @@ const MeshAsset& PhysicsAssets::getMesh(const std::string& path, const Vector3r&
     return it2->second;
 }
 
-
-
 void PhysicsAssets::clear() {
     m_meshCache.clear();
-    
 }
 
 }  // namespace cardillo

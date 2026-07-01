@@ -37,7 +37,6 @@ entt::entity BodyFactory::addPointMass(World& sys, real_t mass, const Vector3r& 
     return e;
 }
 
-
 std::vector<entt::entity> BodyFactory::addSoftBody(World& sys, const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position, const Quaternion4r& orientation,
                                                    const Vector3r& linearVelocity, const Vector3r& angularVelocity, real_t totalMass, real_t nodeRadius,
                                                    cardillo::collision::CollisionCoal* collision_mgr) {

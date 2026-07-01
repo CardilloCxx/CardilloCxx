@@ -133,6 +133,9 @@ VectorXr PjAssembler::rhs(real_t dt, real_t theta) const {
     auto beta = m_dyn->system().config().constraint_bias_factor;
     if (beta > 0) rhs.segment(totalV, nSprings).noalias() -= (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()) * (beta / (dt * theta));
 
+    // // TODO: Constraint stabilization proposed by Marco; this is not working, but I'm not sure why.
+    // if (nSprings > 0) rhs.segment(totalV, nSprings) = (1.0 / (theta * dt * dt)) * m_dyn->g_error_vec() - ((1.0 - theta) / theta) * (Wg * vn) - (1.0 / theta) * C_v_vec;
+
     return rhs;
 }
 

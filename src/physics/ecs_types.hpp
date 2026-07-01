@@ -97,7 +97,6 @@ struct C_Mesh {
 };
 struct C_MeshVisualTag {};
 
-
 struct C_RB_Cube {
     Vector3r center{Vector3r::Zero()};
     Vector3r halfExtents;

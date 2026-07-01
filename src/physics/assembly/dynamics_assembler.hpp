@@ -127,7 +127,7 @@ class DynamicsAssembler {
     VectorXr m_f_vec_gyroscopic;  // gyroscopic forces/torques only
 
     // Contact Jacobian and supporting mappings
-    TripletMatrix m_W;  // (C_dynamic x totalV)
+    TripletMatrix m_W;         // (C_dynamic x totalV)
     VectorXr m_contact_v_vec;  // velocity-space contact bias (size = num contact rows)
     VectorXr m_mu_vec;         // friction coefficients for each contact row (size = num contact rows)
 
@@ -143,10 +143,10 @@ class DynamicsAssembler {
     TripletMatrix m_Wg;
     TripletMatrix m_Wgamma;
 
-    VectorXr m_Cdiag;  // Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)
-    VectorXr m_Adiag;  // Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)
-    VectorXr m_C_v_vec;  // spring velocity source
-    VectorXr m_A_v_vec;  // damper velocity source
+    VectorXr m_Cdiag;        // Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)
+    VectorXr m_Adiag;        // Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)
+    VectorXr m_C_v_vec;      // spring velocity source
+    VectorXr m_A_v_vec;      // damper velocity source
     VectorXr m_g_error_vec;  // spring position error source (size = numSprings)
 
     // Store Lagrange multipliers (they are being integrated)
