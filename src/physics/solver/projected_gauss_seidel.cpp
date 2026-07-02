@@ -74,7 +74,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
     const VectorXr mus = m_dyn.muVec();
     const auto& DinvMatrix = m_assembler.DinvDiag(dt, theta);
-    const VectorXr rhs = m_assembler.rhs(dt, theta);
+    const VectorXr rhs = m_assembler.rhs(dt, theta, u_free);
     VectorXr u_corr = VectorXr::Zero(nV);
 
     Eigen::SparseMatrix<real_t, Eigen::RowMajor> W_row(m_assembler.W());

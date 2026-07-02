@@ -9,7 +9,7 @@
 
 namespace cardillo::physics::assembly {
 
-VectorXr PgsAssembler::rhs(real_t dt, real_t theta) const {
+VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) const {
     const auto& vn = m_dyn->vVec();
     const auto& Wg = m_dyn->Wg().asSparse();
     const auto& Wgamma = m_dyn->Wgamma().asSparse();
@@ -57,7 +57,6 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta) const {
     }
 
     if (nContacts > 0) {
-        VectorXr u_free = this->ufree(dt, theta);
         rhs.segment(nSprings + nDampers, nContacts).noalias() = Wcontact * u_free + m_dyn->contactVVec();
     }
 

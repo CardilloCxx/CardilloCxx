@@ -7,7 +7,6 @@ namespace cardillo::solver {
 
 struct workspace {
     const int Nv, Ns, Nd, Nnfc, Nfc, Nc;
-    const VectorXr x_free;  // free solution: assembler.solveS(rhs_free), constant
     const VectorXr mu;
     const VectorXr biasImpulse;  // dyn.contactVVec(), constant
     const Eigen::SparseMatrix<real_t, Eigen::RowMajor> W;
@@ -24,15 +23,14 @@ struct workspace {
     cardillo::misc::TimingManager* timer;
     cardillo::physics::assembly::PjAssembler* assembler;
 
-    workspace(int nv, int ns, int nd, int nnfc, int nfc, int nc, VectorXr x_free, Eigen::SparseMatrix<real_t, Eigen::RowMajor> W, Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW, VectorXr biasImpulse,
-              VectorXr mu, VectorXr p_init, VectorXr x_init, cardillo::misc::TimingManager* timer, cardillo::physics::assembly::PjAssembler* assembler)
+    workspace(int nv, int ns, int nd, int nnfc, int nfc, int nc, Eigen::SparseMatrix<real_t, Eigen::RowMajor> W, Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW, VectorXr biasImpulse, VectorXr mu,
+              VectorXr p_init, VectorXr x_init, cardillo::misc::TimingManager* timer, cardillo::physics::assembly::PjAssembler* assembler)
         : Nv(nv),
           Ns(ns),
           Nd(nd),
           Nnfc(nnfc),
           Nfc(nfc),
           Nc(nc),
-          x_free(std::move(x_free)),
           mu(std::move(mu)),
           biasImpulse(std::move(biasImpulse)),
           W(std::move(W)),
@@ -116,9 +114,12 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
     VectorXr Rdiag = rdiag_sparse(W, Minv, cfg.pj_alpha);
     const auto RW = Rdiag.asDiagonal() * W;
 
-    // Free solution (no contacts)
+    // Base RHS without any contact-impulse correction (before warmstart is folded in). Note: we
+    // deliberately do NOT solve this on its own -- the resulting velocity would only be used to
+    // seed Lambda_g/Lambda_gamma before the contact loop runs, and that seed is unconditionally
+    // overwritten with the post-loop value once the loop finishes (see solve() below), so solving
+    // it here would be a wasted factorized triangular solve every step.
     VectorXr rhs_free = assembler.rhs(dt, theta);
-    VectorXr x_free = assembler.solveS(rhs_free);
 
     // Warm-start impulse
     VectorXr p = VectorXr::Zero(Nc);
@@ -132,7 +133,7 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
     VectorXr contactBias = dyn.contactVVec();
     VectorXr biasImpulse = Rdiag.asDiagonal() * contactBias;
 
-    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, std::move(x_free), W, RW, std::move(biasImpulse), std::move(mus), std::move(p), std::move(x_init), dyn.timings(), &assembler);
+    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, W, RW, std::move(biasImpulse), std::move(mus), std::move(p), std::move(x_init), dyn.timings(), &assembler);
 }
 
 static inline void standard_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg) {
@@ -238,10 +239,6 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
         auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobiSetup);
         ws = build_workspace(m_dyn, m_assembler, m_cfg, dt, theta);
     }
-
-    // Set free-solution spring/damper lambdas before the contact loop
-    m_dyn.setLambda_g(ws->x_free.segment(numV, numS));
-    m_dyn.setLambda_gamma(ws->x_free.segment(numV + numS, numD));
 
     {
         auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobi);

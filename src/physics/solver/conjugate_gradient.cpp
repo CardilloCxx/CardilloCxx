@@ -16,7 +16,7 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
 
     const auto& Dinv = m_assembler.Dinv(dt, theta);
 
-    const VectorXr rhs = m_assembler.rhs(dt, theta);
+    const VectorXr rhs = m_assembler.rhs(dt, theta, u_free);
     VectorXr u_corr = VectorXr::Zero(u_free.size());
 
     Eigen::SparseMatrix<real_t, Eigen::RowMajor> W_row(m_assembler.W());

@@ -234,12 +234,13 @@ void DynamicsAssembler::rebuildW_() {
     const int Nb = m_world.numBodies();
     // m_contact_index_orig removed; contact row mapping is stored per-contact
 
-    // Prepare sparse triplets for W
-    std::vector<Eigen::Triplet<real_t>> trips;
-    trips.reserve((size_t)C_all * 36);  // allow room for tangential rows when friction is enabled
-
     const auto& reg = m_world.ecs();
     const bool frictionEnabled = m_world.config().friction_enable;
+
+    // Prepare sparse triplets for W. Worst case per contact is 2 dynamic 6-dof bodies: 3 rows
+    // (normal + 2 tangential) when friction is enabled, 1 row (normal only) otherwise.
+    std::vector<Eigen::Triplet<real_t>> trips;
+    trips.reserve((size_t)C_all * (frictionEnabled ? 36 : 12));
 
     int dynContactId = 0;  // index into dynamic contacts (rows in W)
     m_numFrictionalContacts = 0;
