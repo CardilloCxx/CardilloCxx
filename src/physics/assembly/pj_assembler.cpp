@@ -57,13 +57,26 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bo
         }
     }
 
-    const real_t topScale = lambdaTheta ? theta : (real_t)1.0;
+    /* variant "Jan" */
+    // const real_t topScale = lambdaTheta ? theta : (real_t)1.0;
 
+    // const TripletMatrix Mblk(totalV, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(mTrips)));
+    // const real_t cScale = -(real_t)1.0 / (theta * dt * dt);
+    // const real_t aScale = -(real_t)1.0 / (theta * dt);
+
+    // const TripletMatrix top = Mblk | (m_dyn->Wg() * topScale).T() | (m_dyn->Wgamma() * topScale).T();
+    // const TripletMatrix mid = m_dyn->Wg() | (TripletMatrix::fromDiag(m_dyn->Cdiag()) * cScale) | TripletMatrix::zero(nSprings, nDampers);
+    // const TripletMatrix bot = m_dyn->Wgamma() | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_dyn->Adiag()) * aScale);
+
+    // m_S = top.vConcat(mid).vConcat(bot);
+    // const auto& S_sparse = m_S.asSparse();
+
+    /* variant "Jonas" */
     const TripletMatrix Mblk(totalV, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(mTrips)));
-    const real_t cScale = -(real_t)1.0 / (theta * dt * dt);
+    const real_t cScale = -(real_t)1.0 / (theta * theta * dt * dt);
     const real_t aScale = -(real_t)1.0 / (theta * dt);
 
-    const TripletMatrix top = Mblk | (m_dyn->Wg() * topScale).T() | (m_dyn->Wgamma() * topScale).T();
+    const TripletMatrix top = Mblk | m_dyn->Wg().T() | m_dyn->Wgamma().T();
     const TripletMatrix mid = m_dyn->Wg() | (TripletMatrix::fromDiag(m_dyn->Cdiag()) * cScale) | TripletMatrix::zero(nSprings, nDampers);
     const TripletMatrix bot = m_dyn->Wgamma() | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_dyn->Adiag()) * aScale);
 
@@ -73,7 +86,8 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bo
     // Factorize using SparseLU
     try {
         m_S_sparse_lu.emplace();
-        m_S_sparse_lu->isSymmetric(!implicitGyro && !lambdaTheta);
+        // m_S_sparse_lu->isSymmetric(!implicitGyro && !lambdaTheta); // variant "Jan"
+        m_S_sparse_lu->isSymmetric(!implicitGyro); // variant "Jonas"
         m_S_sparse_lu->analyzePattern(S_sparse);
         m_S_sparse_lu->factorize(S_sparse);
         if (m_S_sparse_lu->info() != Eigen::Success) {
@@ -108,6 +122,7 @@ VectorXr PjAssembler::rhs(real_t dt, real_t theta) const {
     const int nDampers = (int)m_dyn->Adiag().size();
     const int extV = totalV + nSprings + nDampers;
     const auto& Cdiag = m_dyn->Cdiag();
+    const auto& Adiag = m_dyn->Adiag();
     const auto& C_v_vec = m_dyn->C_v_vec();
     const auto& A_v_vec = m_dyn->A_v_vec();
 
@@ -119,22 +134,52 @@ VectorXr PjAssembler::rhs(real_t dt, real_t theta) const {
 
     // RHS: M*vn + dt*f_ext (+ dt*f_gyro if treated explicitly)
     VectorXr rhs = VectorXr::Zero((index_t)extV);
-    rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * fn_ext;
-    if (!implicitGyro) rhs.segment(0, totalV) += dt * fn_gyro;
-    if (lambdaTheta && (nSprings > 0 || nDampers > 0)) {
+    rhs.segment(0, totalV).noalias() = M_diag.cwiseProduct(vn) + dt * fn_ext;
+    if (!implicitGyro) rhs.segment(0, totalV).noalias() += dt * fn_gyro;
+
+    // /* variant "Jan" */
+    // if (lambdaTheta && (nSprings > 0 || nDampers > 0)) {
+    //     VectorXr corr = VectorXr::Zero(totalV);
+    //     if (nSprings > 0) corr.noalias() += Wg.transpose() * Lambda_g;
+    //     if (nDampers > 0) corr.noalias() += Wgamma.transpose() * Lambda_gamma;
+    //     rhs.segment(0, totalV).noalias() -= (1.0 - theta) * corr;
+    // }
+
+    // if (nSprings > 0) rhs.segment(totalV, nSprings) = -(1.0 / (theta * dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) * (Wg * vn) - (1.0 / theta) * C_v_vec;
+    // if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -((1.0 - theta) / theta) * (Wgamma * vn) - (1.0 / theta) * A_v_vec;
+
+    // auto beta = m_dyn->system().config().constraint_bias_factor;
+    // if (beta > 0) rhs.segment(totalV, nSprings).noalias() -= (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()) * (beta / (dt * theta));
+
+    // // // TODO: Constraint stabilization proposed by Marco; this is not working, but I'm not sure why.
+    // // if (nSprings > 0) rhs.segment(totalV, nSprings) = (1.0 / (theta * dt * dt)) * m_dyn->g_error_vec() - ((1.0 - theta) / theta) * (Wg * vn) - (1.0 / theta) * C_v_vec;
+
+    /* variant "Jonas" */
+    if (nSprings > 0 || nDampers > 0) {
         VectorXr corr = VectorXr::Zero(totalV);
         if (nSprings > 0) corr.noalias() += Wg.transpose() * Lambda_g;
         if (nDampers > 0) corr.noalias() += Wgamma.transpose() * Lambda_gamma;
-        rhs.segment(0, totalV).noalias() -= (1.0 - theta) * corr;
+        rhs.segment(0, totalV).noalias() -= ((1.0 - theta) / theta) * corr;
     }
-    if (nSprings > 0) rhs.segment(totalV, nSprings) = -(1.0 / (theta * dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) * (Wg * vn) - (1.0 / theta) * C_v_vec;
-    if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -((1.0 - theta) / theta) * (Wgamma * vn) - (1.0 / theta) * A_v_vec;
+
+    if (nSprings > 0) {
+        // unstabilized
+        rhs.segment(totalV, nSprings) = -(1.0 / (theta * theta * dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) * (Wg * vn) - (1.0 / theta) * C_v_vec;
+
+        // stabilization "Marco"
+        // rhs.segment(totalV, nSprings) = -(1.0 / (theta * dt)) * m_dyn->g_error_vec() - ((1.0 - theta) / theta) * (Wg * vn); // - (1.0 / theta) * C_v_vec;
+    }
+    if (nDampers > 0) {
+        rhs.segment(totalV + nSprings, nDampers) = -((1.0 - theta) / theta) * Adiag.cwiseProduct(Lambda_gamma) - ((1.0 - theta) / theta) * (Wgamma * vn) - (1.0 / theta) * A_v_vec;
+    }
 
     auto beta = m_dyn->system().config().constraint_bias_factor;
-    if (beta > 0) rhs.segment(totalV, nSprings).noalias() -= (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()) * (beta / (dt * theta));
+    if (beta > 0) {
+        rhs.segment(totalV, nSprings).noalias() -= (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()) * (beta / (dt * theta));
+    }
 
-    // // TODO: Constraint stabilization proposed by Marco; this is not working, but I'm not sure why.
-    // if (nSprings > 0) rhs.segment(totalV, nSprings) = (1.0 / (theta * dt * dt)) * m_dyn->g_error_vec() - ((1.0 - theta) / theta) * (Wg * vn) - (1.0 / theta) * C_v_vec;
+    // // // TODO: Constraint stabilization proposed by Marco; this is not working, but I'm not sure why.
+    // // if (nSprings > 0) rhs.segment(totalV, nSprings) = (1.0 / (theta * dt * dt)) * m_dyn->g_error_vec() - ((1.0 - theta) / theta) * (Wg * vn) - (1.0 / theta) * C_v_vec;
 
     return rhs;
 }
