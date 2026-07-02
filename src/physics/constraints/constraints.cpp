@@ -164,10 +164,14 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
 VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g, const ConstraintResult& res) const {
     VectorXr posErr(6);
     posErr.head<3>() = g;
-    const auto R = -(res.WgA.block<3, 3>(3, 3)).transpose() * res.WgB.block<3, 3>(3, 3);
-    // TODO: Use correct constraint here!
-    // posErr.tail<3>() = Vector3r(R(2, 1) - R(1, 2), R(0, 2) - R(2, 0), R(1, 0) - R(0, 1)) * (real_t)0.5;
-    posErr.tail<3>() = Vector3r::Zero();
+    Matrix33r A_IB1 = res.WgA.block<3, 3>(3, 3);
+    Matrix33r A_IB2 = -res.WgB.block<3, 3>(3, 3);
+    posErr(3) = A_IB1.col(1).dot(A_IB2.col(2)); // y * z
+    posErr(4) = A_IB1.col(2).dot(A_IB2.col(0)); // z * x
+    posErr(5) = A_IB1.col(0).dot(A_IB2.col(1)); // x * y
+    // alternative formulation for orientation
+    // const auto R = -(res.WgA.block<3, 3>(3, 3)).transpose() * res.WgB.block<3, 3>(3, 3);
+    // posErr.tail<3>() = Vector3r(R(2, 1) + R(1, 2), R(0, 2) + R(2, 0), R(1, 0) + R(0, 1)) * (real_t)0.5;
     return posErr - m_g0;
 }
 
