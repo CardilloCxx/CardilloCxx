@@ -1,15 +1,16 @@
-Interior-Point Solvers (QOCO and Clarabel)
-==========================================
+Interior-Point Solvers (QOCO, Clarabel and ConicXX)
+====================================================
 
 .. contents:: On this page
    :local:
    :depth: 2
 
-Both QOCO and Clarabel formulate the contact and constraint problem as a convex
-second-order cone program (SOCP) and solve it with a primal-dual interior-point
-method. Unlike the iterative projection solvers (PJ, PGS), they enforce contact
-feasibility as a mathematical constraint rather than a post-projection step,
-which means they can satisfy the Coulomb friction cone exactly.
+QOCO, Clarabel and ConicXX all formulate the contact and constraint problem as
+a convex second-order cone program (SOCP) and solve it with a primal-dual
+interior-point method. Unlike the iterative projection solvers (PJ, PGS), they
+enforce contact feasibility as a mathematical constraint rather than a
+post-projection step, which means they can satisfy the Coulomb friction cone
+exactly.
 
 The QP formulation
 ------------------
@@ -152,34 +153,45 @@ primal multipliers, and the first KKT equation recovers the discrete momentum
 balance. The constraint rows enforce the compliant force laws, and the
 complementarity condition enforces Signorini + Coulomb.
 
-QOCO vs Clarabel
-----------------
+QOCO vs Clarabel vs ConicXX
+---------------------------
 
-Both backends solve the same physical problem with the same matrices. The
-differences are in standard form, implementation, and build requirements.
+All three backends solve the same physical problem with the same matrices
+(ConicXX and Clarabel share the exact same standard form). The differences
+are in standard form, implementation, and build requirements.
 
 .. list-table::
    :header-rows: 1
-   :widths: 20 40 40
+   :widths: 20 30 30 30
 
    * -
      - QOCO
      - Clarabel
+     - ConicXX
    * - Standard form
      - :math:`\min \tfrac{1}{2}x^\top Px + c^\top x` s.t. :math:`Ax=b`, :math:`Gx \in \mathcal{K}`
      - :math:`\min \tfrac{1}{2}x^\top Px + q^\top x` s.t. :math:`Ax \in \mathcal{K}`
+     - :math:`\min \tfrac{1}{2}x^\top Px + q^\top x` s.t. :math:`Ax + s = b,\ s \in \mathcal{K}` (same layout as Clarabel)
    * - Equality handling
      - Separate :math:`A`, :math:`b` matrices
      - Zero-cone rows prepended to :math:`A`
+     - Zero-cone rows prepended to :math:`A` (``ConeSpec::zero_dim``)
    * - Iterative refinement
      - Not supported
+     - ``solver.iter_ref_iters`` refinement passes per KKT solve
      - ``solver.iter_ref_iters`` refinement passes per KKT solve
    * - Algorithm
      - Primal-dual interior point (homogeneous embedding)
      - Homogeneous self-dual interior point
+     - Homogeneous self-dual interior point (Nesterov-Todd scaling, Mehrotra
+       predictor-corrector)
    * - Warmstart
      - None (restarts from central path each step)
      - None
+     - **Yes** -- ``Solver::updateData()`` reuses the KKT sparsity pattern
+       and factorization symbolic analysis, and ``Settings::warm_start``
+       seeds the next solve from the previous iterate, whenever the active
+       contact set hasn't changed since the last step
 
 QOCO backend selection
 ----------------------
@@ -190,15 +202,43 @@ QOCO resolves its backend library at runtime:
 - ``qoco.backend = cpu`` -- CPU only
 - ``qoco.backend = cuda`` -- CUDA only
 
+ConicXX warm start and incremental reuse
+-----------------------------------------
+
+Unlike QOCO and Clarabel, :cpp:class:`ConicxxSolver <cardillo::solver::ConicxxSolver>`
+keeps a single ``conicxx::Solver`` instance alive for the whole simulation.
+Every step it rebuilds ``P``/``q``/``A``/``b``/cone spec from the assembler as
+usual, but instead of unconditionally re-creating the solver, it first tries
+``conicxx::Solver::updateData()`` (a cheap values-only update that reuses the
+existing KKT sparsity pattern and factorization symbolic analysis). Only when
+that fails -- i.e. the active contact set changed and the sparsity pattern of
+``A`` (or the cone composition; see below) no longer matches -- does it fall
+back to a full ``conicxx::Solver::setup()``, exactly mirroring the usage
+pattern documented in ConicXX's own ``solver.h``. When ``conicxx.warm_start``
+is enabled, ConicXX also seeds each solve from its own previous iterate
+automatically (no explicit bookkeeping needed on the CardilloMPI side).
+
+Note that ``updateData()`` only checks the sparsity pattern of ``A``, not the
+cone composition itself -- a contact whose friction coefficient crosses zero
+between steps can switch a row between the nonnegative orthant and a
+second-order cone block while coincidentally leaving ``A``'s row count and
+nonzero pattern unchanged. ``ConicxxSolver`` guards against this explicitly by
+also comparing the freshly computed ``ConeSpec`` against the one used at the
+last ``setup()``, and forcing a full re-setup if it differs.
+
 Limitations
 -----------
 
-- **No warmstart.** The last result might not be feasible in the next timestep, so it cannot directly be used as warmstart.
-- **Rebuilt every step.** When contacts appear or disappear the sparsity pattern
-  of :math:`G` changes, requiring a full solver re-setup.
+- **QOCO/Clarabel: no warmstart, rebuilt every step.** The last result might
+  not be feasible in the next timestep, so it cannot directly be used as
+  warmstart, and when contacts appear or disappear the sparsity pattern of
+  :math:`G`/:math:`A` changes, requiring a full solver re-setup every step.
+  ConicXX does not have this limitation in the common case where the contact
+  set is momentarily stable (see above).
 - **No implicit gyroscopy** (``moreau.implicit_gyroscopy``) and no
   lambda-theta integration (``moreau.lambda_theta``). These settings are
-  silently ignored; use PJ or PGS if you need them.
+  silently ignored by all three interior-point backends; use PJ or PGS if you
+  need them.
 
 Config keys
 -----------
@@ -209,7 +249,7 @@ Config keys
 
    * - Key
      - Effect
-   * - ``solver.type = qoco`` / ``clarabel``
+   * - ``solver.type = qoco`` / ``clarabel`` / ``conicxx``
      - Select backend
    * - ``qoco.backend``
      - ``auto`` / ``cpu`` / ``cuda`` (QOCO only)
@@ -218,8 +258,11 @@ Config keys
    * - ``solver.tol_abs``, ``solver.tol_rel``
      - Primal/dual feasibility and gap tolerances
    * - ``solver.kkt_static_reg``
-     - Static KKT regularisation constant (both)
+     - Static KKT regularisation constant (all three)
    * - ``solver.kkt_dynamic_reg``
-     - Dynamic KKT regularisation delta (both)
+     - Dynamic KKT regularisation delta (all three)
    * - ``solver.iter_ref_iters``
-     - Iterative refinement passes per KKT solve (Clarabel only)
+     - Iterative refinement passes per KKT solve (Clarabel, ConicXX)
+   * - ``conicxx.warm_start``
+     - Enable/disable ConicXX's cross-step warm start and KKT reuse
+       (ConicXX only, default ``on``)

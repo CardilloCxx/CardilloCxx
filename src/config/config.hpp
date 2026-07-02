@@ -7,7 +7,7 @@
 namespace cardillo::config {
 
 enum class IntegratorType { Moreau };
-enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel };
+enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel, Conicxx };
 
 struct Config {
     // Simulation settings
@@ -69,11 +69,16 @@ struct Config {
 
     real_t constraint_bias_factor{(real_t)0.001};  // constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)
 
-    // Interior-point solver settings shared across QOCO and Clarabel
+    // Interior-point solver settings shared across QOCO, Clarabel and ConicXX
     std::string qoco_backend{"auto"};         // qoco.backend [auto, cpu, cuda]
     real_t ip_kkt_static_reg{(real_t)1e-8};   // solver.kkt_static_reg
     real_t ip_kkt_dynamic_reg{(real_t)1e-8};  // solver.kkt_dynamic_reg
     int ip_iter_ref_iters{0};                 // solver.iter_ref_iters
+
+    // ConicXX-only: unlike QOCO/Clarabel it can reuse its KKT factorization and
+    // warm-start its iterate across steps when the active contact set hasn't
+    // changed (see docs/chapters/solvers/interior_point.rst).
+    bool conicxx_warm_start{true};  // conicxx.warm_start
 
     // Presence flags for precedence handling (e.g., pj.alpha overrides alpha if both set)
     bool has_pj_alpha{false};

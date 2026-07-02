@@ -60,9 +60,11 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
    * - ``conjugate_gradient``
      - :doc:`conjugate_gradient` (:cpp:class:`ConjugateGradientSolver <cardillo::solver::ConjugateGradientSolver>`)
      - Constraint-only scenes (no contact)
-   * - ``qoco / clarabel``
-     - :doc:`interior_point` (:cpp:class:`QocoSolver <cardillo::solver::QocoSolver>`, :cpp:class:`ClarabelSolver <cardillo::solver::ClarabelSolver>`)
-     - Interior-point, exact cone projection
+   * - ``qoco / clarabel / conicxx``
+     - :doc:`interior_point` (:cpp:class:`QocoSolver <cardillo::solver::QocoSolver>`, :cpp:class:`ClarabelSolver <cardillo::solver::ClarabelSolver>`, :cpp:class:`ConicxxSolver <cardillo::solver::ConicxxSolver>`)
+     - Interior-point, exact cone projection. ``conicxx`` additionally reuses
+       its KKT factorization and warm-starts across steps when the active
+       contact set is unchanged.
 
 .. toctree::
    :hidden:

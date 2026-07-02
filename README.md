@@ -10,6 +10,9 @@ CardilloCxx is a C++ physics engine with contact handling, multiple solver backe
 - Optional interior-point solvers:
    - QOCO (CPU and optional CUDA backend)
    - Clarabel (built through Clarabel.rs, requires Rust/Cargo)
+   - ConicXX (plain CMake/C++17 target, no Rust/CUDA required; the only
+     backend that warm-starts and reuses its KKT factorization across steps
+     when the active contact set is unchanged)
 
 ## Prerequisites
 

@@ -35,6 +35,7 @@ class TimingManager {
         ProjectedNewtonSetup,
         QocoSolve,
         ClarabelSolve,
+        ConicxxSolve,
         CollisionMakeContact,
         DisableCollisionPairs,
         CollisionNarrowphaseCollide,
@@ -43,6 +44,8 @@ class TimingManager {
         QocoSetup,
         ClarabelAssembly,
         ClarabelSetup,
+        ConicxxAssembly,
+        ConicxxSetup,
         OutputWrite,
         DynamicsAssembler_RefreshState,
         Total,
@@ -277,6 +280,12 @@ class TimingManager {
                 return "Clarabel Assembly";
             case TimerId::ClarabelSetup:
                 return "Clarabel Setup";
+            case TimerId::ConicxxSolve:
+                return "ConicXX Solve";
+            case TimerId::ConicxxAssembly:
+                return "ConicXX Assembly";
+            case TimerId::ConicxxSetup:
+                return "ConicXX Setup";
             case TimerId::DisableCollisionPairs:
                 return "Disable Collision Pairs";
             case TimerId::DynamicsAssembler_RefreshState:

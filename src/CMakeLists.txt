@@ -17,19 +17,39 @@ FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GI
 FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG v0.11.1)
 FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.0)
 FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
-FetchContent_MakeAvailable(eigen coal entt clarabel qoco)
+# ConicXX has no tagged release yet, so this pins the exact commit that was
+# verified to build and pass its own test suite (56/56) when this integration
+# was written. Bump deliberately, not with a floating branch ref.
+# Pinned past f8818e6 (initial integration) to 190eb67 ("Speed fixes."),
+# which fixes a catastrophic KKT fill-in bug: KktSystem::setup() used to
+# register a full dense lower-triangle of slots for every cone block's Hs
+# scaling, including Zero/Nonnegative cone blocks whose Hs is zero/diagonal
+# -- for a scene with a large equality-constraint block (e.g. many bilateral
+# joints) this explicitly stored millions of always-zero entries in the KKT
+# sparsity pattern, making setup() and every refactorization dramatically
+# more expensive than necessary. It also switched KktSystem::factorizeWithRetry()
+# from ldlt_.compute() (full symbolic+numeric) to ldlt_.factorize() reusing
+# a one-time ldlt_.analyzePattern() call from setup(), matching what the
+# class's own docs always claimed it did.
+set(CONICXX_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(CONICXX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(CONICXX_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(CONICXX_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG 190eb6799b2ee8cf248217fc43432dd9d2b339fe)
+FetchContent_MakeAvailable(eigen coal entt clarabel qoco conicxx)
 
 # --- 2. Engine Targets ---
 file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_library(cardillo SHARED ${CARDILLO_SOURCES})
 
 # --- 3. Link Dependencies ---
-target_link_libraries(cardillo PUBLIC 
-    Eigen3::Eigen 
-    EnTT::EnTT 
+target_link_libraries(cardillo PUBLIC
+    Eigen3::Eigen
+    EnTT::EnTT
     coal::coal
     qoco
     libclarabel_c_shared
+    conicxx::conicxx
 )
 
 target_include_directories(cardillo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")

@@ -127,12 +127,18 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.solver = SolverType::Qoco;
             else if (v == "clarabel" || v == "clarabel_solver" || v == "clarabelcpp")
                 cfg.solver = SolverType::Clarabel;
+            else if (v == "conicxx" || v == "conic_xx" || v == "conicxx_solver")
+                cfg.solver = SolverType::Conicxx;
             else if (v == "conjugate_gradient" || v == "conjugategradient" || v == "cg")
                 cfg.solver = SolverType::ConjugateGradient;
             else {
                 std::cerr << "Warning: unrecognized solver.type '" << val << "'. Defaulting to ProjectedJacobi." << std::endl;
                 cfg.solver = SolverType::ProjectedJacobi;
             }
+        } else if (key == "conicxx.warm_start") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.conicxx_warm_start = (v == "1" || v == "true" || v == "yes" || v == "on");
         } else if (key == "qoco.backend") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
