@@ -15,6 +15,12 @@ class WarmstartProvider {
     ~WarmstartProvider() = default;
 
     // Apply a warmstart hint using per-contact stored impulses in `contactsAll`.
+    //
+    // Note: the normal-impulse component is seeded as-is, without clamping to a sign here.
+    // PGS uses the convention normal impulse <= 0, while Projected Jacobi uses >= 0; each
+    // solver's own projection step re-enforces its convention on the very first iteration, so
+    // clamping here would only ever discard a correctly-signed warmstart for one of the two
+    // solvers instead of improving convergence.
     static void applyWarmstart(cardillo::VectorXr& p, cardillo::physics::DynamicsAssembler& dyn) {
         const auto& contacts = dyn.contacts();
         for (const auto& c : contacts) {
@@ -22,8 +28,7 @@ class WarmstartProvider {
             const int base = c.impulse_base_index;
             if (base >= p.size()) continue;
 
-            // normal impulse (clamped >= 0)
-            p[base] = std::max<real_t>(c.last_impulse(0), (real_t)0);
+            p[base] = c.last_impulse(0);
             if (c.impulse_size > 1 && base + 1 < p.size()) p[base + 1] = c.last_impulse(1);
             if (c.impulse_size > 2 && base + 2 < p.size()) p[base + 2] = c.last_impulse(2);
         }

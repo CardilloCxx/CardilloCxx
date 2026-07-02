@@ -77,6 +77,7 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
 
         rz_new = z.dot(res);
         res_norm = res.norm();
+        m_last_iters = iter + 1;
 
         if (res_norm < m_cfg.pj_tol_abs) break;
 
@@ -89,7 +90,6 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
         p = z + beta * p;
 
         rz_old = rz_new;
-        m_last_iters = iter + 1;
     }
 
     if (m_cfg.debug_pj) {

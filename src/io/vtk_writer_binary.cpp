@@ -6,6 +6,7 @@
 #include "mesh_generator.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -131,8 +132,11 @@ inline uint32_t VtkWriterBinary::bswap32(uint32_t v) {
 }
 
 inline void VtkWriterBinary::writeBE(std::ofstream& out, uint32_t v) {
-    uint32_t b = bswap32(v);
-    out.write(reinterpret_cast<const char*>(&b), sizeof(uint32_t));
+    // Legacy VTK binary files are big-endian; only swap when the host is little-endian.
+    if constexpr (std::endian::native == std::endian::little) {
+        v = bswap32(v);
+    }
+    out.write(reinterpret_cast<const char*>(&v), sizeof(uint32_t));
 }
 
 inline void VtkWriterBinary::writeBE(std::ofstream& out, int32_t v) {
@@ -175,18 +179,24 @@ void VtkWriterBinary::writePointsBlock(std::ofstream& out, const std::vector<Ent
 }
 
 void VtkWriterBinary::writePolygonsBlock(std::ofstream& out, const std::vector<EntityMesh>& meshes) const {
+    const auto isValidTriangle = [](const EntityMesh& m, const auto& t) {
+        return t[0] >= 0 && t[1] >= 0 && t[2] >= 0 && (std::size_t)t[0] < m.vertices.size() && (std::size_t)t[1] < m.vertices.size() && (std::size_t)t[2] < m.vertices.size();
+    };
+
     std::size_t nPolys = 0;
-    std::size_t listSize = 0;
     for (const auto& m : meshes) {
-        nPolys += m.triangles.size();
-        listSize += m.triangles.size() * 4;
+        for (const auto& t : m.triangles) {
+            if (isValidTriangle(m, t)) ++nPolys;
+        }
     }
+    const std::size_t listSize = nPolys * 4;
 
     out << "POLYGONS " << nPolys << ' ' << listSize << "\n";
 
     std::size_t base = 0;
     for (const auto& m : meshes) {
         for (const auto& t : m.triangles) {
+            if (!isValidTriangle(m, t)) continue;
             writeBE(out, int32_t(3));
             writeBE(out, int32_t(base + (std::size_t)t[0]));
             writeBE(out, int32_t(base + (std::size_t)t[1]));

@@ -6,10 +6,19 @@
 
 namespace cardillo {
 
+/**
+ * @brief A block-diagonal matrix, stored as a list of dense square blocks.
+ *
+ * Used to represent the (block-diagonal) Delassus-type operators assembled by the PGS/CG
+ * solvers, where each block corresponds to one constraint's local compliance/mass contribution.
+ * If every block added so far is itself diagonal, `is_diag_` stays true and operations fall back
+ * to a cheap element-wise diagonal path.
+ */
 class BlockDiagonal {
    public:
     BlockDiagonal() = default;
 
+    /// Appends a square block; must be called in the same order as the corresponding DOF layout.
     void addBlock(const MatrixXXr& block) {
         if (block.rows() != block.cols()) throw std::invalid_argument("Block must be square.");
         blocks_.push_back(block);
@@ -17,12 +26,19 @@ class BlockDiagonal {
         n_ += block.rows();
     }
 
+    /// Appends a diagonal block built from `diag`.
     void addBlockDiag(const VectorXr& diag) {
         MatrixXXr block = diag.asDiagonal();
         addBlock(block);
     }
 
-    BlockDiagonal calculateInverse() {
+    /**
+     * @brief Returns the block-wise inverse of this matrix.
+     *
+     * Each block is inverted independently via Cholesky (LLT), falling back to LDLT and then to
+     * a diagonal-only inverse if the block is not (numerically) positive definite.
+     */
+    BlockDiagonal calculateInverse() const {
         BlockDiagonal inverse;
 
         for (const auto& block : blocks_) {
@@ -70,7 +86,7 @@ class BlockDiagonal {
     }
 
     const std::vector<MatrixXXr>& blocks() const { return blocks_; }
-    const void calcDiag() {
+    void calcDiag() {
         diag_ = VectorXr::Zero(n_);
         int offset = 0;
         for (const auto& block : blocks_) {

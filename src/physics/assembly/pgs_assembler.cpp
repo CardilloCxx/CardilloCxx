@@ -104,7 +104,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
     std::vector<MatrixXXr> springBlocks;
     std::vector<MatrixXXr> damperBlocks;
 
-    for (auto& constraint : m_dyn->constraintResults()) {
+    for (const auto& constraint : m_dyn->constraintResults()) {
         const auto& Crows = constraint.Crows;
         const auto& Arows = constraint.Arows;
         const auto& c_used = constraint.c_used;
@@ -243,7 +243,7 @@ BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
     int offset = 0;
     const auto& reg = m_dyn->system().ecs();
 
-    for (auto& constraint : m_dyn->constraintResults()) {
+    for (const auto& constraint : m_dyn->constraintResults()) {
         const bool addA = !RigidBody::isStatic(reg, constraint.a);
         const bool addB = !RigidBody::isStatic(reg, constraint.b);
         if (!addA && !addB) continue;
@@ -255,7 +255,7 @@ BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
         offset += nSp;
     }
 
-    for (auto& constraint : m_dyn->constraintResults()) {
+    for (const auto& constraint : m_dyn->constraintResults()) {
         const bool addA = !RigidBody::isStatic(reg, constraint.a);
         const bool addB = !RigidBody::isStatic(reg, constraint.b);
         if (!addA && !addB) continue;

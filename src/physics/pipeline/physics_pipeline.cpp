@@ -85,12 +85,11 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Confi
 void PhysicsPipeline::step(real_t dt) {
     if (m_finished) return;
 
-    if (m_current_step == 0) {
+    if (m_current_step == 0 && m_vtk_writer) {
         m_vtk_writer->maybeWrite(m_current_step, m_current_time, m_world, m_collision_mgr, m_timings, m_dyn.get());
     }
 
-    // Refresh assembler and run integrator
-    if (m_dyn) m_dyn->refreshState();
+    // Run integrator (it refreshes the assembler state itself at the start of its step)
     if (m_integrator) m_integrator->step(dt);
 
     // Advance internal time/step

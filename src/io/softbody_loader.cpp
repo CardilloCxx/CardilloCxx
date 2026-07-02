@@ -37,15 +37,19 @@ bool load_obj_softbody(const std::string& path, SoftBodyMesh& out, const cardill
         const auto& F = *bvh->tri_indices;
         std::unordered_set<uint64_t> Eset;
         Eset.reserve(F.size() * 3);
+        const int numPositions = static_cast<int>(out.positions.size());
         for (const auto& tri : F) {
             const int a = tri[0];
             const int b = tri[1];
             const int c = tri[2];
-            if (a >= 0 && b >= 0) Eset.insert(edge_key(a, b));
-            if (b >= 0 && c >= 0) Eset.insert(edge_key(b, c));
-            if (c >= 0 && a >= 0) Eset.insert(edge_key(c, a));
+            const bool aValid = a >= 0 && a < numPositions;
+            const bool bValid = b >= 0 && b < numPositions;
+            const bool cValid = c >= 0 && c < numPositions;
+            if (aValid && bValid) Eset.insert(edge_key(a, b));
+            if (bValid && cValid) Eset.insert(edge_key(b, c));
+            if (cValid && aValid) Eset.insert(edge_key(c, a));
             // triangles
-            if (a >= 0 && b >= 0 && c >= 0) {
+            if (aValid && bValid && cValid) {
                 out.triangles.emplace_back(a, b, c);
             }
         }

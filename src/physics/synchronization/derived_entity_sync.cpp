@@ -19,15 +19,15 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
 
     auto getDesiredLengthBetween = [&](entt::entity a, entt::entity b) -> real_t {
         if (!(reg.valid(a) && reg.valid(b))) {
-            std::cout << "Beam length: invalid entities a=" << (int)a << " b=" << (int)b << "\\eaen";
+            std::cout << "Beam length: invalid entities a=" << (int)a << " b=" << (int)b << "\n";
         }
         if (!reg.any_of<cardillo::C_Position3>(a) || !reg.any_of<cardillo::C_Position3>(b)) {
             std::cout << "Beam length: missing positions a=" << reg.any_of<cardillo::C_Position3>(a) << " b=" << reg.any_of<cardillo::C_Position3>(b) << " for entities a=" << (int)a << " b=" << (int)b
-                      << "\\n";
+                      << "\n";
         }
         if (!reg.any_of<cardillo::C_Orientation>(a) || !reg.any_of<cardillo::C_Orientation>(b)) {
             std::cout << "Beam length: missing orientations a=" << reg.any_of<cardillo::C_Orientation>(a) << " b=" << reg.any_of<cardillo::C_Orientation>(b) << " for entities a=" << (int)a
-                      << " b=" << (int)b << "\\n";
+                      << " b=" << (int)b << "\n";
         }
         if (reg.valid(a) && reg.valid(b) && reg.any_of<cardillo::C_Position3>(a) && reg.any_of<cardillo::C_Position3>(b) && reg.any_of<cardillo::C_Orientation>(a) &&
             reg.any_of<cardillo::C_Orientation>(b)) {

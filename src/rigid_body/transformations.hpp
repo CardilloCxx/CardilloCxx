@@ -6,6 +6,15 @@
 #include "../misc/types.hpp"
 #include "rigid_body.hpp"
 
+/**
+ * @brief Frame-transformation helpers between two rigid-body reference frames.
+ *
+ * Convention used throughout this file (matching cardillo::physics::RigidState): a RigidState's
+ * `position`/`orientation`/`linearVelocity` are expressed in the world frame, while its
+ * `angularVelocity` is expressed in its own body-fixed frame. Free function parameters named
+ * `point`, `dir`, `v` are expressed in the *source* (`from`) body's local/body-fixed frame unless
+ * documented otherwise, and return values are expressed in the *target* (`to`) body's local frame.
+ */
 namespace cardillo::transform {
 
 namespace detail {
@@ -47,22 +56,31 @@ inline Vector3r bodyPointVelocityWorld(const RigidBody::RigidState& f, const Vec
 
 }  // namespace detail
 
+/// Re-expresses a point given in `from`'s local frame as a point in `to`'s local frame.
 inline Vector3r point(const Vector3r& point, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
     return detail::worldToPoint(to, detail::pointToWorld(from, point));
 }
 
+/// Re-expresses a free direction vector (no translation) from `from`'s local frame into `to`'s local frame.
 inline Vector3r direction(const Vector3r& dir, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
     return detail::worldToVec(to, detail::vecToWorld(from, dir));
 }
 
+/// Re-expresses a rotation matrix defined relative to `from`'s axes as one relative to `to`'s axes.
 inline Matrix33r rotation(const Matrix33r& R, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
     return to.rotation.transpose() * from.rotation * R;
 }
 
+/// Re-expresses an orientation quaternion defined relative to `from`'s axes as one relative to `to`'s axes.
 inline Quaternion4r orientation(const Quaternion4r& q, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
     return detail::orientation(q, from, to);
 }
 
+/**
+ * @brief Computes the relative linear velocity, in `to`'s body frame, of a point fixed to `from`.
+ * @param v Velocity of the point relative to `from`, expressed in `from`'s body frame.
+ * @param position The point's location, expressed in `from`'s body frame.
+ */
 inline Vector3r linearVelocity(const Vector3r& v, const Vector3r& position, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
     const auto& fromFrame = from;
     const auto& toFrame = to;
@@ -76,6 +94,11 @@ inline Vector3r linearVelocity(const Vector3r& v, const Vector3r& position, cons
     return detail::worldToVec(toFrame, v_rel_world);
 }
 
+/**
+ * @brief Computes the relative angular velocity, in `to`'s body frame, of a frame spinning at
+ * `omega` relative to `from`.
+ * @param omega Angular velocity relative to `from`, expressed in `from`'s body frame.
+ */
 inline Vector3r angularVelocity(const Vector3r& omega, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
     const auto& fromFrame = from;
     const auto& toFrame = to;
@@ -84,6 +107,7 @@ inline Vector3r angularVelocity(const Vector3r& omega, const RigidBody::RigidSta
     return detail::worldToVec(toFrame, w_world) - toFrame.angularVelocity;
 }
 
+/// Re-expresses a full rigid-body state (of a body rigidly attached to `from`) relative to `to` instead.
 inline RigidBody::RigidState rigidState(const RigidBody::RigidState& state, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
     RigidBody::RigidState out;
     out.position = point(state.position, from, to);

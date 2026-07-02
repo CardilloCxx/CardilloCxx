@@ -171,8 +171,9 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
     m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
     QOCOInt exit = m_qoco_setup(m_qoco_solver, n, m, p, P, c, A, b, G, h, l, nsoc, nsoc ? qvec.data() : nullptr, settings);
 
-    if (exit != 0) throw std::runtime_error("Failed to initialize QOCO solver");
+    // qoco_setup() deep-copies settings into the solver, so it is safe to free unconditionally here.
     std::free(settings);
+    if (exit != 0) throw std::runtime_error("Failed to initialize QOCO solver");
 }
 
 void QocoSolver::updateQocoSolver(real_t dt, real_t theta) {
@@ -219,14 +220,12 @@ VectorXr QocoSolver::solve(real_t dt, real_t theta) {
     m_last_iters = sol->iters;
 
     // Contact Impulse
-    QOCOFloat z = sol->z[0];
     VectorXr Smu = m_assembler.computeSmu();
     VectorXr impulse = VectorXr::Zero(m_dyn.numContactRows());
     for (int i = 0; i < impulse.size(); ++i) impulse[i] = sol->z[i] * Smu[i];
     cardillo::solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
 
     // Solution vector x contains stacked [v, lambda_g, lambda_gamma]
-    QOCOFloat x = sol->x[0];
     VectorXr x_vec = VectorXr::Zero(m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers());
     for (int i = 0; i < x_vec.size(); ++i) x_vec[i] = sol->x[i];
 

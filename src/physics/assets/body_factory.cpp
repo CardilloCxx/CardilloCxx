@@ -53,10 +53,11 @@ std::vector<entt::entity> BodyFactory::addSoftBody(World& sys, const std::string
     real_t nodeMass = (totalMass > (real_t)0) ? (totalMass / (real_t)N) : (real_t)0.02;
 
     Matrix33r R = orientation.toRotationMatrix();
+    const Vector3r angularVelocityWorld = R * angularVelocity;  // angularVelocity is given in the body-fixed frame
     nodes.reserve(N);
     for (const auto& p0 : sb.positions) {
         Vector3r pw = position + R * p0;
-        Vector3r vw = linearVelocity + angularVelocity.cross(pw - position);
+        Vector3r vw = linearVelocity + angularVelocityWorld.cross(pw - position);
         entt::entity id = addPointMass(sys, nodeMass, pw, vw, nodeRadius);
         nodes.push_back(id);
     }
@@ -71,10 +72,12 @@ std::vector<entt::entity> BodyFactory::addSoftBody(World& sys, const std::string
         }
     }
 
-    for (const auto& n1 : nodes) {
-        for (const auto& n2 : nodes) {
-            if (n1 < n2) {
-                collision_mgr->disablePair(n1, n2);
+    if (collision_mgr) {
+        for (const auto& n1 : nodes) {
+            for (const auto& n2 : nodes) {
+                if (n1 < n2) {
+                    collision_mgr->disablePair(n1, n2);
+                }
             }
         }
     }

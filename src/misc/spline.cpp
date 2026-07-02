@@ -356,9 +356,15 @@ std::vector<std::shared_ptr<SplinePattern>> loadSplinesFromBCC(const std::string
         in.read(reinterpret_cast<char*>(&curveControlPointCount), sizeof(curveControlPointCount));
         if (!in) break;
 
-        bool isLoop = curveControlPointCount < 0;
-        if (curveControlPointCount < 0) curveControlPointCount = -curveControlPointCount;
-        if (curveControlPointCount < 0) break;
+        // INT32_MIN cannot be negated without signed overflow (UB); reject it outright.
+        if (curveControlPointCount == std::numeric_limits<std::int32_t>::min()) break;
+
+        const bool isLoop = curveControlPointCount < 0;
+        if (isLoop) curveControlPointCount = -curveControlPointCount;
+
+        // Sanity bound against corrupted/malicious files triggering an unbounded allocation.
+        constexpr std::int32_t kMaxControlPoints = 10'000'000;
+        if (curveControlPointCount < 0 || curveControlPointCount > kMaxControlPoints) break;
 
         const std::size_t count = static_cast<std::size_t>(curveControlPointCount);
         std::vector<Vector3r> cps;

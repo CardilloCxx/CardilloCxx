@@ -48,7 +48,7 @@ class DynamicsAssembler {
         static const std::vector<collision::Contact> emptyContacts;
         return m_contacts_ptr ? *m_contacts_ptr : emptyContacts;
     }
-    std::vector<ConstraintResult> constraintResults() const { return m_constraintResults; }
+    const std::vector<ConstraintResult>& constraintResults() const { return m_constraintResults; }
 
     // DOF queries owned by the assembler (scan ECS indices)
     index_t numQ() const { return m_numQ; }

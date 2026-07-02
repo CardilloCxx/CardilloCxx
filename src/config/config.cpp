@@ -172,12 +172,20 @@ Config ConfigReader::fromFile(const std::string& path) {
             cfg.moreau_lambda_theta = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
         } else if (key == "sim.T") {
             try {
-                cfg.sim_T = static_cast<real_t>(std::stod(val));
+                const real_t v = static_cast<real_t>(std::stod(val));
+                if (v > (real_t)0)
+                    cfg.sim_T = v;
+                else
+                    std::cerr << "Warning: 'sim.T' must be positive; ignoring value '" << val << "'." << std::endl;
             } catch (...) {
             }
         } else if (key == "sim.dt") {
             try {
-                cfg.sim_dt = static_cast<real_t>(std::stod(val));
+                const real_t v = static_cast<real_t>(std::stod(val));
+                if (v > (real_t)0)
+                    cfg.sim_dt = v;
+                else
+                    std::cerr << "Warning: 'sim.dt' must be positive; ignoring value '" << val << "'." << std::endl;
             } catch (...) {
             }
         } else if (key == "sim.gravity") {

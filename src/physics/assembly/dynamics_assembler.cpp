@@ -35,11 +35,7 @@ void DynamicsAssembler::updateContactsFromSystem() {
     m_contacts_ptr = &m_collision_mgr->detectAll();
 }
 
-void DynamicsAssembler::setLambda_g(const VectorXr& lam) {
-    m_Lambda_g = lam;
-    static bool headerPrinted = false;
-    static int step = 0;
-}
+void DynamicsAssembler::setLambda_g(const VectorXr& lam) { m_Lambda_g = lam; }
 
 // ---------- Cached API (block-based) ----------
 
