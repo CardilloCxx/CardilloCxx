@@ -94,7 +94,9 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
     if (m_cfg.pj_warmstart && nContacts > 0) {
         VectorXr l_contact = VectorXr::Zero(nContacts);
-        WarmstartProvider::applyWarmstart(l_contact, m_dyn);
+        // PGS's internal convention is normal impulse <= 0 (see project_all() above); invert at
+        // this boundary to/from the canonical non-negative storage convention (see warmstart.hpp).
+        WarmstartProvider::applyWarmstart(l_contact, m_dyn, /*invertNormalSign=*/true);
         lambda.segment(nSprings + nDampers, nContacts) = l_contact;
     }
 
@@ -255,7 +257,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
     if (nSprings > 0) m_dyn.setLambda_g(lambda.head(nSprings));
     if (nDampers > 0) m_dyn.setLambda_gamma(lambda.segment(nSprings, nDampers));
-    if (nContacts > 0) WarmstartProvider::storeImpulse(lambda.segment(nSprings + nDampers, nContacts), m_dyn);
+    if (nContacts > 0) WarmstartProvider::storeImpulse(lambda.segment(nSprings + nDampers, nContacts), m_dyn, /*invertNormalSign=*/true);
 
     return u_free - u_corr;
 }

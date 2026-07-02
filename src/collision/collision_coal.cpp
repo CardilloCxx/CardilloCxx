@@ -465,7 +465,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
     if (m_cfg.pj_warmstart) {
         m_contactTracker.registerNextContacts(mapCurr);
-        m_contactTracker.applyPrevImpulses(m_flattened, m_prev_flattened);
+        m_contactTracker.applyPrevImpulses(m_flattened, m_prev_flattened, mapCurr);
     }
 
     return m_flattened;
