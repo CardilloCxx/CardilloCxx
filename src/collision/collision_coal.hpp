@@ -12,6 +12,7 @@
 // Include COAL headers for complete types (we use unique_ptr to these types)
 #include <coal/BVH/BVH_model.h>
 #include <coal/broadphase/broadphase.h>
+#include <coal/broadphase/default_broadphase_callbacks.h>
 #include <coal/collision_object.h>
 #include <coal/mesh_loader/loader.h>
 
@@ -46,6 +47,12 @@ class CollisionCoal {
     cardillo::World* m_world = nullptr;                  // not owned
     cardillo::misc::TimingManager* m_timings = nullptr;  // optional timings pointer
     cardillo::config::Config& m_cfg;                     // reference to global config for easy access
+
+    // Persistent scratch buffers for detectAll(), cleared (not reallocated) at the start of each
+    // call to avoid a fresh heap allocation/rehash of the broadphase pair list and contact map
+    // every single step.
+    std::vector<coal::CollisionCallBackCollect::CollisionPair> m_pairs;
+    ContactMap m_mapCurr;
 
    public:
     CollisionCoal(cardillo::World& world, cardillo::misc::TimingManager* timings, cardillo::config::Config& cfg);

@@ -338,7 +338,8 @@ void CollisionCoal::applyTransforms() {
 }
 
 std::vector<Contact>& CollisionCoal::detectAll() {
-    ContactMap mapCurr;
+    ContactMap& mapCurr = m_mapCurr;
+    mapCurr.clear();
     if (!m_world) {
         m_prev_flattened.clear();
         m_flattened.clear();
@@ -351,7 +352,8 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
     auto& reg = m_world->ecs();
 
-    std::vector<coal::CollisionCallBackCollect::CollisionPair> pairs;
+    std::vector<coal::CollisionCallBackCollect::CollisionPair>& pairs = m_pairs;
+    pairs.clear();
     {
         auto sc2 = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionBroadphase);
         const std::size_t nObj = m_objects.size();
@@ -451,8 +453,10 @@ std::vector<Contact>& CollisionCoal::detectAll() {
     m_prev_flattened = std::move(m_flattened);
     m_flattened.clear();
 
-    // Copy last_impulse values from authoritative previous flattened buffer into current ContactMap
-    m_flattened.reserve(1024);
+    // Copy last_impulse values from authoritative previous flattened buffer into current ContactMap.
+    // Reserve based on the previous step's actual contact count rather than a fixed guess, since
+    // contact counts are typically stable step-to-step outside of impact events.
+    m_flattened.reserve(std::max<std::size_t>(m_prev_flattened.size(), 64));
     int globalIndex = 0;
     for (auto& [key, list] : mapCurr) {
         for (int i = 0; i < list.size(); ++i) {
