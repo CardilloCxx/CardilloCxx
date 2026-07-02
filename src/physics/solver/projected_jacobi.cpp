@@ -2,15 +2,22 @@
 
 #include <cmath>
 #include <limits>
+#include <optional>
+#include "../../misc/block_diagonal.hpp"
 
 namespace cardillo::solver {
 
 struct workspace {
     const int Nv, Ns, Nd, Nnfc, Nfc, Nc;
     const VectorXr mu;
-    const VectorXr biasImpulse;  // dyn.contactVVec(), constant
+    const VectorXr biasImpulse;  // dyn.contactVVec(), constant (scaled by Rdiag unless block preconditioning is used)
     const Eigen::SparseMatrix<real_t, Eigen::RowMajor> W;
-    const Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW;
+    const Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW;  // Rdiag-scaled W, or plain W when using the block preconditioner
+
+    // Present only when cfg.pj_rdiag_true_delassus is enabled: the exact per-contact local
+    // Delassus block (3x3 for frictional contacts, 1x1 otherwise), applied as a second stage
+    // after RW/biasImpulse instead of being folded into a per-row scale (see pj_sweep()).
+    const std::optional<cardillo::BlockDiagonal> R_block;
 
     VectorXr x;
     VectorXr prev_x;
@@ -24,7 +31,7 @@ struct workspace {
     cardillo::physics::assembly::PjAssembler* assembler;
 
     workspace(int nv, int ns, int nd, int nnfc, int nfc, int nc, Eigen::SparseMatrix<real_t, Eigen::RowMajor> W, Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW, VectorXr biasImpulse, VectorXr mu,
-              VectorXr p_init, VectorXr x_init, cardillo::misc::TimingManager* timer, cardillo::physics::assembly::PjAssembler* assembler)
+              std::optional<cardillo::BlockDiagonal> R_block, VectorXr p_init, VectorXr x_init, cardillo::misc::TimingManager* timer, cardillo::physics::assembly::PjAssembler* assembler)
         : Nv(nv),
           Ns(ns),
           Nd(nd),
@@ -35,6 +42,7 @@ struct workspace {
           biasImpulse(std::move(biasImpulse)),
           W(std::move(W)),
           RW(std::move(RW)),
+          R_block(std::move(R_block)),
           x(std::move(x_init)),
           prev_x(x),
           impulse(std::move(p_init)),
@@ -57,6 +65,35 @@ static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::Row
         R[cid] = (Dii > (real_t)0) ? (alpha / Dii) : (real_t)0;
     }
     return R;
+}
+
+// Exact per-contact local Delassus block preconditioner: R_block = alpha * D^{-1}, where D is the
+// contact's own (1x1, or 3x3 for a frictional contact) diagonal block of W*Minv*W^T -- as opposed
+// to rdiag_sparse() above, which only uses each row's own scalar diagonal entry and ignores the
+// normal/tangential cross-coupling within a frictional contact's 3 rows. See the design writeup
+// in the accompanying report for the theory; this reuses the same block-inversion machinery
+// (Cholesky, falling back to LDLT, falling back to a diagonal-only inverse) already used by
+// PgsAssembler::Dinv() for springs/dampers and (dead, for contacts, since ConjugateGradientSolver
+// never reaches it) frictional contacts.
+// Nfc is the number of *frictional rows* (Nc - Nnfc, i.e. 3 per frictional contact), matching the
+// convention used by workspace::Nfc and project() above -- not the number of frictional contacts.
+static inline cardillo::BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, int Nnfc, int Nfc, real_t alpha) {
+    cardillo::BlockDiagonal D_scaled;  // holds D/alpha per block, so calculateInverse() yields alpha*D^{-1} directly
+    const real_t invAlpha = (alpha > (real_t)0) ? ((real_t)1 / alpha) : (real_t)0;
+
+    for (int cid = 0; cid < Nnfc; ++cid) {
+        real_t Dii = 0;
+        for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) Dii += it.value() * it.value() * MinvDiag[it.col()];
+        D_scaled.addBlockDiag(VectorXr::Constant(1, Dii * invAlpha));
+    }
+
+    for (int cid = Nnfc; cid < Nnfc + Nfc; cid += 3) {
+        const auto W_sel = W.middleRows(cid, 3);
+        const MatrixXXr block = (W_sel * MinvDiag.asDiagonal() * W_sel.transpose()) * invAlpha;
+        D_scaled.addBlock(block);
+    }
+
+    return D_scaled.calculateInverse();
 }
 
 static inline void project(std::unique_ptr<workspace>& ws) {
@@ -83,6 +120,7 @@ static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
 
     ws->delta_impulse.noalias() = ws->RW * ws->x.head(ws->Nv);
     ws->delta_impulse += ws->biasImpulse;
+    if (ws->R_block) ws->delta_impulse = *ws->R_block * ws->delta_impulse;
 
     ws->impulse.noalias() -= ws->delta_impulse;
 
@@ -110,9 +148,25 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
 
     const auto& W = dyn.W().asSparseRowMajor();
     const auto& Minv = dyn.MinvDiag();
+    VectorXr contactBias = dyn.contactVVec();
 
-    VectorXr Rdiag = rdiag_sparse(W, Minv, cfg.pj_alpha);
-    const auto RW = Rdiag.asDiagonal() * W;
+    // Two mutually exclusive preconditioner modes (see buildBlockPreconditioner() above for the
+    // rationale): the default per-row scalar diagonal folds R into a pre-scaled copy of W so each
+    // sweep needs only a single sparse matvec; the exact-block mode (cfg.pj_rdiag_true_delassus)
+    // cannot be folded that way (block multiplication mixes a contact's 3 rows together), so it
+    // keeps W/contactBias unscaled and applies R_block as a separate step in pj_sweep().
+    Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW;
+    VectorXr biasImpulse;
+    std::optional<cardillo::BlockDiagonal> R_block;
+    if (cfg.pj_rdiag_true_delassus) {
+        RW = W;
+        biasImpulse = contactBias;
+        R_block = buildBlockPreconditioner(W, Minv, Nnfc, Nfc, cfg.pj_alpha);
+    } else {
+        VectorXr Rdiag = rdiag_sparse(W, Minv, cfg.pj_alpha);
+        RW = Rdiag.asDiagonal() * W;
+        biasImpulse = Rdiag.asDiagonal() * contactBias;
+    }
 
     // Base RHS without any contact-impulse correction (before warmstart is folded in). Note: we
     // deliberately do NOT solve this on its own -- the resulting velocity would only be used to
@@ -130,10 +184,8 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
     VectorXr x_init = assembler.solveS(rhs_init);
 
     VectorXr mus = dyn.muVec();
-    VectorXr contactBias = dyn.contactVVec();
-    VectorXr biasImpulse = Rdiag.asDiagonal() * contactBias;
 
-    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, W, RW, std::move(biasImpulse), std::move(mus), std::move(p), std::move(x_init), dyn.timings(), &assembler);
+    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, W, RW, std::move(biasImpulse), std::move(mus), std::move(R_block), std::move(p), std::move(x_init), dyn.timings(), &assembler);
 }
 
 static inline void standard_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg) {
