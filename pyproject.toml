@@ -10,6 +10,5 @@ dependencies = [
     "exhale",
     "sphinx-rtd-theme",
     "sphinxcontrib-mermaid",
-    "sphinxcontrib.bibtex",
-    "numpy>=2.4.6",
+    "sphinxcontrib.bibtex"
 ]
