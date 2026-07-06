@@ -1,5 +1,6 @@
 #include "mesh_generator.hpp"
 #include <cmath>
+#include <unordered_map>
 #include "../rigid_body/rigid_body.hpp"
 
 namespace cardillo::io {
@@ -240,6 +241,32 @@ void MeshGenerator::generateConeMesh(int segmentsCircumference, real_t radius, r
 
 namespace {
 
+// Local-space (pre-transform) tessellation cache for shapes whose geometry never changes after
+// creation (radius/halfLength/height/segment counts are fixed at entity creation and never
+// reassigned anywhere in this codebase -- verified, not assumed). Regenerating these every output
+// frame is pure wasted trig work, since only the entity's world transform (R, center) actually
+// changes frame to frame. Keyed by entt::entity: EnTT encodes a generation/version in the entity
+// value itself, so a destroyed-and-recreated entity naturally gets a different key rather than
+// colliding with a stale cache entry for a different shape.
+struct LocalMeshCache {
+    std::vector<Vector3r> vertices;
+    std::vector<Eigen::Vector3i> triangles;
+    std::vector<Eigen::Vector2f> uvs;  // empty unless the shape has UVs (currently only the sphere)
+};
+
+std::unordered_map<entt::entity, LocalMeshCache> g_localMeshCache;
+
+template <typename BuildFn>
+const LocalMeshCache& getOrBuildLocalMesh(entt::entity e, BuildFn&& build) {
+    auto it = g_localMeshCache.find(e);
+    if (it == g_localMeshCache.end()) {
+        LocalMeshCache cache;
+        build(cache.vertices, cache.triangles, cache.uvs);
+        it = g_localMeshCache.emplace(e, std::move(cache)).first;
+    }
+    return it->second;
+}
+
 enum class MeshKind { Unsupported, SoftBody, Plane, Cube, Capsule, Cylinder, Cone, MeshAsset, Sphere };
 
 MeshKind detectMeshKind(const entt::registry& reg, entt::entity e) {
@@ -373,29 +400,35 @@ bool buildCubeMeshTriangles(const entt::registry& reg, entt::entity e, cardillo:
 }
 
 bool buildCapsuleMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
-    const auto& c = reg.get<cardillo::C_Capsule>(e);
-    std::vector<Vector3r> localV;
-    cardillo::io::MeshGenerator::generateCapsuleMesh(8, 3, 1, c.radius, c.halfLength, localV, out.triangles);
-    out.vertices.reserve(localV.size());
-    for (const auto& v : localV) out.vertices.push_back(out.R * v + out.center);
+    const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>&) {
+        const auto& c = reg.get<cardillo::C_Capsule>(e);
+        cardillo::io::MeshGenerator::generateCapsuleMesh(8, 3, 1, c.radius, c.halfLength, v, t);
+    });
+    out.triangles = cached.triangles;
+    out.vertices.resize(cached.vertices.size());
+    for (std::size_t i = 0; i < cached.vertices.size(); ++i) out.vertices[i] = out.R * cached.vertices[i] + out.center;
     return !out.vertices.empty();
 }
 
 bool buildCylinderMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
-    const auto& c = reg.get<cardillo::C_Cylinder>(e);
-    std::vector<Vector3r> localV;
-    cardillo::io::MeshGenerator::generateCylinderMesh(16, c.radius, c.halfLength, localV, out.triangles);
-    out.vertices.reserve(localV.size());
-    for (const auto& v : localV) out.vertices.push_back(out.R * v + out.center);
+    const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>&) {
+        const auto& c = reg.get<cardillo::C_Cylinder>(e);
+        cardillo::io::MeshGenerator::generateCylinderMesh(16, c.radius, c.halfLength, v, t);
+    });
+    out.triangles = cached.triangles;
+    out.vertices.resize(cached.vertices.size());
+    for (std::size_t i = 0; i < cached.vertices.size(); ++i) out.vertices[i] = out.R * cached.vertices[i] + out.center;
     return !out.vertices.empty();
 }
 
 bool buildConeMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
-    const auto& c = reg.get<cardillo::C_Cone>(e);
-    std::vector<Vector3r> localV;
-    cardillo::io::MeshGenerator::generateConeMesh(24, c.radius, c.height, localV, out.triangles);
-    out.vertices.reserve(localV.size());
-    for (const auto& v : localV) out.vertices.push_back(out.R * v + out.center);
+    const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>&) {
+        const auto& c = reg.get<cardillo::C_Cone>(e);
+        cardillo::io::MeshGenerator::generateConeMesh(24, c.radius, c.height, v, t);
+    });
+    out.triangles = cached.triangles;
+    out.vertices.resize(cached.vertices.size());
+    for (std::size_t i = 0; i < cached.vertices.size(); ++i) out.vertices[i] = out.R * cached.vertices[i] + out.center;
     return !out.vertices.empty();
 }
 
@@ -427,21 +460,24 @@ bool buildMeshAssetTriangles(const cardillo::World& sys, entt::entity e, cardill
 // HeightField mesh generation removed
 
 bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
-    const real_t radius = reg.get<cardillo::C_Radius>(e).r;
-    std::vector<Vector3r> unitVerts;
-    std::vector<Eigen::Vector3i> unitTris;
-    cardillo::io::MeshGenerator::generateUVSphere(12, 24, unitVerts, unitTris);
-
-    out.vertices.reserve(unitVerts.size());
-    out.uvs.reserve(unitVerts.size());
-    for (const auto& v : unitVerts) {
-        out.vertices.push_back(out.R * (radius * v) + out.center);
-        float u = static_cast<float>(std::atan2((double)v.y(), (double)v.x()) / (2.0 * M_PI) + 0.5);
-        float t = static_cast<float>(std::acos((double)v.z()) / M_PI);
-        out.uvs.emplace_back(u, t);
-    }
+    const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>& uvs) {
+        const real_t radius = reg.get<cardillo::C_Radius>(e).r;
+        std::vector<Vector3r> unitVerts;
+        cardillo::io::MeshGenerator::generateUVSphere(12, 24, unitVerts, t);
+        v.reserve(unitVerts.size());
+        uvs.reserve(unitVerts.size());
+        for (const auto& uv : unitVerts) {
+            v.push_back(radius * uv);
+            float u = static_cast<float>(std::atan2((double)uv.y(), (double)uv.x()) / (2.0 * M_PI) + 0.5);
+            float tcoord = static_cast<float>(std::acos((double)uv.z()) / M_PI);
+            uvs.emplace_back(u, tcoord);
+        }
+    });
+    out.vertices.resize(cached.vertices.size());
+    for (std::size_t i = 0; i < cached.vertices.size(); ++i) out.vertices[i] = out.R * cached.vertices[i] + out.center;
+    out.uvs = cached.uvs;
     out.hasUV = true;
-    out.triangles = std::move(unitTris);
+    out.triangles = cached.triangles;
     return true;
 }
 

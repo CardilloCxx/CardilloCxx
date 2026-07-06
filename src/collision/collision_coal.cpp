@@ -102,8 +102,12 @@ static inline real_t combineFrictionMu(const entt::registry& reg, entt::entity a
     return std::min(muA, muB);  // default: min
 }
 
-// Helper to populate a Contact from world data and entities
-inline Contact makeContact(entt::registry& reg, entt::entity ea, entt::entity eb, Vector3r p1W, Vector3r p2W, Vector3r nN, real_t depth, const std::string& frictionCombine) {
+// Helper to populate a Contact from world data and entities. Takes the bodies' RigidState and
+// combined friction coefficient as inputs rather than recomputing them -- both depend only on the
+// (ea, eb) pair, not on the specific contact point, so callers compute them once per pair and
+// reuse across every point in a multi-point manifold (see appendContactsFromPair below).
+inline Contact makeContact(entt::entity ea, entt::entity eb, const cardillo::RigidBody::RigidState& stateA, const cardillo::RigidBody::RigidState& stateB, real_t friction_mu, Vector3r p1W,
+                            Vector3r p2W, Vector3r nN, real_t depth) {
     Contact c{};
     c.a = ea;
     c.b = eb;
@@ -117,8 +121,6 @@ inline Contact makeContact(entt::registry& reg, entt::entity ea, entt::entity eb
     c.point = (p1W + p2W) * (real_t)0.5;
     c.penetration = std::max<real_t>(0.0, depth);
     const cardillo::RigidBody::RigidState inertial = cardillo::RigidBody::RigidState::inertial();
-    const cardillo::RigidBody::RigidState stateA = cardillo::RigidBody::getState(reg, c.a);
-    const cardillo::RigidBody::RigidState stateB = cardillo::RigidBody::getState(reg, c.b);
     c.pointA_body = cardillo::transform::point(c.point, inertial, stateA);
     c.normalA_body = cardillo::transform::direction(c.normal, inertial, stateA);
     c.pointB_body = cardillo::transform::point(c.point, inertial, stateB);
@@ -128,8 +130,7 @@ inline Contact makeContact(entt::registry& reg, entt::entity ea, entt::entity eb
     c.tangent2A_body = cardillo::transform::direction(c.tangent2, inertial, stateA);
     c.tangent1B_body = cardillo::transform::direction(c.tangent1, inertial, stateB);
     c.tangent2B_body = cardillo::transform::direction(c.tangent2, inertial, stateB);
-    // Friction coefficient combination (entity components optional)
-    c.friction_mu = combineFrictionMu(reg, c.a, c.b, frictionCombine);
+    c.friction_mu = friction_mu;
     return c;
 }
 
@@ -147,6 +148,12 @@ inline void addContactToMap(ContactMap& cmap, const Contact& c) {
 // Append contacts for a pair into a map: prefer patch expansion; fall back to raw contacts
 inline std::size_t appendContactsFromPair(entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res, ContactMap& outMap,
                                           const std::string& frictionCombine, bool usePatchVertices) {
+    // Depend only on the (ea, eb) pair, not on the individual contact point -- compute once per
+    // pair instead of once per point (a manifold can have several points per pair).
+    const cardillo::RigidBody::RigidState stateA = cardillo::RigidBody::getState(reg, ea);
+    const cardillo::RigidBody::RigidState stateB = cardillo::RigidBody::getState(reg, eb);
+    const real_t friction_mu = combineFrictionMu(reg, ea, eb, frictionCombine);
+
     std::size_t appended = 0;
     if (usePatchVertices && patch_res.numContactPatches() > 0) {
         for (std::size_t ip = 0; ip < patch_res.numContactPatches(); ++ip) {
@@ -159,7 +166,7 @@ inline std::size_t appendContactsFromPair(entt::registry& reg, entt::entity ea, 
                 const auto p2Wc = patch.getPointShape2(iv);
                 const Vector3r p1W(p1Wc.x(), p1Wc.y(), p1Wc.z());
                 const Vector3r p2W(p2Wc.x(), p2Wc.y(), p2Wc.z());
-                addContactToMap(outMap, makeContact(reg, ea, eb, p1W, p2W, nW, depth, frictionCombine));
+                addContactToMap(outMap, makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, depth));
                 ++appended;
             }
         }
@@ -172,7 +179,7 @@ inline std::size_t appendContactsFromPair(entt::registry& reg, entt::entity ea, 
         const Vector3r nW(c0.normal.x(), c0.normal.y(), c0.normal.z());
         const Vector3r p1W(c0.nearest_points[0].x(), c0.nearest_points[0].y(), c0.nearest_points[0].z());
         const Vector3r p2W(c0.nearest_points[1].x(), c0.nearest_points[1].y(), c0.nearest_points[1].z());
-        addContactToMap(outMap, makeContact(reg, ea, eb, p1W, p2W, nW, (real_t)c0.penetration_depth, frictionCombine));
+        addContactToMap(outMap, makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, (real_t)c0.penetration_depth));
         ++appended;
     }
     return appended;

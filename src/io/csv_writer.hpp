@@ -23,6 +23,11 @@ class CsvWriter {
     bool isOpen() const { return static_cast<bool>(m_stream); }
 
     void open(const std::string& path, const std::vector<std::string>& header) {
+        // Request a larger internal buffer before opening (must be set before any I/O occurs) so
+        // the once-per-timestep row writes below coalesce into far fewer underlying write() calls
+        // over a long simulation run. Null buffer pointer: the streambuf owns/manages the memory
+        // itself, so there's no external-lifetime concern.
+        m_stream.rdbuf()->pubsetbuf(nullptr, 1 << 16);
         m_stream.open(path);
         if (!m_stream) return;
         for (size_t i = 0; i < header.size(); ++i) {

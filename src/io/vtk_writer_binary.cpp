@@ -31,6 +31,19 @@ static real_t triangleArea(const Vector3r& a, const Vector3r& b, const Vector3r&
     return static_cast<real_t>(0.5) * ((b - a).cross(c - a)).norm();
 }
 
+// The point/polygon/point-data blocks below issue one writeBE() call (a handful of bytes) per
+// field per vertex/triangle, which the default ofstream buffer (typically a few KB) turns into a
+// large number of small underlying write()/flush cycles for meshes of any real size. Requesting a
+// larger internal buffer (passing a null pointer asks the streambuf to own/manage it itself, so
+// there is no external-lifetime concern -- it moves with the ofstream) coalesces those into far
+// fewer actual writes without needing to touch any of the individual writeBE() call sites.
+static inline std::ofstream openBufferedOfstream(const std::string& path, std::ios::openmode mode) {
+    std::ofstream out;
+    out.rdbuf()->pubsetbuf(nullptr, 1 << 20);  // 1 MiB hint; implementation-defined, harmless if ignored
+    out.open(path, mode);
+    return out;
+}
+
 }  // namespace
 
 void VtkWriterBinary::setOutputDir(const std::string& dir) {
@@ -320,7 +333,7 @@ void VtkWriterBinary::writeMeshTextureCoordinates(std::ofstream& out, const std:
 }
 
 void VtkWriterBinary::writeGeometryMeshList(const std::string& path, const std::vector<EntityMesh>& meshes, const char* title) const {
-    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+    std::ofstream out = openBufferedOfstream(path, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!out) return;
 
     writeHeader(out, title);
@@ -358,7 +371,7 @@ void VtkWriterBinary::writeContacts(int step, const std::vector<cardillo::collis
     if (!m_writeContacts) return;
     if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
     const std::string path = buildPath(m_contactsBase, step);
-    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+    std::ofstream out = openBufferedOfstream(path, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!out) return;
     const std::size_t n = contacts.size();
     // Header and points
@@ -553,7 +566,7 @@ void VtkWriterBinary::writeSprings(int step, const cardillo::World& sys) const {
     if (n == 0 && n_tr == 0) return;
     if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
     const std::string path = buildPath(m_springsBase, step);
-    std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+    std::ofstream out = openBufferedOfstream(path, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!out) return;
     // Header
     writeHeader(out, "Constraint springs (binary)");
