@@ -35,7 +35,7 @@ set(CONICXX_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(CONICXX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CONICXX_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(CONICXX_INSTALL OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG 190eb6799b2ee8cf248217fc43432dd9d2b339fe)
+FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG main)
 FetchContent_MakeAvailable(eigen coal entt clarabel qoco conicxx)
 
 # --- 2. Engine Targets ---
