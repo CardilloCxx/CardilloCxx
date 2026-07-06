@@ -152,6 +152,53 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.conicxx_warm_start = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "conicxx.linear_solver") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            if (v == "eigen" || v == "qdldl" || v == "regularized_ldlt" || v == "regularized-ldlt" || v == "regularizedldlt") {
+                cfg.conicxx_linear_solver = (v == "regularized-ldlt" || v == "regularizedldlt") ? "regularized_ldlt" : v;
+            } else {
+                std::cerr << "Warning: unrecognized conicxx.linear_solver '" << val << "'. Defaulting to 'qdldl'." << std::endl;
+                cfg.conicxx_linear_solver = "qdldl";
+            }
+        } else if (key == "conicxx.dynamic_reg_eps") {
+            try {
+                cfg.conicxx_dynamic_reg_eps = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "conicxx.refine_tol") {
+            try {
+                cfg.conicxx_refine_tol = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "conicxx.max_step_fraction") {
+            try {
+                cfg.conicxx_max_step_fraction = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "conicxx.equilibrate") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.conicxx_equilibrate = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "conicxx.equilibrate_max_iter") {
+            try {
+                cfg.conicxx_equilibrate_max_iter = std::max(0, std::stoi(val));
+            } catch (...) {
+            }
+        } else if (key == "conicxx.equilibrate_min_scale") {
+            try {
+                cfg.conicxx_equilibrate_min_scale = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "conicxx.equilibrate_max_scale") {
+            try {
+                cfg.conicxx_equilibrate_max_scale = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "conicxx.validate_inputs") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.conicxx_validate_inputs = (v == "1" || v == "true" || v == "yes" || v == "on");
         } else if (key == "qoco.backend") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });

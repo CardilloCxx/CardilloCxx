@@ -33,6 +33,21 @@ conicxx::Settings ConicxxSolver::makeSettings() const {
     settings.refine_max_iter = m_cfg.ip_iter_ref_iters;
     settings.warm_start = m_cfg.conicxx_warm_start;
     settings.verbose = m_cfg.debug_pj ? 1 : 0;
+    settings.dynamic_reg_eps = static_cast<conicxx::Scalar>(m_cfg.conicxx_dynamic_reg_eps);
+    settings.refine_tol = static_cast<conicxx::Scalar>(m_cfg.conicxx_refine_tol);
+    settings.max_step_fraction = static_cast<conicxx::Scalar>(m_cfg.conicxx_max_step_fraction);
+    settings.equilibrate = m_cfg.conicxx_equilibrate;
+    settings.equilibrate_max_iter = m_cfg.conicxx_equilibrate_max_iter;
+    settings.equilibrate_min_scale = static_cast<conicxx::Scalar>(m_cfg.conicxx_equilibrate_min_scale);
+    settings.equilibrate_max_scale = static_cast<conicxx::Scalar>(m_cfg.conicxx_equilibrate_max_scale);
+    settings.validate_inputs = m_cfg.conicxx_validate_inputs;
+    if (m_cfg.conicxx_linear_solver == "eigen") {
+        settings.linear_solver = conicxx::LinearSolverBackend::Eigen;
+    } else if (m_cfg.conicxx_linear_solver == "regularized_ldlt") {
+        settings.linear_solver = conicxx::LinearSolverBackend::RegularizedLdlt;
+    } else {
+        settings.linear_solver = conicxx::LinearSolverBackend::Qdldl;
+    }
     return settings;
 }
 

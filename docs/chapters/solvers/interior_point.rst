@@ -266,3 +266,37 @@ Config keys
    * - ``conicxx.warm_start``
      - Enable/disable ConicXX's cross-step warm start and KKT reuse
        (ConicXX only, default ``on``)
+   * - ``conicxx.linear_solver``
+     - Which sparse LDL^T backend factorizes the KKT system: ``eigen``
+       (``Eigen::SimplicialLDLT``, always available), ``qdldl`` (the backend
+       QOCO/Clarabel use -- ConicXX's own default), or ``regularized_ldlt``
+       (a custom Davis/ECOS-style backend correcting bad pivots inline
+       during elimination). ConicXX only; ``qdldl``/``regularized_ldlt``
+       silently fall back to ``eigen`` if ConicXX wasn't built with
+       ``CONICXX_WITH_QDLDL``.
+
+       .. warning::
+          ``regularized_ldlt`` was found to need dramatically more
+          interior-point iterations than ``eigen``/``qdldl`` on large,
+          heavily-contacted scenes (a domino-toppling scene with ~13,600
+          simultaneous frictional contacts didn't converge within 1200+
+          iterations, where ``eigen``/``qdldl`` converge in ~80) despite
+          identical per-factorization cost -- likely a convergence-quality
+          issue in how it handles many simultaneous near-degenerate pivots,
+          not a raw performance regression. Prefer ``qdldl`` (the default)
+          or ``eigen`` until this is resolved upstream.
+   * - ``conicxx.dynamic_reg_eps``
+     - Pivot-magnitude threshold triggering a dynamic regularization bump
+       (ConicXX only)
+   * - ``conicxx.refine_tol``
+     - Target relative residual for iterative refinement (ConicXX only)
+   * - ``conicxx.max_step_fraction``
+     - Fraction-to-boundary step-length safety factor (ConicXX only)
+   * - ``conicxx.equilibrate``
+     - Enable/disable Ruiz equilibration (ConicXX only, default ``on``)
+   * - ``conicxx.equilibrate_max_iter``, ``conicxx.equilibrate_min_scale``,
+       ``conicxx.equilibrate_max_scale``
+     - Ruiz equilibration tuning knobs (ConicXX only)
+   * - ``conicxx.validate_inputs``
+     - Enable/disable ConicXX's input validation (ConicXX only, default
+       ``on``)

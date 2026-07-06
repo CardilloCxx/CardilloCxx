@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 project(cardillo LANGUAGES CXX)
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path prefix" FORCE)
 include(FetchContent)
@@ -11,32 +11,71 @@ set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
 set(EIGEN_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(CONICXX_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(CONICXX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(CONICXX_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(CONICXX_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(eigen GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 3.4.0)
 FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.2)
 FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG v0.11.1)
 FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.0)
 FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
-# ConicXX has no tagged release yet, so this pins the exact commit that was
-# verified to build and pass its own test suite (56/56) when this integration
-# was written. Bump deliberately, not with a floating branch ref.
-# Pinned past f8818e6 (initial integration) to 190eb67 ("Speed fixes."),
-# which fixes a catastrophic KKT fill-in bug: KktSystem::setup() used to
-# register a full dense lower-triangle of slots for every cone block's Hs
-# scaling, including Zero/Nonnegative cone blocks whose Hs is zero/diagonal
-# -- for a scene with a large equality-constraint block (e.g. many bilateral
-# joints) this explicitly stored millions of always-zero entries in the KKT
-# sparsity pattern, making setup() and every refactorization dramatically
-# more expensive than necessary. It also switched KktSystem::factorizeWithRetry()
-# from ldlt_.compute() (full symbolic+numeric) to ldlt_.factorize() reusing
-# a one-time ldlt_.analyzePattern() call from setup(), matching what the
-# class's own docs always claimed it did.
-set(CONICXX_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(CONICXX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(CONICXX_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
-set(CONICXX_INSTALL OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG main)
-FetchContent_MakeAvailable(eigen coal entt clarabel qoco conicxx)
+# Pinned past the initial "First working solver." integration point to
+# cddaa5d ("Custom ldlt backend with dynamic regularization."), which adds
+# two alternative KKT linear-solver backends (QDLDL, and a custom
+# regularized-LDLT) on top of the "Speed fixes" (190eb67) and "Improved ill
+# conditioned problems" (7dc4fab) commits already folded in at this point.
+FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG cddaa5d5454fc0eb82e7b5851a09fd07cf6777f3)
+FetchContent_MakeAvailable(eigen coal entt clarabel qoco)
+
+# QOCO vendors its own copy of QDLDL under lib/qdldl (plain add_subdirectory,
+# not FetchContent) at *global* CMake target scope: it unconditionally defines
+# targets literally named `qdldlobject`/`qdldlstatic`. ConicXX independently
+# wants a real, current qdldl (github.com/osqp/qdldl v0.1.9) as one of its
+# selectable KKT linear-solver backends (see
+# docs/chapters/solvers/interior_point.rst), fetched via its own
+# `find_package(qdldl QUIET)` + FetchContent-fallback using those exact same
+# unqualified target names.
+#
+# These two copies are NOT interchangeable: QOCO's vendored copy is an older
+# qdldl whose QDLDL_factor() has a different (shorter) parameter list than
+# the v0.1.9 API ConicXX's kkt/qdldl_ldlt.cpp and kkt/regularized_ldlt.cpp are
+# written against -- aliasing one copy for both call sites was tried first
+# and fails to compile with a hard "too few arguments to function
+# QDLDL_factor" error. So both copies are genuinely needed simultaneously,
+# which means their global CMake target names must not collide.
+#
+# FetchContent tracks population per *content name*, not per declared
+# GIT_REPOSITORY/GIT_TAG, so if "qdldl" is already populated under that name
+# by the time ConicXX's own (re-)declare + FetchContent_MakeAvailable(qdldl)
+# call runs, that call is a no-op and ConicXX picks up whatever we already
+# provided. So: fetch the real qdldl v0.1.9 ourselves first, with a
+# PATCH_COMMAND that renames its `qdldlobject`/`qdldlstatic` targets to
+# `conicxx_qdldlobject`/`conicxx_qdldlstatic` (see
+# cmake/qdldl_rename_targets.sed) so they can't collide with QOCO's copy of
+# the same names, then alias `qdldl::qdldl` to the renamed static target --
+# exactly what ConicXX's own (unpatched) logic would have aliased, just
+# under collision-safe names. (Flagged upstream to ConicXX too: an optional
+# dependency that always claims global, unnamespaced CMake target names is
+# inherently fragile against any sibling project vendoring the same
+# library under an incompatible version -- QOCO isn't unique in doing this.)
+set(QDLDL_BUILD_STATIC_LIB ON CACHE BOOL "" FORCE)
+set(QDLDL_BUILD_SHARED_LIB OFF CACHE BOOL "" FORCE)
+set(QDLDL_BUILD_DEMO_EXE OFF CACHE BOOL "" FORCE)
+set(QDLDL_UNITTESTS OFF CACHE BOOL "" FORCE)
+set(QDLDL_LONG OFF CACHE BOOL "" FORCE)  # QDLDL_int == int, matching conicxx::Index
+FetchContent_Declare(qdldl
+    GIT_REPOSITORY https://github.com/osqp/qdldl.git
+    GIT_TAG v0.1.9
+    GIT_SHALLOW TRUE
+    PATCH_COMMAND sed -i -f "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/qdldl_rename_targets.sed" CMakeLists.txt
+)
+FetchContent_MakeAvailable(qdldl)
+if(NOT TARGET qdldl::qdldl)
+    add_library(qdldl::qdldl ALIAS conicxx_qdldlstatic)
+endif()
+FetchContent_MakeAvailable(conicxx)
 
 # --- 2. Engine Targets ---
 file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")

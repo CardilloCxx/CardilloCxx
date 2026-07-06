@@ -97,6 +97,27 @@ struct Config {
     // changed (see docs/chapters/solvers/interior_point.rst).
     bool conicxx_warm_start{true};  // conicxx.warm_start
 
+    // ConicXX-only: which sparse LDL^T backend factorizes/solves the KKT system.
+    // One of "eigen" (Eigen::SimplicialLDLT, always available), "qdldl" (the
+    // backend QOCO/Clarabel use -- ConicXX's own default), or
+    // "regularized_ldlt" (a custom Davis/ECOS-style backend correcting bad
+    // pivots inline during elimination instead of KktSystem's outer
+    // refactorize-from-scratch retry loop). "qdldl"/"regularized_ldlt" fall
+    // back to "eigen" with a one-time warning if ConicXX wasn't built with
+    // CONICXX_WITH_QDLDL.
+    std::string conicxx_linear_solver{"qdldl"};  // conicxx.linear_solver [eigen, qdldl, regularized_ldlt]
+
+    // ConicXX-only: remaining conicxx::Settings fields not already covered by
+    // the shared ip_kkt_*/pj_tol_*/pj_max_iterations fields above.
+    real_t conicxx_dynamic_reg_eps{(real_t)1e-14};      // conicxx.dynamic_reg_eps -- pivot-magnitude threshold triggering a regularization bump
+    real_t conicxx_refine_tol{(real_t)1e-12};           // conicxx.refine_tol -- target relative residual for iterative refinement
+    real_t conicxx_max_step_fraction{(real_t)0.99};     // conicxx.max_step_fraction -- fraction-to-boundary safety factor
+    bool conicxx_equilibrate{true};                     // conicxx.equilibrate -- enable Ruiz scaling
+    int conicxx_equilibrate_max_iter{10};               // conicxx.equilibrate_max_iter
+    real_t conicxx_equilibrate_min_scale{(real_t)1e-4};  // conicxx.equilibrate_min_scale
+    real_t conicxx_equilibrate_max_scale{(real_t)1e4};   // conicxx.equilibrate_max_scale
+    bool conicxx_validate_inputs{true};                 // conicxx.validate_inputs
+
     // Presence flags for precedence handling (e.g., pj.alpha overrides alpha if both set)
     bool has_pj_alpha{false};
     bool has_pj_max_iterations{false};
