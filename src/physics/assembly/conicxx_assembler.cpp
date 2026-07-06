@@ -58,10 +58,13 @@ VectorXr& ConicxxAssembler::b(real_t dt, real_t theta) {
 
     VectorXr gamma_old = m_dyn->W().asSparseRowMajor() * m_dyn->vVec();
 
+    // De Saxce shift s_i = mu_i * ||u_T(v^n)|| on the (unscaled) normal row.
+    // Under P_mu = diag(1, mu, mu) the normal row carries physical units, so the
+    // shift keeps its physical factor mu.
     for (int i = m_dyn->numFrictionlessContacts(); i < m_dyn->numContactRows(); i += 3) {
         const real_t y_1 = gamma_old[i + 1];
         const real_t y_2 = gamma_old[i + 2];
-        b_contact[i] += std::sqrt(y_1 * y_1 + y_2 * y_2);
+        b_contact[i] += m_dyn->muVec()[i] * std::sqrt(y_1 * y_1 + y_2 * y_2);
     }
 
     auto beta = m_dyn->system().config().constraint_bias_factor;
@@ -87,10 +90,22 @@ const conicxx::ConeSpec& ConicxxAssembler::coneSpec() {
 VectorXr ConicxxAssembler::computeSmu() const {
     VectorXr Smu = VectorXr::Ones(m_dyn->numContactRows());
     for (const auto& c : m_dyn->contacts()) {
+        // friction less rows
         if (c.friction_mu <= 0) continue;
+        if (c.impulse_size != 3) continue;
+
+        // // old convention with 1 / mu
+        // const int idx = c.impulse_base_index;
+        // if (idx < 0 || idx >= Smu.size()) continue;
+        // Smu[idx] = 1.0 / c.friction_mu;
+
+        // Scaling convention P_mu = diag(1, mu, mu) per frictional contact
+        // (Acary et al. 2024, Sec. 3): tangential rows are scaled DOWN by mu,
+        // the normal row stays at 1. Physical impulse recovery: lambda = Smu * z.
         const int idx = c.impulse_base_index;
-        if (idx < 0 || idx >= Smu.size()) continue;
-        Smu[idx] = 1.0 / c.friction_mu;
+        if (idx < 0 || idx + 2 >= Smu.size()) continue;
+        Smu[idx + 1] = c.friction_mu;
+        Smu[idx + 2] = c.friction_mu;
     }
     return Smu;
 }
