@@ -1,6 +1,7 @@
 #include "projected_jacobi.hpp"
 
 #include <cmath>
+#include <deque>
 #include <limits>
 #include <optional>
 #include "../../misc/block_diagonal.hpp"
@@ -215,6 +216,98 @@ static inline void chebyshev_loop(std::unique_ptr<workspace>& ws, cardillo::conf
     ws->impulse = pk1;
 }
 
+// Anderson acceleration (Type-II / unconstrained-least-squares reformulation of the classical
+// constrained mixing problem; see Walker & Ni, "Anderson Acceleration for Fixed-Point Iterations",
+// SIAM J. Numer. Anal. 2011, Theorem 2.1, or Fang & Saad, "Two classes of multisecant methods for
+// nonlinear acceleration", 2009). Unlike Chebyshev/Nesterov, which only use the two most recent
+// iterates, Anderson mixes the last `m` (history window) residual differences via a small
+// least-squares solve, and applies to the FULL nonlinear map (one pj_sweep(), projection
+// included) rather than a linearization of it -- there is no analogue here of "ignore the
+// projection for the acceleration math", which is the appeal for a genuinely nonsmooth iteration
+// like this one.
+//
+// State: z_k = [x_k; impulse_k] (concatenated). Residual: f_k = g(z_k) - z_k, where g(z_k) is one
+// plain pj_sweep() starting from z_k. Given the last m_k = min(m, k) residuals f_{k-m_k},...,f_k:
+//   gamma = argmin_gamma || f_k - DeltaF * gamma ||_2       (DeltaF's columns: f_{i+1}-f_i)
+//   z_{k+1} = g(z_k) - (DeltaZ + DeltaF) * gamma            (DeltaZ's columns: z_{i+1}-z_i)
+// For m=1 this reduces to the closed-form scalar projection gamma = (f_k.df)/(df.df) (df = the
+// single available residual difference) -- solving it via the same general least-squares path
+// below is mathematically identical, just without a special case, since the normal equations for
+// a single column ARE exactly that formula.
+static inline void anderson_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg, int m) {
+    const int Nfull = (int)ws->x.size();  // Nv + Ns + Nd
+    const int Nc = ws->Nc;
+    const int Ntot = Nfull + Nc;
+    m = std::max(1, m);
+
+    auto concat = [&](const VectorXr& x, const VectorXr& p) -> VectorXr {
+        VectorXr z(Ntot);
+        z.head(Nfull) = x;
+        z.tail(Nc) = p;
+        return z;
+    };
+
+    std::deque<VectorXr> Zhist;  // retained z_i, oldest first
+    std::deque<VectorXr> Fhist;  // retained f_i = g(z_i) - z_i, oldest first
+
+    VectorXr z = concat(ws->x, ws->impulse);
+
+    for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
+        ws->x = z.head(Nfull);
+        ws->impulse = z.tail(Nc);
+        const VectorXr x_prev = ws->x;
+
+        pj_sweep(ws);
+        const VectorXr w = concat(ws->x, ws->impulse);  // g(z)
+        const VectorXr f = w - z;
+
+        const real_t err = residual(ws->x.head(ws->Nv), x_prev.head(ws->Nv), cfg);
+        if (cfg.debug_pj && iter % 1000 == 0) std::cout << "PJ AA iter " << iter << ", residual norm: " << err << std::endl;
+        ws->iter = iter + 1;
+        if (err <= (real_t)1) {
+            z = w;
+            break;
+        }
+
+        Zhist.push_back(z);
+        Fhist.push_back(f);
+        if ((int)Fhist.size() > m + 1) {
+            Zhist.pop_front();
+            Fhist.pop_front();
+        }
+
+        const int mk = (int)Fhist.size() - 1;  // number of difference columns available (0 on the first iteration)
+        VectorXr z_next;
+        if (mk < 1) {
+            // Not enough history yet (this is the very first iteration) -- take a plain step but
+            // keep what was just pushed so the window can actually grow on the next iteration.
+            z_next = w;
+        } else {
+            MatrixXXr dF(Ntot, mk), dZ(Ntot, mk);
+            for (int j = 0; j < mk; ++j) {
+                dF.col(j) = Fhist[(std::size_t)j + 1] - Fhist[(std::size_t)j];
+                dZ.col(j) = Zhist[(std::size_t)j + 1] - Zhist[(std::size_t)j];
+            }
+            const VectorXr gamma = dF.colPivHouseholderQr().solve(f);
+            const VectorXr candidate = w - (dZ + dF) * gamma;
+            if (gamma.allFinite() && candidate.allFinite()) {
+                z_next = candidate;
+            } else {
+                // Genuine solve failure (near-collinear history, common right at/after a sharp
+                // active-set change) -- fall back to a plain step and drop the history, since it
+                // no longer describes the local behavior of g well; let it rebuild from here.
+                z_next = w;
+                Zhist.clear();
+                Fhist.clear();
+            }
+        }
+        z = z_next;
+    }
+
+    ws->x = z.head(Nfull);
+    ws->impulse = z.tail(Nc);
+}
+
 static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::DynamicsAssembler& dyn, cardillo::physics::assembly::PjAssembler& assembler, cardillo::config::Config& cfg, real_t dt,
                                                          real_t theta) {
     const int Nv = (int)dyn.numV();
@@ -367,6 +460,7 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
     std::unique_ptr<workspace> ws;
     real_t chebyshevRho = 0;
     const bool useChebyshev = m_cfg.pj_chebyshev && !m_cfg.pj_nesterov;
+    const bool useAnderson = m_cfg.pj_anderson && !m_cfg.pj_nesterov && !useChebyshev;
     {
         auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobiSetup);
         ws = build_workspace(m_dyn, m_assembler, m_cfg, dt, theta);
@@ -379,6 +473,8 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
             nesterov_loop(ws, m_cfg);
         else if (useChebyshev)
             chebyshev_loop(ws, m_cfg, chebyshevRho);
+        else if (useAnderson)
+            anderson_loop(ws, m_cfg, m_cfg.pj_anderson_m);
         else
             standard_loop(ws, m_cfg);
     }

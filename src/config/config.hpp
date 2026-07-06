@@ -72,7 +72,15 @@ struct Config {
     // over baseline, on an elastic+frictional scene). Not yet default -- see the accompanying
     // report for the full methodology before relying on these numbers for a scene not yet tested.
     bool pj_chebyshev{false};  // pj.chebyshev
-    bool pj_warmstart{true};   // pj.warmstart (enable warmstart & cache)
+    // Anderson acceleration (Type-II / unconstrained-least-squares reformulation): mixes the last
+    // pj_anderson_m residual differences via a small least-squares solve each sweep. Precedence
+    // when multiple acceleration flags are set: pj_nesterov > pj_chebyshev > pj_anderson.
+    // Window size matters a lot in practice -- see the accompanying report's benchmark sweep
+    // across window sizes before picking one for a new scene; m=1 (which has a closed-form
+    // solution, no least-squares solve needed) was found not competitive on its own.
+    bool pj_anderson{false};  // pj.anderson
+    int pj_anderson_m{2};     // pj.anderson_m (history window size, >= 1; 2 was the best of {1,2,3,5,8,12,20} across all three benchmark scenes -- see the report)
+    bool pj_warmstart{true};  // pj.warmstart (enable warmstart & cache)
     bool pj_rdiag_true_delassus{false};                // pj.rdiag_true_delassus
     std::string pj_convergence_csv_dir{""};            // pj.convergence_csv_dir (empty to disable)
 

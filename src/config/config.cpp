@@ -89,6 +89,15 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.pj_chebyshev = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "pj.anderson" || key == "solver.anderson") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.pj_anderson = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "pj.anderson_m" || key == "solver.anderson_m") {
+            try {
+                cfg.pj_anderson_m = std::max(1, std::stoi(val));
+            } catch (...) {
+            }
         } else if (key == "pj.warmstart" || key == "solver.warmstart") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
