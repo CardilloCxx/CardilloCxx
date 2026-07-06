@@ -63,7 +63,16 @@ struct Config {
     bool pj_nesterov{false};                           // pj.nesterov (enable Nesterov acceleration)
     real_t pj_nesterov_beta_threshold{(real_t)0.995};  // pj.nesterov_beta_threshold
     int pj_nesterov_restart_limit{4};                  // pj.nesterov_restart_limit
-    bool pj_warmstart{true};                           // pj.warmstart (enable warmstart & cache)
+    // Chebyshev semi-iterative acceleration: an alternative to Nesterov for PJ, estimating the
+    // iteration operator's spectral radius via power iteration each solve() call. Mutually
+    // exclusive with pj_nesterov (pj_nesterov takes precedence if both are set). Verified on three
+    // scenes against a true (non-accelerated) baseline: 3.4-10.7x fewer sweeps than no
+    // acceleration, matching or beating pj_nesterov in every case tested (up to ~1.8x fewer sweeps
+    // than Nesterov on dense rigid-contact scenes; within ~3% of Nesterov, still both a ~3.4x win
+    // over baseline, on an elastic+frictional scene). Not yet default -- see the accompanying
+    // report for the full methodology before relying on these numbers for a scene not yet tested.
+    bool pj_chebyshev{false};  // pj.chebyshev
+    bool pj_warmstart{true};   // pj.warmstart (enable warmstart & cache)
     bool pj_rdiag_true_delassus{false};                // pj.rdiag_true_delassus
     std::string pj_convergence_csv_dir{""};            // pj.convergence_csv_dir (empty to disable)
 

@@ -137,6 +137,84 @@ static inline real_t residual(const VectorXr& v, const VectorXr& v_prev, cardill
     return 1.0 / sqrt((double)Nv) * (v - v_prev).cwiseQuotient(q).norm();
 }
 
+// Estimates the spectral radius of the LINEAR part of the sweep map x -> M*x + c (i.e. ignoring
+// the friction-cone projection, which pj_sweep() also applies) via power iteration. M is generally
+// not symmetric, but is similar to a symmetric matrix (S and R are both SPD, and
+// S^{-1/2}(S^{-1}*W^T*R*W)*S^{1/2} = S^{-1/2}*W^T*R*W*S^{-1/2} is symmetric PSD), so its
+// eigenvalues are real and a plain power iteration on M gives a valid estimate of the dominant
+// one's magnitude. This is a heuristic in the same spirit as applying Nesterov acceleration to
+// this same nonsmooth (projected) iteration: rigorously justified only for the linear sub-problem,
+// used in practice on the full nonlinear one, with a restart safeguard in chebyshev_loop() for
+// when that approximation breaks down.
+static inline real_t estimateSpectralRadius(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& RW,
+                                            const std::optional<cardillo::BlockDiagonal>& R_block, cardillo::physics::assembly::PjAssembler& assembler, int fullSize, int Nv) {
+    constexpr int kPowerIterations = 8;
+    if (Nv <= 0 || fullSize <= 0) return (real_t)0;
+
+    VectorXr v = VectorXr::Ones(fullSize).normalized();
+    VectorXr rhs = VectorXr::Zero(fullSize);
+    real_t lambda = 0;
+    for (int it = 0; it < kPowerIterations; ++it) {
+        VectorXr delta = RW * v.head(Nv);
+        if (R_block) delta = *R_block * delta;
+        rhs.setZero();
+        rhs.head(Nv).noalias() = W.transpose() * delta;
+        VectorXr Mv = v - assembler.solveS(rhs);
+        const real_t n = Mv.norm();
+        if (!(n > (real_t)1e-300)) return (real_t)0;  // M is ~0 on this subspace: nothing to accelerate
+        lambda = n;
+        v = Mv / n;
+    }
+    // Clamp strictly below 1: the omega recurrence below divides by (1 - rho^2/4 * omega), which is
+    // only well-defined/stable for rho < 1 (a converging basic iteration to begin with).
+    return std::min<real_t>(lambda, (real_t)0.995);
+}
+
+static inline void chebyshev_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg, real_t rho) {
+    VectorXr xk = ws->x;
+    VectorXr pk = ws->impulse;
+    VectorXr xk1 = ws->x;
+    VectorXr pk1 = ws->impulse;
+
+    const double rho2 = (double)rho * (double)rho;
+    double omega = 1.0;
+
+    for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
+        ws->x = xk1;
+        ws->impulse = pk1;
+        pj_sweep(ws);
+        ws->iter = iter + 1;
+
+        const real_t err = residual(ws->x.head(ws->Nv), xk1.head(ws->Nv), cfg);
+        if (cfg.debug_pj && iter % 1000 == 0) std::cout << "PJ cheb iter " << iter << ", residual norm: " << err << std::endl;
+        if (err <= (real_t)1) break;
+
+        double omega_next = (iter == 0) ? (1.0 / (1.0 - rho2 * 0.5)) : (1.0 / (1.0 - (rho2 * 0.25) * omega));
+
+        VectorXr xk2, pk2;
+        if (!std::isfinite(omega_next) || omega_next <= 0.0 || !ws->x.allFinite()) {
+            // The linearization this method relies on broke down (e.g. the active set changed
+            // sharply due to projection) -- fall back to a single un-accelerated step rather than
+            // risk amplifying a bad extrapolation.
+            xk2 = ws->x;
+            pk2 = ws->impulse;
+            omega_next = 1.0;
+        } else {
+            xk2 = (real_t)omega_next * (ws->x - xk) + xk;
+            pk2 = (real_t)omega_next * (ws->impulse - pk) + pk;
+        }
+
+        xk = xk1;
+        pk = pk1;
+        xk1 = xk2;
+        pk1 = pk2;
+        omega = omega_next;
+    }
+
+    ws->x = xk1;
+    ws->impulse = pk1;
+}
+
 static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::DynamicsAssembler& dyn, cardillo::physics::assembly::PjAssembler& assembler, cardillo::config::Config& cfg, real_t dt,
                                                          real_t theta) {
     const int Nv = (int)dyn.numV();
@@ -287,15 +365,20 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
     }
 
     std::unique_ptr<workspace> ws;
+    real_t chebyshevRho = 0;
+    const bool useChebyshev = m_cfg.pj_chebyshev && !m_cfg.pj_nesterov;
     {
         auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobiSetup);
         ws = build_workspace(m_dyn, m_assembler, m_cfg, dt, theta);
+        if (useChebyshev) chebyshevRho = estimateSpectralRadius(ws->W, ws->RW, ws->R_block, *ws->assembler, (int)ws->x.size(), ws->Nv);
     }
 
     {
         auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobi);
         if (m_cfg.pj_nesterov)
             nesterov_loop(ws, m_cfg);
+        else if (useChebyshev)
+            chebyshev_loop(ws, m_cfg, chebyshevRho);
         else
             standard_loop(ws, m_cfg);
     }

@@ -85,6 +85,10 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.pj_nesterov_restart_limit = std::max(0, std::stoi(val));
             } catch (...) {
             }
+        } else if (key == "pj.chebyshev" || key == "solver.chebyshev") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.pj_chebyshev = (v == "1" || v == "true" || v == "yes" || v == "on");
         } else if (key == "pj.warmstart" || key == "solver.warmstart") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
