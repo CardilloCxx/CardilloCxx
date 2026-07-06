@@ -150,19 +150,6 @@ Sparse matrices
    * - :cpp:type:`SparseMatrix <cardillo::SparseMatrix>`
      - Generic sparse matrix template alias.
 
-STL container aliases
----------------------
-
-.. list-table::
-   :header-rows: 1
-   :widths: 25 75
-
-   * - :cpp:type:`StlVectorXr <cardillo::StlVectorXr>`
-     - ``std::vector<real_t>`` — generic real arrays.
-   * - :cpp:type:`StlVectorXi <cardillo::StlVectorXi>`
-     - ``std::vector<index_t>`` — generic integer arrays.
-   * - :cpp:type:`StlVectorVectorXr <cardillo::StlVectorVectorXr>`
-     - ``std::vector<VectorXr>`` — list of vectors (e.g. per-body data).
 
 Physics-specific types (``cardillo::physics``)
 -----------------------------------------------

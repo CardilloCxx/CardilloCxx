@@ -92,12 +92,6 @@ using MapVectorXr = Eigen::Map<VectorXr>;
 using MapMatrixXXr = Eigen::Map<MatrixXXr>;
 // using MapQuaternion4r = Eigen::Map<const Quaternion4r>;
 
-// stl vectors
-using StlVectorXr = std::vector<real_t>;
-using StlVectorXi = std::vector<index_t>;
-using StlVectorStlVectorXi = std::vector<std::vector<index_t>>;
-using StlVectorVectorXr = std::vector<VectorXr>;
-
 // sparse matrices
 // // TODO: do we want CooMatrixXXr, Tripletr, SparseMatrixXXr, CscMatrixXXr,
 // // CsrMatrixXXr?
