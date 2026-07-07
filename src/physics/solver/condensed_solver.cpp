@@ -448,7 +448,15 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
             const VectorXr u_k1 = u_corr;
             m_last_iters = iter + 2;
 
-            const real_t err = checkResidual(u_y, u_k1, iter);
+            // Non-throwing here, deliberately -- matching PJ's own nesterov_loop() (see
+            // projected_jacobi.cpp), which never throws on a non-finite residual either: a NaN/Inf
+            // `err` is one of the restart triggers below, not an immediate hard failure. Throwing
+            // here (as an earlier version of this code did via checkResidual()) made that restart
+            // branch permanently dead code -- momentum could never recover from an overshoot because
+            // the exception fired before the restart logic ran at all. This was the actual cause of
+            // the jacobi+Nesterov divergence on slinky documented in condensed.rst/the solver report:
+            // not an unrecoverable instability, just a self-inflicted inability to ever try recovering.
+            const real_t err = residualNorm(u_y, u_k1);
             if (err <= (real_t)1) break;
 
             const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
@@ -467,20 +475,43 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
                 restart = true;
             }
 
+            // A restart only ever resets to lambda_k1/u_k1 -- the plain (unaccelerated) sweep
+            // output. If that itself is already non-finite (the corruption happened one iteration
+            // earlier, inside the extrapolation below, and propagated through doSweep), no restart
+            // can recover it: momentum is permanently disabled and the loop's exit condition is a
+            // hard failure at the bottom, exactly like the plain (non-Nesterov) path's checkResidual.
+            if (!lambda_k1.allFinite() || !u_k1.allFinite()) {
+                momentum_disabled = true;
+                restarts = m_cfg.pj_nesterov_restart_limit;
+                checkResidual(u_y, u_k1, iter);  // throws: nothing left to fall back to
+            }
+
             if (restart) {
                 lambda_y = lambda_k1;
                 u_y = u_k1;
                 lambda_k = lambda_k1;
                 thk = 1.0;
                 if (++restarts >= m_cfg.pj_nesterov_restart_limit) momentum_disabled = true;
+            } else if (momentum_disabled) {
+                lambda_y = lambda_k1;
+                u_y = u_k1;
+                thk = 1.0;
             } else {
-                if (momentum_disabled) {
+                // Guard the extrapolation itself, not just its aftermath: betak1 in [0,1] bounds the
+                // *coefficient*, not the extrapolated magnitude -- (lambda_k1 - lambda_k) can still be
+                // large enough to overflow. Catching that here, before it is ever fed into the next
+                // doSweep(), is what actually prevents the corruption from entering the state at all;
+                // the `allFinite()` check above is only a last-resort backstop for anything that slips
+                // past this guard some other way.
+                VectorXr trial_lambda_y = lambda_k1 + (real_t)betak1 * (lambda_k1 - lambda_k);
+                VectorXr trial_u_y = u_k1 + (real_t)betak1 * (u_k1 - u_k);
+                if (trial_lambda_y.allFinite() && trial_u_y.allFinite()) {
+                    lambda_y = std::move(trial_lambda_y);
+                    u_y = std::move(trial_u_y);
+                    thk = thk1;
+                } else {
                     lambda_y = lambda_k1;
                     u_y = u_k1;
-                    thk = 1.0;
-                } else {
-                    lambda_y = lambda_k1 + (real_t)betak1 * (lambda_k1 - lambda_k);
-                    u_y = u_k1 + (real_t)betak1 * (u_k1 - u_k);
                     thk = thk1;
                 }
             }

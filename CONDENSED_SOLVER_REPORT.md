@@ -260,18 +260,35 @@ underlying per-sweep math is identical between the two. `jacobi`+Nesterov simila
 PJ's own fixed point (`totalKE=0.814196987085242` vs PJ's `0.814196987077336`) in 3057 sweeps vs
 PJ's 3056.
 
-**A real, scene-dependent limitation found:** `jacobi`+Nesterov diverges on slinky
-(`[Condensed] Divergence detected after 949 iterations. Residual norm: -nan`), while
-`gauss_seidel`+Nesterov is stable there. This is consistent with standard iterative-methods theory:
-Jacobi's stability margin is smaller than Gauss-Seidel's for strongly-coupled systems (slinky's
-4944 tightly-coupled spring rows vs. domino's mostly-independent per-body contacts), and Nesterov's
-momentum shrinks the stable step-size region further on top of that. The adaptive restart heuristic
-didn't catch it in time on this run. **Practical guidance: use `gauss_seidel`+Nesterov by default;
-only reach for `jacobi`+Nesterov on scenes with weak inter-contact coupling (verified so far only
-on domino), and check for `nan`/divergence before trusting it on a new scene.** Not hardened
-further in this pass (e.g. auto-disabling Nesterov on `nan` and retrying without it) — PJ/PGS have
-the identical failure mode (an uncaught `std::runtime_error` on divergence) today, so this isn't a
-new class of fragility introduced here, just inherited.
+**A real, scene-dependent limitation found — and then root-caused, not just worked around:**
+`jacobi`+Nesterov originally diverged on slinky (`[Condensed] Divergence detected after 949
+iterations. Residual norm: -nan`), while `gauss_seidel`+Nesterov was stable there. The first
+write-up of this blamed Nesterov's momentum shrinking Jacobi's already-smaller stability margin —
+that explanation was wrong. Testing a **plain, unaccelerated** `jacobi` sweep (Nesterov off
+entirely) on slinky at the same `pj.alpha=0.3` showed it diverges too, identically. Momentum was
+never the cause: `slinky`'s default `pj.alpha=0.3` is tuned for `gauss_seidel`/`colored`, and
+`jacobi` has a smaller stability margin at a given alpha than those do — the exact same
+per-sweep-mode instability already documented in `domino`'s own `scene_condensed.config` (which
+needed `pj.alpha=0.001`, not the header default of 0.3, for `jacobi` to be stable there). Dropping
+`pj.alpha` to `0.02` made `jacobi`+Nesterov stable on slinky over 1000+ steps (sustained ~11 it/s,
+zero divergence) — the fix is retuning alpha per sweep mode, not disabling Nesterov.
+
+Separately, while investigating this, a genuine bug was found and fixed in the Nesterov loop
+itself: the residual check driving the loop's exit/restart decision was routed through a helper
+that throws `std::runtime_error` immediately on a `nan`/`inf` residual. That made the loop's own
+`if (!std::isfinite(err)) restart = true;` branch permanently dead code — the exception fired
+before the restart logic could ever run, even though that logic (ported from PJ's own
+`nesterov_loop()`, which never throws) exists specifically to recover from exactly this case. Fixed
+by computing the residual without throwing inside the Nesterov loop, letting restart/momentum-
+disable react to a non-finite value exactly as it reacts to a merely-growing one, and only raising
+(matching PJ/PGS's existing, inherited behavior) once momentum is fully disabled and the plain
+sweep output is itself still non-finite — i.e. once there is genuinely nothing left to restart to.
+Also added a finiteness check on the freshly-extrapolated `(lambda_y, u_corr_y)` state before it is
+fed into the next sweep: `betak1` is bounded to `[0,1]`, but the extrapolated vector's magnitude is
+not, so an overshoot can still produce a non-finite state even with a well-behaved coefficient.
+**Practical guidance updated: retune `pj.alpha` down when switching a scene's sweep mode to
+`jacobi` (accelerated or not); the divergence is a per-sweep-mode stability property of the
+scene/alpha combination, not a Nesterov-specific risk.**
 
 ### Fixed-size buffer optimization (the top item from the original "next steps" list)
 
@@ -325,12 +342,13 @@ generous timeout, which is listed below as still-open work.
 
 ## Suggested next steps, in priority order
 
-1. Run the full ablation in `tools/compare_solver_traces.py` with a multi-minute-per-case timeout
+1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode
+   alpha stability, not a momentum effect) and the dead-restart-branch bug that made the loop
+   unable to even attempt recovery is fixed. See the update above.
+2. Run the full ablation in `tools/compare_solver_traces.py` with a multi-minute-per-case timeout
    to replace this report's short, hand-picked comparisons with complete, systematic ones —
-   including a proper per-scene thread-count sweep (only domino's was swept exhaustively above).
-2. Harden Nesterov against the `jacobi` divergence case found above: detect `nan`/`inf` mid-solve
-   and retry the step with Nesterov disabled, rather than throwing and aborting the whole
-   simulation. Would also help PJ/PGS, which share the same failure mode today.
+   including a proper per-scene thread-count sweep (only domino's was swept exhaustively above),
+   and a `jacobi`+Nesterov slinky run at the corrected `pj.alpha=0.02`.
 3. Cache `colored`'s coloring across timesteps when the contact set is stable, and/or increase the
    amount of work done per OpenMP barrier — still not competitive with `jacobi`/`gauss_seidel`.
 4. Re-run the TSan validation with a Clang/`libomp` toolchain if one becomes available, to get a

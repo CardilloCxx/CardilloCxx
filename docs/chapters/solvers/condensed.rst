@@ -216,17 +216,38 @@ momentum-extrapolating a value that is *already* being deliberately kept
 stale by design raises questions not addressed here.
 
 .. warning::
-   ``jacobi`` + Nesterov is not robust on every scene. It converges cleanly
-   on ``domino`` (reaching the same fixed point as PJ's own Nesterov-accelerated
-   run, in essentially the same sweep count), but **diverges** on ``slinky``
-   (a `nan` residual after several hundred sweeps) -- consistent with
-   standard theory that Jacobi's stability margin is smaller than
-   Gauss-Seidel's on strongly-coupled systems, and momentum shrinks that
-   margin further. ``gauss_seidel`` + Nesterov is stable on both scenes
-   tested and is the recommended combination when in doubt; verify a new
-   scene doesn't diverge before relying on ``jacobi`` + Nesterov. Divergence
-   raises ``std::runtime_error`` uncaught, the same behavior PJ/PGS already
-   have -- this is not a new failure mode, just inherited.
+   ``jacobi`` + Nesterov is not robust on every scene, but **not for the reason
+   an earlier version of this note claimed**. It converges cleanly on
+   ``domino`` (reaching the same fixed point as PJ's own Nesterov-accelerated
+   run, in essentially the same sweep count), but diverges to `nan` on
+   ``slinky`` at that scene's default ``pj.alpha=0.3``. This is **not** Nesterov
+   shrinking Jacobi's stability margin -- a plain, unaccelerated ``jacobi``
+   sweep (Nesterov off entirely) diverges on ``slinky`` at the same alpha, so
+   momentum was never the cause. It is the same per-sweep-mode instability
+   already documented in ``domino``'s ``scene_condensed.config``: ``jacobi``
+   has a smaller stability margin than ``gauss_seidel``/``colored`` at a given
+   ``pj.alpha``, and ``slinky``'s default alpha is tuned for the latter.
+   Dropping ``pj.alpha`` to ``0.02`` makes ``jacobi`` + Nesterov stable on
+   ``slinky`` too (confirmed over 1000+ steps with no divergence). The fix for
+   a new scene's ``jacobi`` divergence is therefore to retune ``pj.alpha``
+   first, not to disable Nesterov.
+
+   Separately, the Nesterov loop's restart-on-non-finite-residual branch was
+   at one point dead code: an early implementation ran every residual check
+   through a throwing helper, so a `nan` fired an uncaught
+   ``std::runtime_error`` before the restart logic ever got a chance to run,
+   even though that logic exists precisely to recover from this case (ported
+   from PJ's own ``nesterov_loop()``, which never throws). This has been
+   fixed: the Nesterov loop now computes the residual without throwing, lets
+   the existing restart/momentum-disable logic react to a non-finite value
+   the same way it reacts to a merely-growing one, and only raises
+   ``std::runtime_error`` (matching PJ/PGS's inherited behavior) once
+   momentum has been fully disabled and the plain sweep output itself is
+   still non-finite -- i.e. once there is genuinely nothing left to restart
+   to. The extrapolation step also now checks the freshly-extrapolated state
+   for finiteness before it is ever fed into the next sweep (``betak1`` is
+   bounded to ``[0,1]``, but the extrapolated vector's magnitude is not, so
+   this is a distinct failure mode from a bad ``betak1``).
 
 Config keys
 -----------
