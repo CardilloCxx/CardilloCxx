@@ -12,17 +12,16 @@ documentation. This file is the narrative of *how it was built and verified*.
 
 ## Direct answer to "are these all non-accelerated variants?"
 
-**Yes.** All four sweep modes (`gauss_seidel`, `jacobi`, `colored`, `chaotic`) are plain
-fixed-point iterations: relaxation (`pj_relaxation`) and per-contact step damping (`pj_alpha`) are
-the only step-size controls, identical to what PGS already has. None of them have Nesterov,
-Chebyshev, or Anderson acceleration, all three of which exist for `projected_jacobi` (PJ), and
-Nesterov also exists for PGS. This matters directly for interpreting the benchmark numbers below:
-comparing `condensed` against PJ's *default* (Nesterov-on) configuration systematically favors PJ
-on iteration count. A fair comparison uses `pj.nesterov=false`, which is what the tables below do
-unless noted. Adding acceleration to `condensed`'s sweep modes is realistic future work — the
-per-block update is already isolated in `computeBlockUpdate()` in `condensed_solver.cpp`, and PJ's
-existing Nesterov/Chebyshev logic operates at exactly that level (wrapping the whole-vector sweep),
-so the pattern is known and reusable.
+**This was true when first asked, and is the starting point for the rest of this report** (the
+"Benchmark results" section below predates the change described next): all four sweep modes were
+plain fixed-point iterations, with relaxation (`pj_relaxation`) and per-contact step damping
+(`pj_alpha`) as the only step-size controls, identical to what PGS already had, and no Nesterov/
+Chebyshev/Anderson.
+
+**As of the "Update" section below, Nesterov acceleration is implemented** for `gauss_seidel`,
+`jacobi`, and `colored` (not `chaotic`, deliberately — see that section), reusing PJ/PGS's existing
+`pj.nesterov`/`pj.nesterov_beta_threshold`/`pj.nesterov_restart_limit` config keys rather than
+adding new ones. Chebyshev and Anderson are still not ported; see "Suggested next steps."
 
 ## What was built
 
@@ -223,19 +222,118 @@ reason to prefer `newton` on frictional/compliant scenes.
   one. PJ and PGS here are also non-accelerated (`pj.nesterov=false`) baselines. The one clean,
   reproducible win is `newton` vs. `projection` *within* `condensed` itself.
 
+## Update: Nesterov acceleration + fixed-size buffer optimization
+
+Follow-up work, done in this order because the user specifically asked to check whether Nesterov
+(PJ's biggest documented win) could be ported before anything else.
+
+### Nesterov acceleration, generalized across sweep modes
+
+Added a generic Nesterov (FISTA-style) outer loop in `CondensedSolver::solve()`, ported
+line-for-line from `ProjectedGaussSeidelSolver`'s own Nesterov branch (momentum extrapolation
+between sweeps, adaptive restart on residual growth / excessive momentum coefficient / direction
+reversal, momentum permanently disabled after `pj.nesterov_restart_limit` restarts). It's
+implemented once, generically, via a `doSweep(lambda, u_corr)` closure that dispatches to whichever
+of `gaussSeidelSweep`/`jacobiSweep`/`coloredSweep` is configured — Nesterov only ever touches the
+outer state between sweep calls, never the sweep internals, so this required no changes to the
+sweep functions themselves. No new config keys: it reuses `pj.nesterov`,
+`pj.nesterov_beta_threshold`, `pj.nesterov_restart_limit`, the same keys PJ and PGS already read.
+
+`chaotic` is deliberately excluded — its state lives in an atomic array, not a plain vector, and
+momentum-extrapolating a value that's already being intentionally kept stale by design is a
+separate question not tackled here.
+
+**First bug caught, fixed immediately:** the initial implementation reassigned `lambda`/`u_corr`
+from the lagging `lambda_k`/`u_k` variables after the loop exited. PGS's own code doesn't do this —
+`lambda`/`u_corr` already hold the correct latest post-sweep values from inside the loop (the sweep
+functions mutate them by reference), and `lambda_k`/`u_k` are one iteration behind at that point.
+Caught by re-reading the ported reference code line-by-line before running it, not by test failure.
+
+**Correctness check** (domino, `gauss_seidel`, `pj.nesterov=true` vs `false`): the accelerated
+result (`totalKE=0.814479477909828`) matches PGS's own Nesterov-accelerated result
+(`0.814479477909845`, both scenes inherit `pj.nesterov=true` from `scene_standard.config`'s
+default) to 11 significant digits, and the non-accelerated result reproduces the pre-Nesterov
+number exactly (`0.811464242457628`, bit-identical to before this change — a clean regression
+check). Sweep count: 11979 (plain) → 3057 (Nesterov) on domino `gauss_seidel`, landing on
+essentially the same iteration count as PGS's own Nesterov run (3057) — expected, since the
+underlying per-sweep math is identical between the two. `jacobi`+Nesterov similarly converges to
+PJ's own fixed point (`totalKE=0.814196987085242` vs PJ's `0.814196987077336`) in 3057 sweeps vs
+PJ's 3056.
+
+**A real, scene-dependent limitation found:** `jacobi`+Nesterov diverges on slinky
+(`[Condensed] Divergence detected after 949 iterations. Residual norm: -nan`), while
+`gauss_seidel`+Nesterov is stable there. This is consistent with standard iterative-methods theory:
+Jacobi's stability margin is smaller than Gauss-Seidel's for strongly-coupled systems (slinky's
+4944 tightly-coupled spring rows vs. domino's mostly-independent per-body contacts), and Nesterov's
+momentum shrinks the stable step-size region further on top of that. The adaptive restart heuristic
+didn't catch it in time on this run. **Practical guidance: use `gauss_seidel`+Nesterov by default;
+only reach for `jacobi`+Nesterov on scenes with weak inter-contact coupling (verified so far only
+on domino), and check for `nan`/divergence before trusting it on a new scene.** Not hardened
+further in this pass (e.g. auto-disabling Nesterov on `nan` and retrying without it) — PJ/PGS have
+the identical failure mode (an uncaught `std::runtime_error` on divergence) today, so this isn't a
+new class of fragility introduced here, just inherited.
+
+### Fixed-size buffer optimization (the top item from the original "next steps" list)
+
+Replaced every per-block temporary in the hot path (`blockResidual`'s residual, `lamOld`, the
+Newton/projection update, the scatter delta, the Jacobi-gather accumulator, the chaotic-mode
+per-block scratch) with `Vectorr<6>` — a fixed-size, stack-allocated Eigen type already used
+elsewhere in this codebase — instead of dynamically-sized `VectorXr`. `RowBlock::Ja`/`Jb`/`Gii`/
+`GiiInv` were deliberately left as dynamically-sized `MatrixXXr`: they're built once per `solve()`
+call in `CondensedAssembler`, not once per block per sweep, so they were never the bottleneck.
+Every block's row count is ≤ 6 (1 for frictionless contacts, 3 for frictional, up to 6 for
+springs/dampers) and every body's DOF count is ≤ 6, so a fixed 6-element buffer with `.head(n)`
+views covers every case exactly. `projectBlock()` was templated on `Eigen::MatrixBase<Derived>` so
+the same function body works on both `VectorXr::segment()` views and `Buf6::head()` views.
+
+**Correctness check**: re-ran `gauss_seidel`/`jacobi`/`colored` on domino at the exact same
+tolerance as before the refactor — all three reproduced their pre-refactor kinetic energy and
+sweep count **bit-for-bit** (e.g. `gauss_seidel`: `0.811464242457628`, 11979 sweeps, identical to
+15 displayed digits). `chaotic` landed on a nearby but not identical value (expected — it's
+randomized), with a comparable sweep count.
+
+**Performance result**, domino, `pj.nesterov=true`, sequential (non-contaminated) runs, 3 steps:
+
+| Case | Wall-clock before | Wall-clock after | Sweeps |
+|---|---|---|---|
+| PJ (unmodified, for reference) | 6.76s | 6.76s (unchanged) | 3791 |
+| Condensed `gauss_seidel`+Nesterov | 19.16s | 13.64s (−29%) | 4149 |
+| Condensed `jacobi`+Nesterov, 4 threads | 8.37s | 5.18s (−38%) | 3796 |
+
+A thread-count sweep for `jacobi`+Nesterov post-optimization (sequential runs, no cross-run
+contention) found 8 threads as the sweet spot on this 16-core machine:
+
+| Threads | 1 | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| Wall-clock | 11.11s | 5.95s | 3.55s | **3.02s** | 4.08s |
+
+**PJ is no longer the fastest option on domino**: PJ takes 5.35s on a clean sequential run; condensed
+`jacobi`+Nesterov at 8 threads takes 3.02s — **~1.8x faster than PJ**. On slinky, `gauss_seidel`+
+Nesterov (sequential, no threading) takes 8.39s vs. PJ's 12.04s — **~1.4x faster than PJ**, with
+`jacobi`+Nesterov unusable there (see the divergence finding above). Both wins are with
+`condensed.local_solve=projection`; `newton` on top of an already-Nesterov-accelerated sweep did
+not help further in this round of testing (slightly slower than projection alone on slinky's
+already-fast-converging accelerated run — the per-contact Newton cost isn't repaid when only ~30
+sweeps are needed in total).
+
+**Important caveat on these numbers**: they're from short runs (3 steps on domino, 200 steps on
+slinky) picked to fit within the session, on one machine, with one thread count tried exhaustively
+(domino) and one (8) assumed-reasonable for slinky. They demonstrate that condensed *can* beat PJ,
+not that it always will — a proper claim would need the full `tools/compare_solver_traces.py`
+ablation (now updated with `condensed` cases) run to completion across both scenes with a
+generous timeout, which is listed below as still-open work.
+
 ## Suggested next steps, in priority order
 
-1. Switch the per-block hot path (`blockResidual`, `computeBlockUpdate`, `scatterDelta`) to
-   fixed-size Eigen types to close the wall-clock gap with PGS on `gauss_seidel`.
-2. Cache `colored`'s coloring across timesteps when the contact set is stable, and/or increase the
-   amount of work done per OpenMP barrier.
-3. Re-run the TSan validation with a Clang/`libomp` toolchain if one becomes available, to get a
+1. Run the full ablation in `tools/compare_solver_traces.py` with a multi-minute-per-case timeout
+   to replace this report's short, hand-picked comparisons with complete, systematic ones —
+   including a proper per-scene thread-count sweep (only domino's was swept exhaustively above).
+2. Harden Nesterov against the `jacobi` divergence case found above: detect `nan`/`inf` mid-solve
+   and retry the step with Nesterov disabled, rather than throwing and aborting the whole
+   simulation. Would also help PJ/PGS, which share the same failure mode today.
+3. Cache `colored`'s coloring across timesteps when the contact set is stable, and/or increase the
+   amount of work done per OpenMP barrier — still not competitive with `jacobi`/`gauss_seidel`.
+4. Re-run the TSan validation with a Clang/`libomp` toolchain if one becomes available, to get a
    clean (not just argued-correct) result for the parallel sweep modes.
-4. If `condensed` is to be compared against PJ/PGS's *accelerated* configurations, port Nesterov
-   (or Chebyshev/Anderson) to `computeBlockUpdate()`'s call site — the pattern already exists in
-   `projected_jacobi.cpp`/`projected_gauss_seidel.cpp` to adapt from.
-5. Run the full ablation in `tools/compare_solver_traces.py` (now supports all 8
-   sweep-mode/local-solve combinations on both scenes with wall-clock capture) with a
-   multi-minute-per-case timeout budget to get complete, not partial, wall-clock numbers —
-   the runs in this report were deliberately capped at 90s/case to fit the session, and several
-   cases (marked "no" above) didn't reach full completion in that budget.
+5. Consider Chebyshev/Anderson acceleration too (PJ has both) now that the generic `doSweep()`
+   wrapper pattern exists for bolting an outer accelerator onto any sweep mode.

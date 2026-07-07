@@ -23,10 +23,25 @@ using cardillo::physics::assembly::RowBlock;
 
 namespace {
 
+// Every RowBlock has dim <= 6 (1: frictionless contact, 3: frictional contact, up to 6: spring/
+// damper rows) and every body has dof <= 6 (3 for a point mass, 6 for a full rigid body). Buf6 is
+// a fixed-size, stack-allocated scratch buffer sized to the worst case, used with `.head(n)`
+// views for whichever n <= 6 actually applies. Unlike VectorXr, constructing one never touches the
+// heap -- this is what actually matters here: the per-block hot path (blockResidual/
+// computeBlockUpdate/scatterDelta and their call sites below) used to allocate several VectorXr
+// temporaries per block per sweep, which dominated wall-clock on scenes with many contacts (a
+// malloc/free per r/lamOld/lamNew/delta/dlam, times tens of thousands of blocks, times thousands
+// of sweeps). Switching those temporaries to Buf6 removes that allocation churn entirely; `Ja`/
+// `Jb`/`Gii`/`GiiInv` stay dynamically-sized MatrixXXr (built once per solve() call in
+// CondensedAssembler, not per sweep, so their allocation cost is amortized and not the bottleneck).
+using Buf6 = Vectorr<6>;
+
 // Same clip as ProjectedGaussSeidel's project()/project_all(): normal impulse (index 0) clamped to
 // <= 0, tangential (indices 1,2) scaled toward the Coulomb disk of radius -mu*lambda[0]. No-op for
-// Spring/Damper blocks (equality constraints, unconstrained).
-void projectBlock(RowBlock::Kind kind, real_t mu, VectorXr& lam) {
+// Spring/Damper blocks (equality constraints, unconstrained). Templated so it works identically on
+// a VectorXr::segment() view or a Buf6::head() view -- both are Eigen::MatrixBase-derived.
+template <typename Derived>
+void projectBlock(RowBlock::Kind kind, real_t mu, Eigen::MatrixBase<Derived>& lam) {
     if (kind == RowBlock::Kind::Spring || kind == RowBlock::Kind::Damper) return;
 
     lam[0] = std::min(lam[0], (real_t)0);
@@ -39,19 +54,29 @@ void projectBlock(RowBlock::Kind kind, real_t mu, VectorXr& lam) {
     lam[2] *= s;
 }
 
-// One block's local residual r = rhs_block - Ja*u_corr_A - Jb*u_corr_B - complianceDiag*lambda_block.
-VectorXr blockResidual(const RowBlock& blk, const VectorXr& rhs, const VectorXr& u_corr, const VectorXr& lambda) {
-    VectorXr r = rhs.segment(blk.offset, blk.dim);
-    if (blk.aDof > 0) r.noalias() -= blk.Ja * u_corr.segment(blk.aOff, blk.aDof);
-    if (blk.bDof > 0) r.noalias() -= blk.Jb * u_corr.segment(blk.bOff, blk.bDof);
-    r.noalias() -= blk.complianceDiag.cwiseProduct(lambda.segment(blk.offset, blk.dim));
-    return r;
+// Writes this block's local residual (rhs_block - Ja*u_corr_A - Jb*u_corr_B -
+// complianceDiag*lambda_block) into out.head(blk.dim). No heap allocation: `out` is caller-owned
+// stack storage, written into via `.noalias()` rather than returned by value.
+void blockResidual(const RowBlock& blk, const VectorXr& rhs, const VectorXr& u_corr, const VectorXr& lambda, Buf6& out) {
+    auto o = out.head(blk.dim);
+    o = rhs.segment(blk.offset, blk.dim);
+    if (blk.aDof > 0) o.noalias() -= blk.Ja * u_corr.segment(blk.aOff, blk.aDof);
+    if (blk.bDof > 0) o.noalias() -= blk.Jb * u_corr.segment(blk.bOff, blk.bDof);
+    o.noalias() -= blk.complianceDiag.cwiseProduct(lambda.segment(blk.offset, blk.dim));
 }
 
-// Applies one block's impulse delta to u_corr (in place): u_corr += Minv * J^T * dlambda.
-void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const VectorXr& dlambda, VectorXr& u_corr) {
-    if (blk.aDof > 0) u_corr.segment(blk.aOff, blk.aDof).noalias() += MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(blk.Ja.transpose() * dlambda);
-    if (blk.bDof > 0) u_corr.segment(blk.bOff, blk.bDof).noalias() += MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(blk.Jb.transpose() * dlambda);
+// Applies one block's impulse delta (dlambda.head(blk.dim)) to u_corr in place: u_corr += Minv *
+// J^T * dlambda. `tmp` is caller-provided scratch for the intermediate J^T*dlambda product (also
+// Buf6, also heap-free).
+void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const Buf6& dlambda, VectorXr& u_corr, Buf6& tmp) {
+    if (blk.aDof > 0) {
+        tmp.head(blk.aDof).noalias() = blk.Ja.transpose() * dlambda.head(blk.dim);
+        u_corr.segment(blk.aOff, blk.aDof).noalias() += MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(tmp.head(blk.aDof));
+    }
+    if (blk.bDof > 0) {
+        tmp.head(blk.bDof).noalias() = blk.Jb.transpose() * dlambda.head(blk.dim);
+        u_corr.segment(blk.bOff, blk.bDof).noalias() += MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(tmp.head(blk.bDof));
+    }
 }
 
 bool isContactKind(RowBlock::Kind kind) { return kind == RowBlock::Kind::ContactFrictionless || kind == RowBlock::Kind::ContactFrictional; }
@@ -61,32 +86,38 @@ bool isContactKind(RowBlock::Kind kind) { return kind == RowBlock::Kind::Contact
 // local_contact_newton.hpp) -- it either converges to a locally-exact solution in a handful of
 // iterations, or reports failure (singular Jacobian, non-finite step, non-decreasing residual, or
 // no convergence within its iteration cap), in which case we fall through to the always-available
-// linear step + projection below. Returns the new (projected/converged) impulse for this block;
-// caller computes the delta.
-VectorXr computeBlockUpdate(const RowBlock& blk, const VectorXr& r, real_t relaxation, real_t alpha, const VectorXr& lamOld, bool useNewton, const NewtonACParams& newtonParams) {
+// linear step + projection below. Writes the new (projected/converged) impulse into
+// out.head(blk.dim); caller computes the delta.
+void computeBlockUpdate(const RowBlock& blk, const Buf6& r, real_t relaxation, real_t alpha, const Buf6& lamOld, bool useNewton, const NewtonACParams& newtonParams, Buf6& out) {
     if (useNewton && blk.kind == RowBlock::Kind::ContactFrictional) {
-        Vector3r lam3 = lamOld;
-        if (solveContactBlockNewtonAC(blk.Gii, r, blk.mu, lam3, newtonParams)) return VectorXr(lam3);
+        Vector3r lam3 = lamOld.head<3>();
+        const Vector3r r3 = r.head<3>();
+        if (solveContactBlockNewtonAC(blk.Gii, r3, blk.mu, lam3, newtonParams)) {
+            out.head<3>() = lam3;
+            return;
+        }
     }
 
-    VectorXr dlam = relaxation * (blk.GiiInv * r);
-    if (isContactKind(blk.kind)) dlam *= alpha;
-    VectorXr lamNew = lamOld + dlam;
-    projectBlock(blk.kind, blk.mu, lamNew);
-    return lamNew;
+    auto o = out.head(blk.dim);
+    o.noalias() = relaxation * (blk.GiiInv * r.head(blk.dim));
+    if (isContactKind(blk.kind)) o *= alpha;
+    o += lamOld.head(blk.dim);
+    projectBlock(blk.kind, blk.mu, o);
 }
 
 // Sequential block-Gauss-Seidel sweep: propagates u_corr immediately after each block, matching
 // ProjectedGaussSeidelSolver's own loop structure exactly, just expressed over RowBlocks.
 void gaussSeidelSweep(const CondensedTopology& topo, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton, const NewtonACParams& newtonParams,
                        VectorXr& lambda, VectorXr& u_corr) {
+    Buf6 r, lamOld, lamNew, delta, tmp;
     for (const auto& blk : topo.blocks) {
-        const VectorXr r = blockResidual(blk, rhs, u_corr, lambda);
-        const VectorXr lamOld = lambda.segment(blk.offset, blk.dim);
-        const VectorXr lamNew = computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams);
+        blockResidual(blk, rhs, u_corr, lambda, r);
+        lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
+        computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew);
 
-        scatterDelta(blk, MinvDiag, lamNew - lamOld, u_corr);
-        lambda.segment(blk.offset, blk.dim) = lamNew;
+        delta.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
+        scatterDelta(blk, MinvDiag, delta, u_corr, tmp);
+        lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);
     }
 }
 
@@ -129,16 +160,20 @@ void coloredSweep(const CondensedTopology& topo, const cardillo::misc::Coloring&
         const int n = (int)cls.size();
 #pragma omp for schedule(dynamic)
         for (int k = 0; k < n; ++k) {
+            // Declared inside the loop body: each thread gets its own stack-local (and heap-free)
+            // instance automatically, no `private()` clause needed.
+            Buf6 r, lamOld, lamNew, delta, tmp;
             const int idx = cls[(size_t)k];
             const auto& blk = topo.blocks[(size_t)idx];
-            const VectorXr r = blockResidual(blk, rhs, u_corr, lambda);
-            const VectorXr lamOld = lambda.segment(blk.offset, blk.dim);
-            const VectorXr lamNew = computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams);
+            blockResidual(blk, rhs, u_corr, lambda, r);
+            lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
+            computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew);
 
             // Safe: no two blocks in `cls` share a body (that's the coloring invariant), so these
             // writes land in disjoint slices of u_corr/lambda across threads -- no race, no atomics.
-            scatterDelta(blk, MinvDiag, lamNew - lamOld, u_corr);
-            lambda.segment(blk.offset, blk.dim) = lamNew;
+            delta.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
+            scatterDelta(blk, MinvDiag, delta, u_corr, tmp);
+            lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);
         }
         // implicit barrier at the end of `omp for` here, before the next color starts
     }
@@ -166,13 +201,14 @@ void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelO
         // block's own (non-overlapping) segment of lambda/dlambda -- no aliasing across threads.
 #pragma omp for schedule(static)
         for (int i = 0; i < numBlocks; ++i) {
+            Buf6 r, lamOld, lamNew;
             const auto& blk = topo.blocks[i];
-            const VectorXr r = blockResidual(blk, rhs, u_read, lambda);
-            const VectorXr lamOld = lambda.segment(blk.offset, blk.dim);
-            const VectorXr lamNew = computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams);
+            blockResidual(blk, rhs, u_read, lambda, r);
+            lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
+            computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew);
 
-            dlambda.segment(blk.offset, blk.dim) = lamNew - lamOld;
-            lambda.segment(blk.offset, blk.dim) = lamNew;
+            dlambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
+            lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);
         }
         // implicit barrier here, before pass 2 starts
 
@@ -186,14 +222,14 @@ void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelO
             const int off = bodyVelOffsets[(size_t)b];
             const int dof = bodyVelOffsets[(size_t)b + 1] - off;
 
-            VectorXr acc = VectorXr::Zero(dof);
+            Buf6 acc = Buf6::Zero(), d;
             for (int blockIdx : incident) {
                 const auto& blk = topo.blocks[blockIdx];
-                const VectorXr d = dlambda.segment(blk.offset, blk.dim);
-                if (blk.bodyIndexA == b) acc.noalias() += blk.Ja.transpose() * d;
-                if (blk.bodyIndexB == b) acc.noalias() += blk.Jb.transpose() * d;
+                d.head(blk.dim) = dlambda.segment(blk.offset, blk.dim);
+                if (blk.bodyIndexA == b) acc.head(dof).noalias() += blk.Ja.transpose() * d.head(blk.dim);
+                if (blk.bodyIndexB == b) acc.head(dof).noalias() += blk.Jb.transpose() * d.head(blk.dim);
             }
-            u_write.segment(off, dof) = u_read.segment(off, dof) + MinvDiag.segment(off, dof).cwiseProduct(acc);
+            u_write.segment(off, dof) = u_read.segment(off, dof) + MinvDiag.segment(off, dof).cwiseProduct(acc.head(dof));
         }
     }
     u_corr = std::move(u_write);
@@ -216,30 +252,33 @@ void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const 
     const int n = (int)order.size();
 #pragma omp parallel for schedule(dynamic)
     for (int k = 0; k < n; ++k) {
+        Buf6 uA = Buf6::Zero(), uB = Buf6::Zero(), r, lamOld, lamNew, d, inc;
         const int idx = order[(size_t)k];
         const auto& blk = topo.blocks[(size_t)idx];
 
-        VectorXr uA(blk.aDof), uB(blk.bDof);
-        for (int d = 0; d < blk.aDof; ++d) uA[d] = u_corr_atomic[(size_t)(blk.aOff + d)].load(std::memory_order_relaxed);
-        for (int d = 0; d < blk.bDof; ++d) uB[d] = u_corr_atomic[(size_t)(blk.bOff + d)].load(std::memory_order_relaxed);
+        for (int dd = 0; dd < blk.aDof; ++dd) uA[dd] = u_corr_atomic[(size_t)(blk.aOff + dd)].load(std::memory_order_relaxed);
+        for (int dd = 0; dd < blk.bDof; ++dd) uB[dd] = u_corr_atomic[(size_t)(blk.bOff + dd)].load(std::memory_order_relaxed);
 
-        VectorXr r = rhs.segment(blk.offset, blk.dim);
-        if (blk.aDof > 0) r.noalias() -= blk.Ja * uA;
-        if (blk.bDof > 0) r.noalias() -= blk.Jb * uB;
-        r.noalias() -= blk.complianceDiag.cwiseProduct(lambda.segment(blk.offset, blk.dim));
+        auto ro = r.head(blk.dim);
+        ro = rhs.segment(blk.offset, blk.dim);
+        if (blk.aDof > 0) ro.noalias() -= blk.Ja * uA.head(blk.aDof);
+        if (blk.bDof > 0) ro.noalias() -= blk.Jb * uB.head(blk.bDof);
+        ro.noalias() -= blk.complianceDiag.cwiseProduct(lambda.segment(blk.offset, blk.dim));
 
-        const VectorXr lamOld = lambda.segment(blk.offset, blk.dim);
-        const VectorXr lamNew = computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams);
-        lambda.segment(blk.offset, blk.dim) = lamNew;  // safe: `order` is a permutation this sweep
+        lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
+        computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew);
+        lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);  // safe: `order` is a permutation this sweep
 
-        const VectorXr d = lamNew - lamOld;
+        d.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
         if (blk.aDof > 0) {
-            const VectorXr incA = MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(blk.Ja.transpose() * d);
-            for (int dd = 0; dd < blk.aDof; ++dd) u_corr_atomic[(size_t)(blk.aOff + dd)].fetch_add(incA[dd], std::memory_order_relaxed);
+            inc.head(blk.aDof).noalias() = blk.Ja.transpose() * d.head(blk.dim);
+            inc.head(blk.aDof) = MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(inc.head(blk.aDof));
+            for (int dd = 0; dd < blk.aDof; ++dd) u_corr_atomic[(size_t)(blk.aOff + dd)].fetch_add(inc[dd], std::memory_order_relaxed);
         }
         if (blk.bDof > 0) {
-            const VectorXr incB = MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(blk.Jb.transpose() * d);
-            for (int dd = 0; dd < blk.bDof; ++dd) u_corr_atomic[(size_t)(blk.bOff + dd)].fetch_add(incB[dd], std::memory_order_relaxed);
+            inc.head(blk.bDof).noalias() = blk.Jb.transpose() * d.head(blk.dim);
+            inc.head(blk.bDof) = MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(inc.head(blk.bDof));
+            for (int dd = 0; dd < blk.bDof; ++dd) u_corr_atomic[(size_t)(blk.bOff + dd)].fetch_add(inc[dd], std::memory_order_relaxed);
         }
     }
 }
@@ -283,7 +322,13 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     }
 
     VectorXr u_corr = VectorXr::Zero(nV);
-    for (const auto& blk : topo.blocks) scatterDelta(blk, MinvDiag, lambda.segment(blk.offset, blk.dim), u_corr);
+    {
+        Buf6 lam0, tmp0;
+        for (const auto& blk : topo.blocks) {
+            lam0.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
+            scatterDelta(blk, MinvDiag, lam0, u_corr, tmp0);
+        }
+    }
 
 #ifdef CARDILLO_HAVE_OPENMP
     if (m_cfg.condensed_num_threads > 0) omp_set_num_threads(m_cfg.condensed_num_threads);
@@ -302,6 +347,14 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         res_v1.noalias() = u_free - u_cur;
         res_q.array() = res_v0.cwiseAbs().cwiseMax(res_v1.cwiseAbs()).array() * m_cfg.pj_tol_rel + m_cfg.pj_tol_abs;
         return (real_t)(1.0 / std::sqrt((double)nV) * res_diff.cwiseQuotient(res_q).norm());
+    };
+    auto checkResidual = [&](const VectorXr& uA, const VectorXr& uB, int iter) -> real_t {
+        const real_t res_norm = residualNorm(uA, uB);
+        if (std::isnan(res_norm) || std::isinf(res_norm)) {
+            std::cerr << "[Condensed] Divergence detected after " << iter << " iterations. Residual norm: " << res_norm << std::endl;
+            throw std::runtime_error("Condensed solver diverged");
+        }
+        return res_norm;
     };
 
     const auto& bodyVelOffsets = m_dyn.bodyVelOffsets();
@@ -332,29 +385,112 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         if (m_cfg.debug_pj) std::cout << "Condensed chaotic: atomic<real_t>::is_always_lock_free=" << std::atomic<real_t>::is_always_lock_free << std::endl;
     }
 
-    VectorXr u_prev = u_corr;
-    for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-        auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
+    // `doSweep` is generic over sweep mode so Nesterov acceleration (below) can wrap any of
+    // gauss_seidel/jacobi/colored without knowing their internals -- it only ever touches the
+    // outer (lambda, u_corr) state between calls, exactly like ProjectedGaussSeidelSolver's own
+    // Nesterov branch does around pgs_sweep(). `chaotic` is deliberately excluded: its state lives
+    // in `u_corr_atomic`, not a plain VectorXr, and momentum-extrapolating a value that's already
+    // being intentionally kept stale by design is a separate question not tackled here.
+    auto doSweep = [&](VectorXr& lam, VectorXr& ucorr) {
         if (sweepMode == "jacobi") {
-            jacobiSweep(topo, bodyVelOffsets, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lambda, u_corr);
+            jacobiSweep(topo, bodyVelOffsets, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr);
         } else if (sweepMode == "colored") {
-            coloredSweep(topo, coloring, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lambda, u_corr);
-        } else if (sweepMode == "chaotic") {
+            coloredSweep(topo, coloring, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr);
+        } else {
+            gaussSeidelSweep(topo, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr);
+        }
+    };
+
+    if (sweepMode == "chaotic") {
+        VectorXr u_prev = u_corr;
+        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
+            auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
             chaoticSweep(topo, chaoticOrder, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, m_cfg.condensed_chaotic_reshuffle_interval, iter, chaoticRng, lambda, u_corr_atomic);
             for (int i = 0; i < nV; ++i) u_corr[i] = u_corr_atomic[(size_t)i].load(std::memory_order_relaxed);
-        } else {
-            gaussSeidelSweep(topo, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lambda, u_corr);
-        }
-        sc_sweep.~Scope();
+            sc_sweep.~Scope();
 
-        m_last_iters = iter + 1;
-        const real_t res_norm = residualNorm(u_prev, u_corr);
-        if (std::isnan(res_norm) || std::isinf(res_norm)) {
-            std::cerr << "[Condensed] Divergence detected after " << iter << " iterations. Residual norm: " << res_norm << std::endl;
-            throw std::runtime_error("Condensed solver diverged");
+            m_last_iters = iter + 1;
+            if (checkResidual(u_prev, u_corr, iter) < (real_t)1) break;
+            u_prev = u_corr;
         }
-        if (res_norm < (real_t)1) break;
-        u_prev = u_corr;
+    } else if (!m_cfg.pj_nesterov) {
+        VectorXr u_prev = u_corr;
+        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
+            auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
+            doSweep(lambda, u_corr);
+            sc_sweep.~Scope();
+
+            m_last_iters = iter + 1;
+            if (checkResidual(u_prev, u_corr, iter) < (real_t)1) break;
+            u_prev = u_corr;
+        }
+    } else {
+        // Nesterov (FISTA-style) acceleration, ported verbatim from
+        // ProjectedGaussSeidelSolver::solve()'s Nesterov branch: momentum-extrapolate between
+        // sweeps, with adaptive restart when the residual grows, the momentum coefficient gets too
+        // large, or the update direction reverses. Reuses the same shared config keys PJ/PGS
+        // already use (pj.nesterov, pj.nesterov_beta_threshold, pj.nesterov_restart_limit) rather
+        // than inventing condensed-specific ones.
+        VectorXr lambda_k = lambda, u_k = u_corr, lambda_y = lambda, u_y = u_corr;
+        double thk = 1.0;
+        real_t err_prev = std::numeric_limits<real_t>::infinity();
+        int restarts = 0;
+        bool momentum_disabled = false;
+
+        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
+            auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
+            lambda = lambda_y;
+            u_corr = u_y;
+            doSweep(lambda, u_corr);
+            sc_sweep.~Scope();
+
+            const VectorXr lambda_k1 = lambda;
+            const VectorXr u_k1 = u_corr;
+            m_last_iters = iter + 2;
+
+            const real_t err = checkResidual(u_y, u_k1, iter);
+            if (err <= (real_t)1) break;
+
+            const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
+            const double betak1 = (thk - 1.0) / thk1;
+
+            bool restart = false;
+            if (!std::isfinite((double)err)) {
+                restart = true;
+            } else if (err_prev < std::numeric_limits<real_t>::infinity() && err > (real_t)1.05 * err_prev) {
+                restart = true;
+            } else if (betak1 > (double)m_cfg.pj_nesterov_beta_threshold) {
+                restart = true;
+            } else if (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0) {
+                restart = true;
+            } else if ((u_y - u_k1).dot(u_k1 - u_k) > 0.0) {
+                restart = true;
+            }
+
+            if (restart) {
+                lambda_y = lambda_k1;
+                u_y = u_k1;
+                lambda_k = lambda_k1;
+                thk = 1.0;
+                if (++restarts >= m_cfg.pj_nesterov_restart_limit) momentum_disabled = true;
+            } else {
+                if (momentum_disabled) {
+                    lambda_y = lambda_k1;
+                    u_y = u_k1;
+                    thk = 1.0;
+                } else {
+                    lambda_y = lambda_k1 + (real_t)betak1 * (lambda_k1 - lambda_k);
+                    u_y = u_k1 + (real_t)betak1 * (u_k1 - u_k);
+                    thk = thk1;
+                }
+            }
+            lambda_k = lambda_k1;
+            u_k = u_k1;
+            err_prev = err;
+        }
+        // `lambda`/`u_corr` already hold the latest post-sweep values from inside the loop above
+        // (doSweep mutates them by reference) -- no final reassignment needed, matching
+        // ProjectedGaussSeidelSolver's own Nesterov branch, which relies on the same fact.
     }
 
     if (nSprings > 0) m_dyn.setLambda_g(lambda.head(nSprings));
