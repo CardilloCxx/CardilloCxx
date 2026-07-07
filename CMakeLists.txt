@@ -18,5 +18,20 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif()
 
+# ThreadSanitizer instrumentation, for validating CondensedSolver's parallel (jacobi/colored/
+# chaotic) sweep modes. TSan needs -O1 (not -O0, and not RelWithDebInfo's -O2 -DNDEBUG) for a
+# reasonable instrumentation/perf tradeoff with usable stack traces, so configure with
+# -DCARDILLO_ENABLE_TSAN=ON -DCMAKE_BUILD_TYPE=Debug (or any non-RelWithDebInfo type) -- otherwise
+# RelWithDebInfo's own -O2 -DNDEBUG fights these flags. Applied at this top-level scope, before
+# add_subdirectory, so it also instruments third-party C/C++ deps fetched under src/ (they're
+# add_subdirectory'd from there); Clarabel's Rust core is a separate cargo build and is NOT
+# instrumented -- TSan won't observe races inside it, which is fine since CondensedSolver never
+# calls into it.
+option(CARDILLO_ENABLE_TSAN "Build with ThreadSanitizer instrumentation" OFF)
+if(CARDILLO_ENABLE_TSAN)
+    add_compile_options(-fsanitize=thread -g -O1)
+    add_link_options(-fsanitize=thread)
+endif()
+
 add_subdirectory(src)
 add_subdirectory(examples)

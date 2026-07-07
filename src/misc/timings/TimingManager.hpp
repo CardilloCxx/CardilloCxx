@@ -48,6 +48,11 @@ class TimingManager {
         ConicxxSetup,
         OutputWrite,
         DynamicsAssembler_RefreshState,
+        CondensedSetup,
+        Condensed,
+        CondensedSweep,
+        CondensedColoring,
+        CondensedLocalNewton,
         Total,
         Other
     };
@@ -290,6 +295,16 @@ class TimingManager {
                 return "Disable Collision Pairs";
             case TimerId::DynamicsAssembler_RefreshState:
                 return "DA Refresh State";
+            case TimerId::CondensedSetup:
+                return "Condensed Setup";
+            case TimerId::Condensed:
+                return "Condensed Solve";
+            case TimerId::CondensedSweep:
+                return "Condensed Sweep";
+            case TimerId::CondensedColoring:
+                return "Condensed Coloring";
+            case TimerId::CondensedLocalNewton:
+                return "Condensed Local Newton";
             case TimerId::Total:
                 return "Total (all)";
             case TimerId::Other:

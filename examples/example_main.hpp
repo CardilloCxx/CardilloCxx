@@ -8,9 +8,11 @@
 
 #include <csignal>
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 
 #include "config/config.hpp"
+#include "physics/ecs_types.hpp"
 #include "scenes/SceneBase.hpp"
 
 namespace cardillo::examples {
@@ -50,6 +52,21 @@ int runExample(int argc, char** argv) {
         t += dt;
     }
     engine.timings().printBreakdown(std::cout);
+
+    if (std::getenv("CARDILLO_DUMP_STATE")) {
+        real_t totalKE = 0;
+        real_t posNormSum = 0;
+        real_t velNormSum = 0;
+        int numBodies = 0;
+        const auto& reg = engine.ecs();
+        auto view = reg.view<cardillo::C_BodyIndex>();
+        for (auto e : view) {
+            ++numBodies;
+            totalKE += engine.getKineticEnergy(e);
+            posNormSum += engine.getPosition(e).norm();
+        }
+        std::cerr << std::setprecision(15) << "[STATE-DUMP] t=" << t << " numBodies=" << numBodies << " totalKE=" << totalKE << " posNormSum=" << posNormSum << std::endl;
+    }
 
     return 0;
 }

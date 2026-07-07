@@ -7,7 +7,7 @@
 namespace cardillo::config {
 
 enum class IntegratorType { Moreau };
-enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel, Conicxx };
+enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel, Conicxx, Condensed };
 
 struct Config {
     // Simulation settings
@@ -83,6 +83,18 @@ struct Config {
     bool pj_warmstart{true};  // pj.warmstart (enable warmstart & cache)
     bool pj_rdiag_true_delassus{false};                // pj.rdiag_true_delassus
     std::string pj_convergence_csv_dir{""};            // pj.convergence_csv_dir (empty to disable)
+
+    // Condensed (matrix-free block-relaxation) solver settings. Iteration/tolerance/relaxation/
+    // warmstart/debug knobs are shared with PJ/PGS -- see pj_max_iterations, pj_tol_abs,
+    // pj_tol_rel, pj_relaxation, pj_alpha, pj_warmstart, debug_pj above.
+    std::string condensed_sweep_mode{"gauss_seidel"};    // condensed.sweep_mode: jacobi | gauss_seidel | colored | chaotic
+    std::string condensed_local_solve{"projection"};     // condensed.local_solve: projection | newton
+    std::string condensed_ordering{"natural"};           // condensed.ordering: natural | dominant
+    int condensed_num_threads{0};                        // condensed.num_threads (0 = OpenMP default)
+    int condensed_newton_max_iters{8};                   // condensed.newton_max_iters
+    real_t condensed_newton_tol{(real_t)1e-10};          // condensed.newton_tol
+    int condensed_chaotic_reshuffle_interval{50};        // condensed.chaotic_reshuffle_interval (sweeps between reshuffles)
+    unsigned condensed_chaotic_seed{12345u};             // condensed.chaotic_seed
 
     real_t constraint_bias_factor{(real_t)0.001};  // constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)
 

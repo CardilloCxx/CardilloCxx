@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 project(cardillo LANGUAGES CXX)
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path prefix" FORCE)
 include(FetchContent)
+find_package(OpenMP QUIET)
 
 # --- 1. Dependencies ---
 set(BUILD_PYTHON_INTERFACE OFF CACHE BOOL "Disable Coal Python bindings" FORCE)
@@ -90,6 +91,13 @@ target_link_libraries(cardillo PUBLIC
     libclarabel_c_shared
     conicxx::conicxx
 )
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(cardillo PUBLIC OpenMP::OpenMP_CXX)
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_OPENMP=1)
+else()
+    message(STATUS "OpenMP not found; CondensedSolver's jacobi/colored/chaotic sweep modes will run single-threaded.")
+endif()
 
 target_include_directories(cardillo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 

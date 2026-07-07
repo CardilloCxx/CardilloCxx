@@ -144,9 +144,63 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.solver = SolverType::Conicxx;
             else if (v == "conjugate_gradient" || v == "conjugategradient" || v == "cg")
                 cfg.solver = SolverType::ConjugateGradient;
+            else if (v == "condensed" || v == "condensed_solver")
+                cfg.solver = SolverType::Condensed;
             else {
                 std::cerr << "Warning: unrecognized solver.type '" << val << "'. Defaulting to ProjectedJacobi." << std::endl;
                 cfg.solver = SolverType::ProjectedJacobi;
+            }
+        } else if (key == "condensed.sweep_mode") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            if (v == "jacobi" || v == "gauss_seidel" || v == "colored" || v == "chaotic")
+                cfg.condensed_sweep_mode = v;
+            else {
+                std::cerr << "Warning: unrecognized condensed.sweep_mode '" << val << "'. Defaulting to 'gauss_seidel'." << std::endl;
+                cfg.condensed_sweep_mode = "gauss_seidel";
+            }
+        } else if (key == "condensed.local_solve") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            if (v == "projection" || v == "newton")
+                cfg.condensed_local_solve = v;
+            else {
+                std::cerr << "Warning: unrecognized condensed.local_solve '" << val << "'. Defaulting to 'projection'." << std::endl;
+                cfg.condensed_local_solve = "projection";
+            }
+        } else if (key == "condensed.ordering") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            if (v == "natural" || v == "dominant")
+                cfg.condensed_ordering = v;
+            else {
+                std::cerr << "Warning: unrecognized condensed.ordering '" << val << "'. Defaulting to 'natural'." << std::endl;
+                cfg.condensed_ordering = "natural";
+            }
+        } else if (key == "condensed.num_threads") {
+            try {
+                cfg.condensed_num_threads = std::max(0, std::stoi(val));
+            } catch (...) {
+            }
+        } else if (key == "condensed.newton_max_iters") {
+            try {
+                cfg.condensed_newton_max_iters = std::max(1, std::stoi(val));
+            } catch (...) {
+            }
+        } else if (key == "condensed.newton_tol") {
+            try {
+                cfg.condensed_newton_tol = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "condensed.chaotic_reshuffle_interval") {
+            try {
+                cfg.condensed_chaotic_reshuffle_interval = std::max(1, std::stoi(val));
+            } catch (...) {
+            }
+        } else if (key == "condensed.chaotic_seed") {
+            try {
+                cfg.condensed_chaotic_seed = static_cast<unsigned>(std::stoul(val));
+            } catch (...) {
             }
         } else if (key == "conicxx.warm_start") {
             std::string v = val;

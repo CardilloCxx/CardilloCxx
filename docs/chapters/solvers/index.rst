@@ -57,6 +57,11 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
    * - ``projected_gauss_seidel``
      - :doc:`projected_gauss_seidel` (:cpp:class:`ProjectedGaussSeidelSolver <cardillo::solver::ProjectedGaussSeidelSolver>`)
      - Can be faster than ``projected_jacobi`` for large systems
+   * - ``condensed``
+     - :doc:`condensed` (:cpp:class:`CondensedSolver <cardillo::solver::CondensedSolver>`)
+     - Block-sparse; config-selectable sweep strategy (Jacobi, Gauss-Seidel,
+       graph-colored parallel, chaotic) and local solve (projection or
+       semismooth Newton). Not accelerated. Experimental.
    * - ``conjugate_gradient``
      - :doc:`conjugate_gradient` (:cpp:class:`ConjugateGradientSolver <cardillo::solver::ConjugateGradientSolver>`)
      - Constraint-only scenes (no contact)
@@ -71,5 +76,6 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
 
    projected_jacobi
    projected_gauss_seidel
+   condensed
    conjugate_gradient
    interior_point

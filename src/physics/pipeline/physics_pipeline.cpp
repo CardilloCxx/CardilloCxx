@@ -10,6 +10,7 @@
 #include "../assembly/dynamics_assembler.hpp"
 #include "../integration/moreau.hpp"
 #include "../solver/clarabel_solver.hpp"
+#include "../solver/condensed_solver.hpp"
 #include "../solver/conicxx_solver.hpp"
 #include "../solver/conjugate_gradient.hpp"
 #include "../solver/projected_gauss_seidel.hpp"
@@ -42,6 +43,8 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Confi
         m_solver = std::make_unique<ClarabelSolver>(*m_dyn, m_cfg);
     } else if (cfg.solver == cardillo::config::SolverType::Conicxx) {
         m_solver = std::make_unique<ConicxxSolver>(*m_dyn, m_cfg);
+    } else if (cfg.solver == cardillo::config::SolverType::Condensed) {
+        m_solver = std::make_unique<CondensedSolver>(*m_dyn, m_cfg);
     } else {
         std::cerr << "Warning: Unrecognized solver type in config; defaulting to ProjectedJacobi.\n";
         m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);

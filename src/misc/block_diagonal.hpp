@@ -1,10 +1,29 @@
 #pragma once
+#include <Eigen/Cholesky>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
 #include "types.hpp"
 
 namespace cardillo {
+
+/**
+ * @brief Returns a well-defined inverse of a nominally SPD square block, falling back gracefully
+ * when it isn't: Cholesky (LLT) -> LDLT -> diagonal-only inverse. Never throws.
+ */
+inline MatrixXXr invertSmallSpd(const MatrixXXr& block) {
+    MatrixXXr I = MatrixXXr::Identity(block.rows(), block.cols());
+    Eigen::LLT<MatrixXXr> llt(block);
+    if (llt.info() == Eigen::Success) return llt.solve(I);
+
+    Eigen::LDLT<MatrixXXr> ldlt(block);
+    if (ldlt.info() == Eigen::Success) return ldlt.solve(I);
+
+    std::cout << "Warning: Block not positive definite, using diagonal inverse only\n";
+    MatrixXXr diagInv = MatrixXXr::Zero(block.rows(), block.cols());
+    diagInv.diagonal() = block.diagonal().cwiseInverse();
+    return diagInv;
+}
 
 /**
  * @brief A block-diagonal matrix, stored as a list of dense square blocks.
@@ -46,22 +65,7 @@ class BlockDiagonal {
                 inverse.addBlockDiag(block.diagonal().cwiseInverse());
                 continue;
             }
-
-            MatrixXXr I = MatrixXXr::Identity(block.rows(), block.cols());
-            Eigen::LLT<MatrixXXr> llt(block);
-            if (llt.info() == Eigen::Success) {
-                inverse.addBlock(llt.solve(I));
-            } else {
-                Eigen::LDLT<MatrixXXr> ldlt(block);
-                if (ldlt.info() == Eigen::Success) {
-                    inverse.addBlock(ldlt.solve(I));
-                } else {
-                    std::cout << "Warning: Block not positive definite, using diagonal inverse only\n";
-                    MatrixXXr diagInv = MatrixXXr::Zero(block.rows(), block.cols());
-                    diagInv.diagonal() = block.diagonal().cwiseInverse();
-                    inverse.addBlock(diagInv);
-                }
-            }
+            inverse.addBlock(invertSmallSpd(block));
         }
         inverse.calcDiag();
         return inverse;

@@ -5,28 +5,9 @@
 #include <iostream>
 #include "../../collision/collision_coal.hpp"
 #include "../constraints/constraints.hpp"
+#include "contact_jacobian.hpp"
 
 namespace cardillo::physics {
-
-namespace {
-static inline VectorXr buildContactRowByDof(int dof, const Vector3r& dir_world, const Vector3r& r_body, const Vector3r& dir_body, real_t s) {
-    VectorXr row = VectorXr::Zero(std::max(0, dof));
-    if (dof < 3) return row;
-
-    row[0] = s * dir_world.x();
-    row[1] = s * dir_world.y();
-    row[2] = s * dir_world.z();
-
-    if (dof >= 6) {
-        const Vector3r t_body = r_body.cross(s * dir_body);
-        row[3] = t_body.x();
-        row[4] = t_body.y();
-        row[5] = t_body.z();
-    }
-    return row;
-}
-
-}  // anonymous namespace
 
 void DynamicsAssembler::updateContactsFromSystem() {
     if (!m_collision_mgr) throw std::runtime_error("DynamicsAssembler::updateContactsFromSystem: no CollisionCoal provided");
