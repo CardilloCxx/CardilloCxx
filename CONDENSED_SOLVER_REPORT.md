@@ -427,37 +427,44 @@ and the 270-node hangbridge-shaped stress test now factors in under a millisecon
 - **Domino** (no springs): `condensed.true_schur=true` vs `false` — bit-identical `totalKE`
   (`8.96934551302463`) and position fingerprint. Required by construction (nothing to eliminate
   when there are zero bilateral rows) and confirmed empirically, the critical regression guardrail.
-- **Slinky**, `gauss_seidel`, `pj.alpha=0.3` (the historical default), no acceleration, tight
-  tolerance (`1e-8`): `totalKE` agrees with both `true_schur=false` and a direct PGS run to ~1e-6
-  relative (`0.0042248689273941` vs `0.00422486291812083` — consistent with convergence-tolerance-
-  level differences between two different converged paths, not a bug). **Wall-clock: 2.26s → 0.088s
-  for 20 steps — a ~25.8x speedup.** Outer iteration count collapsed from ~2000/step to ~2/step:
-  the compliant chain's diffusion really was the dominant cost in this regime, and eliminating it
-  exactly removes nearly all of it.
-- **Slinky at the tuned "large alpha" configuration** (`alpha=1.0`, `colored`, 8 threads — see the
-  "large `pj.alpha`" update above): `true_schur` gave **no benefit and was measurably
-  slower** — 43.2s vs 25.8s over 50 steps with Nesterov+colored+alpha=1.0, and separately (isolating
-  Nesterov's effect) 50.9s vs 34.3s over 100 steps with colored+alpha=1.0 alone. Iteration count
-  only dropped modestly (e.g. 793→737, 1250→1165 per step) rather than collapsing — large alpha +
-  colored's parallelism (and Nesterov, when enabled) already resolve most of what was making the
-  base iteration slow, through a different mechanism (conditioning + parallelism + momentum, not
-  exact elimination) — layering an exact `Sbb` solve on top adds a real per-iteration `LDLT` solve
-  cost without a corresponding drop in iteration count to pay for it. **The two techniques attack
-  the same underlying problem and do not stack additively.**
-- **Hangbridge** (branching topology, contact-heavy: 232 contacts on 441 bodies): correctness
-  verified — `totalKE` agrees with a direct PGS run to ~1e-6 relative both with `true_schur=false`
-  (bit-identical to PGS: `0.00350788969155182`) and `true_schur=true`
-  (`0.00350788582097124`). Performance was roughly a wash to slightly worse in the one short test
-  run so far (e.g. 0.97s vs 0.57s for 20 steps) — iteration counts were nearly identical with the
-  feature on vs off (e.g. 416 vs 417, 467 vs 468), meaning this scene's cost is apparently already
-  dominated by contact active-set resolution rather than chain diffusion, so exactly eliminating
-  the chain doesn't touch the actual bottleneck here.
+  This holds up unchanged.
+- **Slinky — corrected after the user asked for a re-test that found the same order-of-magnitude
+  with the feature on or off.** The first pass through this section claimed a "~25.8x speedup,
+  ~2000/step to ~2/step" finding. That was **wrong** — an artifact of reading a truncated log tail
+  that happened to show only the first simulated step. Re-measured properly (full per-step logs,
+  three independent re-runs, and a from-scratch build of the pre-`true_schur` commit to rule out an
+  unrelated regression as the explanation): `slinky`'s coiled geometry means the very first step has
+  **zero** contacts (pure spring-chain relaxation) — there, `true_schur` genuinely needs 2 outer
+  iterations vs 2532 without it, confirming the theory exactly where it applies. But contacts start
+  forming by the *second* step (414) and grow rapidly (504 → 786 → 1005 → 1206 → 1506 → 2154 → 2532
+  within the first 9 steps, as the coil self-collapses). From that point on, `true_schur` on vs off
+  gives essentially the same iteration count per step (e.g. step 7: 16393 vs 16243; step 13: 46417
+  vs 46328) — contact resolution, which `true_schur` does not touch, dominates almost immediately.
+  Net effect over a full 20-step run: **109.8s with `true_schur=true` vs 85.4s without — a
+  slowdown**, because the per-iteration `LDLT` solve cost is paid every step but only repaid on the
+  one step that's actually contact-free.
+- **Hangbridge** (branching topology, contact-heavy from the very first step: 232 contacts on 441
+  bodies): correctness verified — `totalKE` agrees with a direct PGS run to ~1e-6 relative both with
+  `true_schur=false` (bit-identical to PGS: `0.00350788969155182`) and `true_schur=true`
+  (`0.00350788582097124`). Performance was roughly a wash to slightly worse (0.97s vs 0.57s for 20
+  steps) — consistent with the corrected slinky finding above, not a separate anomaly: this scene
+  never has a contact-free step to repay `true_schur`'s per-iteration cost.
 
-**Practical guidance**: `condensed.true_schur=true` is a large, validated win specifically for the
-"long compliant chain + low alpha + no other acceleration" profile — not a blind default-on. New
-default is `false`, matching this project's standing rule of never flipping a validated default
-without proof for the new setting. Check iteration counts and wall-clock on the actual scene before
-relying on it, especially if the scene is already tuned with large alpha, colored, or Nesterov.
+**Practical guidance, corrected**: `condensed.true_schur=true` is a real win specifically for
+**contact-free** portions of a simulation (a compliant structure settling before it touches
+anything, or genuinely between contact events) — not a general win for "scenes with a compliant
+chain," which was the original (too broad) framing. For a scene that's in contact for most of its
+runtime, including `slinky` almost immediately, expect it to be neutral to a net slowdown, not a
+dramatic speedup. Default is `false`. Before trusting a number on a new scene: look at iteration
+counts *per step*, not a run's total or its first logged value.
+
+**How the original mismeasurement happened, for the record**: the original benchmark command
+piped output through `tail -6`/similar to keep the transcript short, which — for a run whose early
+steps print short lines and later steps print long wrapped ones — silently showed only the first
+step's numbers, not a representative sample. The fix going forward: when characterizing
+per-step behavior, always inspect the full step-by-step sequence (e.g. `grep -o "iters=[0-9]*"`
+over the whole log), never a tail/head slice, especially for a scene whose difficulty is expected
+to change over the run (contacts forming, a structure settling, etc.).
 
 ## Suggested next steps, in priority order
 

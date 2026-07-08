@@ -279,44 +279,54 @@ nothing is given up on the common case to fix the uncommon one; a synthetic
 in under a millisecond with it.
 
 .. warning::
-   **This is not a free "always enable it" win -- measure before trusting it
-   on a new scene/config.** Validated results so far:
+   **This is not a free "always enable it" win, and its benefit is much
+   narrower than an earlier version of this note claimed -- measure before
+   trusting it on a new scene/config.** An earlier benchmark reported a
+   "~25x speedup, ~2000/step to ~2/step" finding for slinky; that was an
+   artifact of reading only a truncated tail of a longer run's log, which
+   happened to show just the *first* simulation step -- before ``slinky``'s
+   coiled chain has collapsed into self-contact. Re-measured properly (full
+   step-by-step logs, multiple independent runs, cross-checked against a
+   from-scratch build of the pre-``true_schur`` commit to rule out an
+   unrelated regression), the real picture is:
 
    - **Domino** (no springs): ``true_schur`` is a verified no-op --
      bit-identical ``totalKE``/position fingerprint with it on vs off, as
-     required by construction (there is nothing to eliminate).
-   - **Slinky at the historical default** (``alpha=0.3``, ``gauss_seidel``,
-     no acceleration): a **~25x wall-clock speedup** (2.26s to 0.088s for 20
-     steps) and outer iteration count collapsing from ~2000/step to ~2/step.
-     This is the regime the feature was built for: the compliant chain's slow
-     diffusion really was the dominant cost, and eliminating it exactly
-     removes that cost almost entirely.
-   - **Slinky at the tuned "large alpha" configuration** (``alpha=1.0``,
-     ``colored``, 8 threads, with or without Nesterov -- see the config keys
-     and performance sections below): ``true_schur`` gave **no benefit, and
-     was measurably slower** (e.g. 43.2s vs 25.8s over 50 steps with
-     Nesterov+colored+alpha=1.0). Large alpha, colored's parallelism, and
-     Nesterov attack the same underlying slow-convergence problem through a
-     different mechanism (better conditioning + parallelism + momentum,
-     rather than exact elimination), and apparently already resolve most of
-     it -- layering an exact bilateral solve on top adds real per-iteration
-     cost (an ``LDLT`` solve every outer iteration) without a corresponding
-     drop in iteration count to pay for it.
-   - **Hangbridge** (branching topology, contact-heavy -- 232 contacts on
-     only 441 bodies): correctness verified (``totalKE`` agrees with PGS to
-     within convergence-tolerance-level precision, ~1e-6 relative), but
-     performance was roughly a wash to slightly worse in the one short test
-     run so far -- this scene's iteration count is apparently already
-     dominated by contact active-set resolution, not chain diffusion, so
-     exactly eliminating the chain doesn't remove the actual bottleneck.
+     required by construction (there is nothing to eliminate). This part of
+     the original claim still holds.
+   - **Slinky, step-by-step**: at ``gauss_seidel``, ``alpha=0.3``, no
+     acceleration, tight tolerance (``1e-8``), the *first* step (zero
+     contacts yet -- pure spring-chain relaxation) needs 2 outer iterations
+     with ``true_schur=true`` vs 2532 without -- a real, large, reproducible
+     effect confirming the theory for the case it actually applies to: no
+     contacts at all. But ``slinky``'s coiled geometry means self-contacts
+     start forming by the *second* step (414 contacts) and keep growing
+     (500 → 800 → 1200 → 1500 → 2000+ within the first ~10 steps). From that
+     point on, iteration counts are essentially the same with
+     ``true_schur`` on or off (e.g. step 7: 16393 vs 16243; step 13: 46417
+     vs 46328) -- contact active-set resolution, which ``true_schur`` does
+     not touch, dominates almost immediately once contacts exist. Over a
+     full 20-step run this scene spends only one step in the regime
+     ``true_schur`` helps, so the *net* effect over the run was a **slowdown**
+     (109.8s vs 85.4s) -- the per-iteration ``LDLT`` solve cost is paid on
+     every step, but only repaid on the (rare, here) contact-free ones.
+   - **Hangbridge** (branching topology, contact-heavy from the start -- 232
+     contacts on 441 bodies): correctness verified (``totalKE`` agrees with
+     PGS to within convergence-tolerance-level precision, ~1e-6 relative),
+     but performance was roughly a wash to slightly worse -- consistent with
+     the slinky finding above: this scene has contacts (and therefore the
+     bottleneck ``true_schur`` doesn't address) from the very first step.
 
-   **Practical guidance**: reach for ``condensed.true_schur=true`` when a
-   scene has a long compliant chain, an otherwise-unaccelerated/low-alpha
-   sweep, and iteration counts in the hundreds-to-thousands per step -- that
-   is the profile it was validated against. Don't assume it stacks with
-   large-alpha/colored/Nesterov tuning that already addresses the same
-   problem; check iteration counts and wall-clock on the actual scene before
-   trusting it there.
+   **Practical guidance, corrected**: ``condensed.true_schur=true`` is a
+   real, large win specifically for the portion of a simulation with **no
+   active contacts** -- e.g. a compliant structure settling under gravity
+   before it touches anything, or between contact events. It is not a
+   general contact-scene speedup, and for a scene that is in contact
+   (self- or otherwise) for most of its runtime -- which includes ``slinky``
+   almost immediately -- expect it to be neutral-to-slower over a full run,
+   not the dramatic win the first version of this section claimed. Measure
+   iteration counts *per step*, not just a run's total or its first entry,
+   before trusting a number on a new scene.
 
 Nesterov acceleration
 ----------------------
