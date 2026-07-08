@@ -46,7 +46,7 @@ struct Config {
     // Friction settings
     bool friction_enable{false};              // friction.enable - extend W with tangents
     std::string friction_combine{"min"};      // friction.combine - one of [min, arith, geom]
-    real_t friction_default_mu{(real_t)0.5};  // friction.default_mu - default C_Friction when not set on entities
+    real_t friction_default_mu{(real_t)0.3};  // friction.default_mu - default C_Friction when not set on entities
 
     // Debug/diagnostics
     bool debug_rb{false};    // debug.rb  - enable rigid-body contact/W diagnostics in Moreau
@@ -56,13 +56,13 @@ struct Config {
     // Solver selection
     SolverType solver{SolverType::ProjectedJacobi};
     int pj_max_iterations{200000};                     // pj.max_iterations
-    real_t pj_tol_abs{(real_t)1e-4};                   // pj.tol_abs
-    real_t pj_tol_rel{(real_t)1e-4};                   // pj.tol_rel
-    real_t pj_relaxation{(real_t)0.9};                 // pj.relaxation
+    real_t pj_tol_abs{(real_t)1e-5};                   // pj.tol_abs
+    real_t pj_tol_rel{(real_t)1e-5};                   // pj.tol_rel
+    real_t pj_relaxation{(real_t)1.0};                 // pj.relaxation
     real_t pj_alpha{(real_t)0.3};                      // pj.alpha
     bool pj_nesterov{false};                           // pj.nesterov (enable Nesterov acceleration)
-    real_t pj_nesterov_beta_threshold{(real_t)0.995};  // pj.nesterov_beta_threshold
-    int pj_nesterov_restart_limit{4};                  // pj.nesterov_restart_limit
+    real_t pj_nesterov_beta_threshold{(real_t)1.0};    // pj.nesterov_beta_threshold
+    int pj_nesterov_restart_limit{10000};              // pj.nesterov_restart_limit
     // Chebyshev semi-iterative acceleration: an alternative to Nesterov for PJ, estimating the
     // iteration operator's spectral radius via power iteration each solve() call. Mutually
     // exclusive with pj_nesterov (pj_nesterov takes precedence if both are set). Verified on three
@@ -108,7 +108,7 @@ struct Config {
     std::string qoco_backend{"auto"};         // qoco.backend [auto, cpu, cuda]
     real_t ip_kkt_static_reg{(real_t)1e-8};   // solver.kkt_static_reg
     real_t ip_kkt_dynamic_reg{(real_t)1e-8};  // solver.kkt_dynamic_reg
-    int ip_iter_ref_iters{0};                 // solver.iter_ref_iters
+    int ip_iter_ref_iters{2};                 // solver.iter_ref_iters
 
     // ConicXX-only: unlike QOCO/Clarabel it can reuse its KKT factorization and
     // warm-start its iterate across steps when the active contact set hasn't

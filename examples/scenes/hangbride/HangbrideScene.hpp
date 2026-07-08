@@ -58,7 +58,7 @@ public:
             Vector3r(rightX - cliffThickness*(real_t)0.5 + apexInward,  (real_t)0.5, cliffTopZ + apexHeight)
         };
 
-    // Build two tripods per side (left and right) as spring tripods
+        // Build two tripods per side (left and right) as spring tripods
         // Returns apex point-mass entity for rope attachment
         auto buildTripod = [&](const Vector3r& apex, bool leftSide){
             // Create apex point mass (no rigid cube at top)
@@ -179,11 +179,11 @@ public:
             return nodes;
         };
 
-    // Build two ropes across corresponding anchors
-    const int segments = 120; // segment count for rope discretization
-    const real_t ropeNodeMass = (real_t)0.02;
-    const real_t ropeK = (real_t)3000000.0; // make top rope stiffer
-    const real_t ropeD = (real_t)1.0;
+        // Build two ropes across corresponding anchors
+        const int segments = 120; // segment count for rope discretization
+        const real_t ropeNodeMass = (real_t)0.02;
+        const real_t ropeK = (real_t)3000000.0; // make top rope stiffer
+        const real_t ropeD = (real_t)1.0;
 
         // Use the known apex positions for rope endpoints
         // Build ropes and keep their node entities for deck attachments
@@ -195,11 +195,11 @@ public:
             engine.addLinearDistanceConstraint(A, B, rA, rB, k, d);
         };
 
-    // Add floor boards (planks) hanging from the two ropes
-    const int marginSegments = 2;                  // symmetric margin of rope nodes at both ends
-    const int iStart = marginSegments;
-    const int iEnd   = (segments - 1) - marginSegments;
-    const int stride = 4;                          // increase spacing between planks to create a gap
+        // Add floor boards (planks) hanging from the two ropes
+        const int marginSegments = 2;                  // symmetric margin of rope nodes at both ends
+        const int iStart = marginSegments;
+        const int iEnd   = (segments - 1) - marginSegments;
+        const int stride = 4;                          // increase spacing between planks to create a gap
         const real_t plankMass = (real_t)0.35;
         // Long along span (x), wide across ropes (y), thinner boards (z)
         Vector3r plankHalf = Vector3r((real_t)0.10, (real_t)0.46, (real_t)0.02);
@@ -259,8 +259,8 @@ public:
         // Replace single stiff springs between neighboring planks by a short rope (series of springs)
         // so the connection behaves more like a rope (limits extension more than contraction).
         auto addShortRopeBetween = [&](entt::entity A, entt::entity B,
-                                       const Vector3r& rA, const Vector3r& rB,
-                                       int segmentsRope, real_t kRope, real_t dRope) {
+                                        const Vector3r& rA, const Vector3r& rB,
+                                        int segmentsRope, real_t kRope, real_t dRope) {
             // Compute approximate world positions for A and B attachment points.
             // Use position component if available; if not, fall back to origin.
             auto& reg = engine.ecs();
@@ -299,14 +299,14 @@ public:
             entt::entity B = planks[j+1];
             // Left edges (toward rope0): connect end faces (x surfaces) at top-left corners using a 3-segment rope
             addShortRopeBetween(A, B,
-                               Vector3r( plankHalf.x(), -plankHalf.y(),  plankHalf.z()),
-                               Vector3r(-plankHalf.x(), -plankHalf.y(),  plankHalf.z()),
-                               3, plankLinkK, plankLinkD);
+                                Vector3r( plankHalf.x(), -plankHalf.y(),  plankHalf.z()),
+                                Vector3r(-plankHalf.x(), -plankHalf.y(),  plankHalf.z()),
+                                3, plankLinkK, plankLinkD);
             // Right edges (toward rope1): connect end faces (x surfaces) at top-right corners using a 3-segment rope
             addShortRopeBetween(A, B,
-                               Vector3r( plankHalf.x(),  plankHalf.y(),  plankHalf.z()),
-                               Vector3r(-plankHalf.x(),  plankHalf.y(),  plankHalf.z()),
-                               3, plankLinkK, plankLinkD);
+                                Vector3r( plankHalf.x(),  plankHalf.y(),  plankHalf.z()),
+                                Vector3r(-plankHalf.x(),  plankHalf.y(),  plankHalf.z()),
+                                3, plankLinkK, plankLinkD);
         }
 
         // Connect the deck's outer ends to the cliff inner edges for added stability
