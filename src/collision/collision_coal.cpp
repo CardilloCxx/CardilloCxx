@@ -112,9 +112,34 @@ inline Contact makeContact(entt::entity ea, entt::entity eb, const cardillo::Rig
     c.a = ea;
     c.b = eb;
 
-    // Normalize normal and construct stable tangent frame
+    // Same class of bug as the normal below, hitting the nearest/patch points instead: COAL can
+    // return a non-finite point for one (or both) sides of an exactly-touching/coincident pair.
+    // Sanitize before anything derives from them (c.point, and from there pointA_body/pointB_body
+    // -- which feed the angular row of buildContactRowByDof() for any 6-DOF body, so a NaN point
+    // silently poisons that body's Jacobian even when the normal itself is fine).
+    if (!p1W.allFinite()) p1W = p2W.allFinite() ? p2W : stateA.position;
+    if (!p2W.allFinite()) p2W = p1W.allFinite() ? p1W : stateB.position;
+
+    // Normalize normal and construct stable tangent frame. `nlen > 0` alone is not a sufficient
+    // guard: for two primitives that are exactly touching or exactly coincident (e.g. a chain of
+    // abutting spheres spaced at exactly the sum of their radii -- see the hangbridge scene's
+    // closely-packed rope nodes), COAL's own narrowphase can return an already-NaN normal, and
+    // `NaN > 0` is false, so that case fell through this check untouched and propagated NaN into
+    // the whole contact (and from there into the solver's rhs/Delassus blocks). Explicitly check
+    // finiteness and fall back, in order, to the point-separation direction, then the direction
+    // between body centers, then an arbitrary axis -- never leave a non-finite normal in `c`.
     real_t nlen = nN.norm();
-    if (nlen > (real_t)0) nN /= nlen;
+    if (nlen > (real_t)0 && std::isfinite(nlen)) {
+        nN /= nlen;
+    } else {
+        Vector3r fallback = p2W - p1W;
+        real_t flen = fallback.norm();
+        if (!(flen > (real_t)0) || !std::isfinite(flen)) {
+            fallback = stateB.position - stateA.position;
+            flen = fallback.norm();
+        }
+        nN = (flen > (real_t)0 && std::isfinite(flen)) ? (fallback / flen) : Vector3r(0, 0, 1);
+    }
 
     c.normal = nN;  // convention: from A -> B
     cardillo::collision::tangentFrameFromNormal(nN, c.tangent1, c.tangent2);
