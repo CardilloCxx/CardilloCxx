@@ -95,6 +95,12 @@ struct Config {
     real_t condensed_newton_tol{(real_t)1e-10};          // condensed.newton_tol
     int condensed_chaotic_reshuffle_interval{50};        // condensed.chaotic_reshuffle_interval (sweeps between reshuffles)
     unsigned condensed_chaotic_seed{12345u};             // condensed.chaotic_seed
+    // condensed.true_schur: exactly eliminate the bilateral (spring+damper) rows every outer
+    // iteration via a block-sparse LDLT factorization (see BlockSparseLDLT, CondensedAssembler::
+    // buildBilateralFactorization()), instead of letting them participate in the Gauss-Seidel/
+    // Jacobi/colored/chaotic sweep like every other row. Default false -- preserves today's
+    // validated behavior; only affects scenes with springs/dampers (a no-op on e.g. domino).
+    bool condensed_true_schur{false};                    // condensed.true_schur
 
     real_t constraint_bias_factor{(real_t)0.001};  // constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)
 

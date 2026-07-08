@@ -340,6 +340,125 @@ not that it always will — a proper claim would need the full `tools/compare_so
 ablation (now updated with `condensed` cases) run to completion across both scenes with a
 generous timeout, which is listed below as still-open work.
 
+## Update: large `pj.alpha` for `gauss_seidel`/`colored` (not `jacobi`)
+
+Separate from Nesterov, the user found empirically that `condensed.sweep_mode=gauss_seidel` and
+`colored` tolerate — and benefit from — much larger `pj.alpha` than `jacobi` does at the same scene
+and `moreau.theta`. On `domino` (`colored`, 8 threads), `pj.alpha` swept from 0.1 to 1.0 monotonically
+*improved* wall-clock (0.1: 131s, 0.25: 119s, 0.5: 117s, 1.0: 101s), the opposite of `jacobi`'s own
+sensitivity on the same scene (0.05: 91s, 0.1: 97s — smaller is better there). Confirmed on today's
+code: `condensed` `colored`+`alpha=1.0`+8 threads takes ~98.4s on `domino`'s full `scene_condensed.config`
+run vs PJ's ~217.6s at PJ's own tuned `alpha=0.1` (**~2.2x**) — and on `slinky`, PJ at its own tuned
+`alpha=0.3` didn't even converge within a 900s budget in one config tested (its Nesterov loop's debug
+trace showed a residual barely moving, then trending upward, over tens of thousands of iterations),
+while `condensed` `colored`+`alpha=1.0` completed the full 1000-step run in ~106.8s. **PJ itself is
+*not* tolerant of large alpha** — a PJ run at `alpha=1.0` on `domino` didn't finish 300 steps within a
+10-minute budget, confirming this is specific to `condensed`'s `gauss_seidel`/`colored` sweep
+structure, not a general property of the underlying iteration.
+
+Caveat: pushing `jacobi` to match `gauss_seidel`/`colored`'s large-alpha tolerance does not work —
+`jacobi` needs a *smaller* alpha than the scene's `gauss_seidel`/`colored`-tuned default (see the
+Nesterov update above for the concrete `slinky` numbers), consistent with Jacobi's smaller stability
+margin at a given alpha. Domino's and slinky's `scene_condensed.config` reference configs were
+updated to `pj.alpha=1.0` with `condensed.sweep_mode=colored` as their shipped defaults.
+
+## Update: true Schur-complement elimination of the compliant chain (`condensed.true_schur`)
+
+### Motivation
+
+Investigating why PJ sometimes needed dramatically fewer sweeps than condensed on `slinky` (and
+separately, why a specific `slinky` config drove PJ's own Nesterov loop to churn for 60,000+
+iterations without converging — see the earlier "improve this further" discussion) pointed at a
+structural gap: every condensed sweep mode treats every row — spring, damper, frictionless
+contact, frictional contact — as an independent block, and lets the *outer sweep loop itself*
+diffuse information between rows that share a body. For `slinky`'s 825-segment chain (~824
+spring/damper rows forming a path graph), that diffusion — not the frictional contact
+nonlinearity — was the dominant cost. PJ doesn't have this problem because it factorizes and
+re-solves the *entire* system every sweep, seeing the chain's exact coupling every time, at the
+cost of a much more expensive per-sweep operation (a full triangular solve, not a condensed
+update).
+
+The user had tried one thing here already and confirmed (after I searched the repo and couldn't
+find it) that it was narrowly: swapping `condensed_assembler.cpp`'s `GiiInv` from the diagonal-only
+inverse to the full local block inverse (`blk.Gii + diag(complianceDiag)`, inverted via
+`partialPivLu`) — code that still exists as a commented-out TODO in `updateCompliance()`. That is
+**not** a Schur complement — it only removes coupling *within* one row's own components (e.g. a
+frictional contact's normal/tangential coupling), not the coupling *between* different rows that
+share a body, which is the actual chain-diffusion bottleneck. It's also the exact bug already
+documented above (2.8x kinetic-energy error on domino from using the full inverse instead of the
+diagonal one matching `PgsAssembler::DinvDiag()`) — explaining why that attempt "didn't seem
+correct."
+
+### The actual construction
+
+Working from the same `S = W·Minv·W^T + diag(C)` system every PGS-family solver already solves,
+partition rows into bilateral (springs+dampers, pure equalities — `projectBlock()` already no-ops
+for these) and contact (subject to the friction-cone projection). The Schur complement over
+contacts alone is `(Scc − Scb·Sbb⁻¹·Sbc)·λc = rhsc − Scb·Sbb⁻¹·rhsb`. Explicitly forming this
+(generally dense) matrix is exactly what this solver family exists to avoid, and isn't necessary:
+because bilateral rows are pure equalities, whatever the current contact impulses are, there is a
+single exact `λb` that zeroes every bilateral row's residual at once — `δλb = Sbb⁻¹·r_old`, where
+`r_old` is the *already-existing* `blockResidual()` evaluated at the bilateral blocks' current
+state. Applied via the *already-existing* `scatterDelta()`, this reuses every existing primitive —
+no new sign convention, no rhs()/blockResidual()/scatterDelta() changes. Each outer iteration
+becomes: (1) exact bilateral step (one `Sbb` solve via a precomputed factorization), then (2) the
+usual sweep restricted to just the contact blocks.
+
+New, generic, reusable utility: `BlockSparseLDLT` (`src/misc/block_sparse_ldlt.{hpp,cpp}`) — a
+block-sparse LDLT factorization over a graph of small dense blocks, never a dense/global matrix.
+Verified in isolation (a standalone test compiled outside the main build, comparing against a known
+solution and against Eigen's own dense LDLT) on a chain, a branching hub-and-leaves graph in two
+different elimination orders (exercising real fill-in), and a 270-node stress graph mirroring
+`hangbridge`'s rope+plank topology — all four to machine precision (~1e-16 relative error).
+
+**A real bug found and fixed during this work, not just during isolated unit testing**: the first
+integration attempt used natural (row creation) order for elimination — correct in principle, and
+zero-fill-in on every pure-chain scene — but it **hung** on `hangbridge`, the one example scene
+with a real branching compliant network (tripod apexes / deck planks, degree 4-6; confirmed via an
+Explore-agent survey of every example scene's spring/damper topology). Natural order is not
+fill-reducing for a branching graph, and the fill-in cascade made factorization impractically slow.
+Fixed by computing elimination order internally via greedy minimum-degree (a standard, well-known
+sparse-Cholesky ordering heuristic) instead of trusting the caller's order — it recovers exactly
+the chain order (zero fill-in) on every path-graph scene, so nothing is given up on the common case,
+and the 270-node hangbridge-shaped stress test now factors in under a millisecond.
+
+### Validation
+
+- **Domino** (no springs): `condensed.true_schur=true` vs `false` — bit-identical `totalKE`
+  (`8.96934551302463`) and position fingerprint. Required by construction (nothing to eliminate
+  when there are zero bilateral rows) and confirmed empirically, the critical regression guardrail.
+- **Slinky**, `gauss_seidel`, `pj.alpha=0.3` (the historical default), no acceleration, tight
+  tolerance (`1e-8`): `totalKE` agrees with both `true_schur=false` and a direct PGS run to ~1e-6
+  relative (`0.0042248689273941` vs `0.00422486291812083` — consistent with convergence-tolerance-
+  level differences between two different converged paths, not a bug). **Wall-clock: 2.26s → 0.088s
+  for 20 steps — a ~25.8x speedup.** Outer iteration count collapsed from ~2000/step to ~2/step:
+  the compliant chain's diffusion really was the dominant cost in this regime, and eliminating it
+  exactly removes nearly all of it.
+- **Slinky at the tuned "large alpha" configuration** (`alpha=1.0`, `colored`, 8 threads — see the
+  "large `pj.alpha`" update above): `true_schur` gave **no benefit and was measurably
+  slower** — 43.2s vs 25.8s over 50 steps with Nesterov+colored+alpha=1.0, and separately (isolating
+  Nesterov's effect) 50.9s vs 34.3s over 100 steps with colored+alpha=1.0 alone. Iteration count
+  only dropped modestly (e.g. 793→737, 1250→1165 per step) rather than collapsing — large alpha +
+  colored's parallelism (and Nesterov, when enabled) already resolve most of what was making the
+  base iteration slow, through a different mechanism (conditioning + parallelism + momentum, not
+  exact elimination) — layering an exact `Sbb` solve on top adds a real per-iteration `LDLT` solve
+  cost without a corresponding drop in iteration count to pay for it. **The two techniques attack
+  the same underlying problem and do not stack additively.**
+- **Hangbridge** (branching topology, contact-heavy: 232 contacts on 441 bodies): correctness
+  verified — `totalKE` agrees with a direct PGS run to ~1e-6 relative both with `true_schur=false`
+  (bit-identical to PGS: `0.00350788969155182`) and `true_schur=true`
+  (`0.00350788582097124`). Performance was roughly a wash to slightly worse in the one short test
+  run so far (e.g. 0.97s vs 0.57s for 20 steps) — iteration counts were nearly identical with the
+  feature on vs off (e.g. 416 vs 417, 467 vs 468), meaning this scene's cost is apparently already
+  dominated by contact active-set resolution rather than chain diffusion, so exactly eliminating
+  the chain doesn't touch the actual bottleneck here.
+
+**Practical guidance**: `condensed.true_schur=true` is a large, validated win specifically for the
+"long compliant chain + low alpha + no other acceleration" profile — not a blind default-on. New
+default is `false`, matching this project's standing rule of never flipping a validated default
+without proof for the new setting. Check iteration counts and wall-clock on the actual scene before
+relying on it, especially if the scene is already tuned with large alpha, colored, or Nesterov.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode
@@ -349,9 +468,27 @@ generous timeout, which is listed below as still-open work.
    to replace this report's short, hand-picked comparisons with complete, systematic ones —
    including a proper per-scene thread-count sweep (only domino's was swept exhaustively above),
    and a `jacobi`+Nesterov slinky run at the corrected `pj.alpha=0.02`.
-3. Cache `colored`'s coloring across timesteps when the contact set is stable, and/or increase the
-   amount of work done per OpenMP barrier — still not competitive with `jacobi`/`gauss_seidel`.
+3. ~~Cache `colored`'s coloring across timesteps~~ — turned out not to matter: at the large-alpha
+   operating point, `CondensedColoring` is only ~1.2% of wall-clock (iteration counts collapsed
+   from tens of thousands to double/triple digits once alpha was tuned properly), so the bottleneck
+   moved to the sweep itself before this was ever implemented. Not worth doing now.
 4. Re-run the TSan validation with a Clang/`libomp` toolchain if one becomes available, to get a
    clean (not just argued-correct) result for the parallel sweep modes.
 5. Consider Chebyshev/Anderson acceleration too (PJ has both) now that the generic `doSweep()`
    wrapper pattern exists for bolting an outer accelerator onto any sweep mode.
+6. Investigate why `true_schur` doesn't stack with the large-alpha/colored/Nesterov tuning that
+   already works well — is there a way to get both the exact-elimination win *and* the
+   large-alpha/parallel win on the same run, or are they fundamentally solving the same problem
+   twice? Would need to understand what's actually still costing hundreds of iterations at
+   `alpha=1.0` if it isn't chain diffusion.
+7. Extend `true_schur`'s exact elimination to cover contact-contact coupling *through* the chain
+   too (a fuller static-condensation/Guyan-reduction treatment), not just bilateral-bilateral
+   coupling — may be what's needed to make it help on contact-heavy branching scenes like
+   `hangbridge` where iteration count is dominated by something `true_schur` today doesn't touch.
+8. **Compile-time block dimensions** (flagged by the user as a distinct future step, not started):
+   extend the `Buf6`/`Vectorr<6>` fixed-size-buffer optimization already applied to per-block
+   *vectors* in `condensed_solver.cpp`'s hot path to `RowBlock`'s *matrices* (`Ja`, `Jb`, `Gii`,
+   `GiiInv`), which are still dynamically-sized `MatrixXXr` built once per `solve()` call. Lower
+   risk to attempt after `true_schur` is further validated, not alongside it — bundling two
+   structural changes at once multiplies the surface area for a subtle bug, which is exactly what
+   burned the user's own single-line `GiiInv` attempt earlier in this document.

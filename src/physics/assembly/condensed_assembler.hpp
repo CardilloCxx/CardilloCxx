@@ -4,6 +4,7 @@
 #include <vector>
 #include <entt/entt.hpp>
 #include "../../config/config.hpp"
+#include "../../misc/block_sparse_ldlt.hpp"
 #include "../../misc/types.hpp"
 #include "dynamics_assembler.hpp"
 
@@ -39,6 +40,11 @@ struct CondensedTopology {
     std::vector<std::vector<int>> blocksOfBody;  // per body: incident block indices (as A or B)
     int numLambda{0};
     int springRows{0}, damperRows{0}, frictionlessRows{0}, frictionalRows{0};
+    // Blocks are packed [springs | dampers | frictionless contacts | frictional contacts], so the
+    // bilateral (spring+damper) blocks are exactly blocks[0:numBilateralBlocks) and the contact
+    // blocks are blocks[numBilateralBlocks:] -- no separate index list needed. Distinct from
+    // springRows/damperRows, which count *rows* (a block can have dim>1), not *blocks*.
+    int numBilateralBlocks{0};
 };
 
 // Builds and evaluates the condensed (block-sparse, matrix-free) system in exactly the same
@@ -65,6 +71,18 @@ class CondensedAssembler {
     // PgsAssembler::rhs() -- same formulas/signs, transcribed line by line, no
     // Eigen::SparseMatrix/TripletMatrix::asSparse() calls anywhere in this class.
     VectorXr rhs(const CondensedTopology& topo, real_t dt, real_t theta, const VectorXr& u_free) const;
+
+    // Builds and factors the block-sparse LDLT of Sbb = the bilateral-only (springs+dampers)
+    // sub-block of S = W*Minv*W^T + diag(C), restricted to bilateral RowBlocks
+    // (blocks[0:numBilateralBlocks)) and their shared-body coupling. Used by CondensedSolver's
+    // condensed.true_schur=true path to eliminate the compliant chain exactly every outer
+    // iteration instead of relying on the Gauss-Seidel/Jacobi/colored sweep to slowly diffuse
+    // through it -- see docs/chapters/solvers/condensed.rst. Call after updateCompliance() (needs
+    // each bilateral block's Gii+complianceDiag). Natural order (block index order) is used as the
+    // elimination order: zero fill-in for every current example scene's compliant network except
+    // `hangbridge`'s branching tripod/deck topology, where correctness still holds, just with
+    // some fill-in.
+    cardillo::misc::BlockSparseLDLT buildBilateralFactorization(const CondensedTopology& topo) const;
 
    private:
     cardillo::physics::DynamicsAssembler* m_dyn;

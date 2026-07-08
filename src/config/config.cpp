@@ -202,6 +202,10 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.condensed_chaotic_seed = static_cast<unsigned>(std::stoul(val));
             } catch (...) {
             }
+        } else if (key == "condensed.true_schur") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.condensed_true_schur = (v == "1" || v == "true" || v == "yes" || v == "on");
         } else if (key == "conicxx.warm_start") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });

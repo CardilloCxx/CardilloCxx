@@ -200,6 +200,124 @@ iteration, or exhausting ``condensed.newton_max_iters`` without meeting
 the ``projection`` update for that block -- ``newton`` never risks being
 *less* robust than ``projection``, only sometimes not worth its extra cost.
 
+True Schur-complement elimination of the compliant chain (``condensed.true_schur``)
+-------------------------------------------------------------------------------------
+
+**The problem this solves.** Every sweep mode above treats *every* row --
+spring, damper, frictionless contact, frictional contact -- as an
+independent ``RowBlock``, and lets the outer sweep loop implicitly diffuse
+information between rows that share a body. For a scene with a long
+compliant chain (``slinky``: 825 segments, ~824 spring/damper rows forming a
+path graph), that diffusion is the dominant cost: a contact's effect on one
+end of the chain has to slowly propagate, one Gauss-Seidel row-visit at a
+time, before a contact at the other end can "feel" it. :doc:`projected_jacobi`
+does not have this problem -- it factorizes and re-solves the *entire*
+system every sweep, so it sees the chain's exact coupling on every
+iteration -- but pays for that with a much more expensive per-sweep cost
+(a full triangular back-substitution, not a condensed block update).
+``condensed.true_schur=true`` gets ``condensed`` PJ's exactness on the
+bilateral (spring+damper) rows without paying PJ's per-sweep cost, by
+eliminating those rows in closed form once per outer iteration instead of
+letting them participate in the sweep at all.
+
+**The math**, worked from the same ``S = W*Minv*W^T + diag(C)`` system every
+PGS-family solver already solves (see ``PgsAssembler::rhs()``/``Dinv()`` and
+their condensed transcriptions -- nothing below is re-derived independently
+of that verified ground truth). Partition rows into bilateral (springs +
+dampers, pure equality constraints -- ``projectBlock()`` already no-ops for
+these) and contact (subject to the friction-cone projection):
+
+.. math::
+
+   S = \begin{bmatrix} S_{bb} & S_{bc} \\ S_{cb} & S_{cc} \end{bmatrix},
+   \quad
+   \lambda = \begin{bmatrix} \lambda_b \\ \lambda_c \end{bmatrix}
+
+Eliminating :math:`\lambda_b` gives the Schur complement over contacts alone:
+:math:`(S_{cc} - S_{cb} S_{bb}^{-1} S_{bc})\,\lambda_c = \text{rhs}_c - S_{cb} S_{bb}^{-1}\,\text{rhs}_b`.
+Explicitly forming this (generally dense, since :math:`S_{bb}^{-1}` is dense
+even though :math:`S_{bb}` is sparse) matrix is exactly what this solver
+family exists to avoid, and turns out not to be necessary: because bilateral
+rows are pure equalities with no projection, whatever the current contact
+impulses are, there is a single exact :math:`\lambda_b` that zeroes every
+bilateral row's residual simultaneously --
+:math:`\delta\lambda_b = S_{bb}^{-1}\,r_{\text{old}}`, where :math:`r_{\text{old}}`
+is the *already-existing* ``blockResidual()`` evaluated at the bilateral
+blocks' current state. Applied via the *already-existing* ``scatterDelta()``,
+this is architecturally just "one generalized block update over the whole
+bilateral row-set as a single joint block, using its exact factorized
+inverse" -- the same delta-then-scatter pattern every sweep function already
+uses per-row, just applied jointly instead of per-row-and-iteratively. No
+rhs()/blockResidual()/scatterDelta() changes, no new sign convention.
+
+Each outer iteration therefore becomes: (1) **exact bilateral step** --
+solve :math:`S_{bb}\,\delta = r_{\text{old}}` via a precomputed factorization
+and scatter the result, zeroing every bilateral row's residual in one shot;
+(2) **contact-only sweep** -- run the usual ``gauss_seidel``/``jacobi``/
+``colored`` sweep restricted to just the contact blocks (bilateral rows never
+enter the sweep at all under ``true_schur``). ``chaotic`` is excluded (its
+state lives in an atomic array, and combining that with an exact joint solve
+raises questions not tackled here); setting ``condensed.true_schur=true``
+with ``condensed.sweep_mode=chaotic`` is silently ignored.
+
+**Factorization**: ``S_bb``'s sparsity, in row-space, is exactly the
+shared-body adjacency graph restricted to bilateral rows -- a path graph for
+every current example scene except ``hangbridge``, which has real branching
+nodes (tripod apexes / deck planks, degree 4-6). ``BlockSparseLDLT``
+(``src/misc/block_sparse_ldlt.{hpp,cpp}``) is a small, generic, reusable
+block-sparse LDLT factorization over a graph of dense blocks (never a
+dense/global matrix), used via
+``CondensedAssembler::buildBilateralFactorization()``. Elimination order is
+computed internally via a greedy minimum-degree heuristic, not left to
+chance: an early version used natural (creation) order, which is exactly
+correct but **hung** on ``hangbridge`` -- natural order is not fill-reducing
+for a branching graph, and the fill-in cascade made factorization
+impractically slow (confirmed by measurement, not just theory). Minimum-degree
+recovers exactly the chain order (zero fill-in) on every path-graph scene, so
+nothing is given up on the common case to fix the uncommon one; a synthetic
+270-node stress test mirroring ``hangbridge``'s rope+plank topology factors
+in under a millisecond with it.
+
+.. warning::
+   **This is not a free "always enable it" win -- measure before trusting it
+   on a new scene/config.** Validated results so far:
+
+   - **Domino** (no springs): ``true_schur`` is a verified no-op --
+     bit-identical ``totalKE``/position fingerprint with it on vs off, as
+     required by construction (there is nothing to eliminate).
+   - **Slinky at the historical default** (``alpha=0.3``, ``gauss_seidel``,
+     no acceleration): a **~25x wall-clock speedup** (2.26s to 0.088s for 20
+     steps) and outer iteration count collapsing from ~2000/step to ~2/step.
+     This is the regime the feature was built for: the compliant chain's slow
+     diffusion really was the dominant cost, and eliminating it exactly
+     removes that cost almost entirely.
+   - **Slinky at the tuned "large alpha" configuration** (``alpha=1.0``,
+     ``colored``, 8 threads, with or without Nesterov -- see the config keys
+     and performance sections below): ``true_schur`` gave **no benefit, and
+     was measurably slower** (e.g. 43.2s vs 25.8s over 50 steps with
+     Nesterov+colored+alpha=1.0). Large alpha, colored's parallelism, and
+     Nesterov attack the same underlying slow-convergence problem through a
+     different mechanism (better conditioning + parallelism + momentum,
+     rather than exact elimination), and apparently already resolve most of
+     it -- layering an exact bilateral solve on top adds real per-iteration
+     cost (an ``LDLT`` solve every outer iteration) without a corresponding
+     drop in iteration count to pay for it.
+   - **Hangbridge** (branching topology, contact-heavy -- 232 contacts on
+     only 441 bodies): correctness verified (``totalKE`` agrees with PGS to
+     within convergence-tolerance-level precision, ~1e-6 relative), but
+     performance was roughly a wash to slightly worse in the one short test
+     run so far -- this scene's iteration count is apparently already
+     dominated by contact active-set resolution, not chain diffusion, so
+     exactly eliminating the chain doesn't remove the actual bottleneck.
+
+   **Practical guidance**: reach for ``condensed.true_schur=true`` when a
+   scene has a long compliant chain, an otherwise-unaccelerated/low-alpha
+   sweep, and iteration counts in the hundreds-to-thousands per step -- that
+   is the profile it was validated against. Don't assume it stacks with
+   large-alpha/colored/Nesterov tuning that already addresses the same
+   problem; check iteration counts and wall-clock on the actual scene before
+   trusting it there.
+
 Nesterov acceleration
 ----------------------
 
@@ -278,6 +396,8 @@ config table for ``solver.max_iterations`` / ``solver.tol_abs`` /
      - Sweeps between block-order reshuffles in ``chaotic`` mode (default 50)
    * - ``condensed.chaotic_seed``
      - RNG seed for ``chaotic`` mode's shuffles
+   * - ``condensed.true_schur``
+     - Exactly eliminate bilateral (spring+damper) rows every outer iteration instead of sweeping them (default ``false``). No effect with ``sweep_mode=chaotic``. See `True Schur-complement elimination of the compliant chain (condensed.true_schur)`_ above -- validated as a large win in one regime and a wash/regression in another, not a blind default-on.
 
 Known performance characteristics
 -----------------------------------

@@ -1,7 +1,10 @@
 #include "condensed_assembler.hpp"
 
 #include <algorithm>
+#include <array>
 #include <iostream>
+#include <map>
+#include <utility>
 
 #include "../../rigid_body/rigid_body.hpp"
 #include "../constraints/constraints.hpp"
@@ -167,6 +170,7 @@ CondensedTopology CondensedAssembler::buildTopology() const {
         contactBlocks.push_back(std::move(blk));
     }
 
+    topo.numBilateralBlocks = (int)(springBlocks.size() + damperBlocks.size());
     topo.blocks.reserve(springBlocks.size() + damperBlocks.size() + contactBlocks.size());
     for (auto& b : springBlocks) topo.blocks.push_back(std::move(b));
     for (auto& b : damperBlocks) topo.blocks.push_back(std::move(b));
@@ -210,6 +214,12 @@ void CondensedAssembler::updateCompliance(CondensedTopology& topo, real_t dt, re
         const VectorXr diag = blk.Gii.diagonal() + blk.complianceDiag;
         blk.GiiInv = MatrixXXr::Zero(blk.dim, blk.dim);
         for (int i = 0; i < blk.dim; ++i) blk.GiiInv(i, i) = (diag[i] > 0) ? ((real_t)1 / diag[i]) : (real_t)0;
+
+        // // TODO: test full inversion here
+        // MatrixXXr tmp = blk.Gii;
+        // tmp.diagonal() += blk.complianceDiag;
+        // // TOOD: Use ldlt here if implicit gyroscopic terms are not used or we can ensure that this is symmetric!
+        // blk.GiiInv = tmp.partialPivLu().inverse();
     }
 }
 
@@ -298,6 +308,79 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
     }
 
     return rhs;
+}
+
+namespace {
+// Returns the block's own Jacobian slice at body `b` (must be blk.bodyIndexA or blk.bodyIndexB).
+const MatrixXXr& jacobianAt(const RowBlock& blk, int b) { return (blk.bodyIndexA == b) ? blk.Ja : blk.Jb; }
+int offAt(const RowBlock& blk, int b) { return (blk.bodyIndexA == b) ? blk.aOff : blk.bOff; }
+int dofAt(const RowBlock& blk, int b) { return (blk.bodyIndexA == b) ? blk.aDof : blk.bDof; }
+}  // namespace
+
+cardillo::misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(const CondensedTopology& topo) const {
+    const auto& MinvDiag = m_dyn->MinvDiag();
+    const int n = topo.numBilateralBlocks;
+
+    std::vector<int> dims(n);
+    std::vector<MatrixXXr> diagBlocks(n);
+    for (int i = 0; i < n; ++i) {
+        const auto& blk = topo.blocks[(size_t)i];
+        dims[(size_t)i] = blk.dim;
+        diagBlocks[(size_t)i] = blk.Gii;
+        diagBlocks[(size_t)i].diagonal() += blk.complianceDiag;
+    }
+
+    // Accumulate coupling between every pair of bilateral blocks sharing a body -- a pair can in
+    // principle share two bodies at once (e.g. two independent springs between the exact same two
+    // bodies), so accumulate into a map keyed by the unordered pair before handing edges to
+    // BlockSparseLDLT (which expects at most one edge per pair).
+    std::map<std::pair<int, int>, MatrixXXr> coupling;
+    for (const auto& incident : topo.blocksOfBody) {
+        // Restrict to bilateral blocks incident on this body (blocksOfBody may also list contact
+        // blocks, which never participate in Sbb).
+        std::vector<int> bilateral;
+        for (int idx : incident) {
+            if (idx < n) bilateral.push_back(idx);
+        }
+        for (size_t ii = 0; ii < bilateral.size(); ++ii) {
+            for (size_t jj = ii + 1; jj < bilateral.size(); ++jj) {
+                const int p = bilateral[ii], q = bilateral[jj];
+                const auto& blkP = topo.blocks[(size_t)p];
+                const auto& blkQ = topo.blocks[(size_t)q];
+                // The shared body: whichever of blkP's bodies also appears on blkQ's side (both
+                // p and q are in this body's incident list, so it's the current `incident` body --
+                // but resolve it explicitly rather than assume, in case a pair shares two bodies).
+                for (int b : {blkP.bodyIndexA, blkP.bodyIndexB}) {
+                    if (b < 0) continue;
+                    if (b != blkQ.bodyIndexA && b != blkQ.bodyIndexB) continue;
+                    const MatrixXXr& Jp = jacobianAt(blkP, b);
+                    const MatrixXXr& Jq = jacobianAt(blkQ, b);
+                    const int off = offAt(blkP, b), dof = dofAt(blkP, b);
+                    MatrixXXr contrib = Jp * MinvDiag.segment(off, dof).asDiagonal() * Jq.transpose();  // dim_p x dim_q
+                    const auto key = std::make_pair(p, q);
+                    auto it = coupling.find(key);
+                    if (it == coupling.end())
+                        coupling.emplace(key, contrib);
+                    else
+                        it->second += contrib;
+                }
+            }
+        }
+    }
+
+    std::vector<std::array<int, 2>> edgeNodes;
+    std::vector<MatrixXXr> edgeBlocks;
+    edgeNodes.reserve(coupling.size());
+    edgeBlocks.reserve(coupling.size());
+    for (auto& kv : coupling) {
+        edgeNodes.push_back({kv.first.first, kv.first.second});
+        edgeBlocks.push_back(std::move(kv.second));
+    }
+
+    cardillo::misc::BlockSparseLDLT ldlt;
+    ldlt.build(std::move(dims), std::move(diagBlocks), edgeNodes, edgeBlocks);
+    ldlt.factor();  // internal greedy minimum-degree order -- see BlockSparseLDLT's own comment
+    return ldlt;
 }
 
 }  // namespace cardillo::physics::assembly

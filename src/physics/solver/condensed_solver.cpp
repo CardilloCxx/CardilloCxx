@@ -79,6 +79,36 @@ void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const Buf6& dla
     }
 }
 
+// condensed.true_schur=true: exactly zeroes every bilateral (spring+damper) row's residual in one
+// shot, given the CURRENT contact contribution to u_corr, via the precomputed block-sparse LDLT of
+// Sbb (see CondensedAssembler::buildBilateralFactorization()). This replaces those rows'
+// participation in the Gauss-Seidel/Jacobi/colored sweep entirely -- bilateral rows are pure
+// equality constraints (projectBlock() already no-ops for them), so unlike the projected contact
+// rows there is no iteration needed once their joint linear system is solved exactly. A no-op when
+// there are no bilateral blocks (e.g. domino), by construction.
+void exactBilateralStep(const CondensedTopology& topo, const cardillo::misc::BlockSparseLDLT& ldlt, const VectorXr& rhs, const VectorXr& MinvDiag, VectorXr& lambda, VectorXr& u_corr) {
+    const int n = topo.numBilateralBlocks;
+    if (n == 0) return;
+
+    VectorXr r(ldlt.totalDim());
+    Buf6 rb;
+    for (int i = 0; i < n; ++i) {
+        const auto& blk = topo.blocks[(size_t)i];
+        blockResidual(blk, rhs, u_corr, lambda, rb);
+        r.segment(blk.offset, blk.dim) = rb.head(blk.dim);
+    }
+
+    const VectorXr delta = ldlt.solve(r);
+
+    Buf6 d, tmp;
+    for (int i = 0; i < n; ++i) {
+        const auto& blk = topo.blocks[(size_t)i];
+        d.head(blk.dim) = delta.segment(blk.offset, blk.dim);
+        scatterDelta(blk, MinvDiag, d, u_corr, tmp);
+        lambda.segment(blk.offset, blk.dim) += d.head(blk.dim);
+    }
+}
+
 bool isContactKind(RowBlock::Kind kind) { return kind == RowBlock::Kind::ContactFrictionless || kind == RowBlock::Kind::ContactFrictional; }
 
 // Shared local-solve step used by every sweep driver: for frictional contact blocks when
@@ -107,10 +137,14 @@ void computeBlockUpdate(const RowBlock& blk, const Buf6& r, real_t relaxation, r
 
 // Sequential block-Gauss-Seidel sweep: propagates u_corr immediately after each block, matching
 // ProjectedGaussSeidelSolver's own loop structure exactly, just expressed over RowBlocks.
+// `startBlock` skips the bilateral (spring+damper) prefix when condensed.true_schur handles those
+// exactly instead (0 -- i.e. every block -- otherwise); contact blocks are always a contiguous
+// suffix of topo.blocks, so a single start index is enough, no separate index list needed.
 void gaussSeidelSweep(const CondensedTopology& topo, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton, const NewtonACParams& newtonParams,
-                       VectorXr& lambda, VectorXr& u_corr) {
+                       VectorXr& lambda, VectorXr& u_corr, int startBlock = 0) {
     Buf6 r, lamOld, lamNew, delta, tmp;
-    for (const auto& blk : topo.blocks) {
+    for (size_t bi = (size_t)startBlock; bi < topo.blocks.size(); ++bi) {
+        const auto& blk = topo.blocks[bi];
         blockResidual(blk, rhs, u_corr, lambda, r);
         lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
         computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew);
@@ -126,13 +160,24 @@ void gaussSeidelSweep(const CondensedTopology& topo, const VectorXr& rhs, const 
 // Deliberately NOT the dense Schur-complement/Delassus sparsity pattern (which for a compliant
 // chain would be fully dense and collapse coloring into one color) -- this is the same
 // shared-body adjacency Vivace/Bullet-style contact coloring uses.
-std::vector<std::vector<int>> buildBlockAdjacency(const CondensedTopology& topo) {
-    std::vector<std::vector<int>> adj(topo.blocks.size());
+//
+// `startBlock` excludes the bilateral (spring+damper) prefix when condensed.true_schur is active
+// (those rows are handled by an exact solve, not colored/swept at all): the returned adjacency is
+// LOCAL (0-based over just blocks[startBlock:]), matching what colorGreedyWelshPowell() expects --
+// callers must add startBlock back to every index in the resulting color classes before using them
+// against topo.blocks.
+std::vector<std::vector<int>> buildBlockAdjacency(const CondensedTopology& topo, int startBlock = 0) {
+    std::vector<std::vector<int>> adj(topo.blocks.size() - (size_t)startBlock);
     for (const auto& incident : topo.blocksOfBody) {
-        for (size_t i = 0; i < incident.size(); ++i) {
-            for (size_t j = i + 1; j < incident.size(); ++j) {
-                adj[(size_t)incident[i]].push_back(incident[j]);
-                adj[(size_t)incident[j]].push_back(incident[i]);
+        std::vector<int> local;
+        local.reserve(incident.size());
+        for (int idx : incident) {
+            if (idx >= startBlock) local.push_back(idx - startBlock);
+        }
+        for (size_t i = 0; i < local.size(); ++i) {
+            for (size_t j = i + 1; j < local.size(); ++j) {
+                adj[(size_t)local[i]].push_back(local[j]);
+                adj[(size_t)local[j]].push_back(local[i]);
             }
         }
     }
@@ -184,8 +229,14 @@ void coloredSweep(const CondensedTopology& topo, const cardillo::misc::Coloring&
 // u_corr from the previous sweep. Pass 2 has each BODY gather corrections from only its own
 // incident blocks -- never a block scattering into shared state -- so the reduction needs no
 // synchronization at all, not even atomics.
+// `startBlock` skips the bilateral prefix under condensed.true_schur, same convention as
+// gaussSeidelSweep/buildBlockAdjacency above. Pass 2's gather is left iterating every body's full
+// incident list unchanged: dlambda for any skipped (bilateral) block stays at its zero-init value
+// from `VectorXr::Zero(lambda.size())` below, since pass 1 never touches that segment, so gathering
+// it contributes nothing -- restricting pass 2's range too would save a little work but isn't
+// needed for correctness.
 void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelOffsets, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
-                  const NewtonACParams& newtonParams, VectorXr& lambda, VectorXr& u_corr) {
+                  const NewtonACParams& newtonParams, VectorXr& lambda, VectorXr& u_corr, int startBlock = 0) {
     const VectorXr u_read = u_corr;
     const int numBlocks = (int)topo.blocks.size();
     const int numBodies = (int)topo.blocksOfBody.size();
@@ -200,7 +251,7 @@ void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelO
         // Pass 1: each thread handles a disjoint set of block indices, writing only to that
         // block's own (non-overlapping) segment of lambda/dlambda -- no aliasing across threads.
 #pragma omp for schedule(static)
-        for (int i = 0; i < numBlocks; ++i) {
+        for (int i = startBlock; i < numBlocks; ++i) {
             Buf6 r, lamOld, lamNew;
             const auto& blk = topo.blocks[i];
             blockResidual(blk, rhs, u_read, lambda, r);
@@ -360,11 +411,31 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     const auto& bodyVelOffsets = m_dyn.bodyVelOffsets();
     const std::string& sweepMode = m_cfg.condensed_sweep_mode;
 
+    // condensed.true_schur only applies to gauss_seidel/jacobi/colored -- chaotic keeps its own
+    // atomic u_corr representation and full block range unchanged (see the doSweep comment below
+    // for why chaotic is excluded from the generic wrapper in the first place; combining chaotic's
+    // deliberately-stale atomic updates with an exact joint bilateral solve raises questions not
+    // tackled here). `startBlock` is where contact blocks begin -- 0 (i.e. every block still swept
+    // together) unless true_schur is on, in which case it's topo.numBilateralBlocks.
+    const bool useTrueSchur = m_cfg.condensed_true_schur && sweepMode != "chaotic";
+    const int startBlock = useTrueSchur ? topo.numBilateralBlocks : 0;
+    if (m_cfg.condensed_true_schur && sweepMode == "chaotic" && m_cfg.debug_pj) {
+        std::cout << "[Condensed] condensed.true_schur has no effect on sweep_mode=chaotic; ignoring." << std::endl;
+    }
+
+    cardillo::misc::BlockSparseLDLT bilateralLdlt;
+    if (useTrueSchur && topo.numBilateralBlocks > 0) {
+        auto sc_schur = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSetup);
+        bilateralLdlt = m_assembler.buildBilateralFactorization(topo);
+    }
+
     cardillo::misc::Coloring coloring;
     if (sweepMode == "colored") {
         auto sc_color = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedColoring);
-        const auto adjacency = buildBlockAdjacency(topo);
-        coloring = cardillo::misc::colorGreedyWelshPowell((int)topo.blocks.size(), adjacency);
+        const auto adjacency = buildBlockAdjacency(topo, startBlock);
+        coloring = cardillo::misc::colorGreedyWelshPowell((int)topo.blocks.size() - startBlock, adjacency);
+        for (auto& cls : coloring.colorClasses)
+            for (auto& idx : cls) idx += startBlock;
     }
 
     const bool useNewton = (m_cfg.condensed_local_solve == "newton");
@@ -391,13 +462,20 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     // Nesterov branch does around pgs_sweep(). `chaotic` is deliberately excluded: its state lives
     // in `u_corr_atomic`, not a plain VectorXr, and momentum-extrapolating a value that's already
     // being intentionally kept stale by design is a separate question not tackled here.
+    //
+    // Under condensed.true_schur, every call first exactly solves the bilateral (spring+damper)
+    // rows given the sweep's current contact contribution to u_corr, then runs the usual sweep
+    // restricted to the contact blocks (startBlock) -- the bilateral rows never enter the sweep
+    // itself. `useTrueSchur` is false (and startBlock is 0) whenever there's nothing to gain from
+    // this (no bilateral rows, or true_schur not requested), making doSweep identical to before.
     auto doSweep = [&](VectorXr& lam, VectorXr& ucorr) {
+        if (useTrueSchur) exactBilateralStep(topo, bilateralLdlt, rhs, MinvDiag, lam, ucorr);
         if (sweepMode == "jacobi") {
-            jacobiSweep(topo, bodyVelOffsets, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr);
+            jacobiSweep(topo, bodyVelOffsets, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr, startBlock);
         } else if (sweepMode == "colored") {
             coloredSweep(topo, coloring, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr);
         } else {
-            gaussSeidelSweep(topo, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr);
+            gaussSeidelSweep(topo, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr, startBlock);
         }
     };
 
