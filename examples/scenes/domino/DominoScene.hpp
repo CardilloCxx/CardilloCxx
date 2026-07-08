@@ -20,9 +20,14 @@ public:
         physics::CubeShape groundShape{Vector3r(3.0, 3.0, 0.05)};
         physics::RigidState groundState;
         groundState.position = Vector3r(0.0, 0.0, -0.05);
-        auto ground = engine.addRigidBody(groundShape, groundState, physics::RigidProps::withDensity(100.0));
-        engine.addTranslationalConstraint(ground, entt::null, physics::JointFrame(ground), Vector3r::Constant(1e9), Vector3r::Zero());
-        engine.addRotationConstraint(ground, entt::null, physics::JointFrame(ground));
+
+        // ground as free rigid body with constraints
+        // auto ground = engine.addRigidBody(groundShape, groundState, physics::RigidProps::withDensity(100.0));
+        // engine.addTranslationalConstraint(ground, entt::null, physics::JointFrame(ground));
+        // engine.addRotationConstraint(ground, entt::null, physics::JointFrame(ground));
+
+        // alternative: ground as static body
+        engine.addStaticBody(groundShape, groundState);
 
         // Domino dims: x=length/2, y=thickness/2, z=height/2
         const Vector3r dominoHalf((real_t)0.024, (real_t)0.00375, (real_t)0.012); // length 9.6cm, thickness 1.5cm, height 4.8cm
@@ -35,20 +40,36 @@ public:
 
         spawnDominoTowerStructure(engine, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap, false);
 
-        auto upsideDownOrientation = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI, Vector3r::UnitX()));
+        // sphere falling on the tower
+        auto sphere = engine.addRigidBody(
+            physics::SphereShape{0.05}, 
+            physics::RigidState{
+                Vector3r(0.0, 0.0, 1.5), // position
+                Vector3r(0.0, 0.0, -1.0), // linear velocity
+                Vector3r(5.0, 0.0, 0.0)}, // angular velocity
+            physics::RigidProps::withDensity(19250.0)
+        );
 
-        auto sphere = engine.addRigidBody(physics::SphereShape{0.05}, physics::RigidState{Vector3r(0.0, 0.0, 1.5), Vector3r(0.0, 0.0, -1.0)}, physics::RigidProps::withDensity(19250.0));
+        // // sphere crashing the tower
+        // auto sphere = engine.addRigidBody(
+        //     physics::SphereShape{0.05}, 
+        //     physics::RigidState{
+        //         Vector3r(0.3, 0.0, 0.1), // position
+        //         Vector3r(-1.0, 0.0, 0.0), // linear velocity
+        //         Vector3r(0.0, 0.0, 0.0)}, // angular velocity
+        //     physics::RigidProps::withDensity(19250.0)
+        // );
 
-        auto helixSpline = misc::HelixSpline(Vector3r(0.0, 0.0, 1.3), -Vector3r::UnitZ(), (real_t)0.1, (real_t)0.15, (real_t)10.0, Vector3r::UnitX());
+        // auto helixSpline = misc::HelixSpline(Vector3r(0.0, 0.0, 1.3), -Vector3r::UnitZ(), (real_t)0.1, (real_t)0.15, (real_t)10.0, Vector3r::UnitX());
 
-        engine.addTrajectory(
-            sphere,
-            [helixSpline](real_t t) {
-                TrajectoryPose pose;
-                pose.first = helixSpline.sample(std::fmod(t, (real_t)1.0)).position;
-                return pose;
-            },
-            std::nullopt);
+        // engine.addTrajectory(
+        //     sphere,
+        //     [helixSpline](real_t t) {
+        //         TrajectoryPose pose;
+        //         pose.first = helixSpline.sample(std::fmod(t, (real_t)1.0)).position;
+        //         return pose;
+        //     },
+        //     std::nullopt);
     }
 
 private:
