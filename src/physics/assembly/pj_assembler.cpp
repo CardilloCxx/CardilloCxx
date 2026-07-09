@@ -41,8 +41,8 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bo
             const Vector3r I = m_dyn->system().getInertiaDiag(e);
             const Vector3r Iomega = I.cwiseProduct(omega);
             const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
-            const Matrix33r omegaSkew = skew_from_vector(omega);
-            const Matrix33r IomegaSkew = skew_from_vector(Iomega);
+            const Matrix33r omegaSkew = SkewSymmetricMatrix3r(omega);
+            const Matrix33r IomegaSkew = SkewSymmetricMatrix3r(Iomega);
 
             // G_rot = 0.5 * ( [I*omega]_x - [omega]_x * I )
             const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * Idiag);

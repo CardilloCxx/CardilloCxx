@@ -74,11 +74,11 @@ ConstraintResult LinearDistanceConstraint::getConstraint() const {
     out.WgA = MatrixXXr::Zero(6, 1);
     out.WgB = MatrixXXr::Zero(6, 1);
     // d g / d vA = -n^T, d g / d wA = (rAw x n)^T
-    out.WgA.block(0, 0, 3, 1) = -n;
-    out.WgA.block(3, 0, 3, 1) = -(m_rA_local.cross(wa.RA.transpose() * n));
+    out.WgA.topLeftCorner<3, 1>() = -n;
+    out.WgA.bottomLeftCorner<3, 1>() = -(m_rA_local.cross(wa.RA.transpose() * n));
     // d g / d vB = +n^T, d g / d wB = -(rBw x n)^T
-    out.WgB.block(0, 0, 3, 1) = n;
-    out.WgB.block(3, 0, 3, 1) = (m_rB_local.cross(wa.RB.transpose() * n));
+    out.WgB.topLeftCorner<3, 1>() = n;
+    out.WgB.bottomLeftCorner<3, 1>() = (m_rB_local.cross(wa.RB.transpose() * n));
 
     out.WgammaA = out.WgA;
     out.WgammaB = out.WgB;
@@ -106,7 +106,7 @@ TranslationRotationConstraint::TranslationRotationConstraint(entt::registry& reg
 // Helper: build full 6x6 Jacobians for a joint between A and B using
 // the precomputed joint-frame geometry. This encodes a
 // fully locked 6-DOF joint; specialised constraints will mask DOFs via C/A.
-void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::WorldAttachments& wa, Vector3r g, MatrixXXr& WgA, MatrixXXr& WgB) const {
+void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::WorldAttachments& wa, const Vector3r& g, MatrixXXr& WgA, MatrixXXr& WgB) const {
     WgA = MatrixXXr::Zero(6, 6);
     WgB = MatrixXXr::Zero(6, 6);
 
@@ -115,17 +115,17 @@ void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::
     const auto& A_K1J = m_joint.A_K1J;
     const Matrix33r A_IJ = A_IK1 * A_K1J;
     const Matrix33r A_K2J = A_IK2.transpose() * A_IJ;
-    const Matrix33r skew_g = skew_from_vector(g);
+    const Matrix33r skew_g = SkewSymmetricMatrix3r(g);
 
     // translations
-    WgA.block<3, 3>(0, 0) = -A_IJ;
-    WgA.block<3, 3>(3, 0) = -m_joint.K1_r_S1J_skew * A_K1J - A_K1J * skew_g;
-    WgB.block<3, 3>(0, 0) = A_IJ;
-    WgB.block<3, 3>(3, 0) = m_joint.K2_r_S2J_skew * A_K2J;
+    WgA.topLeftCorner<3, 3>() = -A_IJ;
+    WgA.bottomLeftCorner<3, 3>() = -m_joint.K1_r_S1J_skew * A_K1J - A_K1J * skew_g;
+    WgB.topLeftCorner<3, 3>() = A_IJ;
+    WgB.bottomLeftCorner<3, 3>() = m_joint.K2_r_S2J_skew * A_K2J;
 
     // orientations
-    WgA.block<3, 3>(3, 3) = A_K1J;
-    WgB.block<3, 3>(3, 3) = -A_K2J;
+    WgA.bottomRightCorner<3, 3>() = A_K1J;
+    WgB.bottomRightCorner<3, 3>() = -A_K2J;
 }
 
 ConstraintResult TranslationRotationConstraint::getConstraint() const {
@@ -137,7 +137,7 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
     const auto wa = computeAttachments_();
 
     // Build full 6x6 Jacobians for a rigid joint at the current attachments.
-    const Vector3r g = m_joint.compute_g(wa.pA, wa.pB, wa.RA, wa.RB);
+    const Vector3r& g = m_joint.compute_g(wa.pA, wa.pB, wa.RA, wa.RB);
     buildJointJacobian(wa, g, out.WgA, out.WgB);
 
     out.positionError = getPositionError(g, out);
@@ -164,8 +164,8 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
 VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g, const ConstraintResult& res) const {
     VectorXr posErr(6);
     posErr.head<3>() = g;
-    Matrix33r A_IB1 = res.WgA.block<3, 3>(3, 3);
-    Matrix33r A_IB2 = -res.WgB.block<3, 3>(3, 3);
+    const Matrix33r& A_IB1 = res.WgA.bottomRightCorner<3, 3>();
+    const Matrix33r& A_IB2 = -res.WgB.bottomRightCorner<3, 3>();
     posErr(3) = A_IB1.col(1).dot(A_IB2.col(2)); // y * z
     posErr(4) = A_IB1.col(2).dot(A_IB2.col(0)); // z * x
     posErr(5) = A_IB1.col(0).dot(A_IB2.col(1)); // x * y
@@ -220,18 +220,18 @@ ConstraintResult BeamConstraint::getConstraint() const {
     out.positionError.head<3>() = gamma - m_gamma0;
     out.positionError.tail<3>() = kappa - m_kappa0;
 
-    const Matrix33r gamma_skew = skew_from_vector(gamma);
-    const Matrix33r kappa_skew = skew_from_vector(kappa);
+    const Matrix33r gamma_skew = SkewSymmetricMatrix3r(gamma);
+    const Matrix33r kappa_skew = SkewSymmetricMatrix3r(kappa);
 
     out.WgA = MatrixXXr::Zero(6, 6);
-    out.WgA.block<3, 3>(0, 0) = -A_mid;
-    out.WgA.block<3, 3>(3, 0) = (real_t)-0.5 * gamma_skew;
-    out.WgA.block<3, 3>(3, 3) = -Matrix33r::Identity() - (real_t)0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
+    out.WgA.topLeftCorner<3, 3>() = -A_mid;
+    out.WgA.bottomLeftCorner<3, 3>() = (real_t)-0.5 * gamma_skew;
+    out.WgA.bottomRightCorner<3, 3>() = -Matrix33r::Identity() - (real_t)0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
     out.WgB = MatrixXXr::Zero(6, 6);
-    out.WgB.block<3, 3>(0, 0) = A_mid;
-    out.WgB.block<3, 3>(3, 0) = (real_t)-0.5 * gamma_skew;
-    out.WgB.block<3, 3>(3, 3) = Matrix33r::Identity() - (real_t)0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
+    out.WgB.topLeftCorner<3, 3>() = A_mid;
+    out.WgB.bottomLeftCorner<3, 3>() = (real_t)-0.5 * gamma_skew;
+    out.WgB.bottomRightCorner<3, 3>() = Matrix33r::Identity() - (real_t)0.5 * kappa_skew;  // l_0 jeweils rausgekürzt
 
     out.WgammaA = out.WgA;
     out.WgammaB = out.WgB;
