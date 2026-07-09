@@ -637,6 +637,30 @@ exercising only the "no gyro block" branch at every one of the ~10 touched call 
 `CARDILLO_DUMP_STATE` fingerprints and identical Schur-cache hit/miss counts (98/2) to before this
 change.
 
+## Stage E (parallel cyclic-reduction elimination) -- deliberately not done
+
+The original 5-stage follow-up plan's last item was parallelizing `BlockSparseLDLT`'s elimination
+for chain-shaped bilateral graphs via cyclic reduction (O(log n) parallel depth instead of O(n)
+sequential). Explicitly skipped, by choice, before writing any code, for two reasons surfaced while
+scoping it:
+
+- **Small expected payoff for the sizes actually seen**: every current chain-shaped scene
+  (`wilberforce`, `slinky`) has a bilateral graph of a few hundred rows, and Stage B already
+  measured `Condensed Setup` (which includes this factorization) at only ~5% of `wilberforce`'s
+  total wall-clock -- `Output Write` (VTK I/O) dominates at ~90%. Amdahl's law leaves little room
+  for a parallel factorization to move the needle at this n, even with a correct implementation.
+- **Real correctness risk, identified before implementing**: the naive "eliminate all odd nodes in
+  this round simultaneously" formulation races -- two odd pivots can share an even neighbor (e.g.
+  pivots 1 and 3 both touch node 2's diagonal in a chain 0-1-2-3-4), so eliminating them as a
+  parallel *scatter* writes the same location from two threads. A correct version needs restructuring
+  as a *gather* over surviving nodes instead (each survivor pulls contributions from its own ≤2
+  odd neighbors, mirroring the gather-not-scatter pattern `jacobiSweep`'s pass 2 already uses
+  elsewhere in this codebase) -- a materially different, non-trivial code path from anything Stages
+  A-D touched, for a feature already expected to show a small win.
+
+Worth revisiting only if a scene with a much longer compliant chain shows up (the plan's own
+verification section flagged this exact caveat) -- not speculatively.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode
