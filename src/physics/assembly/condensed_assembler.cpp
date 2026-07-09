@@ -55,6 +55,11 @@ CondensedTopology CondensedAssembler::buildTopology() const {
     const int numBodies = velOffsets.empty() ? 0 : (int)velOffsets.size() - 1;
 
     std::vector<RowBlock> springBlocks, damperBlocks, contactBlocks;
+    // Reserve upfront to avoid repeated vector reallocation (each doubling copies/moves every
+    // existing element) as these grow via push_back below -- cheap, safe, no behavior change.
+    springBlocks.reserve(m_dyn->constraintResults().size());
+    damperBlocks.reserve(m_dyn->constraintResults().size());
+    contactBlocks.reserve(m_dyn->contacts().size());
     int offset = 0;
 
     // Springs: one pass over all constraints' active spring rows, matching PgsAssembler::Dinv()'s

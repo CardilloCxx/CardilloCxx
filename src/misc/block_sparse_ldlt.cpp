@@ -9,15 +9,23 @@ namespace cardillo::misc {
 
 void BlockSparseLDLT::build(std::vector<int> dims, std::vector<MatrixXXr> diagBlocks, const std::vector<std::array<int, 2>>& edgeNodes, const std::vector<MatrixXXr>& edgeBlocks) {
     m_dims = std::move(dims);
-    m_diag = std::move(diagBlocks);
-    m_off.assign(m_dims.size(), {});
+    const int n = (int)m_dims.size();
+
+    m_diag.assign(n, Matrixr<6, 6>::Zero());
+    for (int i = 0; i < n; ++i) m_diag[(size_t)i].topLeftCorner(m_dims[(size_t)i], m_dims[(size_t)i]) = diagBlocks[(size_t)i];
+
+    m_off.assign(n, {});
     m_factors.clear();
 
     for (size_t e = 0; e < edgeNodes.size(); ++e) {
         const int i = edgeNodes[e][0];
         const int j = edgeNodes[e][1];
-        m_off[(size_t)i][j] = edgeBlocks[e];
-        m_off[(size_t)j][i] = edgeBlocks[e].transpose();
+        Matrixr<6, 6> Bij = Matrixr<6, 6>::Zero();
+        Bij.topLeftCorner(m_dims[(size_t)i], m_dims[(size_t)j]) = edgeBlocks[e];
+        Matrixr<6, 6> Bji = Matrixr<6, 6>::Zero();
+        Bji.topLeftCorner(m_dims[(size_t)j], m_dims[(size_t)i]) = edgeBlocks[e].transpose();
+        m_off[(size_t)i][j] = Bij;
+        m_off[(size_t)j][i] = Bji;
     }
 }
 
@@ -77,9 +85,10 @@ void BlockSparseLDLT::factorWithOrder(std::vector<int> order) {
     std::vector<bool> eliminated(m_dims.size(), false);
 
     for (int k : m_order) {
+        const int dimK = m_dims[(size_t)k];
         PivotFactor pf;
         pf.k = k;
-        pf.Dinv = invertSmallSpd(m_diag[(size_t)k]);
+        pf.Dinv.topLeftCorner(dimK, dimK) = invertSmallSpd(MatrixXXr(m_diag[(size_t)k].topLeftCorner(dimK, dimK)));
 
         // Still-active neighbors of k (copied out before mutating anything -- the update loop
         // below writes into m_off[p]/m_off[q] for p,q in this list, never into m_off[k] itself).
@@ -91,7 +100,12 @@ void BlockSparseLDLT::factorWithOrder(std::vector<int> order) {
 
         pf.L.reserve(nbrs.size());
         for (int p : nbrs) {
-            MatrixXXr Lpk = m_off[(size_t)p].at(k) * pf.Dinv;  // dims[p] x dims[k]
+            const int dimP = m_dims[(size_t)p];
+            // Uninitialized, not Zero(): only ever read back via the same .topLeftCorner(dimP,dimK)
+            // written here (dims[] are fixed for the object's lifetime), so the padding is never
+            // read -- skip the wasted zero-fill of the untouched region.
+            Matrixr<6, 6> Lpk;
+            Lpk.topLeftCorner(dimP, dimK).noalias() = m_off[(size_t)p].at(k).topLeftCorner(dimP, dimK) * pf.Dinv.topLeftCorner(dimK, dimK);
             pf.L.emplace_back(p, std::move(Lpk));
         }
 
@@ -101,23 +115,34 @@ void BlockSparseLDLT::factorWithOrder(std::vector<int> order) {
         // already connected.
         for (size_t ii = 0; ii < nbrs.size(); ++ii) {
             const int p = nbrs[ii];
-            const MatrixXXr& Lp = pf.L[ii].second;  // dims[p] x dims[k]
+            const int dimP = m_dims[(size_t)p];
+            const auto Lp = pf.L[ii].second.topLeftCorner(dimP, dimK);  // dims[p] x dims[k]
             for (size_t jj = ii; jj < nbrs.size(); ++jj) {
                 const int q = nbrs[jj];
-                const MatrixXXr& Bkq = m_off[(size_t)k].at(q);  // dims[k] x dims[q]
-                MatrixXXr update = Lp * Bkq;                    // dims[p] x dims[q]
-
+                const int dimQ = m_dims[(size_t)q];
+                const auto Bkq = m_off[(size_t)k].at(q).topLeftCorner(dimK, dimQ);  // dims[k] x dims[q]
+                // Write straight into the destination (dims[p] x dims[q]) -- no padded 6x6
+                // intermediate: Lp/Bkq are already exact-sized views, so `Lp * Bkq` evaluates
+                // directly into the (correctly dims[p] x dims[q]-sized) `.topLeftCorner()`
+                // destination via `.noalias() -=`, same operation count as the pre-fixed-size code.
                 if (p == q) {
-                    m_diag[(size_t)p] -= update;
-                    m_diag[(size_t)p] = (real_t)0.5 * (m_diag[(size_t)p] + m_diag[(size_t)p].transpose());  // keep numerically symmetric
+                    auto Dp = m_diag[(size_t)p].topLeftCorner(dimP, dimP);
+                    Dp.noalias() -= Lp * Bkq;
+                    Dp = (real_t)0.5 * (Dp + Dp.transpose());  // keep numerically symmetric
                 } else {
                     auto it = m_off[(size_t)p].find(q);
-                    if (it != m_off[(size_t)p].end()) {
-                        it->second -= update;
+                    if (it == m_off[(size_t)p].end()) {
+                        // Fresh fill-in edge: no prior value to subtract from, so assign the
+                        // negation directly rather than zero-filling first then subtracting.
+                        Matrixr<6, 6> fresh;
+                        fresh.topLeftCorner(dimP, dimQ).noalias() = -(Lp * Bkq);
+                        it = m_off[(size_t)p].emplace(q, std::move(fresh)).first;
                     } else {
-                        m_off[(size_t)p][q] = -update;  // fill-in
+                        it->second.topLeftCorner(dimP, dimQ).noalias() -= Lp * Bkq;
                     }
-                    m_off[(size_t)q][p] = m_off[(size_t)p].at(q).transpose();
+                    Matrixr<6, 6> transposed;
+                    transposed.topLeftCorner(dimQ, dimP) = it->second.topLeftCorner(dimP, dimQ).transpose();
+                    m_off[(size_t)q][p] = std::move(transposed);
                 }
             }
         }
@@ -132,30 +157,37 @@ VectorXr BlockSparseLDLT::solve(const VectorXr& rhs) const {
     std::vector<int> offset(n + 1, 0);
     for (int i = 0; i < n; ++i) offset[(size_t)i + 1] = offset[(size_t)i] + m_dims[(size_t)i];
 
-    std::vector<VectorXr> y(n);
-    for (int i = 0; i < n; ++i) y[(size_t)i] = rhs.segment(offset[(size_t)i], m_dims[(size_t)i]);
+    std::vector<Vectorr<6>> y(n, Vectorr<6>::Zero());
+    for (int i = 0; i < n; ++i) y[(size_t)i].head(m_dims[(size_t)i]) = rhs.segment(offset[(size_t)i], m_dims[(size_t)i]);
 
     // Forward substitution (L y = rhs, L unit lower-triangular in elimination order): visiting
     // pivots in elimination order guarantees y[pf.k] already holds every correction from earlier
     // pivots before it propagates its own effect onto its (later-eliminated) neighbors.
     for (const auto& pf : m_factors) {
+        const int dimK = m_dims[(size_t)pf.k];
         for (const auto& pr : pf.L) {
-            y[(size_t)pr.first].noalias() -= pr.second * y[(size_t)pf.k];
+            const int dimP = m_dims[(size_t)pr.first];
+            y[(size_t)pr.first].head(dimP).noalias() -= pr.second.topLeftCorner(dimP, dimK) * y[(size_t)pf.k].head(dimK);
         }
     }
 
-    std::vector<VectorXr> x = y;
-    for (const auto& pf : m_factors) x[(size_t)pf.k] = pf.Dinv * y[(size_t)pf.k];
+    std::vector<Vectorr<6>> x = y;
+    for (const auto& pf : m_factors) {
+        const int dimK = m_dims[(size_t)pf.k];
+        x[(size_t)pf.k].head(dimK) = pf.Dinv.topLeftCorner(dimK, dimK) * y[(size_t)pf.k].head(dimK);
+    }
 
     // Backward substitution (L^T x = D^-1 y), reverse elimination order.
     for (auto it = m_factors.rbegin(); it != m_factors.rend(); ++it) {
+        const int dimK = m_dims[(size_t)it->k];
         for (const auto& pr : it->L) {
-            x[(size_t)it->k].noalias() -= pr.second.transpose() * x[(size_t)pr.first];
+            const int dimP = m_dims[(size_t)pr.first];
+            x[(size_t)it->k].head(dimK).noalias() -= pr.second.topLeftCorner(dimP, dimK).transpose() * x[(size_t)pr.first].head(dimP);
         }
     }
 
     VectorXr out(offset[(size_t)n]);
-    for (int i = 0; i < n; ++i) out.segment(offset[(size_t)i], m_dims[(size_t)i]) = x[(size_t)i];
+    for (int i = 0; i < n; ++i) out.segment(offset[(size_t)i], m_dims[(size_t)i]) = x[(size_t)i].head(m_dims[(size_t)i]);
     return out;
 }
 

@@ -50,10 +50,16 @@ class BlockSparseLDLT {
     int totalDim() const;
 
    private:
+    // Every node's dof is <=6 (see class comment), so every block below is a fixed-size Matrixr<6,6>
+    // stack buffer accessed via `.topLeftCorner(dims[i], dims[j])`, exactly the Buf6-style pattern
+    // used for the condensed solver's own per-block hot-path temporaries: this is the actual hot
+    // loop (factor()'s Schur update touches every stored block once per pivot; solve()'s forward/
+    // backward substitution touches every stored block once per call), unlike the one-time
+    // ingestion in build(), so this is where fixing the storage size actually pays off.
     struct PivotFactor {
         int k{0};
-        MatrixXXr Dinv;                             // dims[k] x dims[k]
-        std::vector<std::pair<int, MatrixXXr>> L;   // (neighbor p, L_{p,k} = block(p,k)_at_elimination * Dinv), dims[p] x dims[k]
+        Matrixr<6, 6> Dinv{Matrixr<6, 6>::Zero()};                    // .topLeftCorner(dims[k], dims[k])
+        std::vector<std::pair<int, Matrixr<6, 6>>> L;                 // (neighbor p, L_{p,k} = block(p,k)_at_elimination * Dinv), .topLeftCorner(dims[p], dims[k])
     };
 
     // Symbolic-only simulation of the same fill-in process factorWithOrder() performs, tracking
@@ -63,8 +69,8 @@ class BlockSparseLDLT {
     std::vector<int> computeGreedyMinDegreeOrder() const;
 
     std::vector<int> m_dims;
-    std::vector<MatrixXXr> m_diag;                              // working diagonal blocks, mutated during factor()
-    std::vector<std::unordered_map<int, MatrixXXr>> m_off;      // m_off[i][j]: block(i,j), both directions stored (block(j,i) kept as its transpose)
+    std::vector<Matrixr<6, 6>> m_diag;                              // working diagonal blocks (.topLeftCorner(dims[i],dims[i])), mutated during factor()
+    std::vector<std::unordered_map<int, Matrixr<6, 6>>> m_off;      // m_off[i][j]: block(i,j) (.topLeftCorner(dims[i],dims[j])), both directions stored (block(j,i) kept as its transpose)
     std::vector<int> m_order;
     std::vector<PivotFactor> m_factors;  // filled by factor()/factorWithOrder(), in elimination order
 };
