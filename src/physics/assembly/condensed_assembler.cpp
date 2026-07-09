@@ -77,15 +77,15 @@ std::unordered_map<int, Matrixr<6, 6>> computeGyroscopicMinvBlocks(const cardill
         const Vector3r I = dyn.system().getInertiaDiag(e);
         const Vector3r Iomega = I.cwiseProduct(omega);
         const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
-        const Matrix33r omegaSkew = cardillo::skew_from_vector(omega);
-        const Matrix33r IomegaSkew = cardillo::skew_from_vector(Iomega);
+        const Matrix33r omegaSkew = cardillo::SkewSymmetricMatrix3r(omega);
+        const Matrix33r IomegaSkew = cardillo::SkewSymmetricMatrix3r(Iomega);
 
         const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * Idiag);
         const Matrix33r Mrot = Idiag - dt * Grot;
 
         Matrixr<6, 6> block = Matrixr<6, 6>::Zero();
-        block.topLeftCorner(3, 3) = MinvDiag.segment(off, 3).asDiagonal().toDenseMatrix();
-        block.block(3, 3, 3, 3) = invertSmallGeneral(MatrixXXr(Mrot));
+        block.topLeftCorner<3, 3>() = MinvDiag.segment(off, 3).asDiagonal().toDenseMatrix();
+        block.bottomRightCorner<3, 3>() = invertSmallGeneral(MatrixXXr(Mrot));
         blocks.emplace(b, block);
     }
     return blocks;
