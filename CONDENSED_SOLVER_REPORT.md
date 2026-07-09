@@ -524,6 +524,55 @@ the very first call, exactly as expected for a scene whose bilateral topology ne
 every other call (98/100). Both match the theoretical prediction exactly, confirming the cache is
 doing what it's supposed to, not coincidentally correct.
 
+## Update: non-symmetric block support in `BlockSparseLDLT` (block LU)
+
+Third step of the same follow-up: implicit gyroscopic forces (Kahan-style second-order rigid body
+integration, `moreau.implicit_gyroscopy=true`) make a rigid body's effective mass block
+non-symmetric (`PjAssembler::buildAndFactorS()` already does this for PJ, adding
+`Grot = 0.5*([I*omega]_x - [omega]_x*I)` to `M_eff` and explicitly marking the resulting system
+non-symmetric). `condensed` doesn't yet port this — that's the next stage — but `BlockSparseLDLT`
+itself needed the *capability* first, validated standalone before any physics touches it, per this
+project's usual staging discipline.
+
+**Design constraint, explicitly requested**: the existing symmetric block-LDLT path must stay
+exactly as fast and behaviorally identical as before — every current example scene uses it, and
+paying a non-symmetric cost unconditionally would be a pure regression for the common case. So
+`BlockSparseLDLT` now has two fully separate algorithms, selected by a `symmetric` flag at `build()`
+time (default `true`, so every existing call site is unaffected):
+
+- `symmetric=true` (unchanged): undirected edges, `block(j,i)` derived as `block(i,j)^T`, one `L`
+  list per pivot — half the Schur-update work of the general case, exactly the original algorithm.
+- `symmetric=false` (new): directed edges — the caller supplies `(i,j)` and `(j,i)` independently
+  (an omitted direction is exactly zero, not "derived from the other"). Factors as a true block LU
+  (`S = L U`, `U` not unit-triangular): both an `L` list (rows below pivot) and a separate `U` list
+  (columns to the right, raw values, no `Dinv` applied) are stored per pivot, since nothing can be
+  derived via transpose anymore. Roughly double the Schur-update work of the symmetric path — the
+  reason the two stay separate functions (`factorSymmetric`/`factorNonSymmetric`,
+  `solveSymmetric`/`solveNonSymmetric`) rather than one branchy general algorithm.
+
+Pivot inversion also splits: `invertSmallSpd()` (Cholesky→LDLT→diagonal fallback, requires symmetry)
+for the symmetric path, a new `invertSmallGeneral()` (PartialPivLU→FullPivLU→diagonal fallback,
+`src/misc/block_diagonal.hpp`) for the non-symmetric one.
+
+**Validation**: extended the standalone stress-test harness with three new non-symmetric cases —
+a 6-node chain and a 6-node branching hub graph, both with fully independent (non-transpose)
+directed edges *and* non-symmetric diagonal blocks (mirroring a real gyroscopic `M_eff`), plus a
+case isolating non-symmetric-diagonal-only (symmetric coupling, asymmetric diagonal — the more
+realistic shape of the actual future use case). All three checked against Eigen's dense
+`PartialPivLU`, not `.ldlt()` (which requires symmetry and would silently misbehave on a genuinely
+asymmetric system). All passed at ~1e-16 relative error, the same standard the original symmetric
+cases were held to.
+
+**No-regression check on the symmetric path**: re-ran the pre-existing symmetric cases in the same
+harness — identical error values to before the restructuring, byte for byte. Then, since every
+current example scene only ever uses `symmetric=true` (Stage D hasn't wired the new mode into
+`CondensedAssembler` yet), did a proper A/B on the two scenes this file's cache work already used as
+regression guardrails: stashed this change, rebuilt at the pre-Stage-C commit, captured
+`CARDILLO_DUMP_STATE` fingerprints for `domino` and `wilberforce`; restored the change, rebuilt,
+re-ran — `diff` on both logs came back empty. Confirms the restructuring (splitting one function
+into a dispatcher plus a same-code-unchanged `*Symmetric` variant) introduced no behavior change at
+all on the only path any real scene currently exercises.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode

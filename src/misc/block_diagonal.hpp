@@ -1,5 +1,6 @@
 #pragma once
 #include <Eigen/Cholesky>
+#include <Eigen/LU>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -20,6 +21,31 @@ inline MatrixXXr invertSmallSpd(const MatrixXXr& block) {
     if (ldlt.info() == Eigen::Success) return ldlt.solve(I);
 
     std::cout << "Warning: Block not positive definite, using diagonal inverse only\n";
+    MatrixXXr diagInv = MatrixXXr::Zero(block.rows(), block.cols());
+    diagInv.diagonal() = block.diagonal().cwiseInverse();
+    return diagInv;
+}
+
+/**
+ * @brief Returns a well-defined inverse of a general (not necessarily symmetric or positive
+ * definite) small square block, falling back gracefully when singular: PartialPivLU -> FullPivLU
+ * -> diagonal-only inverse. Never throws. Used for BlockSparseLDLT's non-symmetric (block-LU) mode
+ * -- e.g. a rigid body's effective mass block under implicit gyroscopic forces, which is generally
+ * non-symmetric and so cannot use invertSmallSpd()'s Cholesky/LDLT chain (both require symmetry).
+ */
+inline MatrixXXr invertSmallGeneral(const MatrixXXr& block) {
+    MatrixXXr I = MatrixXXr::Identity(block.rows(), block.cols());
+    Eigen::PartialPivLU<MatrixXXr> plu(block);
+    // PartialPivLU has no .info() (it always "succeeds" numerically), so check conditioning
+    // directly instead -- a tiny or non-finite determinant means the pivot was effectively
+    // singular and the solve below would amplify rounding error unboundedly.
+    const real_t det = plu.determinant();
+    if (std::isfinite(det) && std::abs(det) > (real_t)1e-300) return plu.solve(I);
+
+    Eigen::FullPivLU<MatrixXXr> flu(block);
+    if (flu.isInvertible()) return flu.solve(I);
+
+    std::cout << "Warning: Block singular under general (non-symmetric) inversion, using diagonal inverse only\n";
     MatrixXXr diagInv = MatrixXXr::Zero(block.rows(), block.cols());
     diagInv.diagonal() = block.diagonal().cwiseInverse();
     return diagInv;
