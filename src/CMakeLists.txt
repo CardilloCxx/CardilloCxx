@@ -4,6 +4,13 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path 
 include(FetchContent)
 find_package(OpenMP QUIET)
 
+# --- 0. Set paths ---
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/config/path.hpp.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/config/path.hpp
+    @ONLY
+)
+
 # --- 1. Dependencies ---
 set(BUILD_PYTHON_INTERFACE OFF CACHE BOOL "Disable Coal Python bindings" FORCE)
 set(COAL_BUILD_PYTHON_INTERFACE OFF CACHE BOOL "Disable Coal Python bindings" FORCE)

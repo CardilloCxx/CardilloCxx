@@ -56,7 +56,7 @@ public:
         }
 
         // Boulder
-        auto boulder = engine.addRigidBody(physics::MeshShape("res/meshes/rock.obj", Vector3r(0.75,0.75,0.75)),
+        auto boulder = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/rock.obj", Vector3r(0.75,0.75,0.75)),
                          physics::RigidState(Vector3r(-3,0,0) + netCenter, Vector3r(30.0, 0.0, 0.0), Vector3r(10,20,50)),
                          physics::RigidProps::withDensity(2500));
 

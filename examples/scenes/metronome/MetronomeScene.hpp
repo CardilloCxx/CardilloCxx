@@ -82,12 +82,12 @@ public:
             for (int iy = 0; iy < ny; ++iy) {
                 const Vector3r pos(baseX + (real_t)ix * spacing, baseY + (real_t)iy * spacing, baseZ + 0.001);
 
-                physics::MeshShape bodyShape("res/meshes/metronome.obj", true);
+                physics::MeshShape bodyShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/metronome.obj", true);
                 auto body = engine.addRigidBody(                    bodyShape,
                     physics::RigidState(pos),
                     physics::RigidProps((real_t)0.015)); // 100g body
 
-                physics::MeshShape leverShape("res/meshes/metronome_lever.obj", true);
+                physics::MeshShape leverShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/metronome_lever.obj", true);
                 auto lever = engine.addRigidBody(                    leverShape,
                     physics::RigidState(pos, Vector3r(0, 0, 0)),
                     physics::RigidProps((real_t)0.05)); // metal lever
