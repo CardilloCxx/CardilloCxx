@@ -49,6 +49,14 @@ class BlockSparseLDLT {
     const std::vector<int>& dims() const { return m_dims; }
     int totalDim() const;
 
+    // The elimination order actually used by the last factor()/factorWithOrder() call. Exposed so
+    // a caller whose graph *structure* (dims + edges, not the numeric blocks) is stable across
+    // repeated build()+factor() calls -- e.g. CondensedAssembler's bilateral graph, whose topology
+    // doesn't change step-to-step even though Gii/complianceDiag do -- can cache it and pass it to
+    // factorWithOrder() on a structural cache hit, skipping the O(n^2) minimum-degree symbolic pass
+    // entirely. See CondensedAssembler::buildBilateralFactorization().
+    const std::vector<int>& order() const { return m_order; }
+
    private:
     // Every node's dof is <=6 (see class comment), so every block below is a fixed-size Matrixr<6,6>
     // stack buffer accessed via `.topLeftCorner(dims[i], dims[j])`, exactly the Buf6-style pattern

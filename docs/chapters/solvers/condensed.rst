@@ -278,6 +278,35 @@ nothing is given up on the common case to fix the uncommon one; a synthetic
 270-node stress test mirroring ``hangbridge``'s rope+plank topology factors
 in under a millisecond with it.
 
+The minimum-degree order is also **cached** across steps
+(``CondensedAssembler`` keys the cache on the bilateral graph's structure --
+dims + which pairs of blocks are coupled, not the numeric ``Gii``/
+``complianceDiag`` values, which change every step regardless): every current
+scene's bilateral topology is static for its lifetime (constraints aren't
+created or destroyed at runtime), so after the first step this always hits,
+skipping the O(n^2) symbolic pass entirely. ``factorWithOrder()`` still runs
+the full *numeric* factorization on the current step's values either way, so
+a cache hit only ever changes which (still fully valid) elimination order is
+used, never the correctness of the factorization. Measured ~14% faster
+``Condensed Setup`` on ``wilberforce`` (327.9µs to 282.6µs average, 2000
+calls) -- a real but modest win, since ``Condensed Setup`` itself is a small
+fraction of that scene's wall-clock: for the default one-VTK-frame-per-step
+config, ``Output Write`` is ~90% of total time, unrelated to anything in this
+solver. Worth knowing if chasing wall-clock further on a similar scene --
+``output.interval_steps`` matters more there than anything below.
+
+The cache's correctness under a runtime structural change (a constraint
+actually added mid-simulation -- not exercised by any other example scene,
+all of which have static bilateral topology) is verified by
+``examples/scenes/dynamic_constraint``: three point masses, one spring from
+the start, a second spring added via ``updateScene()`` partway through the
+run. Confirmed (via ``debug.pj=true``) that ``nSprings`` actually grows from 1
+to 2 mid-run, and that ``condensed`` with ``true_schur=true`` (cache
+exercised, invalidates and recomputes at the structural change) produces a
+``totalKE``/``posNormSum`` fingerprint identical to both PGS and ``condensed``
+with ``true_schur=false`` -- not just an argument that the cache *should*
+invalidate correctly, a scene that actually forces it to.
+
 .. warning::
    **This is not a free "always enable it" win, and its benefit is much
    narrower than an earlier version of this note claimed -- measure before

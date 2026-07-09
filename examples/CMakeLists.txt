@@ -46,3 +46,4 @@ cardillo_add_scene_example(conveyor "scenes/conveyor/ConveyorScene.hpp" Conveyor
 cardillo_add_scene_example(three_d_printer "scenes/3DPrinter/ThreeDPrinterScene.hpp" ThreeDPrinterScene)
 cardillo_add_scene_example(cable_bunch "scenes/cable_bunch/CableBunchScene.hpp" CableBunchScene)
 cardillo_add_scene_example(jenga "scenes/jenga/scene.hpp" JengaScene)
+cardillo_add_scene_example(dynamic_constraint "scenes/dynamic_constraint/DynamicConstraintScene.hpp" DynamicConstraintScene)

@@ -383,8 +383,27 @@ cardillo::misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(
     }
 
     cardillo::misc::BlockSparseLDLT ldlt;
-    ldlt.build(std::move(dims), std::move(diagBlocks), edgeNodes, edgeBlocks);
-    ldlt.factor();  // internal greedy minimum-degree order -- see BlockSparseLDLT's own comment
+    // `dims` is passed by value (copied, not moved) so it's still available below for the cache
+    // comparison -- cheap, it's just n ints.
+    ldlt.build(dims, std::move(diagBlocks), edgeNodes, edgeBlocks);
+
+    // Structural cache hit: same bilateral graph (dims + which pairs of blocks are coupled) as last
+    // call -- true every step for every current scene, since springs/dampers aren't created or
+    // destroyed at runtime, only their Gii/complianceDiag *values* change with dt/theta/state (both
+    // already baked into `diagBlocks`/`edgeBlocks` above, independent of this check). Skip the
+    // O(n^2) minimum-degree symbolic pass and reuse the cached order; factorWithOrder() still does
+    // the full *numeric* factorization on the current values, so this never risks staleness in the
+    // actual factorization, only in which (still-correct-for-any-order) elimination order is used.
+    const bool topologyMatches = m_hasCachedBilateralOrder && dims == m_cachedBilateralDims && edgeNodes == m_cachedBilateralEdgeNodes;
+    if (topologyMatches) {
+        ldlt.factorWithOrder(m_cachedBilateralOrder);
+    } else {
+        ldlt.factor();  // internal greedy minimum-degree order -- see BlockSparseLDLT's own comment
+        m_cachedBilateralDims = std::move(dims);
+        m_cachedBilateralEdgeNodes = std::move(edgeNodes);
+        m_cachedBilateralOrder = ldlt.order();
+        m_hasCachedBilateralOrder = true;
+    }
     return ldlt;
 }
 

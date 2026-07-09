@@ -87,6 +87,21 @@ class CondensedAssembler {
    private:
     cardillo::physics::DynamicsAssembler* m_dyn;
     cardillo::config::Config m_cfg;
+
+    // Cache of the last elimination order computed by buildBilateralFactorization(), keyed on the
+    // bilateral graph's *structure* (dims + edge node pairs -- not the numeric Gii/complianceDiag
+    // values, which change every call regardless). The bilateral (spring+damper) topology is
+    // static for a scene's lifetime in every current example (constraints aren't created/destroyed
+    // at runtime), so this cache hits every call after the first and turns the O(n^2) minimum-
+    // degree symbolic pass into a one-time cost instead of a per-timestep one. `mutable`: this is
+    // memoization behind an otherwise-const interface, not an observable behavior change -- see
+    // buildBilateralFactorization()'s doc comment for the correctness argument (a cache miss always
+    // falls back to recomputing from scratch, so a stale/wrong cache can only cost performance,
+    // never correctness).
+    mutable std::vector<int> m_cachedBilateralDims;
+    mutable std::vector<std::array<int, 2>> m_cachedBilateralEdgeNodes;
+    mutable std::vector<int> m_cachedBilateralOrder;
+    mutable bool m_hasCachedBilateralOrder{false};
 };
 
 }  // namespace cardillo::physics::assembly

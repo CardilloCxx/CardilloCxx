@@ -466,6 +466,54 @@ per-step behavior, always inspect the full step-by-step sequence (e.g. `grep -o 
 over the whole log), never a tail/head slice, especially for a scene whose difficulty is expected
 to change over the run (contacts forming, a structure settling, etc.).
 
+## Update: fixed-size BlockSparseLDLT internals + cached elimination order
+
+Follow-up work after `wilberforce` (a pure DAE, `collision.disable_all=true`) showed `true_schur`
+"brilliant" there — user request to push further: compile-time-bounded block dimensions, and
+symbolic/numeric caching.
+
+**Fixed-size blocks**: tried in two places. `BlockSparseLDLT`'s own internal storage (used by
+`factor()`/`solve()`, called once per pivot/once per call) switched from heap-allocated `MatrixXXr`
+to fixed `Matrixr<6,6>` buffers accessed via `.topLeftCorner()` — verified correct (standalone
+stress test, ~1e-16 accuracy) and a genuine ~4% wall-clock win on `wilberforce` (bilateral blocks
+are dim=6, a good fit). Applying the *same* treatment to `RowBlock` itself (`Ja`/`Jb`/`Gii`/
+`GiiInv`, read by every sweep function) was also tried — measured a **~20% wall-clock regression on
+`domino`** (own from-scratch build vs an A/B-tested stash of the pre-change commit, not a rough
+estimate). Root cause: domino has ~13k mostly small-dim (1 or 3) contact blocks; forcing them into
+a 6x6 buffer wastes most of that memory as unused padding, and reading that padding-heavy struct
+thousands of times per sweep hurts cache locality more than avoiding heap allocation helps. Reverted
+that part; kept the `BlockSparseLDLT`-only version, which doesn't have this problem (bilateral
+blocks tend to actually use most of a 6x6 buffer).
+
+**Cached elimination order**: `CondensedAssembler` now caches the minimum-degree order across
+`solve()` calls, keyed on the bilateral graph's structure (dims + coupled-block pairs), invalidated
+only if that structure changes (never does, in every current scene — constraints aren't created or
+destroyed at runtime). `factorWithOrder()` still does the full numeric factorization on the current
+step's values regardless of a cache hit, so this can only affect performance, never correctness —
+verified bit-identical `totalKE` on domino/slinky/wilberforce/hangbridge before and after. Measured
+~14% faster `Condensed Setup` on `wilberforce` (327.9µs → 282.6µs average over 2000 calls). Total
+wall-clock effect was much smaller, because `Condensed Setup` itself is only ~5% of that scene's
+runtime — `Output Write` (VTK I/O, `output.interval_steps=1` writing every step) is ~90%. Noting
+this plainly rather than folding it into a bigger-sounding total-wall-clock number: if wall-clock on
+a similar scene matters, output frequency is a bigger lever than anything in this solver.
+
+**A real correctness question raised during review, resolved with a concrete test, not just an
+argument**: does this cache actually invalidate correctly if the bilateral topology changes at
+*runtime* (a constraint added/removed mid-simulation via `World::markStructureDirty()`), given no
+existing example scene's topology ever changes? Traced the mechanism:
+`DynamicsAssembler::updateStateDependentTerms()` calls `rebuildInteractionW_()` (which fully rebuilds
+`constraintResults()`) unconditionally every step, regardless of `m_structure_dirty` — that flag only
+gates the separate, cheaper-to-skip body-offset/dof bookkeeping in `refreshState()`. So
+`CondensedAssembler::buildTopology()` always reflects the live constraint set, and the cache's own
+`dims == cached && edgeNodes == cached` check (computed fresh from that live data every call) is a
+sufficient, self-contained invalidation signal — it doesn't need to consult `m_structure_dirty` at
+all. Rather than resting on that argument, added `examples/scenes/dynamic_constraint`: three point
+masses, one spring from the start, a second added via `updateScene()` at t=0.02s. Confirmed via
+`debug.pj=true` that `nSprings` actually grows 1→2 mid-run, and that `condensed` with
+`true_schur=true` (cache exercised) produces a `totalKE`/`posNormSum` fingerprint identical to both
+PGS and `condensed` with `true_schur=false` across the structural change. A genuine regression test
+for this guarantee, not just a plausibility argument.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode
