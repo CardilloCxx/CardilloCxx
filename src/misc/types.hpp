@@ -33,19 +33,10 @@ using Vector3b = Eigen::Matrix<bool, 3, 1>;
 using Array3i = Eigen::Array<index_t, 3, 1>;
 using Array3b = Eigen::Array<bool, 3, 1>;
 using Matrix33r = Eigen::Matrix<real_t, 3, 3>;
-// Eigen does not provide SkewSymmetricMatrix3 as a template alias in all versions.
-// Represent a 3x3 skew-symmetric matrix as a fixed-size Eigen matrix and
-// provide a helper to build it from a 3-vector when needed.
-using SkewSymmetricMatrix3r = Eigen::Matrix<real_t, 3, 3>;
+using SkewSymmetricMatrix3r = Eigen::SkewSymmetricMatrix3<real_t>;
 
 using Vector4r = Eigen::Matrix<real_t, 4, 1>;
 using Matrix44r = Eigen::Matrix<real_t, 4, 4>;
-
-inline SkewSymmetricMatrix3r skew_from_vector(const Vector3r& v) {
-    SkewSymmetricMatrix3r m;
-    m << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
-    return m;
-}
 
 using AngleAxis3r = Eigen::AngleAxis<real_t>;
 using Quaternion4r = Eigen::Quaternion<real_t>;

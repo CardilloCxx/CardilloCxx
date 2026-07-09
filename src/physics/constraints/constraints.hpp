@@ -86,8 +86,8 @@ struct JointProperties {
         A_K1J = cardillo::transform::rotation(jf.A_refJ, refState, stateA);
 
         // Precompute local skew matrices
-        K1_r_S1J_skew = skew_from_vector(K1_r_S1J);
-        K2_r_S2J_skew = skew_from_vector(K2_r_S2J);
+        K1_r_S1J_skew = SkewSymmetricMatrix3r(K1_r_S1J);
+        K2_r_S2J_skew = SkewSymmetricMatrix3r(K2_r_S2J);
     }
 
     // Joint position and orientation in the chosen reference frame
@@ -220,7 +220,7 @@ class TranslationRotationConstraint : public ConstraintPattern {
     VectorXr m_g0{VectorXr::Zero(6)};
 
     // Build full 6x6 Jacobians for a rigid joint using world attachments.
-    void buildJointJacobian(const WorldAttachments& wa, Vector3r g, MatrixXXr& WgA, MatrixXXr& WgB) const;
+    void buildJointJacobian(const WorldAttachments& wa, const Vector3r& g, MatrixXXr& WgA, MatrixXXr& WgB) const;
 };
 
 // Beam constraint (6 scalar rows): stretch/shear (x,y,z) and torsion/bend (x,y,z)
