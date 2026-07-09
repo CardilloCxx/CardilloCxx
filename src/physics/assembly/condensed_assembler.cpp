@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <iostream>
 #include <map>
 #include <utility>
@@ -395,6 +396,17 @@ cardillo::misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(
     // the full *numeric* factorization on the current values, so this never risks staleness in the
     // actual factorization, only in which (still-correct-for-any-order) elimination order is used.
     const bool topologyMatches = m_hasCachedBilateralOrder && dims == m_cachedBilateralDims && edgeNodes == m_cachedBilateralEdgeNodes;
+    // Opt-in diagnostic (same convention as CARDILLO_DUMP_STATE, see examples/example_main.hpp):
+    // prints a HIT/MISS line + running counts every call, so this cache's actual behavior on a
+    // scene can be checked directly instead of assumed. Confirmed on wilberforce (999 hits / 1
+    // miss over 1000 steps -- misses only the first call, as expected for a scene whose bilateral
+    // topology never changes) and on dynamic_constraint (misses exactly at step 1 and at the
+    // step where the second spring is added, hits every other call).
+    if (getenv("CARDILLO_DEBUG_SCHUR_CACHE")) {
+        static int hits = 0, misses = 0;
+        (topologyMatches ? hits : misses)++;
+        std::cout << "[SchurCache] " << (topologyMatches ? "HIT" : "MISS") << " n=" << n << " hits=" << hits << " misses=" << misses << std::endl;
+    }
     if (topologyMatches) {
         ldlt.factorWithOrder(m_cachedBilateralOrder);
     } else {

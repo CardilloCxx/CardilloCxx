@@ -514,6 +514,16 @@ masses, one spring from the start, a second added via `updateScene()` at t=0.02s
 PGS and `condensed` with `true_schur=false` across the structural change. A genuine regression test
 for this guarantee, not just a plausibility argument.
 
+**Immediately followed up on**: does the cache actually *hit* when the structure is stable, or is
+it silently missing every call (which would mean the ~14% win was real by coincidence, not because
+caching is working)? Added an opt-in diagnostic (`CARDILLO_DEBUG_SCHUR_CACHE=1`, same convention as
+`CARDILLO_DUMP_STATE`) that prints HIT/MISS with running counts every call, and counted directly
+rather than inferring from timing: `wilberforce` — 999 hits / 1 miss over 1000 steps (misses only
+the very first call, exactly as expected for a scene whose bilateral topology never changes).
+`dynamic_constraint` — misses exactly at step 1 and at the step the second spring is added, hits
+every other call (98/100). Both match the theoretical prediction exactly, confirming the cache is
+doing what it's supposed to, not coincidentally correct.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode

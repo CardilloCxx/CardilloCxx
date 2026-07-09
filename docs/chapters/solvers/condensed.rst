@@ -307,6 +307,15 @@ exercised, invalidates and recomputes at the structural change) produces a
 with ``true_schur=false`` -- not just an argument that the cache *should*
 invalidate correctly, a scene that actually forces it to.
 
+The other half of the question -- does the cache actually *hit* when the
+structure doesn't change, not just invalidate correctly when it does -- is
+directly measurable via ``CARDILLO_DEBUG_SCHUR_CACHE=1`` (prints a HIT/MISS
+line with running counts every call). Confirmed on ``wilberforce``: 999 hits
+out of 1000 steps, missing only the first call. On ``dynamic_constraint``:
+misses exactly at step 1 and at the step the second spring is added, hits
+every other call (98/100). Both match the theoretical expectation exactly --
+this isn't inferred from a wall-clock delta, it's counted directly.
+
 .. warning::
    **This is not a free "always enable it" win, and its benefit is much
    narrower than an earlier version of this note claimed -- measure before
