@@ -551,7 +551,13 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
 
             const VectorXr lambda_k1 = lambda;
             const VectorXr u_k1 = u_corr;
-            m_last_iters = iter + 2;
+            // Exactly one doSweep() happened this iteration -- same as the plain loop above and
+            // PJ's own nesterov_loop() (which uses iter+1) -- so this must match. (Previously
+            // iter+2, inherited verbatim from PGS's Nesterov branch, which had the same stray
+            // off-by-one with no second sweep anywhere to justify it -- see that fix. Purely
+            // cosmetic: only ever read by the progress-bar/log "iters=" display, never by any
+            // convergence or control-flow decision.)
+            m_last_iters = iter + 1;
 
             // Non-throwing here, deliberately -- matching PJ's own nesterov_loop() (see
             // projected_jacobi.cpp), which never throws on a non-finite residual either: a NaN/Inf

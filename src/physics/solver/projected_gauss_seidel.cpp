@@ -211,7 +211,12 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
             pgs_sweep(iter);
             const VectorXr lambda_k1 = lambda;
             const VectorXr u_k1 = u_corr;
-            m_last_iters = iter + 2;
+            // Exactly one pgs_sweep() happened this iteration -- same as every other loop in this
+            // file and in PJ's own nesterov_loop()/chebyshev_loop() (both use iter+1) -- so this
+            // must match, not iter+2. (Previously iter+2, a stray off-by-one with no second sweep
+            // anywhere to justify it -- purely cosmetic, only ever read by the progress-bar/log
+            // "iters=" display, never by any convergence or control-flow decision.)
+            m_last_iters = iter + 1;
 
             const real_t err = check_residual(u_y, u_k1, iter);
             if (err <= (real_t)1) break;
