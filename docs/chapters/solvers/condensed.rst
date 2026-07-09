@@ -366,6 +366,41 @@ this isn't inferred from a wall-clock delta, it's counted directly.
    iteration counts *per step*, not just a run's total or its first entry,
    before trusting a number on a new scene.
 
+Implicit gyroscopic forces (``moreau.implicit_gyroscopy``)
+------------------------------------------------------------
+
+``moreau.implicit_gyroscopy=true`` (a second-order, Kahan-consistent treatment of the Euler
+equations for a rotating rigid body) is now genuinely supported by ``condensed`` -- it was silently
+dropped before (the assembler printed a warning and applied nothing, giving wrong dynamics for any
+rigid body with the flag set, not just a missing optimization).
+
+The correction makes a rigid body's effective mass non-symmetric: ``M_eff = M - dt*Grot`` where
+``Grot = 0.5*([I*omega]_x - [omega]_x*I)`` (the same formula ``projected_jacobi`` already used).
+``condensed``'s Schur-complement architecture needs this as an explicit per-body inverse-mass
+block rather than a system-matrix correction, so a body with the flag active (and actual rotational
+dof) gets a ``Minv`` override -- unchanged diagonal for translation, a general (not necessarily
+symmetric) inverse for rotation -- consulted everywhere the solver would otherwise use the plain
+diagonal ``MinvDiag``. Every one of those call sites falls through to the *original* expression,
+unchanged, for every body without an active override, so a scene that never enables this flag is
+byte-for-byte unaffected.
+
+When the compliant (spring/damper) chain includes such a body, ``condensed.true_schur``'s
+block-sparse factorization also switches from block-LDLT to a block-LU generalization -- roughly
+double the per-pivot cost, but only for that graph, and only when a gyroscopic body actually
+participates in it; a scene with gyroscopic bodies that never touch the compliant chain keeps the
+cheaper symmetric path.
+
+.. note::
+   Validated against ``projected_jacobi``, the trusted independent reference for this formula, on
+   ``wilberforce`` (a torsional-vertical mode-coupled pendulum discretized as 360 coupled rigid
+   segments -- the standard textbook exercise for this exact effect): with
+   ``condensed.true_schur=true`` and ``condensed.sweep_mode=colored``, kinetic energy after 1000
+   steps agreed with PJ to ~10 significant figures, and the position fingerprint matched exactly to
+   every printed digit. Building that PJ reference surfaced an independent, pre-existing bug in
+   ``projected_jacobi`` itself -- its solver never passed ``moreau_implicit_gyroscopy``/
+   ``moreau_lambda_theta`` through to the system-matrix assembly, so PJ's own implicit treatment was
+   also inactive until fixed. See ``CONDENSED_SOLVER_REPORT.md`` for the full validation writeup.
+
 Nesterov acceleration
 ----------------------
 
