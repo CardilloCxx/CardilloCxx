@@ -24,9 +24,9 @@ public:
         using namespace cardillo;
 
         // Mesh paths
-        const std::string framePath = "res/meshes/frame.obj";
-        const std::string lowerPath = "res/meshes/lowerRod.obj";
-        const std::string upperPath = "res/meshes/upperRod.obj";
+        const std::string framePath = std::string(PROJECT_SOURCE_DIR) + "/res/meshes/frame.obj";
+        const std::string lowerPath = std::string(PROJECT_SOURCE_DIR) + "/res/meshes/lowerRod.obj";
+        const std::string upperPath = std::string(PROJECT_SOURCE_DIR) + "/res/meshes/upperRod.obj";
 
         // Add frame as obstacle at origin
         const Vector3r framePos = Vector3r::Zero();

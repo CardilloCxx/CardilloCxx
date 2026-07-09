@@ -23,7 +23,7 @@ public:
     engine.addStaticBody(groundShape, groundState);
 
         // Rail mesh as a static obstacle (long rail)
-    engine.addStaticBody(physics::MeshShape("res/meshes/rail.obj"), physics::RigidState(Vector3r(0,0,0))); // static
+    engine.addStaticBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/rail.obj"), physics::RigidState(Vector3r(0,0,0))); // static
 
         // Wheel mesh as a dynamic rigid body
         const Vector3r linearVel(0.0, -1.0, 0.0);
@@ -31,6 +31,6 @@ public:
         const real_t trackRadius = (real_t)10.0;
         const Vector3r angularVel(-linearVel.y() / wheelRadius, 0.0,  -linearVel.y() / trackRadius);
     physics::RigidState s(Vector3r(-0.075, 0.0, 0.575), linearVel, Quaternion4r::Identity(), angularVel);
-    engine.addRigidBody(physics::MeshShape("res/meshes/train_wheel.obj"), s, physics::RigidProps((real_t)5.0));
+    engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/train_wheel.obj"), s, physics::RigidProps((real_t)5.0));
     }
 };

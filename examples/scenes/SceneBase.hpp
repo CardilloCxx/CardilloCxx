@@ -2,6 +2,7 @@
 
 #include "../src/physics/api/physics.hpp"
 #include "../src/misc/types.hpp"
+#include "../src/config/path.hpp"
 
 // Abstract base for example scenes. Derive and implement `populate` which
 // receives an already-constructed PhysicsEngine to add obstacles and bodies to.

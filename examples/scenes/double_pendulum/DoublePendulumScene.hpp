@@ -23,13 +23,13 @@ public:
 
         // base link
         m_base = engine.addStaticBody(
-            MeshShape("res/meshes/double_pendulum/base_link.stl", scale),
+            MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/double_pendulum/base_link.stl", scale),
             RigidState{}
         );
 
         // first rigid body
         m_rb1 = engine.addRigidBody(
-            MeshShape("res/meshes/double_pendulum/link1.stl", scale),
+            MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/double_pendulum/link1.stl", scale),
             // When using meshes the actually position and orientation differ 
             // to values passed here, as the mesh COM and principal axes are 
             // used. The passed values are passsed are offset from the model 
@@ -58,7 +58,7 @@ public:
 
         // second rigid body
         m_rb2 = engine.addRigidBody(
-            MeshShape("res/meshes/double_pendulum/link2.stl", scale),
+            MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/double_pendulum/link2.stl", scale),
             RigidState{
                 Vector3r{0.007, 0.1, 0.04 - 0.004}, // initial position
                 Quaternion4r{Eigen::AngleAxis<real_t>(-M_PI / 2, Vector3r::UnitX())}, // initial orientation
