@@ -45,9 +45,9 @@ void IntegrationBase::linearImplicitPositionUpdate(World& world, real_t h) {
         const Quaternion4r q_prev = orientation.value;
 
         Matrix44r D = Matrix44r::Zero();
-        D.block<3, 3>(0, 0) = skew_from_vector(-omega);
-        D.block<3, 1>(0, 3) = omega;
-        D.block<1, 3>(3, 0) = -omega.transpose();
+        D.topLeftCorner<3, 3>() = SkewSymmetricMatrix3r(-omega);
+        D.topRightCorner<3, 1>() = omega;
+        D.bottomLeftCorner<1, 3>() = -omega.transpose();
 
         const Matrix44r A = Matrix44r::Identity() - 0.5 * h * D;
 

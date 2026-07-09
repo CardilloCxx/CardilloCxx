@@ -4,6 +4,13 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path 
 include(FetchContent)
 find_package(OpenMP QUIET)
 
+# --- 0. Set paths ---
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/config/path.hpp.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/config/path.hpp
+    @ONLY
+)
+
 # --- 1. Dependencies ---
 set(BUILD_PYTHON_INTERFACE OFF CACHE BOOL "Disable Coal Python bindings" FORCE)
 set(COAL_BUILD_PYTHON_INTERFACE OFF CACHE BOOL "Disable Coal Python bindings" FORCE)
@@ -12,12 +19,19 @@ set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
 set(EIGEN_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+# Eigen >= 5.0 gates its install(EXPORT Eigen3Targets ...) call behind this
+# option, defaulted to PROJECT_IS_TOP_LEVEL (OFF for a FetchContent subproject).
+# Without it, the "Eigen3Targets" export set is registered via install(TARGETS)
+# but never completed via install(EXPORT), so coal's install(EXPORT coalTargets)
+# fails dependency-completeness validation ("target eigen ... not in any export
+# set"). Eigen 3.4 called install(EXPORT) unconditionally, so this never came up.
+set(EIGEN_BUILD_CMAKE_PACKAGE ON CACHE BOOL "" FORCE)
 set(CONICXX_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(CONICXX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CONICXX_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(CONICXX_INSTALL OFF CACHE BOOL "" FORCE)
 
-FetchContent_Declare(eigen GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 3.4.0)
+FetchContent_Declare(eigen GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 5.0.1)
 FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.2)
 FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG v0.11.1)
 FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.0)

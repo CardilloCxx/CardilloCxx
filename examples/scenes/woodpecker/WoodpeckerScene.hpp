@@ -31,11 +31,11 @@ public:
         //    Use modest densities to compute mass from volume automatically
         const real_t rhoRing = (real_t)400;      // kg/m^3
         const real_t rhoWoodpecker = (real_t)400; // kg/m^3
-        auto ring = engine.addRigidBody(physics::MeshShape("res/meshes/woodpecker_ring.obj"),
+        auto ring = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/woodpecker_ring.obj"),
                                      physics::RigidState(Vector3r::Zero(), Vector3r(0.0, 0.0, 0.0)),
                                      physics::RigidProps::withDensity(rhoRing));
 
-        auto pecker = engine.addRigidBody(physics::MeshShape("res/meshes/woodpecker.obj"),
+        auto pecker = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/woodpecker.obj"),
                                        physics::RigidState(Vector3r::Zero(), Vector3r(0.0, 0.0, -0.2)),
                                        physics::RigidProps::withDensity(rhoWoodpecker));
 
