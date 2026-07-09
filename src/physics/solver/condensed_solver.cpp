@@ -7,6 +7,7 @@
 #include <limits>
 #include <numeric>
 #include <random>
+#include <unordered_map>
 
 #ifdef CARDILLO_HAVE_OPENMP
 #include <omp.h>
@@ -65,17 +66,34 @@ void blockResidual(const RowBlock& blk, const VectorXr& rhs, const VectorXr& u_c
     o.noalias() -= blk.complianceDiag.cwiseProduct(lambda.segment(blk.offset, blk.dim));
 }
 
+// nullptr for every body without an active implicit-gyroscopic override -- the overwhelming common
+// case, so every call site below keeps its original plain-diagonal-MinvDiag expression unchanged in
+// that branch. See CondensedTopology::gyroMinvBlocks.
+const Matrixr<6, 6>* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrixr<6, 6>>& gyroBlocks) {
+    if (bodyIndex < 0 || gyroBlocks.empty()) return nullptr;
+    auto it = gyroBlocks.find(bodyIndex);
+    return it == gyroBlocks.end() ? nullptr : &it->second;
+}
+
 // Applies one block's impulse delta (dlambda.head(blk.dim)) to u_corr in place: u_corr += Minv *
 // J^T * dlambda. `tmp` is caller-provided scratch for the intermediate J^T*dlambda product (also
-// Buf6, also heap-free).
-void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const Buf6& dlambda, VectorXr& u_corr, Buf6& tmp) {
+// Buf6, also heap-free). `gyroBlocks` is topo.gyroMinvBlocks -- empty for every scene without an
+// active implicit-gyroscopic body, in which case every branch below reduces to exactly the original
+// expression (see gyroBlockFor()).
+void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const std::unordered_map<int, Matrixr<6, 6>>& gyroBlocks, const Buf6& dlambda, VectorXr& u_corr, Buf6& tmp) {
     if (blk.aDof > 0) {
         tmp.head(blk.aDof).noalias() = blk.Ja.transpose() * dlambda.head(blk.dim);
-        u_corr.segment(blk.aOff, blk.aDof).noalias() += MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(tmp.head(blk.aDof));
+        if (const auto* gA = gyroBlockFor(blk.bodyIndexA, gyroBlocks))
+            u_corr.segment(blk.aOff, blk.aDof).noalias() += gA->topLeftCorner(blk.aDof, blk.aDof) * tmp.head(blk.aDof);
+        else
+            u_corr.segment(blk.aOff, blk.aDof).noalias() += MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(tmp.head(blk.aDof));
     }
     if (blk.bDof > 0) {
         tmp.head(blk.bDof).noalias() = blk.Jb.transpose() * dlambda.head(blk.dim);
-        u_corr.segment(blk.bOff, blk.bDof).noalias() += MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(tmp.head(blk.bDof));
+        if (const auto* gB = gyroBlockFor(blk.bodyIndexB, gyroBlocks))
+            u_corr.segment(blk.bOff, blk.bDof).noalias() += gB->topLeftCorner(blk.bDof, blk.bDof) * tmp.head(blk.bDof);
+        else
+            u_corr.segment(blk.bOff, blk.bDof).noalias() += MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(tmp.head(blk.bDof));
     }
 }
 
@@ -104,7 +122,7 @@ void exactBilateralStep(const CondensedTopology& topo, const cardillo::misc::Blo
     for (int i = 0; i < n; ++i) {
         const auto& blk = topo.blocks[(size_t)i];
         d.head(blk.dim) = delta.segment(blk.offset, blk.dim);
-        scatterDelta(blk, MinvDiag, d, u_corr, tmp);
+        scatterDelta(blk, MinvDiag, topo.gyroMinvBlocks, d, u_corr, tmp);
         lambda.segment(blk.offset, blk.dim) += d.head(blk.dim);
     }
 }
@@ -150,7 +168,7 @@ void gaussSeidelSweep(const CondensedTopology& topo, const VectorXr& rhs, const 
         computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew);
 
         delta.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
-        scatterDelta(blk, MinvDiag, delta, u_corr, tmp);
+        scatterDelta(blk, MinvDiag, topo.gyroMinvBlocks, delta, u_corr, tmp);
         lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);
     }
 }
@@ -217,7 +235,7 @@ void coloredSweep(const CondensedTopology& topo, const cardillo::misc::Coloring&
             // Safe: no two blocks in `cls` share a body (that's the coloring invariant), so these
             // writes land in disjoint slices of u_corr/lambda across threads -- no race, no atomics.
             delta.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
-            scatterDelta(blk, MinvDiag, delta, u_corr, tmp);
+            scatterDelta(blk, MinvDiag, topo.gyroMinvBlocks, delta, u_corr, tmp);
             lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);
         }
         // implicit barrier at the end of `omp for` here, before the next color starts
@@ -280,7 +298,10 @@ void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelO
                 if (blk.bodyIndexA == b) acc.head(dof).noalias() += blk.Ja.transpose() * d.head(blk.dim);
                 if (blk.bodyIndexB == b) acc.head(dof).noalias() += blk.Jb.transpose() * d.head(blk.dim);
             }
-            u_write.segment(off, dof) = u_read.segment(off, dof) + MinvDiag.segment(off, dof).cwiseProduct(acc.head(dof));
+            if (const auto* gB = gyroBlockFor(b, topo.gyroMinvBlocks))
+                u_write.segment(off, dof) = u_read.segment(off, dof) + gB->topLeftCorner(dof, dof) * acc.head(dof);
+            else
+                u_write.segment(off, dof) = u_read.segment(off, dof) + MinvDiag.segment(off, dof).cwiseProduct(acc.head(dof));
         }
     }
     u_corr = std::move(u_write);
@@ -323,12 +344,18 @@ void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const 
         d.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
         if (blk.aDof > 0) {
             inc.head(blk.aDof).noalias() = blk.Ja.transpose() * d.head(blk.dim);
-            inc.head(blk.aDof) = MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(inc.head(blk.aDof));
+            if (const auto* gA = gyroBlockFor(blk.bodyIndexA, topo.gyroMinvBlocks))
+                inc.head(blk.aDof) = gA->topLeftCorner(blk.aDof, blk.aDof) * inc.head(blk.aDof);
+            else
+                inc.head(blk.aDof) = MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(inc.head(blk.aDof));
             for (int dd = 0; dd < blk.aDof; ++dd) u_corr_atomic[(size_t)(blk.aOff + dd)].fetch_add(inc[dd], std::memory_order_relaxed);
         }
         if (blk.bDof > 0) {
             inc.head(blk.bDof).noalias() = blk.Jb.transpose() * d.head(blk.dim);
-            inc.head(blk.bDof) = MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(inc.head(blk.bDof));
+            if (const auto* gB = gyroBlockFor(blk.bodyIndexB, topo.gyroMinvBlocks))
+                inc.head(blk.bDof) = gB->topLeftCorner(blk.bDof, blk.bDof) * inc.head(blk.bDof);
+            else
+                inc.head(blk.bDof) = MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(inc.head(blk.bDof));
             for (int dd = 0; dd < blk.bDof; ++dd) u_corr_atomic[(size_t)(blk.bOff + dd)].fetch_add(inc[dd], std::memory_order_relaxed);
         }
     }
@@ -339,9 +366,9 @@ void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const 
 VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     auto sc_setup = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSetup);
 
-    CondensedTopology topo = m_assembler.buildTopology();
+    CondensedTopology topo = m_assembler.buildTopology(dt);
     m_assembler.updateCompliance(topo, dt, theta);
-    const VectorXr u_free = m_assembler.ufree(dt, theta);
+    const VectorXr u_free = m_assembler.ufree(dt, theta, topo);
 
     const int nSprings = topo.springRows;
     const int nDampers = topo.damperRows;
@@ -377,7 +404,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         Buf6 lam0, tmp0;
         for (const auto& blk : topo.blocks) {
             lam0.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
-            scatterDelta(blk, MinvDiag, lam0, u_corr, tmp0);
+            scatterDelta(blk, MinvDiag, topo.gyroMinvBlocks, lam0, u_corr, tmp0);
         }
     }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 #include <entt/entt.hpp>
 #include "../../config/config.hpp"
@@ -27,7 +28,11 @@ struct RowBlock {
     MatrixXXr Ja;  // dim x aDof (empty if aDof==0)
     MatrixXXr Jb;  // dim x bDof (empty if bDof==0)
 
-    MatrixXXr Gii;             // dim x dim mass-only Delassus block: Ja*diag(MinvA)*Ja^T + Jb*diag(MinvB)*Jb^T
+    // dim x dim mass-only Delassus block: Ja*MinvA*Ja^T + Jb*MinvB*Jb^T. MinvA/MinvB are normally
+    // diag(MinvDiag) -- except for a body with an active implicit-gyroscopic override
+    // (CondensedTopology::gyroMinvBlocks), where it's that body's (generally non-symmetric) full
+    // block instead, making Gii itself generally non-symmetric too.
+    MatrixXXr Gii;
     VectorXr complianceDiag;   // size dim; 0 for contacts, Crow/(theta*dt^2) or Arow/(theta*dt) for springs/dampers
     MatrixXXr GiiInv;          // invertSmallSpd(Gii + diag(complianceDiag))
 
@@ -45,6 +50,18 @@ struct CondensedTopology {
     // blocks are blocks[numBilateralBlocks:] -- no separate index list needed. Distinct from
     // springRows/damperRows, which count *rows* (a block can have dim>1), not *blocks*.
     int numBilateralBlocks{0};
+
+    // Per-body override of the (block-diagonal) inverse mass, keyed by body index -- populated only
+    // for rigid bodies with an active implicit-gyroscopic correction (moreau.implicit_gyroscopy=true
+    // AND the body actually has rotational dof), EMPTY otherwise (the overwhelming common case).
+    // Every place that would otherwise read `MinvDiag.segment(off,dof)` as a plain diagonal must
+    // check here first: a body present here has a genuinely non-diagonal, generally non-symmetric
+    // effective inverse mass (translational 3x3 unchanged/diagonal, rotational 3x3 =
+    // invertSmallGeneral(I - dt*Grot), see CondensedAssembler::buildTopology()'s implementation and
+    // PjAssembler::buildAndFactorS() for the reference formula this mirrors). Absent from this map
+    // == "use MinvDiag as before", so an empty map is exactly behaviorally equivalent to this
+    // feature not existing.
+    std::unordered_map<int, Matrixr<6, 6>> gyroMinvBlocks;
 };
 
 // Builds and evaluates the condensed (block-sparse, matrix-free) system in exactly the same
@@ -56,16 +73,19 @@ class CondensedAssembler {
    public:
     CondensedAssembler(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
 
-    // Builds the RowBlock list + body incidence from the current constraintResults()/contacts().
-    // Pure geometry+mass, independent of dt/theta; call once per solve() (topology can change
-    // every step as contacts appear/disappear).
-    CondensedTopology buildTopology() const;
+    // Builds the RowBlock list + body incidence from the current constraintResults()/contacts(),
+    // and (see CondensedTopology::gyroMinvBlocks) each implicit-gyroscopic body's effective inverse
+    // mass block. Independent of theta; `dt` is only needed for the gyroscopic correction (M_eff =
+    // M - dt*Grot depends on it) -- geometry/mass otherwise wouldn't need it at all. Call once per
+    // solve() (topology can change every step as contacts appear/disappear).
+    CondensedTopology buildTopology(real_t dt) const;
 
     // Fills complianceDiag/GiiInv for every block (dt/theta-dependent). Mutates topo in place.
     void updateCompliance(CondensedTopology& topo, real_t dt, real_t theta) const;
 
-    // Identical formula to PgsAssembler::ufree().
-    VectorXr ufree(real_t dt, real_t theta) const;
+    // Identical formula to PgsAssembler::ufree(), generalized for implicit-gyroscopic bodies via
+    // topo.gyroMinvBlocks (see CondensedTopology's doc comment).
+    VectorXr ufree(real_t dt, real_t theta, const CondensedTopology& topo) const;
 
     // Per-block target vector, packed in topo's row layout. A de-sparsified port of
     // PgsAssembler::rhs() -- same formulas/signs, transcribed line by line, no
@@ -81,7 +101,11 @@ class CondensedAssembler {
     // each bilateral block's Gii+complianceDiag). Natural order (block index order) is used as the
     // elimination order: zero fill-in for every current example scene's compliant network except
     // `hangbridge`'s branching tripod/deck topology, where correctness still holds, just with
-    // some fill-in.
+    // some fill-in. Builds with BlockSparseLDLT's symmetric=false (block-LU) mode -- roughly double
+    // the Schur-update cost -- only if topo.gyroMinvBlocks makes some bilateral-graph coupling
+    // genuinely non-symmetric; otherwise (every scene without an active implicit-gyroscopic body in
+    // its compliant chain) uses the default symmetric=true mode, unchanged in cost from before this
+    // capability existed.
     cardillo::misc::BlockSparseLDLT buildBilateralFactorization(const CondensedTopology& topo) const;
 
    private:

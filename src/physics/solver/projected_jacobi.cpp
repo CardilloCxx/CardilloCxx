@@ -440,7 +440,7 @@ static inline void nesterov_loop(std::unique_ptr<workspace>& ws, cardillo::confi
 }
 
 VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
-    m_assembler.buildAndFactorS(dt, theta);
+    m_assembler.buildAndFactorS(dt, theta, m_cfg.moreau_implicit_gyroscopy, m_cfg.moreau_lambda_theta);
 
     const int numV = m_dyn.numV();
     const int numS = m_dyn.numSprings();

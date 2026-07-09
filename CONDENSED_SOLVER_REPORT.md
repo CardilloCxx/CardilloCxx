@@ -573,6 +573,70 @@ re-ran — `diff` on both logs came back empty. Confirms the restructuring (spli
 into a dispatcher plus a same-code-unchanged `*Symmetric` variant) introduced no behavior change at
 all on the only path any real scene currently exercises.
 
+## Update: implicit-gyroscopic support in `condensed` (Kahan-consistent rigid body integration)
+
+Fourth and final step of this follow-up: wire Stage C's non-symmetric `BlockSparseLDLT` mode into
+`CondensedAssembler`/`CondensedSolver` so `moreau.implicit_gyroscopy=true` is actually honored by
+`solver.type=condensed`, closing a real, silently-wrong-physics gap. Previously,
+`CondensedAssembler::rhs()` printed a warning every step and dropped the gyroscopic term entirely
+whenever implicit gyroscopy was requested with `condensed` -- not "missing an optimization", just
+silently wrong: the mass-matrix correction that makes the treatment *implicit* was never applied
+anywhere, so the body's dynamics were identical to gyroscopic forces not existing at all.
+
+**The fix**: `PjAssembler::buildAndFactorS()` already has the correct formula --
+`Grot = 0.5*([I*omega]_x - [omega]_x*I)`, `M_eff = M - dt*Grot` added to a rigid body's rotational
+3x3 block -- but PJ folds it into a big sparse system matrix it solves directly, while `condensed`'s
+whole architecture is a Schur-complement elimination that needs an explicit `Minv`, not `M`. Added
+`computeGyroscopicMinvBlocks()` (mirrors PJ's formula/filter exactly), producing a sparse per-body
+map (`CondensedTopology::gyroMinvBlocks`, keyed by body index, empty unless
+`moreau_implicit_gyroscopy=true` *and* the body actually has rotational dof) from
+`invertSmallGeneral((I - dt*Grot))` for the rotational 3x3, unchanged diagonal for translational.
+Every place that read `MinvDiag.segment(off,dof)` as a plain diagonal (`buildTopology()`'s three
+`Gii` accumulations, `ufree()`, `rhs()`'s `WMinvRhsVel`, `buildBilateralFactorization()`'s coupling,
+and `condensed_solver.cpp`'s `scatterDelta`/`jacobiSweep`/`chaoticSweep`, the sole point every sweep
+mode funnels velocity corrections through) now checks this map first and falls through to the
+*exact original expression, unchanged*, otherwise -- same discipline as Stage C: two branches, not
+one unified formula that pays a runtime cost even when nothing needs it.
+
+**A subtlety that cost a wrong first attempt**: `ufree()`'s original formula was `vn +
+Minv*dt*f_ext` -- correct only because `Minv*M=I` in the plain-diagonal case, letting `vn` stand in
+for `Minv*M*vn`. Once a body's `Minv_eff != M^{-1}`, that shortcut silently breaks: the system being
+solved is `M_eff*v_new = M*vn + dt*f_ext + W^T*lambda` (M_eff only on the LHS -- confirmed from
+PjAssembler's own construction, where `rhs`'s top block is plain `M*vn+dt*f_ext`, unchanged by
+`implicitGyro`), so with no constraint force the free velocity is `Minv_eff*(M*vn + dt*f_ext)`, not
+`vn + Minv_eff*dt*f_ext`. Caught by cross-checking against a (also-buggy, see next) PJ reference run
+that didn't match; fixed once identified.
+
+**A second, independent bug found while building that reference**: `ProjectedJacobiSolver::solve()`
+called `m_assembler.buildAndFactorS(dt, theta)` -- two arguments, silently taking `buildAndFactorS`'s
+`implicitGyro=false`/`lambdaTheta=false` *defaults* regardless of `moreau_implicit_gyroscopy`'s
+actual config value. `PjAssembler::rhs()` correctly reads the config flag internally, so PJ's RHS
+was already right, but its LHS system matrix never got the `M_eff` correction either -- the same
+"half-implemented" gap as `condensed` had, just via unwired defaults instead of a printed-and-dropped
+term. This meant PJ could not actually serve as a reference for validating `condensed`'s new
+treatment until fixed too (one-line fix: pass `m_cfg.moreau_implicit_gyroscopy`/
+`m_cfg.moreau_lambda_theta` through). Worth flagging on its own: this is a real, independent bug in
+`solver.type=projected_jacobi`, not part of `condensed`'s change, found only because building a
+cross-check reference forced actually exercising the code path.
+
+**Validation**: `wilberforce` (`moreau.implicit_gyroscopy=true`, `condensed.true_schur=true`,
+`condensed.sweep_mode=colored`) run to `t=1` (1000 steps): `totalKE=0.043010291077009`,
+`posNormSum=360.489737259483`. PJ with the same config (and the fix above) over the same run:
+`totalKE=0.0430102910769789`, `posNormSum=360.489737259483` -- agreement to ~10 significant figures
+on KE and exact agreement (to all printed digits) on the position fingerprint, between two
+independently-implemented treatments of the same physics (direct sparse solve vs Schur-complement
+elimination). `gauss_seidel` sweep mode reproduces `colored`'s result exactly (`0.043010291077009`),
+confirming the fix is sweep-mode-independent, not an artifact of one code path.
+`jacobi`/`chaotic` sweep modes diverge on `wilberforce` regardless of this change (reproduced
+identically with `moreau_implicit_gyroscopy=false`, i.e. before this feature existed at all) --
+a pre-existing instability of those modes at this scene's default tolerances, not a regression.
+
+**No-regression check**: `domino`/`hangbridge`/`slinky` (all `moreau_implicit_gyroscopy=false`,
+exercising only the "no gyro block" branch at every one of the ~10 touched call sites) and
+`dynamic_constraint` (Stage B's cache regression test) all produced bit-identical
+`CARDILLO_DUMP_STATE` fingerprints and identical Schur-cache hit/miss counts (98/2) to before this
+change.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode

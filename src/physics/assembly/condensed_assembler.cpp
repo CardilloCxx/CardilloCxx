@@ -5,8 +5,10 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
+#include <unordered_map>
 #include <utility>
 
+#include "../../misc/block_diagonal.hpp"  // invertSmallGeneral
 #include "../../rigid_body/rigid_body.hpp"
 #include "../constraints/constraints.hpp"
 #include "contact_jacobian.hpp"
@@ -46,14 +48,69 @@ void resolveBodySide(const entt::registry& reg, const std::vector<int>& velOffse
     dof = velOffsets[(size_t)bodyIndex + 1] - off;
 }
 
+// Mirrors PjAssembler::buildAndFactorS()'s implicit-gyroscopic correction (pj_assembler.cpp:26-53)
+// exactly -- same formula (Grot = 0.5*([I*omega]_x - [omega]_x*I), M_eff_rot = I - dt*Grot), same
+// per-body filter (rigid body, nV>=6, has C_AngularVelocity3) -- but produces the *inverse*
+// effective mass block per qualifying body instead of folding a correction into a big sparse system
+// matrix: condensed's Schur-complement architecture needs an explicit Minv wherever PJ's
+// direct-solve architecture needs M. Returns an empty map whenever `implicitGyro` is false (the
+// overwhelming common case) -- callers treat "body absent from this map" as "use the existing plain
+// -diagonal MinvDiag", so an empty map is exactly behaviorally equivalent to this feature not
+// existing at all.
+std::unordered_map<int, Matrixr<6, 6>> computeGyroscopicMinvBlocks(const cardillo::physics::DynamicsAssembler& dyn, real_t dt, bool implicitGyro) {
+    std::unordered_map<int, Matrixr<6, 6>> blocks;
+    if (!implicitGyro) return blocks;
+
+    const auto& velOffsets = dyn.bodyVelOffsets();
+    const auto& MinvDiag = dyn.MinvDiag();
+    const auto& reg = dyn.system().ecs();
+    auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
+    for (auto [e, bi] : view.each()) {
+        const int b = bi.b;
+        if (b < 0 || b + 1 >= (int)velOffsets.size()) continue;
+        const int off = velOffsets[(size_t)b];
+        const int nV = velOffsets[(size_t)b + 1] - off;
+        if (nV < 6) continue;
+        if (!reg.all_of<cardillo::C_RigidBodyTag, cardillo::C_AngularVelocity3>(e)) continue;
+
+        const Vector3r omega = reg.get<cardillo::C_AngularVelocity3>(e).value;
+        const Vector3r I = dyn.system().getInertiaDiag(e);
+        const Vector3r Iomega = I.cwiseProduct(omega);
+        const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
+        const Matrix33r omegaSkew = cardillo::skew_from_vector(omega);
+        const Matrix33r IomegaSkew = cardillo::skew_from_vector(Iomega);
+
+        const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * Idiag);
+        const Matrix33r Mrot = Idiag - dt * Grot;
+
+        Matrixr<6, 6> block = Matrixr<6, 6>::Zero();
+        block.topLeftCorner(3, 3) = MinvDiag.segment(off, 3).asDiagonal().toDenseMatrix();
+        block.block(3, 3, 3, 3) = invertSmallGeneral(MatrixXXr(Mrot));
+        blocks.emplace(b, block);
+    }
+    return blocks;
+}
+
+// nullptr for every body without an active override -- the overwhelming common case, so every call
+// site below keeps its original plain-diagonal-MinvDiag expression unchanged in that branch (see
+// each call site's comment) rather than routing through one generic "maybe non-diagonal" helper.
+const Matrixr<6, 6>* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrixr<6, 6>>& gyroBlocks) {
+    if (bodyIndex < 0 || gyroBlocks.empty()) return nullptr;
+    auto it = gyroBlocks.find(bodyIndex);
+    return it == gyroBlocks.end() ? nullptr : &it->second;
+}
+
 }  // namespace
 
-CondensedTopology CondensedAssembler::buildTopology() const {
+CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
     CondensedTopology topo;
     const auto& reg = m_dyn->system().ecs();
     const auto& velOffsets = m_dyn->bodyVelOffsets();
     const auto& MinvDiag = m_dyn->MinvDiag();
     const int numBodies = velOffsets.empty() ? 0 : (int)velOffsets.size() - 1;
+
+    topo.gyroMinvBlocks = computeGyroscopicMinvBlocks(*m_dyn, dt, m_cfg.moreau_implicit_gyroscopy);
+    const auto& gyroBlocks = topo.gyroMinvBlocks;
 
     std::vector<RowBlock> springBlocks, damperBlocks, contactBlocks;
     // Reserve upfront to avoid repeated vector reallocation (each doubling copies/moves every
@@ -85,8 +142,18 @@ CondensedTopology CondensedAssembler::buildTopology() const {
         if (blk.bDof > 0) blk.Jb = selectActiveCols(constraint.WgB, c_used).transpose();
 
         blk.Gii = MatrixXXr::Zero(nSp, nSp);
-        if (blk.aDof > 0) blk.Gii.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).asDiagonal() * blk.Ja.transpose();
-        if (blk.bDof > 0) blk.Gii.noalias() += blk.Jb * MinvDiag.segment(blk.bOff, blk.bDof).asDiagonal() * blk.Jb.transpose();
+        if (blk.aDof > 0) {
+            if (const auto* gA = gyroBlockFor(blk.bodyIndexA, gyroBlocks))
+                blk.Gii.noalias() += blk.Ja * gA->topLeftCorner(blk.aDof, blk.aDof) * blk.Ja.transpose();
+            else
+                blk.Gii.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).asDiagonal() * blk.Ja.transpose();
+        }
+        if (blk.bDof > 0) {
+            if (const auto* gB = gyroBlockFor(blk.bodyIndexB, gyroBlocks))
+                blk.Gii.noalias() += blk.Jb * gB->topLeftCorner(blk.bDof, blk.bDof) * blk.Jb.transpose();
+            else
+                blk.Gii.noalias() += blk.Jb * MinvDiag.segment(blk.bOff, blk.bDof).asDiagonal() * blk.Jb.transpose();
+        }
         blk.complianceDiag = VectorXr::Zero(nSp);
 
         springBlocks.push_back(std::move(blk));
@@ -115,8 +182,18 @@ CondensedTopology CondensedAssembler::buildTopology() const {
         if (blk.bDof > 0) blk.Jb = selectActiveCols(constraint.WgammaB, a_used).transpose();
 
         blk.Gii = MatrixXXr::Zero(nDa, nDa);
-        if (blk.aDof > 0) blk.Gii.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).asDiagonal() * blk.Ja.transpose();
-        if (blk.bDof > 0) blk.Gii.noalias() += blk.Jb * MinvDiag.segment(blk.bOff, blk.bDof).asDiagonal() * blk.Jb.transpose();
+        if (blk.aDof > 0) {
+            if (const auto* gA = gyroBlockFor(blk.bodyIndexA, gyroBlocks))
+                blk.Gii.noalias() += blk.Ja * gA->topLeftCorner(blk.aDof, blk.aDof) * blk.Ja.transpose();
+            else
+                blk.Gii.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).asDiagonal() * blk.Ja.transpose();
+        }
+        if (blk.bDof > 0) {
+            if (const auto* gB = gyroBlockFor(blk.bodyIndexB, gyroBlocks))
+                blk.Gii.noalias() += blk.Jb * gB->topLeftCorner(blk.bDof, blk.bDof) * blk.Jb.transpose();
+            else
+                blk.Gii.noalias() += blk.Jb * MinvDiag.segment(blk.bOff, blk.bDof).asDiagonal() * blk.Jb.transpose();
+        }
         blk.complianceDiag = VectorXr::Zero(nDa);
 
         damperBlocks.push_back(std::move(blk));
@@ -164,8 +241,18 @@ CondensedTopology CondensedAssembler::buildTopology() const {
         }
 
         blk.Gii = MatrixXXr::Zero(dim, dim);
-        if (aDyn) blk.Gii.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).asDiagonal() * blk.Ja.transpose();
-        if (bDyn) blk.Gii.noalias() += blk.Jb * MinvDiag.segment(blk.bOff, blk.bDof).asDiagonal() * blk.Jb.transpose();
+        if (aDyn) {
+            if (const auto* gA = gyroBlockFor(blk.bodyIndexA, gyroBlocks))
+                blk.Gii.noalias() += blk.Ja * gA->topLeftCorner(blk.aDof, blk.aDof) * blk.Ja.transpose();
+            else
+                blk.Gii.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).asDiagonal() * blk.Ja.transpose();
+        }
+        if (bDyn) {
+            if (const auto* gB = gyroBlockFor(blk.bodyIndexB, gyroBlocks))
+                blk.Gii.noalias() += blk.Jb * gB->topLeftCorner(blk.bDof, blk.bDof) * blk.Jb.transpose();
+            else
+                blk.Gii.noalias() += blk.Jb * MinvDiag.segment(blk.bOff, blk.bDof).asDiagonal() * blk.Jb.transpose();
+        }
         blk.complianceDiag = VectorXr::Zero(dim);  // contact rows carry no compliance
 
         if (dim == 1)
@@ -229,12 +316,32 @@ void CondensedAssembler::updateCompliance(CondensedTopology& topo, real_t dt, re
     }
 }
 
-VectorXr CondensedAssembler::ufree(real_t dt, real_t theta) const {
+VectorXr CondensedAssembler::ufree(real_t dt, real_t theta, const CondensedTopology& topo) const {
     const auto& vn = m_dyn->vVec();
     const auto& MinvDiag = m_dyn->MinvDiag();
 
     VectorXr uf = vn + MinvDiag.cwiseProduct(dt * m_dyn->fVecExternal());
     if (!m_cfg.moreau_implicit_gyroscopy) uf += MinvDiag.cwiseProduct(dt * m_dyn->fVecGyroscopic());
+
+    // Implicit-gyroscopic correction: overwrite the plain-diagonal-Minv contribution just computed
+    // above, for bodies with an active override. NOTE this is NOT simply "vn + Minv_eff*dt*f_ext"
+    // -- that shortcut is only valid when Minv*M=I (the plain-diagonal case, where it degenerates to
+    // vn). Once Minv_eff != M^{-1}, `vn` itself must be passed through Minv_eff*M first: the system
+    // being solved is M_eff*v_new = M*vn + dt*f_ext + W^T*lambda (PjAssembler's own construction --
+    // M_eff only appears on the LHS, `rhs`'s top block is plain M*vn+dt*f_ext, see
+    // PjAssembler::rhs()), so with no constraint force at all, v_new = Minv_eff*(M*vn + dt*f_ext).
+    // No explicit gyroscopic force term is added either way -- the correction lives entirely in
+    // Minv_eff. Empty loop, so a byte-for-byte no-op whenever topo.gyroMinvBlocks is empty (the
+    // overwhelming common case).
+    const auto& velOffsets = m_dyn->bodyVelOffsets();
+    const auto& MDiag = m_dyn->MDiag();
+    const auto& fExt = m_dyn->fVecExternal();
+    for (const auto& [b, block] : topo.gyroMinvBlocks) {
+        const int off = velOffsets[(size_t)b];
+        const int dof = velOffsets[(size_t)b + 1] - off;
+        const VectorXr MvnPlusFext = MDiag.segment(off, dof).cwiseProduct(vn.segment(off, dof)) + dt * fExt.segment(off, dof);
+        uf.segment(off, dof) = block.topLeftCorner(dof, dof) * MvnPlusFext;
+    }
     return uf;
 }
 
@@ -251,11 +358,12 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
     VectorXr Lambda_gamma = m_dyn->Lambda_gamma();
     if ((int)Lambda_gamma.size() != nDampers) Lambda_gamma = VectorXr::Zero(nDampers);
 
+    // Implicit gyroscopic forces (moreau_implicit_gyroscopy=true) are represented entirely through
+    // the effective Minv used below (WMinvRhsVel) and upstream in buildTopology()/ufree() -- not as
+    // an extra term here. Matches PjAssembler::rhs() line for line: it too uses plain M_diag*vn
+    // regardless of implicitGyro, adding the explicit gyroscopic force only when NOT implicit.
     VectorXr rhs_vel = MDiag.cwiseProduct(vn) + dt * m_dyn->fVecExternal();
-    if (!m_cfg.moreau_implicit_gyroscopy)
-        rhs_vel += dt * m_dyn->fVecGyroscopic();
-    else
-        std::cerr << "CondensedAssembler::rhs: Warning: Gyroscopic forces are treated implicitly, not implemented in condensed assembler rhs\n";
+    if (!m_cfg.moreau_implicit_gyroscopy) rhs_vel += dt * m_dyn->fVecGyroscopic();
 
     if (m_cfg.moreau_lambda_theta && (nSprings > 0 || nDampers > 0)) {
         VectorXr corr = VectorXr::Zero(totalV);
@@ -284,8 +392,18 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
         if (blk.bDof > 0) WvnA_B.noalias() += blk.Jb * vn.segment(blk.bOff, blk.bDof);
 
         VectorXr WMinvRhsVel = VectorXr::Zero(blk.dim);
-        if (blk.aDof > 0) WMinvRhsVel.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(rhs_vel.segment(blk.aOff, blk.aDof));
-        if (blk.bDof > 0) WMinvRhsVel.noalias() += blk.Jb * MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(rhs_vel.segment(blk.bOff, blk.bDof));
+        if (blk.aDof > 0) {
+            if (const auto* gA = gyroBlockFor(blk.bodyIndexA, topo.gyroMinvBlocks))
+                WMinvRhsVel.noalias() += blk.Ja * (gA->topLeftCorner(blk.aDof, blk.aDof) * rhs_vel.segment(blk.aOff, blk.aDof));
+            else
+                WMinvRhsVel.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(rhs_vel.segment(blk.aOff, blk.aDof));
+        }
+        if (blk.bDof > 0) {
+            if (const auto* gB = gyroBlockFor(blk.bodyIndexB, topo.gyroMinvBlocks))
+                WMinvRhsVel.noalias() += blk.Jb * (gB->topLeftCorner(blk.bDof, blk.bDof) * rhs_vel.segment(blk.bOff, blk.bDof));
+            else
+                WMinvRhsVel.noalias() += blk.Jb * MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(rhs_vel.segment(blk.bOff, blk.bDof));
+        }
 
         if (blk.kind == RowBlock::Kind::Spring) {
             const VectorXr Crow = m_dyn->Cdiag().segment(blk.offset, blk.dim);
@@ -339,8 +457,17 @@ cardillo::misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(
     // Accumulate coupling between every pair of bilateral blocks sharing a body -- a pair can in
     // principle share two bodies at once (e.g. two independent springs between the exact same two
     // bodies), so accumulate into a map keyed by the unordered pair before handing edges to
-    // BlockSparseLDLT (which expects at most one edge per pair).
-    std::map<std::pair<int, int>, MatrixXXr> coupling;
+    // BlockSparseLDLT. `couplingFwd[{p,q}]` (p<q, i.e. the pair as first encountered) is always the
+    // (p,q)-direction contribution; `couplingBwd[{p,q}]` is populated ONLY when the shared body has
+    // an implicit-gyroscopic override, in which case (p,q) and (q,p) are no longer transposes of
+    // each other and both must be computed independently (see BlockSparseLDLT's symmetric=false
+    // mode). `anyAsym` tracks whether that ever happens anywhere in this graph -- it does not
+    // flicker step to step (driven by static entity composition + the moreau_implicit_gyroscopy
+    // config flag, never by the current values of Gii/complianceDiag), so the resulting edge-list
+    // *shape* stays cache-stable across steps exactly like the symmetric-only case always has.
+    std::map<std::pair<int, int>, MatrixXXr> couplingFwd;
+    std::map<std::pair<int, int>, MatrixXXr> couplingBwd;
+    bool anyAsym = false;
     for (const auto& incident : topo.blocksOfBody) {
         // Restrict to bilateral blocks incident on this body (blocksOfBody may also list contact
         // blocks, which never participate in Sbb).
@@ -362,13 +489,32 @@ cardillo::misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(
                     const MatrixXXr& Jp = jacobianAt(blkP, b);
                     const MatrixXXr& Jq = jacobianAt(blkQ, b);
                     const int off = offAt(blkP, b), dof = dofAt(blkP, b);
-                    MatrixXXr contrib = Jp * MinvDiag.segment(off, dof).asDiagonal() * Jq.transpose();  // dim_p x dim_q
                     const auto key = std::make_pair(p, q);
-                    auto it = coupling.find(key);
-                    if (it == coupling.end())
-                        coupling.emplace(key, contrib);
-                    else
-                        it->second += contrib;
+                    const auto* gb = gyroBlockFor(b, topo.gyroMinvBlocks);
+
+                    if (gb) {
+                        anyAsym = true;
+                        const MatrixXXr Bblk = gb->topLeftCorner(dof, dof);
+                        MatrixXXr contribFwd = Jp * Bblk * Jq.transpose();  // dim_p x dim_q
+                        MatrixXXr contribBwd = Jq * Bblk * Jp.transpose();  // dim_q x dim_p, NOT contribFwd^T in general
+                        auto itF = couplingFwd.find(key);
+                        if (itF == couplingFwd.end())
+                            couplingFwd.emplace(key, contribFwd);
+                        else
+                            itF->second += contribFwd;
+                        auto itB = couplingBwd.find(key);
+                        if (itB == couplingBwd.end())
+                            couplingBwd.emplace(key, contribBwd);
+                        else
+                            itB->second += contribBwd;
+                    } else {
+                        MatrixXXr contrib = Jp * MinvDiag.segment(off, dof).asDiagonal() * Jq.transpose();  // dim_p x dim_q
+                        auto it = couplingFwd.find(key);
+                        if (it == couplingFwd.end())
+                            couplingFwd.emplace(key, contrib);
+                        else
+                            it->second += contrib;
+                    }
                 }
             }
         }
@@ -376,17 +522,37 @@ cardillo::misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(
 
     std::vector<std::array<int, 2>> edgeNodes;
     std::vector<MatrixXXr> edgeBlocks;
-    edgeNodes.reserve(coupling.size());
-    edgeBlocks.reserve(coupling.size());
-    for (auto& kv : coupling) {
-        edgeNodes.push_back({kv.first.first, kv.first.second});
-        edgeBlocks.push_back(std::move(kv.second));
+    if (!anyAsym) {
+        // Exactly the original behavior: one undirected edge per pair, symmetric=true (default) --
+        // zero cost/formula change from before this feature existed.
+        edgeNodes.reserve(couplingFwd.size());
+        edgeBlocks.reserve(couplingFwd.size());
+        for (auto& kv : couplingFwd) {
+            edgeNodes.push_back({kv.first.first, kv.first.second});
+            edgeBlocks.push_back(std::move(kv.second));
+        }
+    } else {
+        // At least one bilateral pair has a genuinely non-symmetric coupling (an implicit-
+        // gyroscopic body sits between them) -- BlockSparseLDLT's symmetric=false mode needs BOTH
+        // directions of EVERY edge (an edge supplied in only one direction is treated as exactly
+        // zero there, not "derive the other direction"), so every still-symmetric pair in this same
+        // graph also needs its true transpose supplied explicitly as its (q,p) entry.
+        edgeNodes.reserve(2 * couplingFwd.size());
+        edgeBlocks.reserve(2 * couplingFwd.size());
+        for (auto& kv : couplingFwd) {
+            const int p = kv.first.first, q = kv.first.second;
+            edgeNodes.push_back({p, q});
+            edgeBlocks.push_back(kv.second);
+            auto itB = couplingBwd.find(kv.first);
+            edgeNodes.push_back({q, p});
+            edgeBlocks.push_back(itB != couplingBwd.end() ? itB->second : MatrixXXr(kv.second.transpose()));
+        }
     }
 
     cardillo::misc::BlockSparseLDLT ldlt;
     // `dims` is passed by value (copied, not moved) so it's still available below for the cache
     // comparison -- cheap, it's just n ints.
-    ldlt.build(dims, std::move(diagBlocks), edgeNodes, edgeBlocks);
+    ldlt.build(dims, std::move(diagBlocks), edgeNodes, edgeBlocks, /*symmetric=*/!anyAsym);
 
     // Structural cache hit: same bilateral graph (dims + which pairs of blocks are coupled) as last
     // call -- true every step for every current scene, since springs/dampers aren't created or
