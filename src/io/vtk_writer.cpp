@@ -58,12 +58,10 @@ VtkWriter::VtkWriter(const cardillo::config::Config& cfg)
       m_outputDir(cfg.output_folder),
       m_baseName(cfg.output_filename_prefix),
       m_frequency(cfg.output_interval_steps),
-      m_writeContacts(cfg.output_write_contacts),
-      m_contactsBase(cfg.output_filename_prefix + std::string("_contacts")),
       m_writeSprings(true),
       m_springsBase(cfg.output_filename_prefix + std::string("_springs")),
-      m_writeManifolds(cfg.output_write_contact_manifolds),
-      m_manifoldsBase(cfg.output_filename_prefix + std::string("_manifolds")) {
+      m_writeContactManifolds(cfg.output_write_contact_manifolds),
+      m_contactManifoldsBase(cfg.output_filename_prefix + std::string("_contact_manifolds")) {
     if (m_frequency < 1) m_frequency = 1;
     if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
     m_worker = std::thread(&VtkWriter::workerLoop, this);
@@ -137,17 +135,11 @@ void VtkWriter::write(int step, real_t time, const cardillo::World& sys, cardill
         enqueueFrame(meshesToPolyData(onlyDynamic), m_pvdGeo, pvdPath(m_baseName + "_geo"), path, fs::path(path).filename().string(), step, time);
     }
 
-    if (m_writeManifolds && collision_mgr) {
+    if (m_writeContactManifolds && collision_mgr) {
         std::vector<cardillo::collision::ContactManifold> manifolds = collision_mgr->m_contactManifolds;
         enrichManifolds(manifolds, contacts, m_cfg.sim_dt);
-        const std::string path = buildPath(m_manifoldsBase, step);
-        enqueueFrame(manifoldsToPolyData(manifolds), m_pvdManifolds, pvdPath(m_manifoldsBase), path, fs::path(path).filename().string(), step, time);
-    }
-
-    if (m_writeContacts && collision_mgr) {
-        const bool writeBody = m_cfg.output_contacts_body_vectors;
-        const std::string path = buildPath(m_contactsBase, step);
-        enqueueFrame(contactsToPolyData(contacts, writeBody), m_pvdContacts, pvdPath(m_contactsBase), path, fs::path(path).filename().string(), step, time);
+        const std::string path = buildPath(m_contactManifoldsBase, step);
+        enqueueFrame(contactManifoldsToPolyData(manifolds), m_pvdContactManifolds, pvdPath(m_contactManifoldsBase), path, fs::path(path).filename().string(), step, time);
     }
 
     if (m_writeSprings) {
@@ -338,110 +330,6 @@ vtkSmartPointer<vtkPolyData> VtkWriter::meshesToPolyData(const std::vector<Entit
     return pd;
 }
 
-vtkSmartPointer<vtkPolyData> VtkWriter::contactsToPolyData(const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const {
-    const std::size_t n = contacts.size();
-
-    vtkNew<vtkPoints> points;
-    vtkNew<vtkCellArray> verts;
-    for (std::size_t i = 0; i < n; ++i) {
-        const auto& c = contacts[i];
-        points->InsertNextPoint(f32(c.point.x()), f32(c.point.y()), f32(c.point.z()));
-        vtkIdType idx = static_cast<vtkIdType>(i);
-        verts->InsertNextCell(1, &idx);
-    }
-
-    auto normal = makeFloatArray("normal", 3);
-    auto tangent1 = makeFloatArray("tangent1", 3);
-    auto tangent2 = makeFloatArray("tangent2", 3);
-    for (const auto& c : contacts) {
-        normal->InsertNextTuple3(f32(c.normal.x()), f32(c.normal.y()), f32(c.normal.z()));
-        tangent1->InsertNextTuple3(f32(c.tangent1.x()), f32(c.tangent1.y()), f32(c.tangent1.z()));
-        tangent2->InsertNextTuple3(f32(c.tangent2.x()), f32(c.tangent2.y()), f32(c.tangent2.z()));
-    }
-
-    vtkSmartPointer<vtkFloatArray> normalA_body, normalB_body, pointA_body, pointB_body, tangent1A_body, tangent2A_body, tangent1B_body, tangent2B_body;
-    if (writeBodyVectors) {
-        normalA_body = makeFloatArray("normalA_body", 3);
-        normalB_body = makeFloatArray("normalB_body", 3);
-        pointA_body = makeFloatArray("pointA_body", 3);
-        pointB_body = makeFloatArray("pointB_body", 3);
-        tangent1A_body = makeFloatArray("tangent1A_body", 3);
-        tangent2A_body = makeFloatArray("tangent2A_body", 3);
-        tangent1B_body = makeFloatArray("tangent1B_body", 3);
-        tangent2B_body = makeFloatArray("tangent2B_body", 3);
-        for (const auto& c : contacts) {
-            normalA_body->InsertNextTuple3(f32(c.normalA_body.x()), f32(c.normalA_body.y()), f32(c.normalA_body.z()));
-            normalB_body->InsertNextTuple3(f32(c.normalB_body.x()), f32(c.normalB_body.y()), f32(c.normalB_body.z()));
-            pointA_body->InsertNextTuple3(f32(c.pointA_body.x()), f32(c.pointA_body.y()), f32(c.pointA_body.z()));
-            pointB_body->InsertNextTuple3(f32(c.pointB_body.x()), f32(c.pointB_body.y()), f32(c.pointB_body.z()));
-            tangent1A_body->InsertNextTuple3(f32(c.tangent1A_body.x()), f32(c.tangent1A_body.y()), f32(c.tangent1A_body.z()));
-            tangent2A_body->InsertNextTuple3(f32(c.tangent2A_body.x()), f32(c.tangent2A_body.y()), f32(c.tangent2A_body.z()));
-            tangent1B_body->InsertNextTuple3(f32(c.tangent1B_body.x()), f32(c.tangent1B_body.y()), f32(c.tangent1B_body.z()));
-            tangent2B_body->InsertNextTuple3(f32(c.tangent2B_body.x()), f32(c.tangent2B_body.y()), f32(c.tangent2B_body.z()));
-        }
-    }
-
-    auto penetration = makeFloatArray("penetration", 1);
-    for (const auto& c : contacts) penetration->InsertNextValue(f32(c.penetration));
-
-    const bool hasImpulse = std::any_of(contacts.begin(), contacts.end(), [](const cardillo::collision::Contact& c) { return c.last_impulse.squaredNorm() > (real_t)1e-12; });
-    vtkSmartPointer<vtkFloatArray> pn, ptMag;
-    vtkSmartPointer<vtkFloatArray> percussion;
-    if (hasImpulse) {
-        pn = makeFloatArray("pn", 1);
-        ptMag = makeFloatArray("pt_mag", 1);
-        percussion = makeFloatArray("percussion", 3);
-        for (const auto& c : contacts) {
-            pn->InsertNextValue(f32(std::max<real_t>(c.last_impulse(0), (real_t)0)));
-            const real_t t1 = c.last_impulse(1);
-            const real_t t2 = c.last_impulse(2);
-            ptMag->InsertNextValue(static_cast<float>(std::sqrt((double)t1 * t1 + (double)t2 * t2)));
-            const Vector3r pvec = (real_t)c.last_impulse(0) * c.normal + (real_t)c.last_impulse(1) * c.tangent1 + (real_t)c.last_impulse(2) * c.tangent2;
-            percussion->InsertNextTuple3(f32(pvec.x()), f32(pvec.y()), f32(pvec.z()));
-        }
-    }
-
-    auto idA = makeIntArray("id_a");
-    auto idB = makeIntArray("id_b");
-    auto frictionMu = makeFloatArray("friction_mu", 1);
-    auto matched = makeIntArray("matched");
-    for (const auto& c : contacts) {
-        idA->InsertNextValue((int)entt::to_integral(c.a));
-        idB->InsertNextValue((int)entt::to_integral(c.b));
-        frictionMu->InsertNextValue(f32(c.friction_mu));
-        matched->InsertNextValue(c.prev_global_out_index >= 0 ? 1 : 0);
-    }
-
-    vtkSmartPointer<vtkPolyData> pd = vtkSmartPointer<vtkPolyData>::New();
-    pd->SetPoints(points);
-    pd->SetVerts(verts);
-    vtkPointData* pdData = pd->GetPointData();
-    pdData->AddArray(normal);
-    pdData->AddArray(tangent1);
-    pdData->AddArray(tangent2);
-    if (writeBodyVectors) {
-        pdData->AddArray(normalA_body);
-        pdData->AddArray(normalB_body);
-        pdData->AddArray(pointA_body);
-        pdData->AddArray(pointB_body);
-        pdData->AddArray(tangent1A_body);
-        pdData->AddArray(tangent2A_body);
-        pdData->AddArray(tangent1B_body);
-        pdData->AddArray(tangent2B_body);
-    }
-    pdData->AddArray(penetration);
-    if (hasImpulse) {
-        pdData->AddArray(pn);
-        pdData->AddArray(ptMag);
-        pdData->AddArray(percussion);
-    }
-    pdData->AddArray(idA);
-    pdData->AddArray(idB);
-    pdData->AddArray(frictionMu);
-    pdData->AddArray(matched);
-    return pd;
-}
-
 vtkSmartPointer<vtkPolyData> VtkWriter::springsToPolyData(const cardillo::World& sys) const {
     const auto& patterns = sys.constraintPatterns();
     std::vector<Vector3r> positions;
@@ -534,7 +422,7 @@ vtkSmartPointer<vtkPolyData> VtkWriter::springsToPolyData(const cardillo::World&
     return pd;
 }
 
-vtkSmartPointer<vtkPolyData> VtkWriter::manifoldsToPolyData(const std::vector<cardillo::collision::ContactManifold>& manifolds) const {
+vtkSmartPointer<vtkPolyData> VtkWriter::contactManifoldsToPolyData(const std::vector<cardillo::collision::ContactManifold>& manifolds) const {
     vtkNew<vtkPoints> points;
     vtkNew<vtkCellArray> verts;
     vtkNew<vtkCellArray> lines;

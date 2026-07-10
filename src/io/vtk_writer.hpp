@@ -51,17 +51,13 @@ class VtkWriter {
     void write(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
                cardillo::physics::DynamicsAssembler* dyn = nullptr);
 
-    void enableContactsOutput(bool enable, const std::string& baseName) {
-        m_writeContacts = enable;
-        m_contactsBase = baseName;
-    }
     void enableSpringsOutput(bool enable, const std::string& baseName) {
         m_writeSprings = enable;
         m_springsBase = baseName;
     }
-    void enableManifoldOutput(bool enable, const std::string& baseName) {
-        m_writeManifolds = enable;
-        m_manifoldsBase = baseName;
+    void enableContactManifoldOutput(bool enable, const std::string& baseName) {
+        m_writeContactManifolds = enable;
+        m_contactManifoldsBase = baseName;
     }
 
    private:
@@ -69,12 +65,10 @@ class VtkWriter {
     std::string m_outputDir;
     std::string m_baseName;
     int m_frequency{1};
-    bool m_writeContacts{false};
-    std::string m_contactsBase{"contacts"};
     bool m_writeSprings{false};
     std::string m_springsBase{"springs"};
-    bool m_writeManifolds{false};
-    std::string m_manifoldsBase{"manifolds"};
+    bool m_writeContactManifolds{false};
+    std::string m_contactManifoldsBase{"contact_manifolds"};
     bool m_staticGeoWritten{false};
 
     using EntityMesh = MeshGenerator::EntityMesh;
@@ -86,9 +80,8 @@ class VtkWriter {
     std::string pvdPath(const std::string& prefix) const;
 
     vtkSmartPointer<vtkPolyData> meshesToPolyData(const std::vector<EntityMesh>& meshes) const;
-    vtkSmartPointer<vtkPolyData> contactsToPolyData(const std::vector<cardillo::collision::Contact>& contacts, bool writeBodyVectors) const;
     vtkSmartPointer<vtkPolyData> springsToPolyData(const cardillo::World& sys) const;
-    vtkSmartPointer<vtkPolyData> manifoldsToPolyData(const std::vector<cardillo::collision::ContactManifold>& manifolds) const;
+    vtkSmartPointer<vtkPolyData> contactManifoldsToPolyData(const std::vector<cardillo::collision::ContactManifold>& manifolds) const;
 
     static void writeVtp(const vtkSmartPointer<vtkPolyData>& pd, const std::string& path);
 
@@ -109,8 +102,7 @@ class VtkWriter {
 
     // Per-stream .pvd state, mutated only from the (single, serial) worker thread.
     PvdWriter m_pvdGeo;
-    PvdWriter m_pvdManifolds;
-    PvdWriter m_pvdContacts;
+    PvdWriter m_pvdContactManifolds;
     PvdWriter m_pvdSprings;
 };
 

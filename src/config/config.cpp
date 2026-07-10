@@ -321,8 +321,6 @@ Config ConfigReader::fromFile(const std::string& path) {
             if (ss >> gx >> gy >> gz) {
                 cfg.sim_gravity = Vector3r((real_t)gx, (real_t)gy, (real_t)gz);
             }
-        } else if (key == "output.write_contacts") {
-            cfg.output_write_contacts = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
         } else if (key == "output.write_contact_manifolds") {
             cfg.output_write_contact_manifolds = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
         } else if (key == "output.interval_steps") {
@@ -330,11 +328,6 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.output_interval_steps = std::max(1, std::stoi(val));
             } catch (...) {
             }
-
-        } else if (key == "output.contacts_body_vectors") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.output_contacts_body_vectors = (v == "1" || v == "true" || v == "yes" || v == "on");
         } else if (key == "output.folder") {
             cfg.output_folder = val;
         } else if (key == "output.filename_prefix") {
