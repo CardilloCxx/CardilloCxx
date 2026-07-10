@@ -49,7 +49,7 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
     res.noalias() -= W_row * u_corr;
     res.noalias() -= C_vec.cwiseProduct(lambda);
 
-    z = Dinv * res;
+    Dinv.applyTo(res, z);
     p = z;
 
     real_t rz_new = 0.0;
@@ -73,7 +73,7 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
 
         lambda += alpha * p;
         res -= alpha * Ap;
-        z = Dinv * res;
+        Dinv.applyTo(res, z);
 
         rz_new = z.dot(res);
         res_norm = res.norm();

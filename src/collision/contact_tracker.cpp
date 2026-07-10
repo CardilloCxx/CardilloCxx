@@ -38,7 +38,6 @@ void ContactTracker::registerNextContacts(ContactMap& curr) {
             }
         }
     }
-    m_prevContacts = curr;
 }
 
 void ContactTracker::matchContactsForPair(const ContactList& prev, ContactList& curr, real_t maxDist) {

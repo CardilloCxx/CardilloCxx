@@ -18,10 +18,9 @@ struct Config {
 
     // Output settings
     int output_interval_steps{50};                // output.interval_steps - VTK write interval in steps
-    bool output_contacts_body_vectors{false};     // output.contacts_body_vectors
     std::string output_folder{"./vtk_out"};       // output.folder
     std::string output_filename_prefix{"scene"};  // output.filename_prefix
-    bool output_write_contacts{false};            // output.write_contacts
+    bool output_write_contact_manifolds{true};    // output.write_contact_manifolds
 
     // Collision settings
     // collision.broadphase: one of [dynamic_aabb, dynamic_aabb_array, naive, sap, ssap]

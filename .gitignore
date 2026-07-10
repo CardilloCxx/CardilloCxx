@@ -13,6 +13,7 @@ docs/_doxygen*
 docs/_static*
 docs/_templates*
 docs/api*
+docs/_build
 .venv*
 uv.lock
 src/config/path.hpp

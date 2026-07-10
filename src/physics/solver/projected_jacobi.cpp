@@ -101,7 +101,12 @@ static inline void project(std::unique_ptr<workspace>& ws) {
     // Frictionless contacts: clamp normal impulse >= 0
     ws->impulse.segment(0, ws->Nnfc) = ws->impulse.segment(0, ws->Nnfc).cwiseMax((real_t)0);
 
-    // Frictional contacts: normal clamp + Coulomb disk projection
+    // Frictional contacts: normal clamp + Coulomb disk projection. Each iteration only reads/writes
+    // its own contact's 3 impulse rows (i, i+1, i+2), so this is embarrassingly parallel across
+    // contacts -- the same reasoning CondensedSolver's sweep loops already rely on for their own
+    // #pragma omp for (see condensed_solver.cpp). This loop runs once per PJ sweep, i.e. up to
+    // cfg.pj_max_iterations times per timestep, so it's the hot per-iteration loop in this file.
+#pragma omp parallel for schedule(static)
     for (int i = ws->Nnfc; i < ws->Nc; i += 3) {
         ws->impulse[i] = std::max(ws->impulse[i], (real_t)0);
         const real_t t1 = ws->impulse[i + 1], t2 = ws->impulse[i + 2];
@@ -121,7 +126,7 @@ static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
 
     ws->delta_impulse.noalias() = ws->RW * ws->x.head(ws->Nv);
     ws->delta_impulse += ws->biasImpulse;
-    if (ws->R_block) ws->delta_impulse = *ws->R_block * ws->delta_impulse;
+    if (ws->R_block) ws->R_block->applyTo(ws->delta_impulse, ws->delta_impulse);
 
     ws->impulse.noalias() -= ws->delta_impulse;
 
@@ -359,7 +364,8 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
 
     VectorXr mus = dyn.muVec();
 
-    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, W, RW, std::move(biasImpulse), std::move(mus), std::move(R_block), std::move(p), std::move(x_init), dyn.timings(), &assembler);
+    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, W, std::move(RW), std::move(biasImpulse), std::move(mus), std::move(R_block), std::move(p), std::move(x_init), dyn.timings(),
+                                        &assembler);
 }
 
 static inline void standard_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg) {

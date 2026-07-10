@@ -33,6 +33,23 @@ if(CARDILLO_ENABLE_TSAN)
     add_link_options(-fsanitize=thread)
 endif()
 
+# Native-ISA vectorization, on by default. Without this, the compiler targets its default baseline
+# ISA (e.g. SSE2 on x86-64), so Eigen's own vectorized kernels -- the bulk of this engine's per-step
+# cost -- run at 2-wide double packets instead of 4-wide+FMA under AVX2. -march=native ties the
+# binary to the build machine's exact CPU and can SIGILL if the binary is later run/copied to
+# different hardware (e.g. a heterogeneous cluster, a CI runner, another machine); if you build here
+# but deploy/run elsewhere, configure with -DCARDILLO_ENABLE_NATIVE_ARCH=OFF instead.
+option(CARDILLO_ENABLE_NATIVE_ARCH "Compile with -march=native for AVX2/FMA vectorization (ties binary to the build machine's CPU)" ON)
+if(CARDILLO_ENABLE_NATIVE_ARCH)
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("-march=native" CARDILLO_HAS_MARCH_NATIVE)
+    if(CARDILLO_HAS_MARCH_NATIVE)
+        add_compile_options(-march=native)
+    else()
+        message(WARNING "CARDILLO_ENABLE_NATIVE_ARCH is ON but the compiler does not support -march=native (e.g. MSVC -- use /arch:AVX2 manually instead); ignoring.")
+    endif()
+endif()
+
 add_subdirectory(src)
 add_subdirectory(examples)
 # add_subdirectory(frontend)

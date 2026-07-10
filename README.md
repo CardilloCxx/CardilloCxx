@@ -2,6 +2,10 @@
 
 CardilloCxx is a C++ physics engine with contact handling, multiple solver backends and many example scenes.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/CardilloCxx/CardilloCxx/main/docs/logo.png" alt="logo" width="400"/>
+</p>
+
 ## What this project builds
 
 - Core static library: `cardillo`

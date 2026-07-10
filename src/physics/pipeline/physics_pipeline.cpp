@@ -5,7 +5,7 @@
 #include "../../collision/collision_coal.hpp"
 
 #include "../../io/csv_writer.hpp"
-#include "../../io/vtk_writer_binary.hpp"
+#include "../../io/vtk_writer.hpp"
 #include "../../misc/progress/ProgressBar.hpp"
 #include "../assembly/dynamics_assembler.hpp"
 #include "../integration/moreau.hpp"
@@ -61,7 +61,7 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Confi
 
     // Create VTK writer if output is enabled
     if (cfg.output_interval_steps > 0) {
-        m_vtk_writer = std::make_unique<cardillo::io::VtkWriterBinary>(cfg);
+        m_vtk_writer = std::make_unique<cardillo::io::VtkWriter>(cfg);
     }
 
     // Create tracked CSV writer object but do not open file yet; CsvWriter will open lazily on

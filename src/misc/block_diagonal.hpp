@@ -98,21 +98,36 @@ class BlockDiagonal {
     }
 
     VectorXr operator*(const VectorXr& vec) const {
-        if (vec.size() != n_) throw std::invalid_argument("Dimension mismatch." + std::to_string(vec.size()) + " vs " + std::to_string(n_));
+        VectorXr result;
+        applyTo(vec, result);
+        return result;
+    }
 
-        if (is_diag_ && vec.size() == diag_.size()) {
-            return diag_.cwiseProduct(vec);
+    /**
+     * @brief In-place variant of operator*: writes into @p out, which may alias @p in. Avoids the
+     * heap allocation operator* incurs on every call, which matters when applied once per
+     * CG/PJ iteration -- @p out is expected to be a buffer reused across iterations by the caller.
+     * Every block in this codebase's usage is <=6x6 (contact/spring/damper rows), so the per-block
+     * product is staged through a fixed Vectorr<6> stack scratch even when out aliases in.
+     */
+    void applyTo(const VectorXr& in, VectorXr& out) const {
+        if ((std::size_t)in.size() != n_) throw std::invalid_argument("Dimension mismatch." + std::to_string(in.size()) + " vs " + std::to_string(n_));
+        if (&out != &in) out.resize((Eigen::Index)n_);
+
+        if (is_diag_ && (std::size_t)diag_.size() == n_) {
+            if (&out == &in) out.array() *= diag_.array();
+            else out.noalias() = diag_.cwiseProduct(in);
+            return;
         }
 
-        VectorXr result(n_);
-
+        Vectorr<6> scratch;
         int offset = 0;
         for (const auto& block : blocks_) {
-            int blockSize = block.rows();
-            result.segment(offset, blockSize) = block * vec.segment(offset, blockSize);
+            const int blockSize = block.rows();
+            scratch.head(blockSize).noalias() = block * in.segment(offset, blockSize);
+            out.segment(offset, blockSize) = scratch.head(blockSize);
             offset += blockSize;
         }
-        return result;
     }
 
     const std::vector<MatrixXXr>& blocks() const { return blocks_; }

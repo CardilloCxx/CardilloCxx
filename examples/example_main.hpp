@@ -1,6 +1,6 @@
 #pragma once
 
-#include "io/vtk_writer_binary.hpp"
+#include "io/vtk_writer.hpp"
 #include "physics/integration/integration_base.hpp"
 #include "physics/integration/moreau.hpp"
 
