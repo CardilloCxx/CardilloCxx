@@ -57,6 +57,25 @@ struct Config {
     int pj_max_iterations{200000};                     // pj.max_iterations
     real_t pj_tol_abs{(real_t)1e-5};                   // pj.tol_abs
     real_t pj_tol_rel{(real_t)1e-5};                   // pj.tol_rel
+    // WARNING: these two keys mean genuinely different things in PJ vs. PGS/condensed -- not just
+    // different tuning, a structurally different formula. PGS/condensed multiply BOTH onto the
+    // per-iteration delta every sweep: dlambda = relaxation * GiiInv * r, with an EXTRA *alpha
+    // applied only to contact rows (so relaxation is a uniform SOR-style damping factor across
+    // every row kind, alpha an additional contact-only one). PJ never reads pj_relaxation at all
+    // (grepped: zero references in projected_jacobi.cpp) and instead bakes alpha directly into the
+    // contact preconditioner ONCE per solve() call: R_block = alpha * D^{-1} (see
+    // buildBlockPreconditioner()/rdiag_sparse() in projected_jacobi.cpp). Mathematically alpha's
+    // role there matches Anitescu-Tasora's cone-complementarity framing: a step size bounded by the
+    // reciprocal of the contact Delassus operator's Lipschitz constant, not an arbitrary damping
+    // knob -- confirmed empirically for condensed too (see CONDENSED_SOLVER_REPORT.md's alpha/
+    // relaxation review): the power-iteration spectral-radius estimate already built for
+    // pj.chebyshev, run at alpha=1, crosses 1 at almost exactly the alpha domino's own config
+    // comments arrived at by hand-tuning for condensed.sweep_mode=jacobi. Neither `alpha` nor
+    // `relaxation` is currently derived from that estimate automatically for either solver --
+    // hand-tuned per scene today. See the report for the full theory-vs-implementation writeup and
+    // the roadmap of what's untested (e.g. relaxation > 1, true over-relaxation, has never been
+    // tried anywhere in this codebase's example scenes despite being provably safe for the
+    // symmetric-positive-definite bilateral sub-system per the Ostrowski-Reich theorem).
     real_t pj_relaxation{(real_t)1.0};                 // pj.relaxation
     real_t pj_alpha{(real_t)0.3};                      // pj.alpha
     bool pj_nesterov{false};                           // pj.nesterov (enable Nesterov acceleration)

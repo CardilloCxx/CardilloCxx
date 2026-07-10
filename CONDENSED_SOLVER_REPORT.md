@@ -714,6 +714,115 @@ independently of the repo, and a stale/missing test config silently falls back t
 `Config`'s in-code defaults rather than failing loudly — an early "hang" on this same testing round
 turned out to be exactly that, not a real bug, before the actual bug above was found.)
 
+## Update: `alpha`/`relaxation` in-depth review — theory vs. implementation
+
+Requested follow-up: a detailed review of `pj.alpha`/`pj.relaxation`'s theoretical grounding across
+PGS/PJ/condensed, since the user suspected SOR was "implemented wrong" and that real over-relaxation
+had never actually been exercised. Focus redirected mid-investigation from `wilberforce` (already
+well-solved via `true_schur`, per explicit user feedback) to `domino`/`slinky` — the frictional
+contact solvers actually being tuned for speed.
+
+**What `alpha`/`relaxation` compute today, traced precisely, not from the doc comments:**
+
+- **PGS/condensed** (identical structure): `dlambda = relaxation * (GiiInv * r)`, then **only for
+  contact rows**, `dlambda *= alpha`, then `lambda += dlambda`, then (contacts only) projected.
+  `relaxation` is a uniform SOR-style delta-scale across every row kind; `alpha` is a *second*,
+  contact-only multiplier stacked on top.
+- **PJ** never references `pj_relaxation` at all (grepped: zero hits in `projected_jacobi.cpp`).
+  It bakes `alpha` directly into the contact preconditioner's *construction*, once per `solve()`
+  call: `R_block = alpha * D⁻¹` (`D` = the exact per-contact Delassus block, via Cholesky) — a
+  structurally different mechanism from PGS/condensed's per-iteration delta scaling, not just a
+  different tuning. This divergence is now documented directly in `config.hpp`.
+
+**The relevant theory** (see the prior chat-turn writeup for full citations): Ostrowski-Reich
+guarantees SOR converges for any `ω∈(0,2)` when the underlying matrix is symmetric positive
+definite — true for the bilateral (spring/damper) sub-system whenever `Minv` is symmetric. Every one
+of the ~70 tracked example configs uses `pj.relaxation=1.0` (a few use `0.5`/`0.9`/`0.0`) — **the
+over-relaxation half of that provably-safe range has never been exercised anywhere in this
+codebase.** Separately, Chebyshev's real-spectrum assumption is rigorously grounded (via similarity
+to a symmetric matrix) for a genuinely simultaneous (Jacobi-style) update or a consistently-ordered
+one (2-color red-black GS is the classical example); condensed's own default sweep mode
+(`gauss_seidel`, unordered, natural block order) has no such guarantee, and `colored`'s Welsh-Powell
+coloring (many colors, not 2) is *closer* to but not proven equivalent to that property.
+
+**Empirical spectral-radius measurements on `domino` (jacobi sweep, no springs — pure contact
+system), using `pj.chebyshev`'s own power-iteration estimator (`estimateSpectralRadius()`) at a
+range of `alpha`, `relaxation=1`:**
+
+| alpha | raw (unclamped) spectral radius |
+|---|---|
+| 0.05 | 0.994 |
+| 0.10 | 0.998 |
+| 0.20 | 1.694 |
+| 0.30 | 3.035 |
+| 0.50 | 5.711 |
+| 1.00 | 12.385 |
+
+This is a clean, near-perfectly linear fit once `alpha` is large enough to be dominated by the
+largest eigenvalue (`rho ≈ 13.4·alpha − 1`, i.e. an implied `λ_max(D⁻¹A) ≈ 13.4` for this
+scene/state) — and it **independently reproduces domino's own historical hand-tuning**: the scene's
+own config file has commented-out alternates from a manual sweep (`pj.alpha=0.1 # Jacobi: 97s`,
+`pj.alpha=0.05 # Jacobi: 91s`), landing almost exactly where the measured spectral radius crosses 1.
+Directly running the *actual* (non-linearized) jacobi sweep confirmed this: `alpha=0.03` converged
+cleanly (388 total sweeps over 21 steps); `alpha=0.05` also converged but needed more (538); `alpha
+≥ 0.08` **hung** (didn't converge within `pj.max_iterations` at some later step, not the first) —
+consistent with the spectral estimate being *state-dependent*, not a single fixed number for the
+whole run (see next finding).
+
+**Same measurement on `colored`/`gauss_seidel` (domino's actual defaults) at `alpha=1.0`** (the
+value domino is actually tuned and shipped with): raw spectral radius **0.999** for both — stable,
+but barely, and consistent with the classical Stein-Rosenberg result that sequential/ordered
+Gauss-Seidel-type updates have a much smaller spectral radius than the corresponding simultaneous
+Jacobi update for the same system (`ρ(GS) ≤ ρ(Jacobi)²` when `Jacobi` converges — here `Jacobi`
+doesn't even converge at this `alpha`, `12.385 ≫ 1`, yet `colored`/`gauss_seidel` stay just inside
+the stable region). This is the concrete, measured explanation for why domino's tuned config can use
+`alpha=1.0` with `colored` but needed `alpha≈0.05-0.1` for `jacobi` — not a coincidence of manual
+tuning, a structural property of the two update schemes that the spectral estimator correctly
+predicts.
+
+**A genuinely important caveat, also measured**: the spectral radius is **not static across a run**.
+On `slinky` (`jacobi` sweep, `alpha=0.3`), the estimate at successive steps was `0.929`, then
+`1.242` — swinging from comfortably stable to outright divergent within a single step, as the active
+contact set changes. A *fixed*, hand-picked `alpha` has to be conservative enough for the *worst*
+state anywhere in the run; the spectral estimate, recomputed fresh every `solve()` call for
+Chebyshev, already adapts to the *current* state every step — an argument for eventually deriving
+`alpha` itself from this same per-step estimate (already computed when Chebyshev is on) rather than
+a single static, scene-wide, hand-tuned constant. Not implemented here — a real behavior change to
+the non-Chebyshev sweep path needs its own dedicated validation pass, not a same-turn addition.
+
+**A separate caveat, also measured and honest to report**: the linear estimate is **overly
+pessimistic as a predictor of real convergence rate** for contact-rich scenes. `colored` measured
+`ρ≈0.999` on domino (implying tens of thousands of iterations to converge to a `1e-4` tolerance by
+the naive `ρ^N` estimate) while the real, projected sweep converges in tens to low hundreds of
+iterations per step in practice. The gap is the friction-cone projection itself: many contacts are
+inactive/separating at any instant, and the linear estimate (by construction, ignoring projection to
+get a well-defined linear map at all) treats every contact as fully, permanently coupled. Useful as a
+**stability certificate** (a value ≫1 reliably predicted domino's known `jacobi+alpha=1.0`
+divergence, confirmed multiple times this session), not a precise **performance predictor** for the
+real nonlinear iteration.
+
+**A real bug found and fixed while measuring this**: `estimateSpectralRadius()`'s bailout for "this
+probe collapsed to ~0, nothing to accelerate" used a threshold of `1e-300` — nowhere near the actual
+floating-point noise floor for this O(1)-scale computation. Traced directly (per-power-iteration):
+on `slinky`'s first (contact-free) step, with `condensed.true_schur=true` exactly solving the
+*entire* homogeneous probe, the vector correctly collapsed to `~8.5e-13` on the very first
+iteration — genuine floating-point noise, not a real small eigenvalue — but `1e-300` let it pass,
+renormalize back to unit length (amplifying that noise by ~10¹²×), and converge to a spurious
+`rho≈1` "eigenvalue" that was really just amplified rounding error. Fixed by raising the threshold
+to `1e-8`; verified the contact-free case now correctly reports `rho=0` (nothing to accelerate)
+instead of the bogus `~0.995`. This is a genuine implementation bug distinct from the Chebyshev
+theory caveats above — not just imprecise language, a wrong number in an edge case, now fixed. Two
+new opt-in diagnostics were added alongside it (both `debug_pj`/env-var gated, zero cost when
+unused): `CARDILLO_DEBUG_RHO_RAW=1` prints the raw unclamped spectral-radius estimate every call,
+and `debug.pj=true` alone now also prints the clamped `chebyshevRho` actually used.
+
+**Also added**: a `debug_pj`-gated warning (not an auto-disable — no empirical evidence either way
+yet that it actually misbehaves, so changing behavior isn't justified) when `pj.chebyshev` is active
+alongside an implicit-gyroscopic body: the real-eigenvalue argument requires symmetric `Minv`, which
+gyroscopic bodies break. This exact same gap exists, un-addressed, in `projected_jacobi.cpp` too
+(checked directly: no guard there either) — noted as a pre-existing, shared gap, not something newly
+introduced by porting Chebyshev to `condensed`.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode

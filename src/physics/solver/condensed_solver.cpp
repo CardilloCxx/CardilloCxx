@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <numeric>
@@ -414,7 +415,17 @@ real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& Min
         }
 
         const real_t n = d_lambda.norm();
-        if (!(n > (real_t)1e-300)) return (real_t)0;  // the operator collapsed this probe to ~0: nothing to accelerate
+        // A genuine bug found by tracing this per-iteration on slinky's first (contact-free) step: when
+        // condensed.true_schur exactly solves the ENTIRE probe (e.g. no contacts at all, so the
+        // whole linear-only sweep is just exactBilateralStep on a homogeneous system), `n` collapses
+        // to floating-point noise (~1e-13, confirmed by direct trace), not a real small eigenvalue.
+        // The old `1e-300` threshold is nowhere near the actual FP noise floor for this
+        // O(1)-scale computation, so it let that noise get renormalized back to unit length and
+        // amplified ~10^12x every remaining iteration -- converging to a spurious rho close to 1
+        // (an artifact of amplified rounding error, not a real eigenvalue) instead of correctly
+        // reporting "this probe found nothing to accelerate". 1e-8 sits safely above realistic FP
+        // noise for this scale and well below any genuine eigenvalue magnitude worth resolving.
+        if (!(n > (real_t)1e-8)) return (real_t)0;
         rho = n;
         d_lambda /= n;
         d_u_corr /= n;
@@ -422,6 +433,7 @@ real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& Min
     // Clamp strictly below 1: the omega recurrence divides by (1 - rho^2/4*omega), only
     // well-defined/stable for rho < 1 (a converging basic iteration to begin with) -- same clamp
     // PJ's own estimateSpectralRadius() uses.
+    if (getenv("CARDILLO_DEBUG_RHO_RAW")) std::cout << "[Condensed] raw (unclamped) spectral radius estimate: " << rho << std::endl;
     return std::min(rho, (real_t)0.995);
 }
 
@@ -544,8 +556,26 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     }
     real_t chebyshevRho = 0;
     if (useChebyshev) {
+        // Chebyshev's spectral-radius estimate is only rigorously meaningful when the linearized
+        // sweep operator has a REAL eigenvalue spectrum -- guaranteed (via similarity to a
+        // symmetric matrix) when Minv is symmetric, i.e. no active implicit-gyroscopic override
+        // anywhere in the system (see docs/chapters/solvers/condensed.rst's Chebyshev section).
+        // A non-symmetric Minv can give the operator complex eigenvalues, which the classical
+        // 3-term Chebyshev recurrence isn't designed for -- not a guaranteed failure (the same
+        // "heuristic on the full nonlinear problem" caveat already applies regardless), but worth
+        // surfacing rather than silently trusting the estimate. Warn only (debug_pj-gated, like
+        // every other diagnostic here) rather than auto-disabling: unlike true_schur+chaotic
+        // (a hard structural incompatibility), this is a theoretical-grounding caveat with no
+        // empirical evidence either way yet, so changing behavior here isn't justified.
+        if (m_cfg.debug_pj && !topo.gyroMinvBlocks.empty()) {
+            std::cout << "[Condensed] Warning: pj.chebyshev's spectral-radius estimate assumes a real "
+                         "eigenvalue spectrum (via symmetric Minv); an implicit-gyroscopic body is active, "
+                         "making Minv non-symmetric -- the estimate may not be reliable here."
+                      << std::endl;
+        }
         auto sc_cheb = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSetup);
         chebyshevRho = estimateSpectralRadius(topo, MinvDiag, relaxation, alpha, sweepMode, coloring, bodyVelOffsets, startBlock, useTrueSchur, bilateralLdlt, nV);
+        if (m_cfg.debug_pj) std::cout << "[Condensed] chebyshev spectral radius estimate: " << chebyshevRho << std::endl;
     }
 
     // Chaotic mode keeps its own persistent atomic representation of u_corr across sweeps (that's
