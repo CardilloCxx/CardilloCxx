@@ -70,6 +70,7 @@ class CollisionCoal {
 
     std::vector<Contact> m_prev_flattened;  // contacts from previous step
     std::vector<Contact> m_flattened;       // contacts from current step (authoritative)
+    std::vector<ContactManifold> m_contactManifolds;  // patch geometry from current step, for export/visualization
 
     // Clear all internal caches/objects
     void clear();

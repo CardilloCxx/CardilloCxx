@@ -4,6 +4,44 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path 
 include(FetchContent)
 find_package(OpenMP QUIET)
 
+# --- VTK (used by the VTK export writer) ---
+# Prefer a system-installed VTK (fast, no compile) over building it from source.
+# 1) Standard find_package: covers a normal libvtk9-dev-style install.
+# 2) Debian/Ubuntu's ParaView packages bundle their own VTK under a non-standard
+#    CMake config location (/usr/lib/*/cmake/paraview-*/vtk instead of the usual
+#    vtk-9.x path) -- installing the standalone libvtk9-dev package conflicts with
+#    an existing ParaView install on such systems (it depends on python3-vtk9,
+#    which Conflicts: python3-paraview), so probe that location as a fallback.
+# 3) Only build VTK from source via FetchContent if neither is found.
+set(CARDILLO_VTK_COMPONENTS CommonCore CommonDataModel IOXML)
+find_package(VTK QUIET COMPONENTS ${CARDILLO_VTK_COMPONENTS})
+if(NOT VTK_FOUND)
+    file(GLOB CARDILLO_VTK_PARAVIEW_HINTS
+        "/usr/lib/*/cmake/paraview-*/vtk"
+        "/usr/local/lib/*/cmake/paraview-*/vtk"
+    )
+    if(CARDILLO_VTK_PARAVIEW_HINTS)
+        find_package(VTK QUIET COMPONENTS ${CARDILLO_VTK_COMPONENTS} PATHS ${CARDILLO_VTK_PARAVIEW_HINTS} NO_DEFAULT_PATH)
+    endif()
+endif()
+
+if(VTK_FOUND)
+    message(STATUS "Using system VTK ${VTK_VERSION} (${VTK_DIR}) for VTK export")
+else()
+    message(STATUS "No system VTK found; building VTK from source via FetchContent (this is slow)")
+    set(VTK_GROUP_ENABLE_StandAlone "DONT_WANT" CACHE STRING "" FORCE)
+    set(VTK_MODULE_ENABLE_VTK_CommonCore "YES" CACHE STRING "" FORCE)
+    set(VTK_MODULE_ENABLE_VTK_CommonDataModel "YES" CACHE STRING "" FORCE)
+    set(VTK_MODULE_ENABLE_VTK_IOXML "YES" CACHE STRING "" FORCE)
+    set(VTK_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(VTK_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(VTK_BUILD_DOCUMENTATION OFF CACHE BOOL "" FORCE)
+    set(VTK_WRAP_PYTHON OFF CACHE BOOL "" FORCE)
+    set(VTK_WRAP_JAVA OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(vtk GIT_REPOSITORY https://gitlab.kitware.com/vtk/vtk.git GIT_TAG v9.3.1)
+    FetchContent_MakeAvailable(vtk)
+endif()
+
 # --- 0. Set paths ---
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/config/path.hpp.in
@@ -104,6 +142,9 @@ target_link_libraries(cardillo PUBLIC
     qoco
     libclarabel_c_shared
     conicxx::conicxx
+    VTK::CommonCore
+    VTK::CommonDataModel
+    VTK::IOXML
 )
 
 if(OpenMP_CXX_FOUND)

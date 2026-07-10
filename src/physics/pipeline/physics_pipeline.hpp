@@ -25,7 +25,7 @@ class WarmstartProvider;
 }  // namespace cardillo
 namespace cardillo {
 namespace io {
-class VtkWriterBinary;
+class VtkWriter;
 }
 }  // namespace cardillo
 namespace cardillo {
@@ -60,7 +60,7 @@ class PhysicsPipeline {
     /// Access the active integrator.
     cardillo::integration::IntegrationBase& integrator() { return *m_integrator; }
     /// Access the VTK writer, if output is enabled.
-    cardillo::io::VtkWriterBinary* vtkWriter() { return m_vtk_writer.get(); }
+    cardillo::io::VtkWriter* vtkWriter() { return m_vtk_writer.get(); }
     /// Access the collision manager.
     cardillo::collision::CollisionCoal& collisionManager() { return *m_collision_mgr; }
 
@@ -76,7 +76,7 @@ class PhysicsPipeline {
     std::unique_ptr<cardillo::physics::DynamicsAssembler> m_dyn;
     std::unique_ptr<cardillo::integration::IntegrationBase> m_integrator;
     std::unique_ptr<cardillo::solver::SolverBase> m_solver;
-    std::unique_ptr<cardillo::io::VtkWriterBinary> m_vtk_writer;
+    std::unique_ptr<cardillo::io::VtkWriter> m_vtk_writer;
     std::unique_ptr<cardillo::io::CsvWriter> m_tracked_writer;
     // Owned progress bar
     std::unique_ptr<cardillo::misc::ProgressBar> m_pbar;

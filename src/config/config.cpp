@@ -323,6 +323,8 @@ Config ConfigReader::fromFile(const std::string& path) {
             }
         } else if (key == "output.write_contacts") {
             cfg.output_write_contacts = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
+        } else if (key == "output.write_contact_manifolds") {
+            cfg.output_write_contact_manifolds = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
         } else if (key == "output.interval_steps") {
             try {
                 cfg.output_interval_steps = std::max(1, std::stoi(val));

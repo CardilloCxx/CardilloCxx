@@ -18,7 +18,7 @@ class WarmstartProvider {
     // non-negative, i.e. its magnitude is the compressive impulse. This matches Projected Jacobi,
     // QOCO and Clarabel (whose cone-program duals are non-negative by construction), and is what
     // VTK contact-pressure/force-vector output already assumes when consuming `last_impulse`
-    // (see io/vtk_writer_binary.cpp). Projected Gauss-Seidel is the sole exception: its internal
+    // (see io/vtk_writer.cpp). Projected Gauss-Seidel is the sole exception: its internal
     // `project()` clamps the normal impulse <= 0. `invertNormalSign` lets PGS convert at this
     // boundary without touching its own internal algebra or the canonical storage convention.
     //

@@ -69,6 +69,29 @@ struct ContactPairKeyHash {
 using ContactList = std::vector<Contact>;
 using ContactMap = std::unordered_map<ContactPairKey, ContactList, ContactPairKeyHash>;
 
+// The actual clipped contact patch coal computed for one colliding pair (a line segment, a
+// polygon, or a single point), as opposed to Contact's single representative point. Points are
+// mid-surface (coal::ContactPatch::getPoint), in coal's own CCW winding order. normal/tangent1/
+// tangent2/penetration/friction_mu are patch-level (one contact frame per patch, matching
+// coal::ContactPatch's single normal); impulse is per-point since force distribution across a
+// patch is not necessarily uniform.
+struct ContactManifold {
+    entt::entity a{entt::null};
+    entt::entity b{entt::null};
+    Vector3r normal{Vector3r::Zero()};
+    Vector3r tangent1{Vector3r::Zero()};
+    Vector3r tangent2{Vector3r::Zero()};
+    real_t penetration{0};
+    real_t friction_mu{0};
+    real_t pressure{0};  // filled in later by VtkWriter; 0 at capture time
+
+    struct Point {
+        Vector3r position{Vector3r::Zero()};  // mid-surface, world
+        Vector3r impulse{Vector3r::Zero()};   // (pn, pt1, pt2) in (normal, tangent1, tangent2); zero until matched
+    };
+    std::vector<Point> points;
+};
+
 // Collider shapes resolved from ECS
 struct SphereCollider {
     entt::entity e;

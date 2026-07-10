@@ -22,6 +22,7 @@ struct Config {
     std::string output_folder{"./vtk_out"};       // output.folder
     std::string output_filename_prefix{"scene"};  // output.filename_prefix
     bool output_write_contacts{false};            // output.write_contacts
+    bool output_write_contact_manifolds{true};    // output.write_contact_manifolds
 
     // Collision settings
     // collision.broadphase: one of [dynamic_aabb, dynamic_aabb_array, naive, sap, ssap]

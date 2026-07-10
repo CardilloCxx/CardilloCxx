@@ -372,6 +372,7 @@ void CollisionCoal::applyTransforms() {
 std::vector<Contact>& CollisionCoal::detectAll() {
     ContactMap& mapCurr = m_mapCurr;
     mapCurr.clear();
+    m_contactManifolds.clear();
     if (!m_world) {
         m_prev_flattened.clear();
         m_flattened.clear();
@@ -464,6 +465,32 @@ std::vector<Contact>& CollisionCoal::detectAll() {
             auto sc_prep = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionMakeContactPatch);
             patch_res.clear();
             coal::computeContactPatch(o1, o2, cres, patch_req, patch_res);
+        }
+
+        // Capture patch geometry for export/visualization -- kept as ordered per-patch point
+        // lists (unlike appendContactsFromPair below, which flattens every patch vertex into an
+        // independent, unordered Contact for the solver's impulse rows). Runs unconditionally,
+        // independent of usePatchVertices (that flag only controls what the solver consumes).
+        for (std::size_t ip = 0; ip < patch_res.numContactPatches(); ++ip) {
+            const coal::ContactPatch& patch = patch_res.getContactPatch(ip);
+            const std::size_t m = patch.size();
+            if (m == 0) continue;
+
+            ContactManifold cm;
+            cm.a = ea;
+            cm.b = eb;
+            cm.normal = Vector3r(patch.getNormal().x(), patch.getNormal().y(), patch.getNormal().z());
+            cardillo::collision::tangentFrameFromNormal(cm.normal, cm.tangent1, cm.tangent2);
+            cm.penetration = std::max<real_t>(0.0, (real_t)patch.penetration_depth);
+            cm.friction_mu = combineFrictionMu(reg, ea, eb, frictionCombine);
+            cm.points.reserve(m);
+            for (std::size_t iv = 0; iv < m; ++iv) {
+                const auto p = patch.getPoint(iv);
+                ContactManifold::Point pt;
+                pt.position = Vector3r(p.x(), p.y(), p.z());
+                cm.points.push_back(pt);
+            }
+            m_contactManifolds.push_back(std::move(cm));
         }
 
         // Append contacts from this pair
