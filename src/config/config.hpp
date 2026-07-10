@@ -62,14 +62,20 @@ struct Config {
     bool pj_nesterov{false};                           // pj.nesterov (enable Nesterov acceleration)
     real_t pj_nesterov_beta_threshold{(real_t)1.0};    // pj.nesterov_beta_threshold
     int pj_nesterov_restart_limit{10000};              // pj.nesterov_restart_limit
-    // Chebyshev semi-iterative acceleration: an alternative to Nesterov for PJ, estimating the
-    // iteration operator's spectral radius via power iteration each solve() call. Mutually
-    // exclusive with pj_nesterov (pj_nesterov takes precedence if both are set). Verified on three
-    // scenes against a true (non-accelerated) baseline: 3.4-10.7x fewer sweeps than no
-    // acceleration, matching or beating pj_nesterov in every case tested (up to ~1.8x fewer sweeps
-    // than Nesterov on dense rigid-contact scenes; within ~3% of Nesterov, still both a ~3.4x win
-    // over baseline, on an elastic+frictional scene). Not yet default -- see the accompanying
-    // report for the full methodology before relying on these numbers for a scene not yet tested.
+    // Chebyshev semi-iterative acceleration: an alternative to Nesterov, estimating the iteration
+    // operator's spectral radius via power iteration each solve() call. Mutually exclusive with
+    // pj_nesterov (pj_nesterov takes precedence if both are set). Shared by both
+    // solver.type=projected_jacobi (matrix-based power iteration through PjAssembler::solveS())
+    // and solver.type=condensed (matrix-free power iteration reusing condensed's own
+    // block-sweep functions with projection/Newton disabled and a zero rhs -- see
+    // estimateSpectralRadius() in condensed_solver.cpp). Verified on three scenes against a true
+    // (non-accelerated) baseline: 3.4-10.7x fewer sweeps than no acceleration, matching or beating
+    // pj_nesterov in every case tested (up to ~1.8x fewer sweeps than Nesterov on dense
+    // rigid-contact scenes; within ~3% of Nesterov, still both a ~3.4x win over baseline, on an
+    // elastic+frictional scene) -- for PJ. On condensed, ~20% fewer sweeps than no acceleration and
+    // competitive with/slightly ahead of Nesterov on both domino and slinky (see
+    // docs/chapters/solvers/condensed.rst). Not yet default -- see the accompanying report for the
+    // full methodology before relying on these numbers for a scene not yet tested.
     bool pj_chebyshev{false};  // pj.chebyshev
     // Anderson acceleration (Type-II / unconstrained-least-squares reformulation): mixes the last
     // pj_anderson_m residual differences via a small least-squares solve each sweep. Precedence

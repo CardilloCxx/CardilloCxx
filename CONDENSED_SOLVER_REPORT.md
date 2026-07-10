@@ -661,6 +661,59 @@ scoping it:
 Worth revisiting only if a scene with a much longer compliant chain shows up (the plan's own
 verification section flagged this exact caveat) -- not speculatively.
 
+## Update: Chebyshev semi-iterative acceleration ported to `condensed`
+
+Requested as a follow-up: PJ's `pj.chebyshev` (an alternative to Nesterov, no momentum/restart
+logic, just a fixed extrapolation schedule driven by a once-per-`solve()` spectral-radius estimate)
+had already been shown to match-or-beat Nesterov on PJ; the ask was to see whether the same held for
+`condensed`.
+
+**The porting challenge**: PJ's `estimateSpectralRadius()` power-iterates through
+`PjAssembler::solveS()` -- a real sparse linear solve, since PJ has an assembled system matrix.
+`condensed` has no such matrix by design. Resolved by noticing that with the sweep's rhs forced to
+zero and projection/Newton disabled, one sweep step becomes an *exact* linear map (`G(d) = A*d`, no
+affine offset), so plain power iteration on this zero-rhs, linear-only variant of the actual
+configured sweep (`gaussSeidelSweep`/`jacobiSweep`/`coloredSweep`, plus `exactBilateralStep` under
+`true_schur`) converges to the same quantity PJ's matrix-based power iteration finds — reusing the
+real sweep functions via a new `linearOnly` parameter (default `false`, so every existing call site
+is unaffected) rather than a separate reimplementation.
+
+**A real bug caught before shipping**: the first version of the Chebyshev loop ported PJ's
+`chebyshev_loop()`'s linearization-breakdown guard (checking the *extrapolated* state for
+finiteness) but not its separate raw-sweep-divergence guard (checking whether the sweep's own output
+was *already* non-finite before any extrapolation). Missing that check doesn't self-correct: once the
+underlying sweep itself started producing `nan` (triggered by testing `condensed.sweep_mode=jacobi`
+at `domino`'s tuned-for-colored `pj.alpha=1.0` — a pre-existing, already-documented jacobi
+instability, confirmed to *also* diverge with plain jacobi and jacobi+Nesterov at that same alpha),
+the fallback path kept feeding the same NaN state back into the sweep every remaining iteration,
+spinning silently through all 50000 configured iterations instead of throwing "Condensed solver
+diverged" the way Nesterov already does. Caught by deliberately testing an unstable configuration
+(not just the tuned ones), not by accident. Fixed by adding the identical raw-output check the
+Nesterov branch already had.
+
+**Validation**: `domino` and `slinky`, one run each, `condensed.sweep_mode=colored`:
+
+| Scene | Unaccelerated | Nesterov | Chebyshev |
+|---|---|---|---|
+| domino (21 steps) | 1774 total sweeps | 1514 | **1415** |
+| slinky (21 steps) | 1754 total sweeps | 1418 | **1403** |
+
+Chebyshev beat Nesterov on both (∼7% fewer on domino, ∼1% fewer on slinky — close to a tie there),
+consistent with the "matches or slightly beats Nesterov" finding already established for PJ. On
+`wilberforce` (pure DAE, `true_schur=true` already eliminates everything exactly), Chebyshev
+reproduced the un-accelerated fixed point bit-for-bit, as expected — nothing left to accelerate.
+`domino`/`slinky`/`wilberforce` with Chebyshev *disabled* (the default) remained bit-identical to
+pre-change builds, confirmed via the usual git-stash A/B rebuild.
+
+**An unrelated pre-existing bug found while regenerating test configs**: `hangbridge` segfaults
+(`malloc(): invalid size (unsorted)`) on a short test run — confirmed to reproduce *identically* on
+the pre-Chebyshev commit (`git stash` A/B), so this is not something introduced here. Not
+investigated further as part of this task; flagged for separate follow-up. (Also re-learned the
+established lesson from earlier in this session: the session's scratchpad directory can get wiped
+independently of the repo, and a stale/missing test config silently falls back to
+`Config`'s in-code defaults rather than failing loudly — an early "hang" on this same testing round
+turned out to be exactly that, not a real bug, before the actual bug above was found.)
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode
