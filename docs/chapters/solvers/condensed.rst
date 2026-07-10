@@ -3,7 +3,7 @@ Condensed (Block-Sparse) Solver
 
 .. contents:: On this page
    :local:
-   :depth: 2
+   :depth: 3
 
 Overview
 --------
@@ -22,6 +22,11 @@ independent axes:
   semismooth Newton solve (``newton``) that can converge a single contact to
   machine precision in a handful of iterations instead of tens.
 
+On top of that, ``condensed.true_schur`` can eliminate the compliant
+(spring+damper) rows *exactly*, in closed form, instead of letting them
+participate in the sweep at all -- see `True Schur-complement elimination of
+the compliant chain (condensed.true_schur)`_ below.
+
 Motivation: unlike :doc:`projected_jacobi` (PJ), which factorizes the full
 mass+bilateral system once but re-solves it (a global sparse triangular
 back-substitution) on **every** sweep, ``condensed`` -- like PGS -- never
@@ -34,6 +39,150 @@ acceleration via the same ``pj.nesterov`` config key PJ and PGS already use
 (no new keys) -- see `Nesterov acceleration`_ below, including a real
 scene-dependent divergence case to be aware of. Chebyshev and Anderson (both
 PJ-only today) are not yet ported.
+
+From the Moreau system to condensed's row-blocks
+--------------------------------------------------
+
+This section derives *why* the ``RowBlock`` fields in the next section have
+the values they have. It is not an independent re-derivation: every formula
+below is a direct transcription of ``CondensedAssembler``'s actual C++ (cross-
+checked line by line against ``PgsAssembler``, and validated empirically --
+bit-identical results to PGS on every non-``true_schur``, non-gyroscopic
+config). Where this section says a formula "is" something, that is a
+statement about the code, not an independent mathematical claim.
+
+**The starting point** is the scaled block linear system every Moreau-based
+solver in this codebase solves, derived in full in
+:doc:`../moreau_time_stepping`:
+
+.. math::
+
+   \mathcal{S}(\mathbf{q}_{n+\theta}, \Delta t, \theta)\;\mathbf{x}_{n+1} = \mathbf{b}_n
+
+with :math:`\mathbf{x}_{n+1} = (\mathbf{u}_{n+1}, \boldsymbol\Lambda_{g,n+1}, \boldsymbol\Lambda_{\gamma,n+1})`
+(contacts appended as extra rows/columns with a zero compliance block -- see that
+chapter for the full block layout, and the note on :math:`\mathbf{M}_\mathrm{eff}`
+below).
+
+**Eliminating the velocity** (matching :doc:`projected_gauss_seidel`'s own
+derivation, generalized to :math:`\mathbf{M}_\mathrm{eff}` instead of
+:math:`\mathbf{M}`) gives a reduced system purely in the stacked constraint/contact
+multipliers :math:`\boldsymbol\Lambda = (\boldsymbol\Lambda_g, \boldsymbol\Lambda_\gamma, \boldsymbol\Lambda_N, \boldsymbol\Lambda_T)`
+(springs, then dampers, then frictionless contacts, then frictional contacts --
+this exact packed order is ``CondensedTopology``'s own row layout):
+
+.. math::
+
+   \hat S\,\boldsymbol\Lambda = \tilde b,
+   \qquad
+   \hat S = \hat W^\top M_\mathrm{eff}^{-1} \hat W + \hat C,
+   \qquad
+   \hat W = (W_g, W_\gamma, W_N, W_T)
+
+with :math:`\hat C` block-diagonal (nonzero only on the spring/damper rows --
+contact rows have no compliance). Once :math:`\boldsymbol\Lambda` is known:
+
+.. math::
+
+   \mathbf{u}_{n+1} = \underbrace{M_\mathrm{eff}^{-1}\bigl(\mathbf{M}\mathbf{u}_n + \Delta t\,\mathbf f^\mathrm{ext}_{n+\theta}\bigr)}_{u_\mathrm{free}}
+                    - \underbrace{M_\mathrm{eff}^{-1}\,\hat W\,\boldsymbol\Lambda}_{u_\mathrm{corr}}
+
+``condensed`` -- like PGS -- never assembles :math:`\hat W` or :math:`\hat S` as
+matrices (dense or sparse). Instead it decomposes :math:`\hat W`'s **row space**
+into small, independent ``RowBlock`` s (one spring, one damper, one frictionless
+contact, or one 3-row frictional contact each), and builds each block's own
+slice of :math:`\hat S`/:math:`\tilde b` directly from two small dense Jacobians
+and the bodies' (inverse) mass -- never touching a global matrix at any point.
+The rest of this section gives the exact per-block formulas, in the same
+notation ``condensed_assembler.cpp`` uses.
+
+**Per-block local Delassus block** (``RowBlock::Gii``, built in
+``CondensedAssembler::buildTopology()``) is exactly that block's own diagonal
+block of :math:`\hat W^\top M_\mathrm{eff}^{-1}\hat W`:
+
+.. math::
+
+   G_i = J_a\,M_{\mathrm{eff},a}^{-1}\,J_a^\top + J_b\,M_{\mathrm{eff},b}^{-1}\,J_b^\top
+
+:math:`J_a,J_b` are this block's own rows of :math:`\hat W` restricted to its
+two touching bodies (``RowBlock::Ja``/``Jb``, zero-sized if that side is
+static). :math:`M_{\mathrm{eff},a}^{-1}` is body :math:`a`'s own 3x3 (point
+mass) or 6x6 (rigid body) block of :math:`M_\mathrm{eff}^{-1}` -- for the
+overwhelming majority of bodies this is just ``diag(MinvDiag)`` (plain
+per-DOF inverse mass), computed via Eigen's ``.asDiagonal()`` with no matrix
+ever materialized; only a rigid body with an active implicit-gyroscopic
+override (see `Implicit gyroscopic forces (moreau.implicit_gyroscopy)`_) gets a genuinely non-diagonal
+6x6 block here, looked up from ``CondensedTopology::gyroMinvBlocks``.
+
+**Per-block compliance** (``RowBlock::complianceDiag``, filled by
+``CondensedAssembler::updateCompliance()``) is that block's own diagonal
+slice of :math:`\hat C`: :math:`C_\mathrm{row}/(\theta\,\Delta t^2)` for
+springs, :math:`A_\mathrm{row}/(\theta\,\Delta t)` for dampers, zero for
+contacts -- read straight off ``DynamicsAssembler::Cdiag()``/``Adiag()``, no
+assembly needed since :math:`\hat C` is block-diagonal by construction.
+
+**Per-block right-hand side** (``CondensedAssembler::rhs()``, building
+:math:`\tilde b` block by block) differs by kind, matching
+:doc:`../moreau_time_stepping`'s :math:`\mathbf b_n` variable for variable
+(:math:`\mathbf v_g \to` ``C_v_vec``, :math:`\mathbf v_\gamma \to`
+``A_v_vec``, :math:`\mathbf g(t,\mathbf q) \to` ``g_error_vec``,
+:math:`\beta \to` ``constraint_bias_factor``), in this codebase's own
+internal sign convention (identical to ``PgsAssembler::rhs()`` -- not
+independently re-derived here):
+
+.. math::
+
+   \text{rhs}_\mathrm{vel} = M\,\mathbf u_n + \Delta t\,\mathbf f^\mathrm{ext} \;\; [+\, \Delta t\,\mathbf f^\mathrm{gyr} \text{ if gyroscopic forces are NOT treated implicitly}]
+
+For a **spring** row (:math:`\Lambda_{g}` held at its warm-started/previous-step
+value :math:`\Lambda_{g,n}` while solving for the current step's answer --
+this is a fixed constant *within* one ``solve()`` call, not the unknown being
+solved for):
+
+.. math::
+
+   \mathrm{seg}_\mathrm{spring} = \frac{1}{\theta\Delta t^2}\,C_\mathrm{row}\odot\Lambda_{g,n}
+                                 + \frac{1-\theta}{\theta}\bigl(J_a\mathbf u_{n,a}+J_b\mathbf u_{n,b}\bigr)
+                                 + \frac{1}{\theta}\,\mathbf v_{g,\mathrm{row}}
+                                 + \bigl[\beta>0\bigr]\,\gamma_\mathrm{stab}
+                                 + J_a M_{\mathrm{eff},a}^{-1}\,\text{rhs}_{\mathrm{vel},a} + J_b M_{\mathrm{eff},b}^{-1}\,\text{rhs}_{\mathrm{vel},b}
+
+with :math:`\gamma_\mathrm{stab} = \bigl(-C_\mathrm{row}\odot\Lambda_{g,n}/\Delta t + \mathbf g_\mathrm{row}\bigr)\,\beta/(\Delta t\,\theta)`.
+A **damper** row drops the compliance/bias terms (dampers carry no position
+error to stabilize):
+
+.. math::
+
+   \mathrm{seg}_\mathrm{damper} = \frac{1-\theta}{\theta}\bigl(J_a\mathbf u_{n,a}+J_b\mathbf u_{n,b}\bigr)
+                                 + \frac{1}{\theta}\,\mathbf v_{\gamma,\mathrm{row}}
+                                 + J_a M_{\mathrm{eff},a}^{-1}\,\text{rhs}_{\mathrm{vel},a} + J_b M_{\mathrm{eff},b}^{-1}\,\text{rhs}_{\mathrm{vel},b}
+
+A **contact** row (frictionless or frictional) is simplest of all -- it only
+ever needs :math:`u_\mathrm{free}`, already fully formed, plus the
+kinematic contact-velocity bias:
+
+.. math::
+
+   \mathrm{seg}_\mathrm{contact} = J_a\,u_{\mathrm{free},a} + J_b\,u_{\mathrm{free},b} + \mathbf b_{\mathrm{contact},\mathrm{row}}
+
+.. note::
+   Springs/dampers and contacts use two **formally different, not merely
+   differently-named** quantities for the "free velocity" term:
+   :math:`J\,M_\mathrm{eff}^{-1}\,\text{rhs}_\mathrm{vel}` for bilateral rows,
+   :math:`J\,u_\mathrm{free}` for contact rows. They coincide only when
+   ``moreau.lambda_theta=false`` (the default): with it enabled, an extra
+   correction term :math:`-(1-\theta)\,\hat W^\top(\ldots\Lambda_{g,n}\ldots\Lambda_{\gamma,n}\ldots)`
+   is folded into :math:`\text{rhs}_\mathrm{vel}` (an alternate theta-scaling
+   of the constraint-force contribution) but **not** into
+   :math:`u_\mathrm{free}` (built independently by ``CondensedAssembler::ufree()``,
+   which has no knowledge of ``moreau_lambda_theta`` at all) -- so bilateral
+   and contact rows genuinely diverge in that mode, by design, not by
+   oversight.
+
+Building :math:`\hat S`'s off-diagonal coupling (needed only by
+``condensed.true_schur``, since every sweep mode above only ever needs each
+block's own :math:`G_i`, never a cross-block term) is described in
+`How Sbb's off-diagonal blocks are built`_ below.
 
 Block-sparse representation
 ----------------------------
@@ -53,7 +202,7 @@ damper, frictionless contact (1 row), or frictional contact (3 rows: normal +
    * - ``Ja``, ``Jb``
      - Dense Jacobian rows for this block's two sides (``dim`` x ``aDof``/``bDof``), zero-sized if that side is static
    * - ``Gii``
-     - Local (mass-only) Delassus block, :math:`G_i = J_a\,\mathrm{diag}(M^{-1}_a)\,J_a^\top + J_b\,\mathrm{diag}(M^{-1}_b)\,J_b^\top`
+     - :math:`G_i = J_a\,M_{\mathrm{eff},a}^{-1}\,J_a^\top + J_b\,M_{\mathrm{eff},b}^{-1}\,J_b^\top` -- see `From the Moreau system to condensed's row-blocks`_
    * - ``complianceDiag``
      - :math:`C_\mathrm{row}/(\theta\,dt^2)` (springs), :math:`A_\mathrm{row}/(\theta\,dt)` (dampers), zero (contacts)
    * - ``GiiInv``
@@ -75,6 +224,17 @@ damper, frictionless contact (1 row), or frictional contact (3 rows: normal +
    local coupling; only the *linear* local-solve path uses the diagonal
    approximation.
 
+.. note::
+   :math:`M_{\mathrm{eff}}^{-1}` above is *usually* just ``diag(MinvDiag)`` --
+   a plain per-DOF inverse mass, applied via Eigen's ``.asDiagonal()``
+   (a column-scaling operation, no matrix ever materialized). Every one of
+   ``Gii``'s two accumulation terms, and the analogous terms in ``rhs()``/
+   ``ufree()``/the bilateral coupling below, individually check whether the
+   relevant body has an active implicit-gyroscopic override
+   (``CondensedTopology::gyroMinvBlocks``) and only pay the cost of a real
+   6x6 block-times-block product on that (rare) path -- see `Implicit
+   gyroscopic forces (moreau.implicit_gyroscopy)`_.
+
 Two body-index maps fall out of the same block list for free: a per-body
 list of incident blocks (``CondensedTopology::blocksOfBody``, used by
 ``jacobi``'s gather pass and to build ``colored``'s adjacency graph) and the
@@ -88,8 +248,9 @@ Sweep modes
 
 All four modes share the same per-block update
 (:math:`\lambda^{(k+1)} = \mathrm{proj}\bigl(\lambda^{(k)} + \omega\,\alpha\,D_i^{-1}\,r_i\bigr)`,
-:math:`r_i` the block's local residual) -- they differ only in *when* each
-block reads/writes the shared velocity-correction state ``u_corr``.
+:math:`r_i` the block's local residual, :math:`D_i^{-1}` its ``GiiInv``) --
+they differ only in *when* each block reads/writes the shared
+velocity-correction state ``u_corr``.
 
 .. mermaid::
 
@@ -133,7 +294,8 @@ block reads/writes the shared velocity-correction state ``u_corr``.
    parallel (no two share a body, so no two write the same ``u_corr``
    entries); colors are processed sequentially, one ``#pragma omp for``
    each, inside a single ``#pragma omp parallel`` region for the whole
-   sweep.
+   sweep. See `Graph coloring algorithm`_ below for exactly how the coloring
+   is computed.
 
 **chaotic**
    The experimental mode. Block processing order is a permutation, reshuffled
@@ -163,6 +325,46 @@ block reads/writes the shared velocity-correction state ``u_corr``.
    inline in ``condensed_solver.cpp`` plus bit-identical results across 1,
    4, and 16 threads on both benchmark scenes.
 
+Graph coloring algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``colorGreedyWelshPowell()`` (``src/misc/graph_coloring.hpp``/``.cpp``) is a
+standard greedy graph coloring, computed fresh every ``solve()`` call when
+``condensed.sweep_mode=colored`` (unlike ``true_schur``'s elimination order,
+this is **not** cached across steps today -- see the performance note below):
+
+1. **Adjacency**: two blocks are adjacent iff they share a body
+   (``CondensedTopology::blocksOfBody``, restricted to the contact-block
+   range when ``condensed.true_schur`` is active -- bilateral rows never
+   enter the sweep in that case, so they're excluded from this graph too).
+2. **Order nodes by descending degree** (Welsh-Powell's own heuristic: color
+   the most-constrained nodes first, when the fewest choices remain).
+3. **Greedily assign each node the smallest color not used by any
+   already-colored neighbor**, processed in that order. Implemented with a
+   monotonically increasing "stamp" trick rather than a fresh
+   ``O(numColors)`` reset per node: a ``forbiddenStamp[c] == stamp`` check
+   marks color ``c`` as taken by the node currently being colored, and the
+   stamp increments once per node -- so checking "is color c forbidden"
+   is :math:`O(1)` regardless of how many colors exist so far.
+
+The result (``Coloring::colorClasses``) is one contiguous block-index list
+per color, consumed directly by ``coloredSweep()``: color 0's blocks are all
+updated (in parallel) before any of color 1's blocks start, guaranteeing no
+two concurrently-running blocks ever touch the same body's ``u_corr`` slice.
+
+This produces more colors than a graph-theoretically optimal (chromatic-
+number) coloring in general -- greedy Welsh-Powell is a well-known
+polynomial-time heuristic, not an exact minimum-coloring algorithm, which is
+NP-hard in general -- but is fast to compute (:math:`O(V\log V + E)`, the
+sort dominating) and good enough in practice: see the performance note in
+`Known performance characteristics`_ on why ``colored`` currently loses to
+``jacobi``/``gauss_seidel`` on ``domino`` despite being parallel (too many
+colors relative to the per-color OpenMP barrier cost at that scene's
+contact density) -- caching this coloring across steps (like ``true_schur``'s
+elimination order already is) is the natural next step if that overhead
+ever becomes the bottleneck rather than the tuned-per-scene ``alpha``/sweep
+count it currently is.
+
 Local solve: projection vs. semismooth Newton
 -----------------------------------------------
 
@@ -173,7 +375,9 @@ scaled toward the Coulomb disk of radius :math:`-\mu\,\Lambda_N`.
 **newton** replaces that clip, for frictional (3-row) blocks only, with a
 guarded Alart-Curnier semismooth Newton solve
 (``src/physics/solver/local_contact_newton.{hpp,cpp}``). Given the block's
-local Delassus matrix :math:`G_i` and current residual :math:`r`:
+local Delassus matrix :math:`G_i` and current residual :math:`r` (evaluated
+at the current ``lambda``, i.e. ``blockResidual()``'s return value for this
+block):
 
 .. math::
 
@@ -182,23 +386,53 @@ local Delassus matrix :math:`G_i` and current residual :math:`r`:
    \rho_T = 1/\lambda_\mathrm{max}(G_{i,TT})
 
 (:math:`G_{i,TT}` the 2x2 tangential sub-block; :math:`\lambda_\mathrm{max}`
-via the closed-form 2x2 eigenvalue, no ``SelfAdjointEigenSolver`` needed).
-With :math:`M = I - \mathrm{diag}(\rho_N,\rho_T,\rho_T)\,G_i` and
+via the closed-form 2x2 eigenvalue
+:math:`\tfrac12\bigl((a+d)+\sqrt{(a-d)^2+4b^2}\bigr)`, no
+``SelfAdjointEigenSolver`` needed -- :math:`\rho_N`/:math:`\rho_T` are
+diagonal preconditioners for the local Newton iteration, analogous in role
+to ``GiiInv`` for the linear path, just derived to make the *Newton* map
+well-scaled rather than to directly precondition a linear solve). With
+:math:`M = I - \mathrm{diag}(\rho_N,\rho_T,\rho_T)\,G_i` and
 :math:`c = \mathrm{diag}(\rho)\,(r + G_i\,\lambda)`, the trial state
-:math:`y(\lambda') = M\lambda' + c` is case-split into separation
-(:math:`y_N \ge 0 \Rightarrow g = 0`), sticking
-(:math:`\|y_T\| \le -\mu y_N \Rightarrow g = y`), or sliding
-(:math:`g_T = -\mu y_N\,\hat t`, :math:`\hat t = y_T/\|y_T\|`) to build
-:math:`\Phi(\lambda) = \lambda - g(\lambda)` and its Jacobian, then takes a
-Newton step :math:`J_\Phi\,\delta = -\Phi`.
+:math:`y(\lambda') = M\lambda' + c` (built so that :math:`y(\lambda_\mathrm{cur})`
+reduces to exactly the plain relaxation update's trial state before
+projection) is case-split, per Newton iterate, into:
 
-The solve is **guarded**: it reports failure (never leaves ``lambda`` in a
-partially-updated state) on a singular/near-singular local block, a
-non-finite step, a step that increases :math:`\|\Phi\|` after the first
-iteration, or exhausting ``condensed.newton_max_iters`` without meeting
-``condensed.newton_tol``. On failure the caller falls straight through to
-the ``projection`` update for that block -- ``newton`` never risks being
-*less* robust than ``projection``, only sometimes not worth its extra cost.
+- **separation** (:math:`y_N \ge 0`): no contact force, :math:`g=0`,
+  :math:`\partial g/\partial\lambda = 0`.
+- **sticking** (:math:`\|y_T\| \le -\mu y_N`): the unconstrained trial state
+  is already inside (or on) the friction cone, :math:`g=y`,
+  :math:`\partial g/\partial\lambda = M`.
+- **sliding** (otherwise): the tangential trial state is projected onto the
+  disk of radius :math:`-\mu y_N`, :math:`g_T = -\mu y_N\,\hat t`
+  (:math:`\hat t = y_T/\|y_T\|`), with the Jacobian's tangential rows
+  accounting for both the direct scaling and the trial state's own
+  dependence on :math:`\lambda` through :math:`y_N` and :math:`\hat t`.
+
+This builds :math:`\Phi(\lambda) = \lambda - g(\lambda)` and its Jacobian
+:math:`J_\Phi = I - \partial g/\partial\lambda`, then takes a Newton step
+:math:`J_\Phi\,\delta = -\Phi` (solved via ``Eigen::FullPivLU`` on the 3x3
+:math:`J_\Phi`, checked for invertibility every iteration since the active
+case -- and therefore the Jacobian's structure -- can change step to step).
+
+The solve is **guarded** at every point that could otherwise silently
+corrupt ``lambda`` -- it reports failure (leaving ``lambda`` completely
+unchanged) on any of:
+
+- :math:`G_{i,00} \le \varepsilon` or :math:`\lambda_\mathrm{max}(G_{i,TT}) \le \varepsilon`
+  (near-singular local block -- :math:`\rho_N`/:math:`\rho_T` would blow up);
+- :math:`J_\Phi` not invertible (``FullPivLU::isInvertible()``);
+- a Newton step :math:`\delta` that is not finite;
+- a step that *increases* :math:`\|\Phi\|` relative to the previous
+  iterate, once past the very first iteration (the first step is always
+  accepted even if it doesn't immediately reduce the residual, since the
+  case-split can legitimately jump on iteration 0 before settling);
+- exhausting ``condensed.newton_max_iters`` without meeting
+  ``condensed.newton_tol`` on :math:`\|\Phi\|`.
+
+On failure the caller falls straight through to the ``projection`` update
+for that block -- ``newton`` never risks being *less* robust than
+``projection``, only sometimes not worth its extra cost.
 
 True Schur-complement elimination of the compliant chain (``condensed.true_schur``)
 -------------------------------------------------------------------------------------
@@ -220,28 +454,27 @@ bilateral (spring+damper) rows without paying PJ's per-sweep cost, by
 eliminating those rows in closed form once per outer iteration instead of
 letting them participate in the sweep at all.
 
-**The math**, worked from the same ``S = W*Minv*W^T + diag(C)`` system every
-PGS-family solver already solves (see ``PgsAssembler::rhs()``/``Dinv()`` and
-their condensed transcriptions -- nothing below is re-derived independently
-of that verified ground truth). Partition rows into bilateral (springs +
+**The math**, worked from the same :math:`\hat S = \hat W^\top M_\mathrm{eff}^{-1}\hat W + \hat C`
+system derived above (nothing below is re-derived independently of that
+verified ground truth). Partition rows into bilateral (springs +
 dampers, pure equality constraints -- ``projectBlock()`` already no-ops for
 these) and contact (subject to the friction-cone projection):
 
 .. math::
 
-   S = \begin{bmatrix} S_{bb} & S_{bc} \\ S_{cb} & S_{cc} \end{bmatrix},
+   \hat S = \begin{bmatrix} S_{bb} & S_{bc} \\ S_{cb} & S_{cc} \end{bmatrix},
    \quad
-   \lambda = \begin{bmatrix} \lambda_b \\ \lambda_c \end{bmatrix}
+   \Lambda = \begin{bmatrix} \Lambda_b \\ \Lambda_c \end{bmatrix}
 
-Eliminating :math:`\lambda_b` gives the Schur complement over contacts alone:
-:math:`(S_{cc} - S_{cb} S_{bb}^{-1} S_{bc})\,\lambda_c = \text{rhs}_c - S_{cb} S_{bb}^{-1}\,\text{rhs}_b`.
+Eliminating :math:`\Lambda_b` gives the Schur complement over contacts alone:
+:math:`(S_{cc} - S_{cb} S_{bb}^{-1} S_{bc})\,\Lambda_c = \text{rhs}_c - S_{cb} S_{bb}^{-1}\,\text{rhs}_b`.
 Explicitly forming this (generally dense, since :math:`S_{bb}^{-1}` is dense
 even though :math:`S_{bb}` is sparse) matrix is exactly what this solver
 family exists to avoid, and turns out not to be necessary: because bilateral
 rows are pure equalities with no projection, whatever the current contact
-impulses are, there is a single exact :math:`\lambda_b` that zeroes every
+impulses are, there is a single exact :math:`\Lambda_b` that zeroes every
 bilateral row's residual simultaneously --
-:math:`\delta\lambda_b = S_{bb}^{-1}\,r_{\text{old}}`, where :math:`r_{\text{old}}`
+:math:`\delta\Lambda_b = S_{bb}^{-1}\,r_{\text{old}}`, where :math:`r_{\text{old}}`
 is the *already-existing* ``blockResidual()`` evaluated at the bilateral
 blocks' current state. Applied via the *already-existing* ``scatterDelta()``,
 this is architecturally just "one generalized block update over the whole
@@ -260,39 +493,181 @@ state lives in an atomic array, and combining that with an exact joint solve
 raises questions not tackled here); setting ``condensed.true_schur=true``
 with ``condensed.sweep_mode=chaotic`` is silently ignored.
 
-**Factorization**: ``S_bb``'s sparsity, in row-space, is exactly the
-shared-body adjacency graph restricted to bilateral rows -- a path graph for
-every current example scene except ``hangbridge``, which has real branching
-nodes (tripod apexes / deck planks, degree 4-6). ``BlockSparseLDLT``
-(``src/misc/block_sparse_ldlt.{hpp,cpp}``) is a small, generic, reusable
-block-sparse LDLT factorization over a graph of dense blocks (never a
-dense/global matrix), used via
-``CondensedAssembler::buildBilateralFactorization()``. Elimination order is
-computed internally via a greedy minimum-degree heuristic, not left to
-chance: an early version used natural (creation) order, which is exactly
-correct but **hung** on ``hangbridge`` -- natural order is not fill-reducing
-for a branching graph, and the fill-in cascade made factorization
-impractically slow (confirmed by measurement, not just theory). Minimum-degree
-recovers exactly the chain order (zero fill-in) on every path-graph scene, so
-nothing is given up on the common case to fix the uncommon one; a synthetic
-270-node stress test mirroring ``hangbridge``'s rope+plank topology factors
-in under a millisecond with it.
+.. note::
+   Because a direct linear solve of :math:`S_{bb}` always lands on the same
+   unique solution regardless of the state it started from, one exact
+   bilateral step is mathematically sufficient to zero the bilateral
+   residual for good -- a *second* call, given the first call's exact
+   output, is provably a no-op. Any outer-iteration count above 1-2 you
+   observe on a scene with no contacts is overwhelmingly the surrounding
+   convergence-check/Nesterov bookkeeping confirming that nothing changed
+   anymore, not the Schur solve itself needing repeated work -- see
+   ``CONDENSED_SOLVER_REPORT.md`` for a worked example (``wilberforce``) with
+   exact iteration-count accounting.
 
-The minimum-degree order is also **cached** across steps
-(``CondensedAssembler`` keys the cache on the bilateral graph's structure --
-dims + which pairs of blocks are coupled, not the numeric ``Gii``/
-``complianceDiag`` values, which change every step regardless): every current
-scene's bilateral topology is static for its lifetime (constraints aren't
-created or destroyed at runtime), so after the first step this always hits,
-skipping the O(n^2) symbolic pass entirely. ``factorWithOrder()`` still runs
-the full *numeric* factorization on the current step's values either way, so
-a cache hit only ever changes which (still fully valid) elimination order is
-used, never the correctness of the factorization. Measured ~14% faster
-``Condensed Setup`` on ``wilberforce`` (327.9µs to 282.6µs average, 2000
-calls) -- a real but modest win, since ``Condensed Setup`` itself is a small
-fraction of that scene's wall-clock: for the default one-VTK-frame-per-step
-config, ``Output Write`` is ~90% of total time, unrelated to anything in this
-solver. Worth knowing if chasing wall-clock further on a similar scene --
+How Sbb's off-diagonal blocks are built
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:math:`S_{bb}`'s diagonal blocks are already sitting in ``RowBlock::Gii``/
+``complianceDiag`` -- no extra work needed (``buildBilateralFactorization()``
+just adds them: ``diagBlocks[i] = Gii_i + diag(complianceDiag_i)``). The
+off-diagonal *coupling* between two bilateral blocks :math:`p,q` exists only
+if they share a body :math:`b` (an end of one spring/damper is the same
+rigid body as an end of another), and is built the same way ``Gii`` itself
+is -- directly from the two blocks' own Jacobian slices at the shared body,
+never through a global matrix:
+
+.. math::
+
+   S_{bb}[p,q] \mathrel{+}= J_p\, M_{\mathrm{eff},b}^{-1}\, J_q^\top
+
+summed over every body two bilateral blocks share (a pair can share *two*
+bodies at once -- e.g. two independent springs between the same two rigid
+bodies -- so contributions are accumulated into a map keyed by the
+unordered block-index pair before being handed to ``BlockSparseLDLT``, which
+expects at most one edge per pair). In the overwhelming common case
+(:math:`M_{\mathrm{eff},b}^{-1}` diagonal), :math:`S_{bb}[p,q]` and
+:math:`S_{bb}[q,p]` are exact transposes of each other, so only one
+direction is computed and stored per pair -- ``BlockSparseLDLT`` derives the
+other via transpose (its ``symmetric=true`` mode, the default). When body
+:math:`b` has an active implicit-gyroscopic override, that is no longer
+true (:math:`(J_p M^{-1} J_q^\top)^\top = J_q (M^{-1})^\top J_p^\top \ne
+J_q M^{-1} J_p^\top` for a non-symmetric :math:`M^{-1}`), so **both**
+directions are computed independently for the *entire* bilateral graph once
+any pair in it is affected (an edge given in only one direction in
+``BlockSparseLDLT``'s ``symmetric=false`` mode is treated as exactly zero in
+the other, not "derive it") -- see `Implicit gyroscopic forces (moreau.implicit_gyroscopy)`_.
+
+Block-sparse factorization algorithm (``BlockSparseLDLT``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``S_bb``'s sparsity, in row-space, is exactly the shared-body adjacency graph
+restricted to bilateral rows -- a path graph for every current example scene
+except ``hangbridge``, which has real branching nodes (tripod apexes / deck
+planks, degree 4-6). ``BlockSparseLDLT`` (``src/misc/block_sparse_ldlt.{hpp,cpp}``)
+is a small, generic, reusable block-sparse factorization over a graph of
+dense blocks (never a dense/global matrix), used via
+``CondensedAssembler::buildBilateralFactorization()``.
+
+**Elimination order.** Computed internally via a greedy minimum-degree
+heuristic, not left to chance: at each step, eliminate whichever
+still-active node currently has the fewest active neighbors, then simulate
+the resulting fill-in (every pair of that node's still-active neighbors
+becomes connected, mirroring the real Schur update below) purely on
+adjacency, before ever touching a matrix block. An early version used
+natural (creation) order, which is exactly correct but **hung** on
+``hangbridge`` -- natural order is not fill-reducing for a branching graph,
+and the fill-in cascade made factorization impractically slow (confirmed by
+measurement, not just theory). Minimum-degree recovers exactly the chain
+order (zero fill-in) on every path-graph scene, so nothing is given up on
+the common case to fix the uncommon one; a synthetic 270-node stress test
+mirroring ``hangbridge``'s rope+plank topology factors in under a
+millisecond with it. This order is also **cached** across steps (see the
+performance discussion further below).
+
+**Symmetric mode (block LDLT, the default -- used whenever no implicit-
+gyroscopic body touches the bilateral graph).** For each pivot :math:`k` in
+elimination order, with :math:`D_k` its current (possibly already-updated by
+earlier eliminations) diagonal block:
+
+.. math::
+
+   D_k^{-1} \leftarrow \texttt{invertSmallSpd}(D_k)
+
+For every still-active neighbor :math:`p` of :math:`k`:
+
+.. math::
+
+   L_{p,k} = \mathrm{block}(p,k)\,D_k^{-1}
+
+Then, for **every pair** :math:`(p,q)` of :math:`k`'s still-active neighbors
+(including :math:`p=q`, the diagonal update) -- this is the block
+generalization of one elimination step of scalar sparse Cholesky:
+
+.. math::
+
+   \mathrm{block}(p,q) \mathrel{-}= L_{p,k}\,\mathrm{block}(k,q)
+
+For :math:`p=q` this updates :math:`p`'s own diagonal block directly
+(re-symmetrized after each update, :math:`D_p \leftarrow \tfrac12(D_p+D_p^\top)`,
+to keep it numerically symmetric against floating-point drift); for
+:math:`p\ne q` this either updates an existing coupling block or creates a
+*fresh fill-in edge* if :math:`p,q` weren't already connected, storing the
+transpose at :math:`(q,p)` (only one direction is ever computed -- the
+other is always the transpose, since :math:`D_k` is symmetric here). Every
+pivot's :math:`D_k^{-1}` and its list of :math:`L_{p,k}` blocks are kept
+(``PivotFactor``), in elimination order, forming the stored factorization.
+
+**Solving** :math:`S_{bb}\,x = \mathrm{rhs}` then proceeds in three passes
+over the stored pivots:
+
+1. **Forward substitution** (:math:`Ly=\mathrm{rhs}`, :math:`L` unit lower-
+   triangular in elimination order): visiting pivots in elimination order,
+   :math:`y_p \mathrel{-}= L_{p,k}\,y_k` for every :math:`p` in pivot
+   :math:`k`'s stored neighbor list.
+2. **Apply** :math:`D^{-1}`: :math:`x_k = D_k^{-1}\,y_k` for every pivot.
+3. **Backward substitution** (:math:`L^\top x = D^{-1}y`, reverse
+   elimination order): :math:`x_k \mathrel{-}= L_{p,k}^\top\,x_p` for every
+   :math:`p` in :math:`k`'s stored neighbor list.
+
+**Non-symmetric mode (block LU -- only when at least one bilateral pair's
+coupling is genuinely non-symmetric, see `Implicit gyroscopic forces (moreau.implicit_gyroscopy)`_).**
+:math:`\mathrm{block}(k,q)` and :math:`\mathrm{block}(q,k)` are no longer
+transposes of each other, so nothing can be derived from the other and
+**both** an :math:`L` list (rows below the pivot) and a separate :math:`U`
+list (columns to the right, stored raw, no :math:`D^{-1}` applied) are kept
+per pivot:
+
+.. math::
+
+   D_k^{-1} \leftarrow \texttt{invertSmallGeneral}(D_k),
+   \qquad
+   L_{p,k} = \mathrm{block}(p,k)\,D_k^{-1},
+   \qquad
+   U_{k,q} = \mathrm{block}(k,q)
+
+The Schur update now runs over every **ordered** pair :math:`(p,q)` of
+active neighbors (both :math:`(p,q)` and :math:`(q,p)` computed
+independently, not one derived from the other via transpose):
+
+.. math::
+
+   \mathrm{block}(p,q) \mathrel{-}= L_{p,k}\,U_{k,q}
+
+roughly double the symmetric path's Schur-update work, since nothing can be
+skipped via symmetry. Solving mirrors this: forward substitution is
+identical in structure to the symmetric case (:math:`L` is unit lower-
+triangular either way), but backward substitution solves :math:`Ux=y`
+directly with the stored raw :math:`U` blocks, applying :math:`D^{-1}`
+**after** subtracting the :math:`U`-contributions rather than before:
+
+.. math::
+
+   x_k = D_k^{-1}\Bigl(y_k - \sum_q U_{k,q}\,x_q\Bigr)
+
+This is exactly the reason the two modes are two separate code paths rather
+than one branchy general algorithm: paying the non-symmetric cost
+unconditionally -- on every scene, including the overwhelming majority that
+never touch implicit gyroscopic forces -- would be a pure regression for no
+benefit. ``BlockSparseLDLT`` picks the mode once, at ``build()`` time
+(``symmetric=true`` default), based on whether ``buildBilateralFactorization()``
+ever needed a directed edge (see the section above).
+
+**Caching the elimination order.** ``CondensedAssembler`` keys a cache on
+the bilateral graph's *structure* (dims + which pairs of blocks are coupled,
+not the numeric ``Gii``/``complianceDiag`` values, which change every step
+regardless): every current scene's bilateral topology is static for its
+lifetime (constraints aren't created or destroyed at runtime), so after the
+first step this always hits, skipping the :math:`O(n^2)` minimum-degree
+symbolic pass entirely. ``factorWithOrder()`` still runs the full *numeric*
+factorization on the current step's values either way, so a cache hit only
+ever changes which (still fully valid) elimination order is used, never the
+correctness of the factorization. Measured ~14% faster ``Condensed Setup``
+on ``wilberforce`` (327.9µs to 282.6µs average, 2000 calls) -- a real but
+modest win, since ``Condensed Setup`` itself is a small fraction of that
+scene's wall-clock: for the default one-VTK-frame-per-step config, ``Output
+Write`` is ~90% of total time, unrelated to anything in this solver. Worth
+knowing if chasing wall-clock further on a similar scene --
 ``output.interval_steps`` matters more there than anything below.
 
 The cache's correctness under a runtime structural change (a constraint
@@ -375,20 +750,23 @@ dropped before (the assembler printed a warning and applied nothing, giving wron
 rigid body with the flag set, not just a missing optimization).
 
 The correction makes a rigid body's effective mass non-symmetric: ``M_eff = M - dt*Grot`` where
-``Grot = 0.5*([I*omega]_x - [omega]_x*I)`` (the same formula ``projected_jacobi`` already used).
-``condensed``'s Schur-complement architecture needs this as an explicit per-body inverse-mass
-block rather than a system-matrix correction, so a body with the flag active (and actual rotational
-dof) gets a ``Minv`` override -- unchanged diagonal for translation, a general (not necessarily
-symmetric) inverse for rotation -- consulted everywhere the solver would otherwise use the plain
-diagonal ``MinvDiag``. Every one of those call sites falls through to the *original* expression,
-unchanged, for every body without an active override, so a scene that never enables this flag is
-byte-for-byte unaffected.
+``Grot = 0.5*([I*omega]_x - [omega]_x*I)`` (the same formula ``projected_jacobi`` already used, and
+the same :math:`\mathbf M_\mathrm{eff}` that appears throughout `From the Moreau system to
+condensed's row-blocks`_ above). ``condensed``'s Schur-complement architecture needs this as an
+explicit per-body inverse-mass block rather than a system-matrix correction, so a body with the flag
+active (and actual rotational dof) gets a ``Minv`` override -- unchanged diagonal for translation, a
+general (not necessarily symmetric) inverse for rotation -- consulted everywhere the solver would
+otherwise use the plain diagonal ``MinvDiag``: every ``Gii`` accumulation in `Block-sparse
+representation`_, ``ufree()``/``rhs()``'s free-velocity terms, and the bilateral coupling in `How
+Sbb's off-diagonal blocks are built`_. Every one of those call sites falls through to the *original*
+expression, unchanged, for every body without an active override, so a scene that never enables this
+flag is byte-for-byte unaffected.
 
 When the compliant (spring/damper) chain includes such a body, ``condensed.true_schur``'s
-block-sparse factorization also switches from block-LDLT to a block-LU generalization -- roughly
-double the per-pivot cost, but only for that graph, and only when a gyroscopic body actually
-participates in it; a scene with gyroscopic bodies that never touch the compliant chain keeps the
-cheaper symmetric path.
+block-sparse factorization also switches from block-LDLT to the block-LU generalization described in
+`Block-sparse factorization algorithm (BlockSparseLDLT)`_ -- roughly double the per-pivot cost, but
+only for that graph, and only when a gyroscopic body actually participates in it; a scene with
+gyroscopic bodies that never touch the compliant chain keeps the cheaper symmetric path.
 
 .. note::
    Validated against ``projected_jacobi``, the trusted independent reference for this formula, on
@@ -415,6 +793,24 @@ requires no changes to, the sweep internals. ``chaotic`` is excluded: its
 state lives in an atomic array rather than a plain vector, and
 momentum-extrapolating a value that is *already* being deliberately kept
 stale by design raises questions not addressed here.
+
+.. note::
+   The reported iteration count (``iters=`` in the progress bar/logs, backed
+   by ``SolverBase::lastIterations()``) counts exactly one call to
+   ``doSweep()``/``exactBilateralStep()`` per unit -- this was previously
+   inflated by one for the Nesterov branch specifically (``iter+2`` instead
+   of ``iter+1``, inherited verbatim from ``ProjectedGaussSeidelSolver``'s
+   own Nesterov branch, which had the identical off-by-one). Neither branch
+   performs a second (e.g. forward+backward) sweep to justify a higher
+   count -- checked directly: every loop variant in this codebase (PGS's own
+   plain/Nesterov branches, PJ's ``nesterov_loop``/``chebyshev_loop``/
+   ``anderson_loop``, ``condensed``'s own plain/chaotic branches) calls its
+   sweep function exactly once per outer iteration. Fixed in both PGS and
+   ``condensed``; purely cosmetic (only the progress-bar/log display was
+   affected, never any convergence or control-flow decision), but relevant
+   if you're using iteration counts to characterize how much work an exact
+   ``true_schur`` solve actually needs (see the note in `True
+   Schur-complement elimination of the compliant chain (condensed.true_schur)`_ above).
 
 .. warning::
    ``jacobi`` + Nesterov is not robust on every scene, but **not for the reason
@@ -514,7 +910,8 @@ claims:
   despite being parallel: ~50 colors x thousands of sweeps means ~50x the
   OpenMP barrier count of ``jacobi``'s 2-barriers-per-sweep, and that
   overhead dominates at this scale. Not recommended as a default until the
-  coloring is cached across steps and/or more work is amortized per barrier.
+  coloring is cached across steps (see `Graph coloring algorithm`_ above)
+  and/or more work is amortized per barrier.
 - More threads is not always better, and the sweet spot can shift: on
   domino's ``jacobi`` mode a full thread-count sweep (1/2/4/8/16, sequential
   runs) found 8 threads fastest on this 16-core machine, with 16 threads
