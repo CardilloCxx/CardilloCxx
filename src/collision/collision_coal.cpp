@@ -105,7 +105,7 @@ static inline real_t combineFrictionMu(const entt::registry& reg, entt::entity a
 // Helper to populate a Contact from world data and entities. Takes the bodies' RigidState and
 // combined friction coefficient as inputs rather than recomputing them -- both depend only on the
 // (ea, eb) pair, not on the specific contact point, so callers compute them once per pair and
-// reuse across every point in a multi-point manifold (see appendContactsFromPair below).
+// reuse across every point in a multi-point manifold (see appendContactsAndManifoldsForPair below).
 inline Contact makeContact(entt::entity ea, entt::entity eb, const cardillo::RigidBody::RigidState& stateA, const cardillo::RigidBody::RigidState& stateB, real_t friction_mu, Vector3r p1W,
                             Vector3r p2W, Vector3r nN, real_t depth) {
     Contact c{};
@@ -170,60 +170,16 @@ inline void addContactToMap(ContactMap& cmap, const Contact& c) {
     }
 }
 
-// Append contact-manifold geometry for a pair into `manifolds` -- mirrors appendContactsFromPair's
-// two branches (patch expansion vs. raw fallback) below so this stream is always at least as
-// complete as the flattened Contact list: whenever patch computation yields nothing for a pair
-// (e.g. a too-degenerate vertex-vertex contact), appendContactsFromPair falls back to the raw
-// narrowphase contact(s), and this must fall back the same way or manifolds would silently miss
-// pairs that the flattened list still shows. Unlike appendContactsFromPair, points stay grouped
-// per patch (a manifold can have several points) instead of being flattened into independent
-// per-vertex Contacts. Reuses makeContact() (below) for its point/normal/tangent-frame
-// sanitization (NaN/degenerate guards) instead of re-deriving that logic here.
-inline void appendManifoldsForPair(entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res,
-                                    std::vector<ContactManifold>& manifolds, const std::string& frictionCombine, bool usePatchVertices);
-
-// Append contacts for a pair into a map: prefer patch expansion; fall back to raw contacts
-inline std::size_t appendContactsFromPair(entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res, ContactMap& outMap,
-                                          const std::string& frictionCombine, bool usePatchVertices) {
-    // Depend only on the (ea, eb) pair, not on the individual contact point -- compute once per
-    // pair instead of once per point (a manifold can have several points per pair).
-    const cardillo::RigidBody::RigidState stateA = cardillo::RigidBody::getState(reg, ea);
-    const cardillo::RigidBody::RigidState stateB = cardillo::RigidBody::getState(reg, eb);
-    const real_t friction_mu = combineFrictionMu(reg, ea, eb, frictionCombine);
-
-    std::size_t appended = 0;
-    if (usePatchVertices && patch_res.numContactPatches() > 0) {
-        for (std::size_t ip = 0; ip < patch_res.numContactPatches(); ++ip) {
-            const coal::ContactPatch& patch = patch_res.getContactPatch(ip);
-            const Vector3r nW(patch.getNormal().x(), patch.getNormal().y(), patch.getNormal().z());
-            const real_t depth = (real_t)patch.penetration_depth;
-            const std::size_t m = patch.size();
-            for (std::size_t iv = 0; iv < m; ++iv) {
-                const auto p1Wc = patch.getPointShape1(iv);
-                const auto p2Wc = patch.getPointShape2(iv);
-                const Vector3r p1W(p1Wc.x(), p1Wc.y(), p1Wc.z());
-                const Vector3r p2W(p2Wc.x(), p2Wc.y(), p2Wc.z());
-                addContactToMap(outMap, makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, depth));
-                ++appended;
-            }
-        }
-        return appended;
-    }
-
-    // Fallback: emit raw contacts from narrowphase result
-    for (int k = 0; k < cres.numContacts(); ++k) {
-        const coal::Contact c0 = cres.getContact(k);
-        const Vector3r nW(c0.normal.x(), c0.normal.y(), c0.normal.z());
-        const Vector3r p1W(c0.nearest_points[0].x(), c0.nearest_points[0].y(), c0.nearest_points[0].z());
-        const Vector3r p2W(c0.nearest_points[1].x(), c0.nearest_points[1].y(), c0.nearest_points[1].z());
-        addContactToMap(outMap, makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, (real_t)c0.penetration_depth));
-        ++appended;
-    }
-    return appended;
-}
-
-inline void appendManifoldsForPair(entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res,
-                                    std::vector<ContactManifold>& manifolds, const std::string& frictionCombine, bool usePatchVertices) {
+// Append both the flattened per-point Contact list (for the solver, bucketed into outMap by
+// pair) and the grouped-per-patch ContactManifold list (for export/visualization) for a pair, in
+// a single pass over each point -- both representations need the same makeContact() result per
+// point (point/normal/tangent-frame, with its NaN/degenerate sanitization), so compute it once
+// and feed both outputs instead of two independent passes each calling makeContact() themselves.
+// Prefers patch expansion; falls back to the raw narrowphase contact(s) when patch computation
+// yielded nothing for this pair (e.g. a too-degenerate vertex-vertex contact) -- manifolds use
+// the same fallback so this stream is never less complete than the flattened contact list.
+inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res,
+                                              ContactMap& outMap, std::vector<ContactManifold>& manifolds, const std::string& frictionCombine, bool usePatchVertices) {
     const cardillo::RigidBody::RigidState stateA = cardillo::RigidBody::getState(reg, ea);
     const cardillo::RigidBody::RigidState stateB = cardillo::RigidBody::getState(reg, eb);
     const real_t friction_mu = combineFrictionMu(reg, ea, eb, frictionCombine);
@@ -246,7 +202,7 @@ inline void appendManifoldsForPair(entt::registry& reg, entt::entity ea, entt::e
                 const auto p2Wc = patch.getPointShape2(iv);
                 const Vector3r p1W(p1Wc.x(), p1Wc.y(), p1Wc.z());
                 const Vector3r p2W(p2Wc.x(), p2Wc.y(), p2Wc.z());
-                const Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, depth);
+                Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, depth);
                 if (iv == 0) {
                     cm.normal = c.normal;
                     cm.tangent1 = c.tangent1;
@@ -256,20 +212,21 @@ inline void appendManifoldsForPair(entt::registry& reg, entt::entity ea, entt::e
                 ContactManifold::Point pt;
                 pt.position = c.point;
                 cm.points.push_back(pt);
+                addContactToMap(outMap, c);
             }
             manifolds.push_back(std::move(cm));
         }
         return;
     }
 
-    // Fallback: same raw narrowphase contacts appendContactsFromPair uses when patch computation
-    // yielded nothing for this pair -- one single-point manifold per raw contact.
+    // Fallback: emit raw contacts from narrowphase result -- one single-point manifold per raw
+    // contact, since there's no patch to group them by.
     for (int k = 0; k < cres.numContacts(); ++k) {
         const coal::Contact c0 = cres.getContact(k);
         const Vector3r nW(c0.normal.x(), c0.normal.y(), c0.normal.z());
         const Vector3r p1W(c0.nearest_points[0].x(), c0.nearest_points[0].y(), c0.nearest_points[0].z());
         const Vector3r p2W(c0.nearest_points[1].x(), c0.nearest_points[1].y(), c0.nearest_points[1].z());
-        const Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, (real_t)c0.penetration_depth);
+        Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, (real_t)c0.penetration_depth);
 
         ContactManifold cm;
         cm.a = ea;
@@ -283,6 +240,8 @@ inline void appendManifoldsForPair(entt::registry& reg, entt::entity ea, entt::e
         pt.position = c.point;
         cm.points.push_back(pt);
         manifolds.push_back(std::move(cm));
+
+        addContactToMap(outMap, c);
     }
 }
 }  // namespace
@@ -544,13 +503,11 @@ std::vector<Contact>& CollisionCoal::detectAll() {
         }
 
         // Append contacts (flattened, for the solver) and manifolds (grouped per patch, for
-        // export/visualization) from this pair. appendManifoldsForPair mirrors
-        // appendContactsFromPair's patch/fallback branches so the manifold stream is always at
-        // least as complete as the flattened contact list -- see its doc comment above.
+        // export/visualization) from this pair in one pass -- see appendContactsAndManifoldsForPair's
+        // doc comment above.
         {
             auto sc_p = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionMakeContact);
-            appendContactsFromPair(reg, ea, eb, cres, patch_res, mapCurr, frictionCombine, usePatchVertices);
-            appendManifoldsForPair(reg, ea, eb, cres, patch_res, m_contactManifolds, frictionCombine, usePatchVertices);
+            appendContactsAndManifoldsForPair(reg, ea, eb, cres, patch_res, mapCurr, m_contactManifolds, frictionCombine, usePatchVertices);
         }
     }
 
