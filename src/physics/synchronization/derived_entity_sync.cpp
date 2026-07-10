@@ -34,8 +34,10 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
             const auto& pa = reg.get<cardillo::C_Position3>(a).value;
             const auto& pb = reg.get<cardillo::C_Position3>(b).value;
             auto r_AB = pb - pa;
-            auto R_A = reg.get<cardillo::C_Orientation>(a).value.toRotationMatrix();
-            auto R_B = reg.get<cardillo::C_Orientation>(b).value.toRotationMatrix();
+            // Reuse the RigidState.rotation already cached by RigidBody::updateState() earlier this
+            // step (see updateEntities()) instead of recomputing toRotationMatrix() here.
+            const auto R_A = cardillo::RigidBody::getState(reg, a).rotation;
+            const auto R_B = cardillo::RigidBody::getState(reg, b).rotation;
 
             index_t x_col_A = (reg.any_of<cardillo::C_Capsule>(a) || reg.any_of<cardillo::C_Cylinder>(a)) ? 2 : 0;
             index_t x_col_B = (reg.any_of<cardillo::C_Capsule>(b) || reg.any_of<cardillo::C_Cylinder>(b)) ? 2 : 0;

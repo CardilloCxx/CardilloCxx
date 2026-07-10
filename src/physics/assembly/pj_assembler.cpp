@@ -1,5 +1,9 @@
 #include "pj_assembler.hpp"
 
+#include <algorithm>
+#include <cstdlib>
+#include <iostream>
+
 namespace cardillo::physics::assembly {
 PjAssembler::~PjAssembler() = default;
 bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bool lambdaTheta) {
@@ -70,14 +74,31 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bo
     m_S = top.vConcat(mid).vConcat(bot);
     const auto& S_sparse = m_S.asSparse();
 
+    const bool wantSymmetric = !implicitGyro && !lambdaTheta;
+    // S_sparse is compressed (asSparse() calls makeCompressed()), so outer/inner index arrays fully
+    // describe its nonzero pattern -- comparing them is O(nnz), far cheaper than re-running
+    // analyzePattern's fill-reducing ordering + symbolic elimination.
+    const bool patternMatches = m_hasCachedPattern && m_S_sparse_lu.has_value() && wantSymmetric == m_cachedIsSymmetric && S_sparse.rows() == m_cachedRows && S_sparse.cols() == m_cachedCols &&
+                                 std::equal(S_sparse.outerIndexPtr(), S_sparse.outerIndexPtr() + S_sparse.outerSize() + 1, m_cachedOuterIndex.begin(), m_cachedOuterIndex.end()) &&
+                                 std::equal(S_sparse.innerIndexPtr(), S_sparse.innerIndexPtr() + S_sparse.nonZeros(), m_cachedInnerIndex.begin(), m_cachedInnerIndex.end());
+
+    if (getenv("CARDILLO_DEBUG_PJ_PATTERN_CACHE")) {
+        static int hits = 0, misses = 0;
+        (patternMatches ? hits : misses)++;
+        std::cout << "[PjPatternCache] " << (patternMatches ? "HIT" : "MISS") << " hits=" << hits << " misses=" << misses << std::endl;
+    }
+
     // Factorize using SparseLU
     try {
-        m_S_sparse_lu.emplace();
-        m_S_sparse_lu->isSymmetric(!implicitGyro && !lambdaTheta);
-        m_S_sparse_lu->analyzePattern(S_sparse);
+        if (!patternMatches) {
+            m_S_sparse_lu.emplace();
+            m_S_sparse_lu->isSymmetric(wantSymmetric);
+            m_S_sparse_lu->analyzePattern(S_sparse);
+        }
         m_S_sparse_lu->factorize(S_sparse);
         if (m_S_sparse_lu->info() != Eigen::Success) {
             m_S_sparse_lu.reset();
+            m_hasCachedPattern = false;
             std::cout << "PjAssembler::buildAndFactorS: SparseLU factorization failed\n";
             return false;
         } else if (m_cfg.debug_rb) {
@@ -88,7 +109,17 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bo
             std::cout << "[PjAssembler] Exception during SparseLU: " << ex.what() << '\n';
         }
         m_S_sparse_lu.reset();
+        m_hasCachedPattern = false;
         return false;
+    }
+
+    if (!patternMatches) {
+        m_cachedIsSymmetric = wantSymmetric;
+        m_cachedRows = S_sparse.rows();
+        m_cachedCols = S_sparse.cols();
+        m_cachedOuterIndex.assign(S_sparse.outerIndexPtr(), S_sparse.outerIndexPtr() + S_sparse.outerSize() + 1);
+        m_cachedInnerIndex.assign(S_sparse.innerIndexPtr(), S_sparse.innerIndexPtr() + S_sparse.nonZeros());
+        m_hasCachedPattern = true;
     }
     return true;
 }

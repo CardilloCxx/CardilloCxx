@@ -540,6 +540,10 @@ std::vector<Contact>& CollisionCoal::detectAll() {
     if (m_cfg.pj_warmstart) {
         m_contactTracker.registerNextContacts(mapCurr);
         m_contactTracker.applyPrevImpulses(m_flattened, m_prev_flattened, mapCurr);
+        // Safe to move only now that applyPrevImpulses() has finished reading mapCurr; the
+        // subsequent mapCurr.clear()/reserve() at the top of the next call rebuilds it regardless
+        // of the state a move leaves it in.
+        m_contactTracker.commitContacts(std::move(mapCurr));
     }
 
     return m_flattened;

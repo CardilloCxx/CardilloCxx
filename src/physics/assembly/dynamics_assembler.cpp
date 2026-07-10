@@ -258,7 +258,7 @@ void DynamicsAssembler::rebuildW_() {
                     const int dof = m_body_vel_offsets[(size_t)b + 1] - col0;
                     if (dof <= 0) return;
 
-                    const VectorXr row = buildContactRowByDof(dof, dir_world, r_body, dir_body, s);
+                    const Vectorr<6> row = buildContactRowByDof(dof, dir_world, r_body, dir_body, s);
                     for (int j = 0; j < dof; ++j) {
                         const real_t val = row[j];
                         if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
@@ -269,8 +269,8 @@ void DynamicsAssembler::rebuildW_() {
                 const VectorXr ve = m_world.getVelocity(ent);
                 const int dof = (int)ve.size();
                 if (dof <= 0) return;
-                const VectorXr row = buildContactRowByDof(dof, dir_world, r_body, dir_body, s);
-                m_contact_v_vec[rowId] += row.dot(ve);
+                const Vectorr<6> row = buildContactRowByDof(dof, dir_world, r_body, dir_body, s);
+                m_contact_v_vec[rowId] += row.head(dof).dot(ve);
             };
 
             // Row 0 for this contact: normal

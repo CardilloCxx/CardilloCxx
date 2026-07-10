@@ -35,6 +35,17 @@ class ContactTracker {
      */
     void applyPrevImpulses(std::vector<Contact>& currFlattened, const std::vector<Contact>& prevFlattened, const ContactMap& currMatched);
 
+    /**
+     * @brief Moves @p curr into the previous-contacts cache used for next step's matching.
+     * @warning Must be called only after applyPrevImpulses() has finished reading @p curr (which
+     * registerNextContacts() populated with matched prev_global_out_index fields) -- once moved
+     * from, @p curr is left in an unspecified (likely empty) state. Kept as a separate call rather
+     * than folded into registerNextContacts() so that step, unlike this one, never mutates its
+     * argument's contents, and so the (relatively large, ~350B/contact) buffer is moved rather than
+     * deep-copied once nothing else needs the old `curr`.
+     */
+    void commitContacts(ContactMap&& curr) { m_prevContacts = std::move(curr); }
+
    private:
     config::Config& m_cfg;
     cardillo::misc::TimingManager* m_timings;
