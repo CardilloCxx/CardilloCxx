@@ -48,6 +48,10 @@ struct Config {
     std::string friction_combine{"min"};      // friction.combine - one of [min, arith, geom]
     real_t friction_default_mu{(real_t)0.3};  // friction.default_mu - default C_Friction when not set on entities
 
+    // Restitution settings
+    real_t restitution_default_normal{(real_t)0.0};      // restitution.default_normal
+    real_t restitution_default_tangential{(real_t)0.0};  // restitution.default_tangential
+
     // Debug/diagnostics
     bool debug_rb{false};    // debug.rb  - enable rigid-body contact/W diagnostics in Moreau
     bool debug_pj{false};    // debug.pj  - enable ProjectedJacobi iteration logging

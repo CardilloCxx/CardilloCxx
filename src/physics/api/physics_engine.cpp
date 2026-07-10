@@ -45,6 +45,16 @@ bool PhysicsEngine::isFinished() const {
     return m_pipeline ? m_pipeline->isFinished() : true;
 }
 
+cardillo::World& PhysicsEngine::world() {
+    if (m_world) return *m_world;
+    throw std::runtime_error("PhysicsEngine::world(): world not initialized");
+}
+
+const cardillo::World& PhysicsEngine::world() const {
+    if (m_world) return *m_world;
+    throw std::runtime_error("PhysicsEngine::world() const: world not initialized");
+}
+
 void PhysicsEngine::disableCollisionBetween(entt::entity a, entt::entity b) {
     if (m_collision_mgr) m_collision_mgr->disablePair(a, b);
 }

@@ -381,6 +381,12 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
         rhs_vel -= (1.0 - theta) * corr;
     }
 
+    VectorXr restitution = m_dyn->restitutionVec();
+
+    if ((restitution.array() != 0.0).any()) {
+       std::cerr << "Warning: CondensedAssembler::rhs() does not yet support restitution. Ignoring it." << std::endl;
+    }
+
     const real_t beta = m_dyn->system().config().constraint_bias_factor;
     VectorXr rhs = VectorXr::Zero(topo.numLambda);
 

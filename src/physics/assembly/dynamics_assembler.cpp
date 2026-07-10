@@ -231,6 +231,7 @@ void DynamicsAssembler::rebuildW_() {
     // convention as W row assembly.
     m_contact_v_vec = VectorXr::Zero((index_t)C_all * 3);
     m_mu_vec = VectorXr::Zero((index_t)C_all * 3);
+    m_restitution_vec = VectorXr::Zero((index_t)C_all * 3);
 
     for (bool frictionPass : {false, true}) {
         if (frictionPass && !frictionEnabled) break;
@@ -244,6 +245,17 @@ void DynamicsAssembler::rebuildW_() {
 
             const bool aDyn = !RigidBody::isStatic(reg, c.a);
             const bool bDyn = !RigidBody::isStatic(reg, c.b);
+
+            auto getRestitution = [&](entt::entity e, bool tangential) -> real_t {
+                if (!reg.valid(e)) return (real_t)0;
+                if (reg.any_of<cardillo::C_Restitution>(e)) {
+                    const auto& r = reg.get<cardillo::C_Restitution>(e);
+                    return tangential ? std::max<real_t>((real_t)0, r.tangential) : std::max<real_t>((real_t)0, r.normal);
+                }
+                return tangential ? std::max<real_t>((real_t)0, m_cfg.restitution_default_tangential) : std::max<real_t>((real_t)0, m_cfg.restitution_default_normal);
+            };
+            const real_t restN = std::min<real_t>(getRestitution(c.a, false), getRestitution(c.b, false));
+            const real_t restT = std::min<real_t>(getRestitution(c.a, true), getRestitution(c.b, true));
             // Skip static-static contacts
             if (!aDyn && !bDyn) continue;
 
@@ -279,6 +291,7 @@ void DynamicsAssembler::rebuildW_() {
             c.impulse_base_index = rowN;
             c.impulse_size = 1;
 
+            m_restitution_vec[rowN] = restN;
             accumulateDirForSide(c.normal, c.pointA_body, c.normalA_body, c.a, aDyn, (real_t)-1, rowN);
             accumulateDirForSide(c.normal, c.pointB_body, c.normalB_body, c.b, bDyn, (real_t) + 1, rowN);
             ++dynContactId;
@@ -289,12 +302,14 @@ void DynamicsAssembler::rebuildW_() {
 
                 const int rowT1 = dynContactId;
                 m_mu_vec[rowT1] = c.friction_mu;
+                m_restitution_vec[rowT1] = restT;
                 accumulateDirForSide(c.tangent1, c.pointA_body, c.tangent1A_body, c.a, aDyn, (real_t)-1, rowT1);
                 accumulateDirForSide(c.tangent1, c.pointB_body, c.tangent1B_body, c.b, bDyn, (real_t) + 1, rowT1);
                 ++dynContactId;
 
                 const int rowT2 = dynContactId;
                 m_mu_vec[rowT2] = c.friction_mu;
+                m_restitution_vec[rowT2] = restT;
                 accumulateDirForSide(c.tangent2, c.pointA_body, c.tangent2A_body, c.a, aDyn, (real_t)-1, rowT2);
                 accumulateDirForSide(c.tangent2, c.pointB_body, c.tangent2B_body, c.b, bDyn, (real_t) + 1, rowT2);
                 ++dynContactId;

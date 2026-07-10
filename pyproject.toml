@@ -10,5 +10,7 @@ dependencies = [
     "exhale",
     "sphinx-rtd-theme",
     "sphinxcontrib-mermaid",
-    "sphinxcontrib.bibtex"
+    "sphinxcontrib.bibtex",
+    "scipy>=1.17.1",
+    "matplotlib>=3.11.0",
 ]

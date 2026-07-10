@@ -36,13 +36,14 @@ FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GI
 FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG v0.11.1)
 FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.0)
 FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
-# Pinned past the initial "First working solver." integration point to
-# cddaa5d ("Custom ldlt backend with dynamic regularization."), which adds
-# two alternative KKT linear-solver backends (QDLDL, and a custom
-# regularized-LDLT) on top of the "Speed fixes" (190eb67) and "Improved ill
-# conditioned problems" (7dc4fab) commits already folded in at this point.
 FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG cddaa5d5454fc0eb82e7b5851a09fd07cf6777f3)
-FetchContent_MakeAvailable(eigen coal entt clarabel qoco)
+FetchContent_MakeAvailable(eigen)
+
+add_library(eigen3 INTERFACE IMPORTED GLOBAL)
+target_link_libraries(eigen3 INTERFACE eigen)
+FetchContent_MakeAvailable(coal entt clarabel qoco)
+
+
 
 # QOCO vendors its own copy of QDLDL under lib/qdldl (plain add_subdirectory,
 # not FetchContent) at *global* CMake target scope: it unconditionally defines

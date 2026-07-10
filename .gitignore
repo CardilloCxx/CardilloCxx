@@ -16,3 +16,4 @@ docs/api*
 .venv*
 uv.lock
 src/config/path.hpp
+frontend*

@@ -16,6 +16,8 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) cons
     const auto& Wcontact = m_dyn->W().asSparse();
     const auto& M_diag = m_dyn->MDiag();
     const auto& M_inv = m_dyn->MinvDiag();
+    const auto& restitution = m_dyn->restitutionVec();
+
     const int totalV = m_dyn->numV();
     const int nSprings = m_dyn->numSprings();
     const int nDampers = m_dyn->numDampers();
@@ -57,7 +59,14 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) cons
     }
 
     if (nContacts > 0) {
-        rhs.segment(nSprings + nDampers, nContacts).noalias() = Wcontact * u_free + m_dyn->contactVVec();
+        VectorXr biasImpulse = m_dyn->contactVVec();
+
+        if ((restitution.array() != 0.0).any()) {
+            VectorXr v_prev = Wcontact * m_dyn->vVec() + m_dyn->contactVVec();
+            biasImpulse += restitution.cwiseProduct(v_prev);
+        }
+        
+        rhs.segment(nSprings + nDampers, nContacts).noalias() = Wcontact * u_free + biasImpulse; 
     }
 
     return rhs;

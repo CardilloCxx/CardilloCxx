@@ -66,6 +66,10 @@ struct C_Cone {
 struct C_Friction {
     real_t mu;
 };
+struct C_Restitution {
+    real_t normal;
+    real_t tangential;
+};
 struct C_VisualObject {};
 struct C_PointVisualTag {};
 struct C_PlaneVisualTag {};

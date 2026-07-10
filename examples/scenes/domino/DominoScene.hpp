@@ -38,24 +38,24 @@ public:
         const real_t gapLong = (real_t)0.004; // small longitudinal spacing
         const real_t extraLayerGap = (real_t)-0.0001;
 
-        spawnDominoTowerStructure(engine, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap, false);
+        spawnDominoTowerStructure(engine, layers, gridN, dominoHalf, density, baseCenter, gapLong, extraLayerGap, true);
 
         // sphere falling on the tower
-        auto sphere = engine.addRigidBody(
-            physics::SphereShape{0.05}, 
-            physics::RigidState{
-                Vector3r(0.0, 0.0, 1.5), // position
-                Vector3r(0.0, 0.0, -1.0), // linear velocity
-                Vector3r(5.0, 0.0, 0.0)}, // angular velocity
-            physics::RigidProps::withDensity(19250.0)
-        );
+        // auto sphere = engine.addRigidBody(
+        //     physics::SphereShape{0.05}, 
+        //     physics::RigidState{
+        //         Vector3r(0.0, 0.0, 1.5), // position
+        //         Vector3r(0.0, 0.0, -1.0), // linear velocity
+        //         Vector3r(5.0, 0.0, 0.0)}, // angular velocity
+        //     physics::RigidProps::withDensity(19250.0)
+        // );
 
-        // // sphere crashing the tower
+        // sphere crashing the tower
         // auto sphere = engine.addRigidBody(
         //     physics::SphereShape{0.05}, 
         //     physics::RigidState{
         //         Vector3r(0.3, 0.0, 0.1), // position
-        //         Vector3r(-1.0, 0.0, 0.0), // linear velocity
+        //         Vector3r(-5.0, 0.0, 0.0), // linear velocity
         //         Vector3r(0.0, 0.0, 0.0)}, // angular velocity
         //     physics::RigidProps::withDensity(19250.0)
         // );
