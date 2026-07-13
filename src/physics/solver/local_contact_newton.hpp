@@ -4,9 +4,24 @@
 
 namespace cardillo::solver {
 
+// How the per-contact Newton step's diagonal preconditioner rho=(rhoN,rhoT,rhoT) is derived from
+// the block's own local Delassus matrix G. Mirrors Siconos's own three strategies
+// (fc3d_AlartCurnier_functions.c: compute_rho_split_spectral_norm[_cond]/compute_rho_spectral_norm)
+// -- checked directly against that codebase, not guessed:
+//   Split (default, this codebase's original/only strategy): rhoN=1/G(0,0), rhoT=1/lambda_max(G_TT)
+//     (G_TT the 2x2 tangential sub-block) -- treats normal and tangential as decoupled 1- and
+//     2-dof sub-problems for the STEP-SIZE choice only (the full 3x3 G is still used in the
+//     Newton residual/Jacobian either way). Matches Siconos's compute_rho_split_spectral_norm.
+//   FullSpectral: a single rho = 1/lambda_max(sym(G)) applied to all three components, from the
+//     FULL 3x3 block's largest eigenvalue (symmetrized -- G need not be exactly symmetric once an
+//     implicit-gyroscopic body is involved) -- captures normal-tangential coupling in the
+//     step-size choice, which Split ignores. Matches Siconos's compute_rho_spectral_norm.
+enum class NewtonRhoStrategy { Split, FullSpectral };
+
 struct NewtonACParams {
     int maxIters{8};
     real_t tol{(real_t)1e-10};
+    NewtonRhoStrategy rhoStrategy{NewtonRhoStrategy::Split};
 };
 
 // Guarded Alart-Curnier semismooth Newton solve for one frictional (3-row) contact block, in the

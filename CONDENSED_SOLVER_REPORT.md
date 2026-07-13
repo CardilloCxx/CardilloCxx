@@ -903,6 +903,99 @@ and fragile (`jacobi`), and a genuine, tested **regression** where the untouched
 good (`colored`) — not a strict improvement in general. Left default-off; not recommended
 unconditionally without this caveat in mind.
 
+## Update: local Newton rho-strategy checked against Siconos; closed-form 3x3 inverse impact measured
+
+Two follow-ups from the same alpha/relaxation investigation, both grounded against Vincent Acary's
+own reference implementation (Siconos, https://github.com/siconos/siconos) rather than guessed.
+The Acary/Brémond/Huber paper itself (Section 4, on adaptive parameter choices) could not be
+fetched directly — HAL/INRIA's mirror is behind Anubis bot-protection (blocks both `WebFetch` and
+`curl`, even with a browser user-agent), ResearchGate returned 403, and Semantic Scholar's API was
+rate-limited twice. Cloned Siconos itself instead (`git clone --depth 1 --filter=blob:none --sparse`
+worked, since it's plain git protocol, not blocked) and read `fc3d_AlartCurnier_functions.c` and
+`fc3d_onecontact_nonsmooth_Newton_solvers.c` directly as ground truth.
+
+**Finding: this codebase's existing (only) Newton rho strategy already matches Siconos's own
+`compute_rho_split_spectral_norm`** — treating the normal (1-dof) and tangential (2-dof) blocks as
+decoupled sub-problems for the step-size choice, `rhoN=1/G(0,0)`, `rhoT=1/lambda_max(G_TT)`. Not a
+different or inferior approach, as might have been assumed going in.
+
+**Added `condensed.newton_rho_strategy=full`**, matching Siconos's *other* strategy,
+`compute_rho_spectral_norm`: a single `rho=1/lambda_max(sym(G))` from the full 3x3 block's largest
+eigenvalue (via `Eigen::SelfAdjointEigenSolver` on the symmetrized `G` — Siconos's own `eig_3x3()`
+closed-form solver is explicitly documented as requiring a symmetric input, and `G` is only
+guaranteed symmetric here when no implicit-gyroscopic body is active), capturing
+normal-tangential coupling that `split` ignores in its step-size choice (the full 3x3 `G` is still
+used in the Newton residual/Jacobian either way — only the preconditioner differs).
+
+**Head-to-head, `condensed.local_solve=newton`, `split` (default) vs `full`:**
+
+| Scene | split: totalKE / wall-clock | full: totalKE / wall-clock |
+|---|---|---|
+| domino (1250 steps) | 5.843 / 143.6s | 7.174 / 185.8s |
+| slinky (200 steps, 0.1s sim) | 1.25 s/step | ~2.52 s/step (~2x slower) |
+
+`full` is measurably slower on both — the extra `SelfAdjointEigenSolver` eigendecomposition per
+contact per Newton iteration costs more than `split`'s closed-form quadratic-formula
+`lambda_max` of the 2x2 tangential block, and the gap widens with contact count (domino ~30%
+slower, slinky's much higher contact count ~2x slower). `domino`'s `totalKE` differs substantially
+between the two (and both differ substantially from the `projection` baseline's 13.87) — expected,
+not a bug: domino's cascading collisions are a chaotic system, and Newton itself already diverges
+from `projection`'s trajectory by construction, so different rho strategies taking different Newton
+paths through the same cascade are expected to diverge further, not stay close. No scene tested
+here benefits from `full` over `split`; kept available (default `split`) as the direct Siconos
+analogue in case a not-yet-tested scene's contact geometry has enough normal-tangential coupling to
+change this.
+
+**The user's own concurrent edit: replacing the commented-out `FullPivLU` Jacobian solve with
+Eigen's closed-form 3x3 path.** Checked both the performance claim and a correctness concern:
+
+- *Performance*: confirmed, and large. A standalone microbenchmark (2M random well-conditioned 3x3
+  matrices) measured closed-form `.inverse()` at ~38x faster than `FullPivLU` (5.0ms vs 189.8ms for
+  2M calls) — expected for a fixed fixed-size 3x3, where avoiding a general pivoted decomposition's
+  overhead matters a lot. Confirmed in-context too: temporarily reverting `local_contact_newton.cpp`
+  to `FullPivLU` and rebuilding `domino` dropped the rate to ~0.24-0.48 it/s (would take over an
+  hour to finish 1250 steps) vs. ~8-9 it/s with the closed-form path — not run to completion, but
+  unambiguous.
+- *Correctness*: the original `Jphi.determinant() == 0` exact-equality check is a much weaker
+  singularity test than `FullPivLU::isInvertible()`'s relative-threshold test. Demonstrated on a
+  synthetic matrix with `det=1e-7` (condition number ~2e14, numerically singular): `determinant()
+  == 0` is `false` (doesn't trigger) and the closed-form inverse produces ~2e7-magnitude entries —
+  garbage, but *finite*, so it also passes the subsequent `delta.allFinite()` guard.
+  `FullPivLU::isInvertible()` on the same matrix correctly said not-invertible. **This has since
+  been superseded by the user's own further edit**, switching to
+  `Jphi.computeInverseWithCheck(JphiInv, invertible)` (and fixing what would otherwise have been a
+  redundant second inversion — the code briefly called `Jphi.inverse()` again right after already
+  computing `JphiInv`). Checked `computeInverseWithCheck`'s actual improvement here: its *default*
+  threshold (`NumTraits<double>::dummy_precision()`, ~1e-12) is an *absolute* determinant threshold,
+  not scaled by the matrix's own size the way `FullPivLU`'s is — on the same synthetic `det=1e-7`
+  (and even `det=1e-10`) matrix it still reports `invertible=true`, i.e. it does **not** meaningfully
+  improve on plain `determinant()==0` for a moderately (not extremely) ill-conditioned block; only
+  a determinant within ~1e-12 of exactly zero is caught either way.
+  - Practical risk: measured directly by instrumenting `local_contact_newton.cpp` to track the
+    minimum `|det(Jphi)|` seen across real `domino` Newton solves (~73 steps, thousands of
+    per-contact Newton block-solves): never dropped below ~0.168 — nowhere near any of these
+    thresholds. For the scenes tested, `G` (from a physically well-posed mass-normalized Delassus
+    block) never comes close to singular in practice, so this gap is real but latent, not observed.
+  - The residual-non-increase check (`if (it > 0 && phiTrial.norm() > phi.norm()) return false;`)
+    provides a partial safety net for a bad step slipping through on iteration 0 (this check is
+    deliberately skipped on `it==0` by original design, unrelated to this change) — a garbage first
+    step would typically get caught on the next iteration's residual comparison, though not
+    guaranteed.
+  - Not changed, since the measured risk is latent rather than observed: a scale-relative threshold
+    (e.g. `Jphi.computeInverseWithCheck(JphiInv, invertible, eps * std::pow(Jphi.norm(), 3))`) would
+    close this gap at effectively the same (fast) cost, if a future scene's contact geometry does
+    hit genuinely ill-conditioned blocks.
+
+**Follow-up question checked: should `delta`/`lamTrial` (both fixed-size `Vector3r`) be hoisted
+outside the Newton `for` loop instead of declared `const` inside it?** Measured no meaningful
+difference (163.9ms vs 157.9ms for 500M total iterations of a representative loop — within noise,
+and not reproducible as a consistent direction across reruns). `Vector3r`/`Matrix33r` are
+fixed-size, stack-only Eigen types (3 doubles / 9 doubles embedded directly, no heap pointer) —
+unlike a dynamically-sized `Eigen::VectorXd`/`MatrixXd`, there is no allocation to hoist out of the
+loop. Declaring them `const` inside the loop is free and preferable: it documents that each is
+computed fresh every iteration and never mutated afterward, with no aliasing/stale-value risk since
+neither is read after the loop exits.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode

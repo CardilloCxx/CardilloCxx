@@ -187,6 +187,8 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.condensed_newton_max_iters = std::max(1, std::stoi(val));
             } catch (...) {
             }
+        } else if (key == "condensed.newton_rho_strategy") {
+            cfg.condensed_newton_rho_strategy = val;
         } else if (key == "condensed.newton_tol") {
             try {
                 cfg.condensed_newton_tol = static_cast<real_t>(std::stod(val));

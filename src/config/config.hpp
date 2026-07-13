@@ -117,6 +117,14 @@ struct Config {
     int condensed_num_threads{0};                        // condensed.num_threads (0 = OpenMP default)
     int condensed_newton_max_iters{8};                   // condensed.newton_max_iters
     real_t condensed_newton_tol{(real_t)1e-10};          // condensed.newton_tol
+    // How the per-contact Newton step's diagonal preconditioner is derived from the block's own
+    // local Delassus matrix -- "split" (default, this codebase's original strategy: normal and
+    // tangential treated as separate 1- and 2-dof sub-problems) or "full" (a single rho from the
+    // FULL 3x3 block's largest eigenvalue, capturing normal-tangential coupling that "split"
+    // ignores). Matches Siconos's own compute_rho_split_spectral_norm/compute_rho_spectral_norm
+    // (fc3d_AlartCurnier_functions.c) respectively -- checked directly against that codebase. See
+    // CONDENSED_SOLVER_REPORT.md for a head-to-head comparison before switching a scene to "full".
+    std::string condensed_newton_rho_strategy{"split"}; // condensed.newton_rho_strategy: split | full
     int condensed_chaotic_reshuffle_interval{50};        // condensed.chaotic_reshuffle_interval (sweeps between reshuffles)
     unsigned condensed_chaotic_seed{12345u};             // condensed.chaotic_seed
     // condensed.true_schur: exactly eliminate the bilateral (spring+damper) rows every outer

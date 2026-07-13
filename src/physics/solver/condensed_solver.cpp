@@ -543,7 +543,8 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     }
 
     const bool useNewton = (m_cfg.condensed_local_solve == "newton");
-    const NewtonACParams newtonParams{m_cfg.condensed_newton_max_iters, m_cfg.condensed_newton_tol};
+    const NewtonACParams newtonParams{m_cfg.condensed_newton_max_iters, m_cfg.condensed_newton_tol,
+                                       (m_cfg.condensed_newton_rho_strategy == "full") ? NewtonRhoStrategy::FullSpectral : NewtonRhoStrategy::Split};
 
     // condensed.auto_alpha (experimental, default off -- see config.hpp): derive `alpha` for THIS
     // step from the same power-iteration estimator pj.chebyshev uses, instead of the fixed
