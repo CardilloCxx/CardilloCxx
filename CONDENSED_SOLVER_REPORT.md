@@ -990,11 +990,60 @@ Eigen's closed-form 3x3 path.** Checked both the performance claim and a correct
 outside the Newton `for` loop instead of declared `const` inside it?** Measured no meaningful
 difference (163.9ms vs 157.9ms for 500M total iterations of a representative loop — within noise,
 and not reproducible as a consistent direction across reruns). `Vector3r`/`Matrix33r` are
-fixed-size, stack-only Eigen types (3 doubles / 9 doubles embedded directly, no heap pointer) —
+fixed-size, stack-only Eigen types (3 doubles / 9 doubles embedded directly, no heap pointer) --
 unlike a dynamically-sized `Eigen::VectorXd`/`MatrixXd`, there is no allocation to hoist out of the
-loop. Declaring them `const` inside the loop is free and preferable: it documents that each is
-computed fresh every iteration and never mutated afterward, with no aliasing/stale-value risk since
-neither is read after the loop exits.
+loop. Requested anyway for consistency/cleanliness: `local_contact_newton.cpp`'s hot loop now
+pre-declares `delta`/`lamTrial`/`phiTrial`/`JphiTrial` once before the loop and reassigns them each
+iteration, and `phiAt` was changed from returning a fresh `std::pair` each call to writing into
+out-params, for the same reason. Also removed at the same time: the dead commented-out `FullPivLU`
+code, the two stale TODOs (one resolved by keeping `computeInverseWithCheck`'s check -- it falls out
+of computing the inverse anyway, no extra cost; the other by confirming the hand-rolled closed-form
+tangential eigenvalue is already exact, so a generic 2x2 `SelfAdjointEigenSolver` would only add
+overhead), and the now-unused `<Eigen/LU>` include.
+
+**Follow-up: can `G`'s eigenvalues actually be complex, and is that guarded?** Checked concretely,
+not just in theory. A genuinely non-symmetric real 3x3 matrix CAN have complex eigenvalues --
+demonstrated with a synthetic rotation-like block (`[[0,-1,0],[1,0,0],[0,0,5]]`) whose true
+eigenvalues (via `Eigen::EigenSolver`, the general non-symmetric-aware solver) are `(0,±1),(5,0)` --
+genuinely complex. Feeding that same matrix directly to `Eigen::SelfAdjointEigenSolver` (which
+structurally can never return complex values -- its `eigenvalues()` return type is a real vector)
+silently reads only one triangle and returns `[-1,1,5]`: real, but meaningless with respect to the
+actual matrix. `rhoFullSpectral()` avoids this correctly: it symmetrizes first
+(`Gsym=0.5*(G+G^T)`), and for that same test matrix gives `Gsym=diag(0,0,5)` (the rotation part
+exactly cancels), eigenvalues `[0,0,5]` -- real and mathematically well-defined by the spectral
+theorem, since `Gsym` genuinely is symmetric regardless of `G`. Already correctly guarded.
+
+**This was not a hypothetical concern to check.** Asked an Explore agent to trace whether `G` can
+actually be non-symmetric in the live codebase today (not just in a not-yet-implemented future
+stage, which is what the top-level roadmap plan assumed). Finding: `Gii`/`G` genuinely IS
+non-symmetric already, reachable via `moreau.implicit_gyroscopy=true` for any dynamic rigid body
+with angular velocity -- `condensed_assembler.cpp`'s `computeGyroscopicMinvBlocks()` builds a
+non-diagonal, non-symmetric rotational `Minv` block via `invertSmallGeneral()` (explicitly the
+non-symmetric-safe inverse, since Cholesky/LDLT both require symmetry), which propagates directly
+into `Gii` for any contact touching that body. This is wired in and working, not dropped with a
+warning as an earlier planning pass assumed.
+
+Given that, the `Split` strategy's tangential formula had exactly the same latent bug the
+`rhoFullSpectral` comment already worried about, but unguarded: `b=G(1,2)` used only one
+off-diagonal entry, silently ignoring `G(2,1)`. This can't itself produce a complex or NaN result
+(the discriminant is clamped to `max(0,...)`, so the closed form is always real) -- but for a
+genuinely asymmetric tangential block it silently computes an arbitrary, not-actually-meaningful
+value, inconsistent with `rhoFullSpectral`'s principled symmetrization. Fixed by averaging both
+off-diagonal entries (`b=0.5*(G(1,2)+G(2,1))`), matching `rhoFullSpectral`'s convention.
+
+**Verified this fix is a genuine no-op for `domino`/`slinky`** (both run with
+`moreau.implicit_gyroscopy=false`): instrumented `blk.Gii(1,2)-blk.Gii(2,1)` directly and found the
+"asymmetry" there is pure floating-point rounding noise, ~1e-14 to 1e-15 absolute on entries of
+magnitude ~1-100 (i.e. relative error at the level of double precision) -- not a real asymmetry, as
+expected for a diagonal-`Minv` sandwich product, which is exactly symmetric in exact arithmetic.
+Rebuilding and rerunning `domino`'s Newton-`split` case after the fix, however, gave a substantially
+different `totalKE` (15.90 vs. the earlier 5.84) despite the change being ULP-level for this scene
+-- consistent with, and a further demonstration of, `domino`'s already-documented chaotic
+sensitivity (this exact cascading-collision scene has already been shown earlier in this document to
+diverge substantially under equally tiny perturbations -- different rho strategies, `FullPivLU` vs.
+closed-form -- not a sign this fix is wrong). The default (non-Newton) `projection` path, unaffected
+by any of this, remains bit-identical throughout (confirmed via the usual `CARDILLO_DUMP_STATE`
+A/B check).
 
 ## Suggested next steps, in priority order
 

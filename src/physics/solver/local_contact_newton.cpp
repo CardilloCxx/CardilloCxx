@@ -1,7 +1,6 @@
 #include "local_contact_newton.hpp"
 
 #include <Eigen/Eigenvalues>
-#include <Eigen/LU>
 #include <cmath>
 
 namespace cardillo::solver {
@@ -94,8 +93,20 @@ bool solveContactBlockNewtonAC(const Matrix33r& G, const Vector3r& r, real_t mu,
         if (G(0, 0) <= eps) return false;
         const real_t rhoN = (real_t)1 / G(0, 0);
 
-        // TODO: Should we use Eigen's robust 2x2 implementation in Eigen::SelfAdjointEigenSolver<Matrix33r> instead of a hand written variant thereof?
-        const real_t a = G(1, 1), d = G(2, 2), b = G(1, 2);
+        // Closed-form (quadratic-formula) largest eigenvalue of the symmetrized 2x2 tangential
+        // block -- already exact for a symmetric input, so routing this through a generic
+        // SelfAdjointEigenSolver would add setup overhead for no accuracy/robustness gain. `b` is
+        // averaged from both off-diagonal entries (not just G(1,2)) because G need not be
+        // symmetric here: an implicit-gyroscopic body (moreau.implicit_gyroscopy=true, see
+        // condensed_assembler.cpp's gyroMinvBlocks) makes Gii -- and hence this G -- genuinely
+        // non-symmetric, a live, reachable configuration, not a hypothetical one. Using only
+        // G(1,2) would silently ignore G(2,1) instead of accounting for it. Symmetrizing first
+        // also matches rhoFullSpectral's convention and, crucially, guarantees the discriminant
+        // below is exactly the real quantity (a-d)^2+4b^2 >= 0 for the symmetrized block -- the
+        // eigenvalues of the ACTUAL (unsymmetrized, possibly non-normal) 2x2 block could otherwise
+        // be genuinely complex (e.g. a rotation-like block), which this real closed-form formula
+        // cannot represent.
+        const real_t a = G(1, 1), d = G(2, 2), b = (real_t)0.5 * (G(1, 2) + G(2, 1));
         const real_t disc = std::max((real_t)0, (a - d) * (a - d) + (real_t)4 * b * b);
         const real_t lambdaMaxTT = (real_t)0.5 * ((a + d) + std::sqrt(disc));
         if (lambdaMaxTT <= eps) return false;
@@ -107,36 +118,38 @@ bool solveContactBlockNewtonAC(const Matrix33r& G, const Vector3r& r, real_t mu,
     const Vector3r q = r + G * lambda;
     const Vector3r c = rho.asDiagonal() * q;
 
-    auto phiAt = [&](const Vector3r& lam) {
+    // Writes into out-params rather than returning a fresh pair -- every call site below reuses
+    // the same pre-declared storage instead of constructing new Vector3r/Matrix33r each time.
+    auto phiAt = [&](const Vector3r& lam, Vector3r& phiOut, Matrix33r& JphiOut) {
         const Vector3r y = M * lam + c;
         const CaseEval ce = evalCase(M, y, mu);
-        return std::make_pair(Vector3r(lam - ce.g), Matrix33r(Matrix33r::Identity() - ce.Jg));
+        phiOut = lam - ce.g;
+        JphiOut = Matrix33r::Identity() - ce.Jg;
     };
 
     Vector3r lamIter = lambda;
-    auto [phi, Jphi] = phiAt(lamIter);
-
-    Matrix33r JphiInv;
+    Vector3r phi, delta, lamTrial, phiTrial;
+    Matrix33r Jphi, JphiInv, JphiTrial;
     bool invertible;
+    phiAt(lamIter, phi, Jphi);
+
     for (int it = 0; it < params.maxIters; ++it) {
         if (phi.norm() < params.tol) {
             lambda = lamIter;
             return true;
         }
 
-        // Eigen::FullPivLU<Matrix33r> lu(Jphi);
-        // if (!lu.isInvertible()) return false;
-        // const Vector3r delta = lu.solve(-phi);
-        // TODO: Can we drop the determinant call here and anly rely on the subsequent allFinite()?
+        // computeInverseWithCheck's invertibility flag falls out of computing the inverse itself
+        // (no extra decomposition/cost) and catches the exact/near-exact singular case cleanly;
+        // delta.allFinite() below is a second, independent guard against a bad step slipping
+        // through (see CONDENSED_SOLVER_REPORT.md for the measured gap and why it's latent here).
         Jphi.computeInverseWithCheck(JphiInv, invertible);
         if (!invertible) return false;
-        const Vector3r delta = JphiInv * (-phi);
-        // if (Jphi.determinant() == 0) return false;
-        // const Vector3r delta = Jphi.inverse() * (-phi);
+        delta = JphiInv * (-phi);
         if (!delta.allFinite()) return false;
 
-        const Vector3r lamTrial = lamIter + delta;
-        auto [phiTrial, JphiTrial] = phiAt(lamTrial);
+        lamTrial = lamIter + delta;
+        phiAt(lamTrial, phiTrial, JphiTrial);
         if (it > 0 && phiTrial.norm() > phi.norm()) return false;
 
         lamIter = lamTrial;
