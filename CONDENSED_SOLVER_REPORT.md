@@ -1045,6 +1045,185 @@ closed-form -- not a sign this fix is wrong). The default (non-Newton) `projecti
 by any of this, remains bit-identical throughout (confirmed via the usual `CARDILLO_DUMP_STATE`
 A/B check).
 
+## Update: enumerative (quartic) local contact solver, `condensed.local_solve=enumerative`
+
+**Motivation:** the user asked to add the "enumerative" local solver from Daviet et al.'s hair-dynamics
+work as an alternative/fail-safe to the existing Newton local solve, and to check whether it's
+correct and feasible given that `Gii` can be genuinely non-symmetric here (`moreau.implicit_gyroscopy`).
+
+**Correction to the premise, confirmed from the primary sources (read directly, not from memory):**
+the source paper (Daviet, Bertails-Descoubes & Boissieux, SIGGRAPH Asia 2011, "A Hybrid Iterative
+Solver for Robustly Capturing Coulomb Friction in Hair Dynamics") states plainly that the sliding
+case "amounts to finding the roots of a **degree-four** polynomial" — it delegates the derivation to
+a companion technical report, Bonnefon & Daviet, "Quartic formulation of Coulomb 3D frictional
+contact" (INRIA RT-0400, 2011). It is a quartic, not a quadratic. Independently re-derived from
+scratch via computer algebra (sympy) and confirmed degree exactly 4 in the fully general
+(non-symmetric) case too — see below.
+
+**Non-symmetric generalization — derived and numerically verified, not assumed.** The source paper's
+own quartic derivation assumes a symmetric local matrix (one shared coupling vector `w_T` for both
+the normal→tangential and tangential→normal blocks; the paper's own main text notes "as W is
+symmetric, we only have to do half of the work" when assembling it). Re-deriving the same Schur-
+complement reduction with **distinct** row/column coupling vectors (needed for genuinely
+non-symmetric `G`) still collapses to a valid quartic — verified two independent ways in sympy (a
+full symbolic expansion vs. a compact "factored" derivation) that agree exactly for arbitrary
+non-symmetric input. Practical caveat, not swept under the rug: existence/uniqueness of the Coulomb
+NCP solution is only *guaranteed* for symmetric positive-definite `W` (the paper's own text flags
+this via the Painlevé paradox even in the symmetric case, for large enough `mu`). For non-symmetric
+`G`, the three disjunctive cases (take-off/sticking/sliding) can validly produce zero or more than
+one candidate; the implementation returns `false` (same fail-safe contract as
+`solveContactBlockNewtonAC`) on zero, and breaks ties by a coarse Alart-Curnier residual on more
+than one — see `local_contact_enumerative.cpp`.
+
+**A sign-convention bug was caught and fixed during derivation, before any code was written.** This
+codebase's `lambda[0] <= 0` convention needs translating against the paper's `r_N >= 0` convention. A
+first-pass hand-derivation of that translation (`wN = -G(0,0)`, etc.) was **wrong** — it produced
+zero valid quartic roots when tested against a planted analytic solution. The correct translation
+(`wN = G(0,0)`, `wTr = -G(0,1:3)`, `wTc = +G(1:3,0)` — note: *not* the negative of `wTr`, which is
+exactly what makes the reduction correct for non-symmetric `G` — `WT = -G(1:3,1:3)`, `b = r +
+G*lambda`) was verified numerically against planted sliding solutions across symmetric and
+non-symmetric random `G`, several seeds, recovering the planted `alpha`/`r_T`/`r_N` to `1e-9`+
+precision every time.
+
+**Files added:** `src/physics/solver/quartic_solver.{hpp,cpp}` (standalone real-root quartic solver,
+no contact-specific knowledge), `src/physics/solver/local_contact_enumerative.{hpp,cpp}` (mirrors
+`local_contact_newton.{hpp,cpp}`'s guarded-bool-return contract exactly). New config:
+`condensed.local_solve=enumerative` (new third value), `condensed.newton_enum_failsafe` (bool,
+default off — when `local_solve=newton` and Newton fails, try the enumerative solver before falling
+through to plain projection; mirrors the source paper's own best-measured configuration, "MFB+Enum":
+0.07% local-problem failure rate vs. 0.26% for their Newton analogue alone), `condensed.enumerative_eps`.
+`computeBlockUpdate()` and the four sweep drivers now take one `LocalSolveConfig` struct instead of
+the previous loose `useNewton`/`NewtonACParams` pair (net reduction in parameter count).
+
+### The quartic solver: a planned custom closed-form was dropped for a validated one
+
+The plan called for a hand-rolled Ferrari/trigonometric-resolvent-cubic closed-form quartic solver
+(faster in principle than a general eigenvalue method) with Newton-polish for backward stability.
+**It was implemented, then validated against thousands of random + adversarial quartics
+(cross-checked against `numpy.roots`), and it failed two of those categories outright**: it silently
+dropped genuine double roots entirely (the classic hard case for a hand-rolled resolvent-cubic
+approach), and it returned roots wrong by 10+ orders of magnitude whenever the leading coefficient
+was small-but-nonzero relative to the rest — exactly the regime this solver's actual caller hits as
+`bN -> 0` (a real physical case for the sliding equation's `a4 = -mu^2*bN^2`, not a synthetic corner
+case). Root cause: monic-normalizing by a small leading coefficient blows up the depression formulas'
+higher-power terms, which then swamp the low-order coefficients they need to retain.
+
+Rather than continue debugging bespoke quartic algebra for safety-critical physics code, the
+production implementation uses `Eigen::PolynomialSolver` (`unsupported/Eigen/Polynomials`, already
+vendored via this project's Eigen `FetchContent`, previously unused anywhere) — a companion-matrix
+eigendecomposition — with a degree-detection walk-down (so `a4~=0` is handled as a lower-degree
+polynomial instead of dividing by ~0) and up to 2 Newton-polish iterations per real root against the
+original coefficients (Horner evaluation) for a final precision touch-up. **Measured, not
+projected:** re-tested the identical adversarial cases (12,000 cases across 6 categories: random,
+random at scales 1e-6..1e6, repeated roots, near-zero leading coefficient, widely-separated root
+magnitudes, exactly-zero leading coefficient) against `numpy.roots` as ground truth —
+
+| category | max relative error in root value |
+|---|---|
+| random | 6.3e-15 |
+| random, scale 1e-6..1e6 | 3.6e-15 |
+| widely-separated roots | 3.2e-12 |
+| exactly-zero leading coeff | 3.4e-15 |
+| repeated roots | 5.9e-7 (see caveat below) |
+| near-zero leading coeff | 1.37 in 1/2000 cases (see caveat below) |
+
+Two caveats on the last two rows, both root-caused by hand before accepting the numbers: the
+"repeated roots" error is a comparison-methodology artifact, not an accuracy problem — `numpy.roots`
+itself doesn't return an exactly-repeated value for a genuine double root (companion-matrix
+eigenvalue algorithms are inherently sensitive to repeated roots), so its two returned values differ
+by ~1e-6 from each other; this solver returns one exact repeated value that sits almost exactly at
+their average. The one `near_degenerate_a4` failure (out of 2000) is a genuine knife-edge
+ill-conditioning case — a leading coefficient only ~60x machine epsilon above zero, where whether the
+true polynomial has 2 or 4 real roots is not robustly determined by the double-precision input at
+all; `numpy` (LAPACK) and Eigen's own QR implementation legitimately disagree on that one case. The
+degree-detection threshold was tightened during this process from a generous `1e-14*scale` to
+`4*eps*scale` (right at machine precision) specifically because the looser threshold was silently
+*dropping* a genuine (if huge-magnitude) root in ~10% of the near-degenerate-a4 batch — a real bug
+caught by this same validation run, not a hypothetical one.
+
+### Enumerative vs. Newton: agreement on realistic inputs, and a real finding on adversarial ones
+
+Validated with a standalone throwaway program (`enum_vs_newton.cpp`, per this repo's established
+convention) comparing `solveContactBlockEnumerative` against `solveContactBlockNewtonAC` on identical
+`(G, r, mu, lambda_cur)` inputs, both a symmetric-SPD batch (`A^T*A + 4I`) and a genuinely
+non-symmetric batch (SPD base + a comparable-magnitude skew perturbation, mimicking the gyroscopic
+case).
+
+**On inputs derived from a planted, near-converged state** (the kind an actual Gauss-Seidel sweep
+produces — a true hidden solution plus a small perturbation to `lambda_cur`, 20,000 cases): both
+solvers are valid essentially always (Newton 99.96%, Enum 100%, checked against the *direct*
+Signorini-Coulomb conditions, not a proxy — see below) and **agree to `<1e-4` in 19,990/19,992 cases
+where both succeed**. This is the number that answers the user's "is this correct and feasible"
+question for the case that actually matters in practice.
+
+**On fully-adversarial inputs** (`r`/`lambda_cur` drawn independently, uniformly, with no consistency
+requirement — a much harsher test than any real Gauss-Seidel iterate): a first pass compared both
+solvers via a fixed-`rho=1` Alart-Curnier residual and found only ~35% agreement with disagreements
+up to `~2000` in norm — alarming, but tracked down to a bug in *that comparison metric*, not either
+solver: the AC map's sliding-case fixed point is only guaranteed to match the true (dissipative,
+`alpha>0`) Coulomb solution when `rho*alpha<1`; at a *fixed* `rho=1`, a solution with `alpha<0` (i.e.,
+friction pointing *with* the slip direction, non-dissipative — an unambiguous sign violation, not a
+tolerance artifact) is *also* always a fixed point of that same map. Replacing the comparison with a
+**direct check against the true disjunctive Coulomb conditions** (colinearity and sign of
+`u_T`/`lam_T`, not an AC-residual proxy) revealed the real, useful finding: on the adversarial batch,
+Newton's own guarded convergence check (`solveContactBlockNewtonAC` returning `true`) accepted a
+**non-dissipative, physically-invalid fixed point in roughly 74% of its "successful" convergences**
+(symmetric-mu-realistic batch: only 25.8% of Newton's reported successes were actually valid; enum's
+were 99.8% valid on the same batch, by construction — it explicitly filters for `alpha>0` before
+accepting a sliding candidate). Newton *silently returning a wrong answer* (not reporting failure) on
+these inputs is a materially worse failure mode than the already-handled "reports failure, falls back
+to projection" path, and is exactly the scenario the enumerative fail-safe is meant to catch: when
+`condensed.newton_enum_failsafe=true`, this class of error is replaced by the correct sliding
+solution.
+
+This adversarial-input result should **not** be read as "Newton is broken in this codebase's actual
+simulations" — the near-converged-state batch above shows the two solvers agreeing 99.99%+ of the
+time on the inputs Gauss-Seidel actually produces, and the scene runs below show no observable
+divergence in `domino`/`slinky`. It is a real, now-measured characteristic of the Alart-Curnier
+Newton formulation when driven far from a consistent state (e.g. a bad warmstart, or a block whose
+neighbors are still far from converged) — previously only a theoretical risk this codebase's own
+Newton solver doc comment didn't call out, now a concrete number, and a concrete argument for why
+`condensed.newton_enum_failsafe` is worth having on for scenes where this matters.
+
+### Scene smoke tests: `domino`/`slinky`, all four `local_solve` combinations
+
+Ran `domino` and `slinky` with `condensed.local_solve` set to each of `projection`/`newton`/
+`enumerative`, plus `newton`+`condensed.newton_enum_failsafe=true`, using `CARDILLO_DUMP_STATE=1` for
+an end-of-run fingerprint (per this repo's existing cross-solver-check convention).
+
+- **`domino`** (150 steps, `sim.T=0.15`): `projection`, `newton`, and `newton`+failsafe all complete
+  cleanly (~18-20s each) with consistent `totalKE` (5.7-17.4 depending on mode — the existing report
+  already documents this scene's chaotic sensitivity to even ULP-level solver differences, so mode-
+  to-mode KE spread here is expected, not a red flag; `posNormSum` agrees to 5 significant figures
+  across all three: ~2082.1). Standalone `enumerative` (no Newton, no failsafe) **did not complete
+  within 90s even at 10 steps** on this ~40k-contact scene.
+- **`slinky`**: found and ruled out a possible regression before trusting any of this — `newton` (an
+  existing, untouched-by-this-work code path) also failed to finish a 90s/300-step run. Re-tested the
+  *original* pre-this-work code (`git stash` of every file this work touched, rebuilt, re-run) and
+  confirmed **the identical slow behavior is already present on `main`**: Gauss-Seidel iteration
+  count explodes from ~300-500/step to 4,962 / 10,888 / 27,268 / 27,366 (steps 28-35 of a
+  `dt=5e-4` run) regardless of local-solve mode, tied to a specific early simulation event (the
+  slinky coil's self-contacts first engaging in earnest), not to anything in this change. Restricting
+  to the tractable pre-event window (25 steps, `sim.T=0.0125`): `projection`, `newton`, and
+  `newton`+failsafe all complete in well under a second with `totalKE` agreeing to 3 significant
+  figures (0.00308 / 0.00303 / 0.00303); **`newton`+failsafe's fingerprint is bit-identical to plain
+  `newton`'s** (`0.00303157799871409` both), which is exactly the expected result when the failsafe
+  is available but never needed (Newton never fails on these easy early steps) — a real end-to-end
+  confirmation that the failsafe wiring doesn't change behavior when it isn't triggered, not just an
+  argument for it. Standalone `enumerative` again could not complete even the easy pre-event window in
+  reasonable time (traced to the same per-step iteration counts as `newton` needs, multiplied by
+  enumerative's substantially higher per-call cost — a companion-matrix eigendecomposition plus a 3x3
+  inverse per contact per sweep, vs. Newton's single closed-form 3x3 inverse).
+
+**Bottom line, matching the source paper's own conclusion almost exactly:** the enumerative/quartic
+solver is derived correctly, generalizes to non-symmetric `G` as required, and is validated to
+machine precision against Newton on the inputs that matter (near-converged Gauss-Seidel iterates) —
+but it is **not viable as a standalone primary local solver** on either example scene at their actual
+contact counts, only as an occasional fail-safe (`condensed.newton_enum_failsafe=true`), which is
+cheap (no measured cost when unused) and demonstrably catches a real class of silent Newton error.
+`condensed.local_solve=enumerative` is left available for small-contact-count scenes or future
+comparison work, not recommended as a scene default.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode
@@ -1078,3 +1257,14 @@ A/B check).
    risk to attempt after `true_schur` is further validated, not alongside it — bundling two
    structural changes at once multiplies the surface area for a subtle bug, which is exactly what
    burned the user's own single-line `GiiInv` attempt earlier in this document.
+9. **Investigate `slinky`'s iteration-count explosion** (steps 28-35 of the `dt=5e-4` reference
+   config, ~300 -> 27,000+ Gauss-Seidel iterations, present on `main` independent of this work — see
+   the enumerative-solver update above) — root cause not yet identified; likely the coil's self-contacts
+   first engaging in earnest, but that's an inference from timing, not a confirmed diagnosis. Worth
+   its own investigation given it currently makes `slinky` impractical to run past this point in any
+   automated benchmark with a real timeout.
+10. If `condensed.local_solve=enumerative` is ever wanted as a *primary* (not fail-safe) solver on a
+    large-contact-count scene, its per-call cost (`Eigen::PolynomialSolver`'s companion-matrix
+    eigendecomposition + a 3x3 inverse per contact per sweep, vs. Newton's single closed-form 3x3
+    inverse) needs to come down first — not attempted here since the source paper itself recommends
+    fail-safe-only usage, and the measured `domino`/`slinky` timings back that up.

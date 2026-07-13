@@ -162,7 +162,7 @@ Config ConfigReader::fromFile(const std::string& path) {
         } else if (key == "condensed.local_solve") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "projection" || v == "newton")
+            if (v == "projection" || v == "newton" || v == "enumerative")
                 cfg.condensed_local_solve = v;
             else {
                 std::cerr << "Warning: unrecognized condensed.local_solve '" << val << "'. Defaulting to 'projection'." << std::endl;
@@ -194,6 +194,15 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.condensed_newton_tol = static_cast<real_t>(std::stod(val));
             } catch (...) {
             }
+        } else if (key == "condensed.enumerative_eps") {
+            try {
+                cfg.condensed_enumerative_eps = (real_t)std::stod(val);
+            } catch (...) {
+            }
+        } else if (key == "condensed.newton_enum_failsafe") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.condensed_newton_enum_failsafe = (v == "1" || v == "true" || v == "yes" || v == "on");
         } else if (key == "condensed.chaotic_reshuffle_interval") {
             try {
                 cfg.condensed_chaotic_reshuffle_interval = std::max(1, std::stoi(val));

@@ -15,6 +15,7 @@
 #endif
 
 #include "../../misc/graph_coloring.hpp"
+#include "local_contact_enumerative.hpp"
 #include "local_contact_newton.hpp"
 #include "warmstart.hpp"
 
@@ -130,27 +131,58 @@ void exactBilateralStep(const CondensedTopology& topo, const cardillo::misc::Blo
 
 bool isContactKind(RowBlock::Kind kind) { return kind == RowBlock::Kind::ContactFrictionless || kind == RowBlock::Kind::ContactFrictional; }
 
-// Shared local-solve step used by every sweep driver: for frictional contact blocks when
-// `useNewton` is set, tries the guarded Alart-Curnier semismooth Newton solve first (see
-// local_contact_newton.hpp) -- it either converges to a locally-exact solution in a handful of
-// iterations, or reports failure (singular Jacobian, non-finite step, non-decreasing residual, or
-// no convergence within its iteration cap), in which case we fall through to the always-available
-// linear step + projection below. Writes the new (projected/converged) impulse into
-// out.head(blk.dim); caller computes the delta.
-// `linearOnly` (default false, so every existing call site is unaffected): skips both the Newton
-// branch and the final projectBlock() call, making this update a pure linear relaxation step
-// (o = relaxation*alpha*GiiInv*r + lamOld, nothing else). Used only by estimateSpectralRadius()
-// below, which needs the *linear* part of the sweep operator in isolation -- Newton/projection are
-// exactly the nonlinearities that make a rigorous spectral-radius argument inapplicable in the
-// first place (see that function's own comment).
-void computeBlockUpdate(const RowBlock& blk, const Buf6& r, real_t relaxation, real_t alpha, const Buf6& lamOld, bool useNewton, const NewtonACParams& newtonParams, Buf6& out,
+// Bundles which per-contact local solve to try (and in what order) for computeBlockUpdate() and
+// every sweep driver below. `useNewton`/`useEnumerative` are mutually exclusive in practice
+// (derived from the single condensed.local_solve string choice) -- kept as separate bools rather
+// than an enum so the failsafe branch below is a plain `&&`, not a switch.
+struct LocalSolveConfig {
+    bool useNewton{false};
+    bool useEnumerative{false};
+    bool enumFailsafe{false};  // condensed.newton_enum_failsafe -- only consulted when useNewton && !useEnumerative
+    NewtonACParams newton{};
+    EnumerativeParams enumerative{};
+};
+
+// Shared local-solve step used by every sweep driver: for frictional contact blocks, tries the
+// configured primary local solve first -- the guarded Alart-Curnier semismooth Newton solve (see
+// local_contact_newton.hpp) or the guarded enumerative/quartic solve (see
+// local_contact_enumerative.hpp) -- either of which either converges to a locally-exact solution,
+// or reports failure (see their own guard contracts), in which case we fall through to the
+// always-available linear step + projection below (optionally trying the enumerative solve as a
+// SECOND attempt first, when condensed.newton_enum_failsafe is set -- mirrors the source paper's
+// own best-measured "Newton + enumerative fail-safe" configuration, see
+// CONDENSED_SOLVER_REPORT.md). Writes the new (projected/converged) impulse into out.head(blk.dim);
+// caller computes the delta.
+// `linearOnly` (default false, so every existing call site is unaffected): skips both the
+// Newton/enumerative branches and the final projectBlock() call, making this update a pure linear
+// relaxation step (o = relaxation*alpha*GiiInv*r + lamOld, nothing else). Used only by
+// estimateSpectralRadius() below, which needs the *linear* part of the sweep operator in isolation
+// -- Newton/enumerative/projection are exactly the nonlinearities that make a rigorous
+// spectral-radius argument inapplicable in the first place (see that function's own comment).
+void computeBlockUpdate(const RowBlock& blk, const Buf6& r, real_t relaxation, real_t alpha, const Buf6& lamOld, const LocalSolveConfig& localSolve, Buf6& out,
                          bool linearOnly = false) {
-    if (useNewton && !linearOnly && blk.kind == RowBlock::Kind::ContactFrictional) {
+    if (!linearOnly && blk.kind == RowBlock::Kind::ContactFrictional) {
         Vector3r lam3 = lamOld.head<3>();
         const Vector3r r3 = r.head<3>();
-        if (solveContactBlockNewtonAC(blk.Gii, r3, blk.mu, lam3, newtonParams)) {
+
+        if (localSolve.useNewton && solveContactBlockNewtonAC(blk.Gii, r3, blk.mu, lam3, localSolve.newton)) {
             out.head<3>() = lam3;
             return;
+        }
+        if (localSolve.useEnumerative && solveContactBlockEnumerative(blk.Gii, r3, blk.mu, lam3, localSolve.enumerative)) {
+            out.head<3>() = lam3;
+            return;
+        }
+        // condensed.newton_enum_failsafe: a SECOND attempt, only when the primary choice was
+        // Newton and it just failed above -- if local_solve is already "enumerative" it was
+        // already tried immediately above, so retrying it here would be a redundant repeat, not a
+        // fallback (guarded by !localSolve.useEnumerative for exactly that reason).
+        if (localSolve.enumFailsafe && localSolve.useNewton && !localSolve.useEnumerative) {
+            lam3 = lamOld.head<3>();  // Newton leaves lam3 unchanged on failure, but be defensive
+            if (solveContactBlockEnumerative(blk.Gii, r3, blk.mu, lam3, localSolve.enumerative)) {
+                out.head<3>() = lam3;
+                return;
+            }
         }
     }
 
@@ -166,14 +198,14 @@ void computeBlockUpdate(const RowBlock& blk, const Buf6& r, real_t relaxation, r
 // `startBlock` skips the bilateral (spring+damper) prefix when condensed.true_schur handles those
 // exactly instead (0 -- i.e. every block -- otherwise); contact blocks are always a contiguous
 // suffix of topo.blocks, so a single start index is enough, no separate index list needed.
-void gaussSeidelSweep(const CondensedTopology& topo, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton, const NewtonACParams& newtonParams,
+void gaussSeidelSweep(const CondensedTopology& topo, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, const LocalSolveConfig& localSolve,
                        VectorXr& lambda, VectorXr& u_corr, int startBlock = 0, bool linearOnly = false) {
     Buf6 r, lamOld, lamNew, delta, tmp;
     for (size_t bi = (size_t)startBlock; bi < topo.blocks.size(); ++bi) {
         const auto& blk = topo.blocks[bi];
         blockResidual(blk, rhs, u_corr, lambda, r);
         lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
-        computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew, linearOnly);
+        computeBlockUpdate(blk, r, relaxation, alpha, lamOld, localSolve, lamNew, linearOnly);
 
         delta.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
         scatterDelta(blk, MinvDiag, topo.gyroMinvBlocks, delta, u_corr, tmp);
@@ -217,8 +249,8 @@ std::vector<std::vector<int>> buildBlockAdjacency(const CondensedTopology& topo,
 // Graph-colored Gauss-Seidel: sequential across colors, (eventually) parallel within a color.
 // Safe by construction -- no two blocks in the same color class share a body, so their reads/
 // writes of u_corr touch disjoint index ranges.
-void coloredSweep(const CondensedTopology& topo, const cardillo::misc::Coloring& coloring, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
-                   const NewtonACParams& newtonParams, VectorXr& lambda, VectorXr& u_corr, bool linearOnly = false) {
+void coloredSweep(const CondensedTopology& topo, const cardillo::misc::Coloring& coloring, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha,
+                   const LocalSolveConfig& localSolve, VectorXr& lambda, VectorXr& u_corr, bool linearOnly = false) {
     const int numColors = coloring.numColors;
     // Single team for the whole sweep (all colors), not one team per color: spawning/joining an
     // OpenMP team has real overhead, and a sweep can have dozens of colors -- doing that per color,
@@ -238,7 +270,7 @@ void coloredSweep(const CondensedTopology& topo, const cardillo::misc::Coloring&
             const auto& blk = topo.blocks[(size_t)idx];
             blockResidual(blk, rhs, u_corr, lambda, r);
             lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
-            computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew, linearOnly);
+            computeBlockUpdate(blk, r, relaxation, alpha, lamOld, localSolve, lamNew, linearOnly);
 
             // Safe: no two blocks in `cls` share a body (that's the coloring invariant), so these
             // writes land in disjoint slices of u_corr/lambda across threads -- no race, no atomics.
@@ -261,8 +293,8 @@ void coloredSweep(const CondensedTopology& topo, const cardillo::misc::Coloring&
 // from `VectorXr::Zero(lambda.size())` below, since pass 1 never touches that segment, so gathering
 // it contributes nothing -- restricting pass 2's range too would save a little work but isn't
 // needed for correctness.
-void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelOffsets, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
-                  const NewtonACParams& newtonParams, VectorXr& lambda, VectorXr& u_corr, int startBlock = 0, bool linearOnly = false) {
+void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelOffsets, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha,
+                  const LocalSolveConfig& localSolve, VectorXr& lambda, VectorXr& u_corr, int startBlock = 0, bool linearOnly = false) {
     const VectorXr u_read = u_corr;
     const int numBlocks = (int)topo.blocks.size();
     const int numBodies = (int)topo.blocksOfBody.size();
@@ -282,7 +314,7 @@ void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelO
             const auto& blk = topo.blocks[i];
             blockResidual(blk, rhs, u_read, lambda, r);
             lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
-            computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew, linearOnly);
+            computeBlockUpdate(blk, r, relaxation, alpha, lamOld, localSolve, lamNew, linearOnly);
 
             dlambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
             lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);
@@ -325,8 +357,8 @@ void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelO
 // race: plain-`double` unsynchronized read-modify-write is undefined behavior in C++, not just
 // imprecise. `real_t` is `double`; C++20 guarantees `std::atomic<double>::fetch_add`/`load` exist
 // (P0020R6), so no hand-rolled CAS loop is needed.
-void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
-                   const NewtonACParams& newtonParams, int reshuffleInterval, int iter, std::mt19937& rng, VectorXr& lambda, std::vector<std::atomic<real_t>>& u_corr_atomic) {
+void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha,
+                   const LocalSolveConfig& localSolve, int reshuffleInterval, int iter, std::mt19937& rng, VectorXr& lambda, std::vector<std::atomic<real_t>>& u_corr_atomic) {
     if (iter % reshuffleInterval == 0) std::shuffle(order.begin(), order.end(), rng);
 
     const int n = (int)order.size();
@@ -346,7 +378,7 @@ void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const 
         ro.noalias() -= blk.complianceDiag.cwiseProduct(lambda.segment(blk.offset, blk.dim));
 
         lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
-        computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew);
+        computeBlockUpdate(blk, r, relaxation, alpha, lamOld, localSolve, lamNew);
         lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);  // safe: `order` is a permutation this sweep
 
         d.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
@@ -391,7 +423,7 @@ real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& Min
     if (numLambda == 0) return (real_t)0;
 
     const VectorXr zeroRhs = VectorXr::Zero(numLambda);
-    const NewtonACParams unusedNewtonParams{};  // never consulted: linearOnly=true skips the Newton branch entirely
+    const LocalSolveConfig unusedLocalSolve{};  // never consulted: linearOnly=true skips the Newton/enumerative branches entirely
 
     VectorXr d_lambda = VectorXr::Ones(numLambda).normalized();
     VectorXr d_u_corr = VectorXr::Zero(nV);
@@ -407,11 +439,11 @@ real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& Min
     for (int it = 0; it < kPowerIterations; ++it) {
         if (useTrueSchur) exactBilateralStep(topo, bilateralLdlt, zeroRhs, MinvDiag, d_lambda, d_u_corr);
         if (sweepMode == "jacobi") {
-            jacobiSweep(topo, bodyVelOffsets, zeroRhs, MinvDiag, relaxation, alpha, /*useNewton=*/false, unusedNewtonParams, d_lambda, d_u_corr, startBlock, /*linearOnly=*/true);
+            jacobiSweep(topo, bodyVelOffsets, zeroRhs, MinvDiag, relaxation, alpha, unusedLocalSolve, d_lambda, d_u_corr, startBlock, /*linearOnly=*/true);
         } else if (sweepMode == "colored") {
-            coloredSweep(topo, coloring, zeroRhs, MinvDiag, relaxation, alpha, false, unusedNewtonParams, d_lambda, d_u_corr, /*linearOnly=*/true);
+            coloredSweep(topo, coloring, zeroRhs, MinvDiag, relaxation, alpha, unusedLocalSolve, d_lambda, d_u_corr, /*linearOnly=*/true);
         } else {
-            gaussSeidelSweep(topo, zeroRhs, MinvDiag, relaxation, alpha, false, unusedNewtonParams, d_lambda, d_u_corr, startBlock, /*linearOnly=*/true);
+            gaussSeidelSweep(topo, zeroRhs, MinvDiag, relaxation, alpha, unusedLocalSolve, d_lambda, d_u_corr, startBlock, /*linearOnly=*/true);
         }
 
         const real_t n = d_lambda.norm();
@@ -542,9 +574,14 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
             for (auto& idx : cls) idx += startBlock;
     }
 
-    const bool useNewton = (m_cfg.condensed_local_solve == "newton");
-    const NewtonACParams newtonParams{m_cfg.condensed_newton_max_iters, m_cfg.condensed_newton_tol,
-                                       (m_cfg.condensed_newton_rho_strategy == "full") ? NewtonRhoStrategy::FullSpectral : NewtonRhoStrategy::Split};
+    const LocalSolveConfig localSolve{
+        /*useNewton=*/m_cfg.condensed_local_solve == "newton",
+        /*useEnumerative=*/m_cfg.condensed_local_solve == "enumerative",
+        /*enumFailsafe=*/m_cfg.condensed_newton_enum_failsafe,
+        NewtonACParams{m_cfg.condensed_newton_max_iters, m_cfg.condensed_newton_tol,
+                       (m_cfg.condensed_newton_rho_strategy == "full") ? NewtonRhoStrategy::FullSpectral : NewtonRhoStrategy::Split},
+        EnumerativeParams{m_cfg.condensed_enumerative_eps},
+    };
 
     // condensed.auto_alpha (experimental, default off -- see config.hpp): derive `alpha` for THIS
     // step from the same power-iteration estimator pj.chebyshev uses, instead of the fixed
@@ -637,11 +674,11 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     auto doSweep = [&](VectorXr& lam, VectorXr& ucorr) {
         if (useTrueSchur) exactBilateralStep(topo, bilateralLdlt, rhs, MinvDiag, lam, ucorr);
         if (sweepMode == "jacobi") {
-            jacobiSweep(topo, bodyVelOffsets, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr, startBlock);
+            jacobiSweep(topo, bodyVelOffsets, rhs, MinvDiag, relaxation, alpha, localSolve, lam, ucorr, startBlock);
         } else if (sweepMode == "colored") {
-            coloredSweep(topo, coloring, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr);
+            coloredSweep(topo, coloring, rhs, MinvDiag, relaxation, alpha, localSolve, lam, ucorr);
         } else {
-            gaussSeidelSweep(topo, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr, startBlock);
+            gaussSeidelSweep(topo, rhs, MinvDiag, relaxation, alpha, localSolve, lam, ucorr, startBlock);
         }
     };
 
@@ -649,7 +686,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         VectorXr u_prev = u_corr;
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
             auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
-            chaoticSweep(topo, chaoticOrder, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, m_cfg.condensed_chaotic_reshuffle_interval, iter, chaoticRng, lambda, u_corr_atomic);
+            chaoticSweep(topo, chaoticOrder, rhs, MinvDiag, relaxation, alpha, localSolve, m_cfg.condensed_chaotic_reshuffle_interval, iter, chaoticRng, lambda, u_corr_atomic);
             for (int i = 0; i < nV; ++i) u_corr[i] = u_corr_atomic[(size_t)i].load(std::memory_order_relaxed);
             sc_sweep.~Scope();
 

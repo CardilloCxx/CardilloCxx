@@ -112,7 +112,7 @@ struct Config {
     // warmstart/debug knobs are shared with PJ/PGS -- see pj_max_iterations, pj_tol_abs,
     // pj_tol_rel, pj_relaxation, pj_alpha, pj_warmstart, debug_pj above.
     std::string condensed_sweep_mode{"gauss_seidel"};    // condensed.sweep_mode: jacobi | gauss_seidel | colored | chaotic
-    std::string condensed_local_solve{"projection"};     // condensed.local_solve: projection | newton
+    std::string condensed_local_solve{"projection"};     // condensed.local_solve: projection | newton | enumerative
     std::string condensed_ordering{"natural"};           // condensed.ordering: natural | dominant
     int condensed_num_threads{0};                        // condensed.num_threads (0 = OpenMP default)
     int condensed_newton_max_iters{8};                   // condensed.newton_max_iters
@@ -125,6 +125,23 @@ struct Config {
     // (fc3d_AlartCurnier_functions.c) respectively -- checked directly against that codebase. See
     // CONDENSED_SOLVER_REPORT.md for a head-to-head comparison before switching a scene to "full".
     std::string condensed_newton_rho_strategy{"split"}; // condensed.newton_rho_strategy: split | full
+
+    // Enumerative (Bonnefon & Daviet 2011 quartic formulation) local solve -- see
+    // local_contact_enumerative.hpp. condensed_enumerative_eps is its single degeneracy/tolerance
+    // guard (see EnumerativeParams::eps).
+    real_t condensed_enumerative_eps{(real_t)1e-10};     // condensed.enumerative_eps
+    // condensed.newton_enum_failsafe: when condensed.local_solve=="newton" and the guarded
+    // Alart-Curnier semismooth Newton solve fails for a block (singular Jacobian, non-finite step,
+    // non-decreasing residual, or maxIters exhausted -- see solveContactBlockNewtonAC's own guard
+    // contract), try the enumerative solver as a SECOND attempt before falling all the way through
+    // to the plain linear-relaxation+projection step every mode already has as its ultimate
+    // fallback -- mirrors the source paper's own best-measured configuration ("MFB+Enum": 0.07%
+    // failure rate vs. 0.26% for their Newton-analogue alone, see CONDENSED_SOLVER_REPORT.md). Has
+    // no effect when condensed.local_solve=="enumerative" (already the primary choice there, so
+    // this would just be a redundant repeat) or "projection" (no Newton attempt to fail in the
+    // first place). Default off -- preserves today's validated projection/newton behavior.
+    bool condensed_newton_enum_failsafe{false};          // condensed.newton_enum_failsafe
+
     int condensed_chaotic_reshuffle_interval{50};        // condensed.chaotic_reshuffle_interval (sweeps between reshuffles)
     unsigned condensed_chaotic_seed{12345u};             // condensed.chaotic_seed
     // condensed.true_schur: exactly eliminate the bilateral (spring+damper) rows every outer
