@@ -1,12 +1,18 @@
 #pragma once
 
+#include "../../misc/contact_rho.hpp"
 #include "../../misc/types.hpp"
 
 namespace cardillo::solver {
 
+// See misc/contact_rho.hpp for the Split/FullSpectral strategies and their theory -- shared with
+// CondensedAssembler's GiiInv construction, which needs the same per-block rho estimate.
+using NewtonRhoStrategy = cardillo::misc::ContactRhoStrategy;
+
 struct NewtonACParams {
     int maxIters{8};
     real_t tol{(real_t)1e-10};
+    NewtonRhoStrategy rhoStrategy{NewtonRhoStrategy::Split};
 };
 
 // Guarded Alart-Curnier semismooth Newton solve for one frictional (3-row) contact block, in the

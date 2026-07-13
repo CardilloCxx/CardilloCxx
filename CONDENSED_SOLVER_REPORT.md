@@ -1,0 +1,1173 @@
+# Condensed contact solver: implementation & investigation report
+
+**Scope:** a new `condensed` contact solver (`solver.type=condensed`), block-sparse and
+config-selectable across four sweep strategies and two local-solve strategies, built as a
+generalization of the existing `projected_gauss_seidel` (PGS) solver. This document records what
+was built, the two real bugs the validation process caught (and how), the ThreadSanitizer
+investigation, and the benchmark results as actually measured — not a projection of expected
+results.
+
+See `docs/chapters/solvers/condensed.rst` for the solver's mathematical/architectural
+documentation. This file is the narrative of *how it was built and verified*.
+
+## Direct answer to "are these all non-accelerated variants?"
+
+**This was true when first asked, and is the starting point for the rest of this report** (the
+"Benchmark results" section below predates the change described next): all four sweep modes were
+plain fixed-point iterations, with relaxation (`pj_relaxation`) and per-contact step damping
+(`pj_alpha`) as the only step-size controls, identical to what PGS already had, and no Nesterov/
+Chebyshev/Anderson.
+
+**As of the "Update" section below, Nesterov acceleration is implemented** for `gauss_seidel`,
+`jacobi`, and `colored` (not `chaotic`, deliberately — see that section), reusing PJ/PGS's existing
+`pj.nesterov`/`pj.nesterov_beta_threshold`/`pj.nesterov_restart_limit` config keys rather than
+adding new ones. Chebyshev and Anderson are still not ported; see "Suggested next steps."
+
+## What was built
+
+| File | Purpose |
+|---|---|
+| `src/misc/graph_coloring.{hpp,cpp}` | Greedy Welsh-Powell graph coloring (used by `colored` mode) |
+| `src/physics/assembly/contact_jacobian.hpp` | `buildContactRowByDof()`, extracted (pure refactor, zero behavior change) from `dynamics_assembler.cpp` so the new assembler can reuse it |
+| `src/physics/assembly/condensed_assembler.{hpp,cpp}` | `RowBlock`/`CondensedTopology`: the block-sparse representation, never touching `Eigen::SparseMatrix` |
+| `src/physics/solver/condensed_solver.{hpp,cpp}` | The solver itself: four sweep drivers + dispatch |
+| `src/physics/solver/local_contact_newton.{hpp,cpp}` | Guarded Alart-Curnier semismooth Newton local solve |
+| `src/misc/block_diagonal.hpp` | `invertSmallSpd()` extracted from `BlockDiagonal::calculateInverse()` (pure refactor, reused by the new assembler) |
+| `src/config/config.{hpp,cpp}` | `SolverType::Condensed` + `condensed.*` config keys |
+| `src/physics/pipeline/physics_pipeline.cpp` | Dispatch wiring |
+| `src/misc/timings/TimingManager.hpp` | `Condensed*` `TimerId` entries |
+| `CMakeLists.txt`, `src/CMakeLists.txt` | `CARDILLO_ENABLE_TSAN` option; `find_package(OpenMP)` + `CARDILLO_HAVE_OPENMP` |
+| `examples/scenes/{domino,slinky}/scene_condensed.config` | Reference scene configs |
+| `examples/example_main.hpp` | `CARDILLO_DUMP_STATE` env-gated end-of-run state fingerprint (total kinetic energy, summed position norm) — a lightweight cross-solver correctness check, cheaper than diffing VTK output |
+| `tools/compare_solver_traces.py` | Fixed a stale binary path (see below), added `condensed` ablation cases, added wall-clock capture |
+
+`projected_jacobi.*` and `projected_gauss_seidel.*` were **not modified** except the two
+extractions above, both verified behavior-identical before proceeding.
+
+## Validation methodology and the two bugs it caught
+
+### 1. Assembler-level: `CondensedAssembler::rhs()` vs `PgsAssembler::rhs()`
+
+Before writing any solver logic, `CondensedAssembler`'s `rhs()`/`ufree()` were diffed
+segment-by-segment against `PgsAssembler`'s own output, in-process (both assemblers run against
+the same live `DynamicsAssembler` state, no config-file involved). Result: agreement to
+floating-point round-off (`~1e-13` to `~1e-16` relative) on domino (6 springs, up to 40k contact
+rows) and slinky (4944 springs, up to 432 contact rows). This is the strongest validation in the
+whole exercise, because it isolates "did I port the formulas correctly" from every other later
+concern.
+
+### 2. A process bug: silently comparing PJ against itself
+
+The first attempt at "validate the new solver against PJ" used a shell config-rewriting pattern
+(`sed ... > new.config; echo "solver.type=condensed" >> new.config`) that assumed the base config
+ends in a newline. Several of this repo's scene configs (`domino/scene_standard.config` among them)
+do not — the last line is `pj.convergence_csv_dir=domino_nesterov_warmstart_csv` with no trailing
+`\n`. The appended `solver.type=condensed` line landed glued onto the end of that line
+(`...csvsolver.type=condensed`), which the config parser doesn't recognize as a `solver.type` key
+at all, so it silently fell back to the default (`ProjectedJacobi`). The first "PJ vs PGS vs
+Condensed all agree to 15 digits" result was real for the *PJ* case but the *PGS* and *Condensed*
+cases were secretly also running PJ. Fixed by rewriting the config generator to guarantee a
+separating newline and, from then on, verifying which solver actually ran by grepping the
+`Timing Breakdown`'s named row (`Projected Jacobi` vs `Projected Gauss-Seidel` vs `Condensed`)
+rather than trusting the config file alone.
+
+### 3. A real bug: full-block vs. diagonal local inverse
+
+With the config generation fixed, re-running the domino comparison exposed a real discrepancy:
+
+| Solver | Total kinetic energy after 1 step (domino, default tolerance) |
+|---|---|
+| PJ | 0.814196987077336 |
+| PGS | 0.814479477909845 |
+| Condensed (buggy) | **2.2858845614721** |
+
+`CondensedAssembler` computed `RowBlock::GiiInv` as the full dense inverse of the local 3x3/6x6
+Delassus block — mirroring `PgsAssembler::Dinv()`. But `ProjectedGaussSeidelSolver` doesn't call
+`Dinv()`; it calls `PgsAssembler::DinvDiag()`, which uses only the **diagonal** of that same block
+(no normal/tangential or multi-DOF coupling term). `Dinv()` is dead code for contacts in this
+codebase — the only caller is `ConjugateGradientSolver`, which is bilateral-only. Using the more
+"accurate" full-block inverse changed the Gauss-Seidel iteration's fixed point on domino's densely
+coupled ~13k-contact system, not just its convergence rate: it satisfied its own residual
+tolerance while landing on a materially wrong answer (`iters=15619`, ~5x more sweeps than
+PGS/PJ needed, converging somewhere else entirely). After matching `DinvDiag()`'s diagonal-only
+formula exactly:
+
+| Solver | Total kinetic energy after 1 step (domino, default tolerance) | Sweeps |
+|---|---|---|
+| PJ | 0.814196987077336 | 3056 |
+| PGS | 0.814479477909845 | 3057 |
+| Condensed, `gauss_seidel` | 0.811464242457628 | 11979 |
+| Condensed, `jacobi` (4 threads) | 0.811304918689760 | 11981 |
+| Condensed, `colored` | 0.811173633909661 | 11970 |
+
+All four agree to within ~0.4%, consistent with ordinary Jacobi-vs-Gauss-Seidel iteration-path
+sensitivity on a nonlinear frictional system (the same phenomenon already documented in this
+repo's own history, e.g. the Anderson-acceleration commit's note on chaotic-scene trajectory
+divergence) — not a correctness bug. `Gii` (the full block) is still stored and used by the Newton
+local solve, which genuinely needs the coupling; only the *linear* projection path uses the
+diagonal approximation, matching PGS.
+
+**Why the bug wasn't caught by the earlier slinky-only tests:** the very first tight-tolerance,
+single-step slinky comparison (done before this bug was found) happened to still agree to ~11
+significant digits even with the buggy full-block inverse, because at that state slinky's contact
+impulses were tiny relative to its spring forces — the choice of contact-block preconditioner
+barely mattered yet. Domino's ~13k simultaneous, strongly-coupled contacts is what made the error
+large enough to be unmistakable. Lesson applied for the rest of the session: validate on the
+scene most likely to stress the mechanism in question, not just the first one that's convenient.
+
+### 4. Multi-threaded determinism
+
+After the fix, `jacobi` and `colored` were run at 1, 4, and 16 threads on domino. Results were
+**bit-identical** across all three thread counts (same kinetic energy and position-norm to all 15
+displayed significant digits), repeated after every subsequent code change (including the OpenMP
+region-merging refactor below). This is expected — both modes are structurally deterministic
+(each sweep reads a fixed pre-sweep state and writes disjoint locations) — and is treated as
+supporting, not sufficient, evidence of race-freedom.
+
+### 5. ThreadSanitizer: a real finding, but not the one it looks like
+
+Building a `CARDILLO_ENABLE_TSAN` configuration and running `jacobi`/`colored`/`chaotic` under TSan
+reported a data race at the boundary between the OpenMP region and the surrounding code in every
+one of them. Initial fix attempt: merge each sweep's separate `#pragma omp parallel for` calls
+into one `#pragma omp parallel` region with internal `#pragma omp for` stages (this is also a
+legitimate performance win — see below — since it cuts thread-team spawn/join count from up to 52
+per sweep in `colored` down to 1). The report persisted identically afterward.
+
+To determine whether this was a real bug or a tooling limitation, a minimal, provably-correct
+standalone reproducer was built and run under the same TSan configuration: two plain
+`#pragma omp for` loops inside one `#pragma omp parallel`, first writing disjoint indices of a
+shared array, second reading what the first wrote after the (implicit) barrier. TSan flagged it
+identically. This confirms a documented, decade-old limitation: GCC's `libgomp` is not itself
+built with TSan instrumentation, so TSan cannot observe its barrier/team-join synchronization and
+reports the (correctly ordered) accesses on either side of that barrier as a race — acknowledged
+by TSan's own author on the GCC mailing list in 2013, and still true of this GCC 13 / libgomp on
+this system. No Clang/`libomp` toolchain (which *is* well-instrumented for this) was available in
+the environment to get a clean run.
+
+**Practical conclusion:** correctness confidence for the parallel sweep modes rests on (a) the
+disjoint-memory-access arguments documented inline at each `#pragma omp for` site in
+`condensed_solver.cpp`, and (b) the bit-identical multi-thread-count results above — not on a
+clean TSan pass, which isn't obtainable with the toolchain available here. If a Clang/libomp
+toolchain becomes available, re-running the TSan build with it would be the natural way to close
+this out properly.
+
+## Benchmark results
+
+Two kinds of runs were done: a short, tight-tolerance correctness/iteration-count comparison
+(cheap, many repetitions during development), and a longer wall-clock comparison (fewer runs, real
+timing). All numbers below are from the *fixed* code (post both bugs above).
+
+### Local-solve comparison: projection vs. semismooth Newton (slinky)
+
+Single-step, `pj.tol_abs=5e-8`, `condensed.sweep_mode=gauss_seidel`:
+
+| Local solve | Sweeps | Kinetic energy |
+|---|---|---|
+| `projection` | 1318 | 8.79571318074891e-05 |
+| `newton` | 134 | 8.79979857874781e-05 |
+
+**~9.8x fewer sweeps**, converged answer within 0.05%. `chaotic` mode showed the same pattern
+(`projection`: 1318 sweeps; `newton`: 896 sweeps, `is_always_lock_free<double> == 1` confirmed on
+this platform so the atomics carry no lock overhead). This is the expected result and the main
+reason to prefer `newton` on frictional/compliant scenes.
+
+### Wall-clock comparison (short runs, 90s budget per case, 6 parallel workers)
+
+**domino** (`sim.T=0.0006`, ~3 steps, ~13k frictional contacts, `pj.nesterov=false`):
+
+| Case | Total sweeps | Wall-clock | Completed? |
+|---|---|---|---|
+| PJ | 42244 | 40.82s | yes |
+| PGS | 20605 | — | no (90s timeout) |
+| Condensed `gauss_seidel`+`projection` | 11979 | — | no (1/3 steps in 90s) |
+| Condensed `jacobi`+`projection`, default threads (16) | 0 | — | no (0 progress in 90s) |
+| Condensed `jacobi`+`projection`, 4 threads | 11981 | — | no (1/3 steps in 90s) |
+
+**slinky** (`sim.T=0.02`, 200 steps, `pj.nesterov=false`):
+
+| Case | Total sweeps | Wall-clock | Completed? |
+|---|---|---|---|
+| PJ | 17640 | 32.62s | yes |
+| PGS | 16888 | 30.73s | yes |
+| Condensed `gauss_seidel`+`projection` | 16750 | 50.73s | yes |
+| Condensed `gauss_seidel`+`newton` | 17542 | 41.80s | yes |
+| Condensed `jacobi`+`projection` | 2736 | — | no (15/201 steps in 90s) |
+| Condensed `colored`+`projection` | 347 | — | no (3/201 steps in 90s) |
+| Condensed `chaotic`+`newton` | 5234 | — | no (83/201 steps in 90s) |
+
+### Honest reading of these numbers
+
+- **`gauss_seidel` tracks PGS's sweep count almost exactly** on both scenes (expected — same
+  algorithm, different data structure) but is **slower in wall-clock than PGS** on slinky (50.7s vs
+  30.7s for a near-identical sweep count). The likely cause, not yet fixed: `condensed_solver.cpp`
+  builds a fresh dynamically-sized `VectorXr` for every block's residual/update/delta every sweep,
+  where PGS operates on pre-sized whole-system vectors. Frictional blocks are always exactly 3
+  rows — switching the per-block hot path to fixed-size `Vector3r`/`Matrix33r` (no heap allocation)
+  is the highest-leverage next optimization and wasn't done in this pass.
+- **`newton` wins convincingly**: fewer sweeps *and* less wall-clock than `projection` on slinky
+  (41.8s vs 50.7s) despite the extra per-contact 3x3 Newton cost, confirming the sweep-count
+  reduction more than pays for itself here.
+- **`colored` is not currently competitive**: ~50 colors on domino times thousands of sweeps means
+  roughly 50x the OpenMP barrier count of `jacobi`'s 2-per-sweep, and that overhead dominates at
+  this scale — it made the least progress of any mode in the fixed time budget on both scenes.
+  Caching the coloring across timesteps (only rebuilding when the contact *set*, not just count,
+  changes) is the natural fix, not attempted here.
+- **More threads isn't automatically better**: domino's `jacobi` mode made *zero* measurable
+  progress at the OpenMP default thread count (all 16 cores) in 90 seconds, but completed a full
+  step in the same budget at 4 threads. This points to parallelization/scheduling overhead
+  exceeding benefit at this per-thread work granularity for this contact count, not a bug — but it
+  means `condensed.num_threads=0` (the config default) is not a safe "just works" choice on every
+  scene; it should be tuned.
+- **None of this is an apples-to-apples "condensed beats PJ" result**, and it isn't presented as
+  one. PJ and PGS here are also non-accelerated (`pj.nesterov=false`) baselines. The one clean,
+  reproducible win is `newton` vs. `projection` *within* `condensed` itself.
+
+## Update: Nesterov acceleration + fixed-size buffer optimization
+
+Follow-up work, done in this order because the user specifically asked to check whether Nesterov
+(PJ's biggest documented win) could be ported before anything else.
+
+### Nesterov acceleration, generalized across sweep modes
+
+Added a generic Nesterov (FISTA-style) outer loop in `CondensedSolver::solve()`, ported
+line-for-line from `ProjectedGaussSeidelSolver`'s own Nesterov branch (momentum extrapolation
+between sweeps, adaptive restart on residual growth / excessive momentum coefficient / direction
+reversal, momentum permanently disabled after `pj.nesterov_restart_limit` restarts). It's
+implemented once, generically, via a `doSweep(lambda, u_corr)` closure that dispatches to whichever
+of `gaussSeidelSweep`/`jacobiSweep`/`coloredSweep` is configured — Nesterov only ever touches the
+outer state between sweep calls, never the sweep internals, so this required no changes to the
+sweep functions themselves. No new config keys: it reuses `pj.nesterov`,
+`pj.nesterov_beta_threshold`, `pj.nesterov_restart_limit`, the same keys PJ and PGS already read.
+
+`chaotic` is deliberately excluded — its state lives in an atomic array, not a plain vector, and
+momentum-extrapolating a value that's already being intentionally kept stale by design is a
+separate question not tackled here.
+
+**First bug caught, fixed immediately:** the initial implementation reassigned `lambda`/`u_corr`
+from the lagging `lambda_k`/`u_k` variables after the loop exited. PGS's own code doesn't do this —
+`lambda`/`u_corr` already hold the correct latest post-sweep values from inside the loop (the sweep
+functions mutate them by reference), and `lambda_k`/`u_k` are one iteration behind at that point.
+Caught by re-reading the ported reference code line-by-line before running it, not by test failure.
+
+**Correctness check** (domino, `gauss_seidel`, `pj.nesterov=true` vs `false`): the accelerated
+result (`totalKE=0.814479477909828`) matches PGS's own Nesterov-accelerated result
+(`0.814479477909845`, both scenes inherit `pj.nesterov=true` from `scene_standard.config`'s
+default) to 11 significant digits, and the non-accelerated result reproduces the pre-Nesterov
+number exactly (`0.811464242457628`, bit-identical to before this change — a clean regression
+check). Sweep count: 11979 (plain) → 3057 (Nesterov) on domino `gauss_seidel`, landing on
+essentially the same iteration count as PGS's own Nesterov run (3057) — expected, since the
+underlying per-sweep math is identical between the two. `jacobi`+Nesterov similarly converges to
+PJ's own fixed point (`totalKE=0.814196987085242` vs PJ's `0.814196987077336`) in 3057 sweeps vs
+PJ's 3056.
+
+**A real, scene-dependent limitation found — and then root-caused, not just worked around:**
+`jacobi`+Nesterov originally diverged on slinky (`[Condensed] Divergence detected after 949
+iterations. Residual norm: -nan`), while `gauss_seidel`+Nesterov was stable there. The first
+write-up of this blamed Nesterov's momentum shrinking Jacobi's already-smaller stability margin —
+that explanation was wrong. Testing a **plain, unaccelerated** `jacobi` sweep (Nesterov off
+entirely) on slinky at the same `pj.alpha=0.3` showed it diverges too, identically. Momentum was
+never the cause: `slinky`'s default `pj.alpha=0.3` is tuned for `gauss_seidel`/`colored`, and
+`jacobi` has a smaller stability margin at a given alpha than those do — the exact same
+per-sweep-mode instability already documented in `domino`'s own `scene_condensed.config` (which
+needed `pj.alpha=0.001`, not the header default of 0.3, for `jacobi` to be stable there). Dropping
+`pj.alpha` to `0.02` made `jacobi`+Nesterov stable on slinky over 1000+ steps (sustained ~11 it/s,
+zero divergence) — the fix is retuning alpha per sweep mode, not disabling Nesterov.
+
+Separately, while investigating this, a genuine bug was found and fixed in the Nesterov loop
+itself: the residual check driving the loop's exit/restart decision was routed through a helper
+that throws `std::runtime_error` immediately on a `nan`/`inf` residual. That made the loop's own
+`if (!std::isfinite(err)) restart = true;` branch permanently dead code — the exception fired
+before the restart logic could ever run, even though that logic (ported from PJ's own
+`nesterov_loop()`, which never throws) exists specifically to recover from exactly this case. Fixed
+by computing the residual without throwing inside the Nesterov loop, letting restart/momentum-
+disable react to a non-finite value exactly as it reacts to a merely-growing one, and only raising
+(matching PJ/PGS's existing, inherited behavior) once momentum is fully disabled and the plain
+sweep output is itself still non-finite — i.e. once there is genuinely nothing left to restart to.
+Also added a finiteness check on the freshly-extrapolated `(lambda_y, u_corr_y)` state before it is
+fed into the next sweep: `betak1` is bounded to `[0,1]`, but the extrapolated vector's magnitude is
+not, so an overshoot can still produce a non-finite state even with a well-behaved coefficient.
+**Practical guidance updated: retune `pj.alpha` down when switching a scene's sweep mode to
+`jacobi` (accelerated or not); the divergence is a per-sweep-mode stability property of the
+scene/alpha combination, not a Nesterov-specific risk.**
+
+### Fixed-size buffer optimization (the top item from the original "next steps" list)
+
+Replaced every per-block temporary in the hot path (`blockResidual`'s residual, `lamOld`, the
+Newton/projection update, the scatter delta, the Jacobi-gather accumulator, the chaotic-mode
+per-block scratch) with `Vectorr<6>` — a fixed-size, stack-allocated Eigen type already used
+elsewhere in this codebase — instead of dynamically-sized `VectorXr`. `RowBlock::Ja`/`Jb`/`Gii`/
+`GiiInv` were deliberately left as dynamically-sized `MatrixXXr`: they're built once per `solve()`
+call in `CondensedAssembler`, not once per block per sweep, so they were never the bottleneck.
+Every block's row count is ≤ 6 (1 for frictionless contacts, 3 for frictional, up to 6 for
+springs/dampers) and every body's DOF count is ≤ 6, so a fixed 6-element buffer with `.head(n)`
+views covers every case exactly. `projectBlock()` was templated on `Eigen::MatrixBase<Derived>` so
+the same function body works on both `VectorXr::segment()` views and `Buf6::head()` views.
+
+**Correctness check**: re-ran `gauss_seidel`/`jacobi`/`colored` on domino at the exact same
+tolerance as before the refactor — all three reproduced their pre-refactor kinetic energy and
+sweep count **bit-for-bit** (e.g. `gauss_seidel`: `0.811464242457628`, 11979 sweeps, identical to
+15 displayed digits). `chaotic` landed on a nearby but not identical value (expected — it's
+randomized), with a comparable sweep count.
+
+**Performance result**, domino, `pj.nesterov=true`, sequential (non-contaminated) runs, 3 steps:
+
+| Case | Wall-clock before | Wall-clock after | Sweeps |
+|---|---|---|---|
+| PJ (unmodified, for reference) | 6.76s | 6.76s (unchanged) | 3791 |
+| Condensed `gauss_seidel`+Nesterov | 19.16s | 13.64s (−29%) | 4149 |
+| Condensed `jacobi`+Nesterov, 4 threads | 8.37s | 5.18s (−38%) | 3796 |
+
+A thread-count sweep for `jacobi`+Nesterov post-optimization (sequential runs, no cross-run
+contention) found 8 threads as the sweet spot on this 16-core machine:
+
+| Threads | 1 | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| Wall-clock | 11.11s | 5.95s | 3.55s | **3.02s** | 4.08s |
+
+**PJ is no longer the fastest option on domino**: PJ takes 5.35s on a clean sequential run; condensed
+`jacobi`+Nesterov at 8 threads takes 3.02s — **~1.8x faster than PJ**. On slinky, `gauss_seidel`+
+Nesterov (sequential, no threading) takes 8.39s vs. PJ's 12.04s — **~1.4x faster than PJ**, with
+`jacobi`+Nesterov unusable there (see the divergence finding above). Both wins are with
+`condensed.local_solve=projection`; `newton` on top of an already-Nesterov-accelerated sweep did
+not help further in this round of testing (slightly slower than projection alone on slinky's
+already-fast-converging accelerated run — the per-contact Newton cost isn't repaid when only ~30
+sweeps are needed in total).
+
+**Important caveat on these numbers**: they're from short runs (3 steps on domino, 200 steps on
+slinky) picked to fit within the session, on one machine, with one thread count tried exhaustively
+(domino) and one (8) assumed-reasonable for slinky. They demonstrate that condensed *can* beat PJ,
+not that it always will — a proper claim would need the full `tools/compare_solver_traces.py`
+ablation (now updated with `condensed` cases) run to completion across both scenes with a
+generous timeout, which is listed below as still-open work.
+
+## Update: large `pj.alpha` for `gauss_seidel`/`colored` (not `jacobi`)
+
+Separate from Nesterov, the user found empirically that `condensed.sweep_mode=gauss_seidel` and
+`colored` tolerate — and benefit from — much larger `pj.alpha` than `jacobi` does at the same scene
+and `moreau.theta`. On `domino` (`colored`, 8 threads), `pj.alpha` swept from 0.1 to 1.0 monotonically
+*improved* wall-clock (0.1: 131s, 0.25: 119s, 0.5: 117s, 1.0: 101s), the opposite of `jacobi`'s own
+sensitivity on the same scene (0.05: 91s, 0.1: 97s — smaller is better there). Confirmed on today's
+code: `condensed` `colored`+`alpha=1.0`+8 threads takes ~98.4s on `domino`'s full `scene_condensed.config`
+run vs PJ's ~217.6s at PJ's own tuned `alpha=0.1` (**~2.2x**) — and on `slinky`, PJ at its own tuned
+`alpha=0.3` didn't even converge within a 900s budget in one config tested (its Nesterov loop's debug
+trace showed a residual barely moving, then trending upward, over tens of thousands of iterations),
+while `condensed` `colored`+`alpha=1.0` completed the full 1000-step run in ~106.8s. **PJ itself is
+*not* tolerant of large alpha** — a PJ run at `alpha=1.0` on `domino` didn't finish 300 steps within a
+10-minute budget, confirming this is specific to `condensed`'s `gauss_seidel`/`colored` sweep
+structure, not a general property of the underlying iteration.
+
+Caveat: pushing `jacobi` to match `gauss_seidel`/`colored`'s large-alpha tolerance does not work —
+`jacobi` needs a *smaller* alpha than the scene's `gauss_seidel`/`colored`-tuned default (see the
+Nesterov update above for the concrete `slinky` numbers), consistent with Jacobi's smaller stability
+margin at a given alpha. Domino's and slinky's `scene_condensed.config` reference configs were
+updated to `pj.alpha=1.0` with `condensed.sweep_mode=colored` as their shipped defaults.
+
+## Update: true Schur-complement elimination of the compliant chain (`condensed.true_schur`)
+
+### Motivation
+
+Investigating why PJ sometimes needed dramatically fewer sweeps than condensed on `slinky` (and
+separately, why a specific `slinky` config drove PJ's own Nesterov loop to churn for 60,000+
+iterations without converging — see the earlier "improve this further" discussion) pointed at a
+structural gap: every condensed sweep mode treats every row — spring, damper, frictionless
+contact, frictional contact — as an independent block, and lets the *outer sweep loop itself*
+diffuse information between rows that share a body. For `slinky`'s 825-segment chain (~824
+spring/damper rows forming a path graph), that diffusion — not the frictional contact
+nonlinearity — was the dominant cost. PJ doesn't have this problem because it factorizes and
+re-solves the *entire* system every sweep, seeing the chain's exact coupling every time, at the
+cost of a much more expensive per-sweep operation (a full triangular solve, not a condensed
+update).
+
+The user had tried one thing here already and confirmed (after I searched the repo and couldn't
+find it) that it was narrowly: swapping `condensed_assembler.cpp`'s `GiiInv` from the diagonal-only
+inverse to the full local block inverse (`blk.Gii + diag(complianceDiag)`, inverted via
+`partialPivLu`) — code that still exists as a commented-out TODO in `updateCompliance()`. That is
+**not** a Schur complement — it only removes coupling *within* one row's own components (e.g. a
+frictional contact's normal/tangential coupling), not the coupling *between* different rows that
+share a body, which is the actual chain-diffusion bottleneck. It's also the exact bug already
+documented above (2.8x kinetic-energy error on domino from using the full inverse instead of the
+diagonal one matching `PgsAssembler::DinvDiag()`) — explaining why that attempt "didn't seem
+correct."
+
+### The actual construction
+
+Working from the same `S = W·Minv·W^T + diag(C)` system every PGS-family solver already solves,
+partition rows into bilateral (springs+dampers, pure equalities — `projectBlock()` already no-ops
+for these) and contact (subject to the friction-cone projection). The Schur complement over
+contacts alone is `(Scc − Scb·Sbb⁻¹·Sbc)·λc = rhsc − Scb·Sbb⁻¹·rhsb`. Explicitly forming this
+(generally dense) matrix is exactly what this solver family exists to avoid, and isn't necessary:
+because bilateral rows are pure equalities, whatever the current contact impulses are, there is a
+single exact `λb` that zeroes every bilateral row's residual at once — `δλb = Sbb⁻¹·r_old`, where
+`r_old` is the *already-existing* `blockResidual()` evaluated at the bilateral blocks' current
+state. Applied via the *already-existing* `scatterDelta()`, this reuses every existing primitive —
+no new sign convention, no rhs()/blockResidual()/scatterDelta() changes. Each outer iteration
+becomes: (1) exact bilateral step (one `Sbb` solve via a precomputed factorization), then (2) the
+usual sweep restricted to just the contact blocks.
+
+New, generic, reusable utility: `BlockSparseLDLT` (`src/misc/block_sparse_ldlt.{hpp,cpp}`) — a
+block-sparse LDLT factorization over a graph of small dense blocks, never a dense/global matrix.
+Verified in isolation (a standalone test compiled outside the main build, comparing against a known
+solution and against Eigen's own dense LDLT) on a chain, a branching hub-and-leaves graph in two
+different elimination orders (exercising real fill-in), and a 270-node stress graph mirroring
+`hangbridge`'s rope+plank topology — all four to machine precision (~1e-16 relative error).
+
+**A real bug found and fixed during this work, not just during isolated unit testing**: the first
+integration attempt used natural (row creation) order for elimination — correct in principle, and
+zero-fill-in on every pure-chain scene — but it **hung** on `hangbridge`, the one example scene
+with a real branching compliant network (tripod apexes / deck planks, degree 4-6; confirmed via an
+Explore-agent survey of every example scene's spring/damper topology). Natural order is not
+fill-reducing for a branching graph, and the fill-in cascade made factorization impractically slow.
+Fixed by computing elimination order internally via greedy minimum-degree (a standard, well-known
+sparse-Cholesky ordering heuristic) instead of trusting the caller's order — it recovers exactly
+the chain order (zero fill-in) on every path-graph scene, so nothing is given up on the common case,
+and the 270-node hangbridge-shaped stress test now factors in under a millisecond.
+
+### Validation
+
+- **Domino** (no springs): `condensed.true_schur=true` vs `false` — bit-identical `totalKE`
+  (`8.96934551302463`) and position fingerprint. Required by construction (nothing to eliminate
+  when there are zero bilateral rows) and confirmed empirically, the critical regression guardrail.
+  This holds up unchanged.
+- **Slinky — corrected after the user asked for a re-test that found the same order-of-magnitude
+  with the feature on or off.** The first pass through this section claimed a "~25.8x speedup,
+  ~2000/step to ~2/step" finding. That was **wrong** — an artifact of reading a truncated log tail
+  that happened to show only the first simulated step. Re-measured properly (full per-step logs,
+  three independent re-runs, and a from-scratch build of the pre-`true_schur` commit to rule out an
+  unrelated regression as the explanation): `slinky`'s coiled geometry means the very first step has
+  **zero** contacts (pure spring-chain relaxation) — there, `true_schur` genuinely needs 2 outer
+  iterations vs 2532 without it, confirming the theory exactly where it applies. But contacts start
+  forming by the *second* step (414) and grow rapidly (504 → 786 → 1005 → 1206 → 1506 → 2154 → 2532
+  within the first 9 steps, as the coil self-collapses). From that point on, `true_schur` on vs off
+  gives essentially the same iteration count per step (e.g. step 7: 16393 vs 16243; step 13: 46417
+  vs 46328) — contact resolution, which `true_schur` does not touch, dominates almost immediately.
+  Net effect over a full 20-step run: **109.8s with `true_schur=true` vs 85.4s without — a
+  slowdown**, because the per-iteration `LDLT` solve cost is paid every step but only repaid on the
+  one step that's actually contact-free.
+- **Hangbridge** (branching topology, contact-heavy from the very first step: 232 contacts on 441
+  bodies): correctness verified — `totalKE` agrees with a direct PGS run to ~1e-6 relative both with
+  `true_schur=false` (bit-identical to PGS: `0.00350788969155182`) and `true_schur=true`
+  (`0.00350788582097124`). Performance was roughly a wash to slightly worse (0.97s vs 0.57s for 20
+  steps) — consistent with the corrected slinky finding above, not a separate anomaly: this scene
+  never has a contact-free step to repay `true_schur`'s per-iteration cost.
+
+**Practical guidance, corrected**: `condensed.true_schur=true` is a real win specifically for
+**contact-free** portions of a simulation (a compliant structure settling before it touches
+anything, or genuinely between contact events) — not a general win for "scenes with a compliant
+chain," which was the original (too broad) framing. For a scene that's in contact for most of its
+runtime, including `slinky` almost immediately, expect it to be neutral to a net slowdown, not a
+dramatic speedup. Default is `false`. Before trusting a number on a new scene: look at iteration
+counts *per step*, not a run's total or its first logged value.
+
+**How the original mismeasurement happened, for the record**: the original benchmark command
+piped output through `tail -6`/similar to keep the transcript short, which — for a run whose early
+steps print short lines and later steps print long wrapped ones — silently showed only the first
+step's numbers, not a representative sample. The fix going forward: when characterizing
+per-step behavior, always inspect the full step-by-step sequence (e.g. `grep -o "iters=[0-9]*"`
+over the whole log), never a tail/head slice, especially for a scene whose difficulty is expected
+to change over the run (contacts forming, a structure settling, etc.).
+
+## Update: fixed-size BlockSparseLDLT internals + cached elimination order
+
+Follow-up work after `wilberforce` (a pure DAE, `collision.disable_all=true`) showed `true_schur`
+"brilliant" there — user request to push further: compile-time-bounded block dimensions, and
+symbolic/numeric caching.
+
+**Fixed-size blocks**: tried in two places. `BlockSparseLDLT`'s own internal storage (used by
+`factor()`/`solve()`, called once per pivot/once per call) switched from heap-allocated `MatrixXXr`
+to fixed `Matrixr<6,6>` buffers accessed via `.topLeftCorner()` — verified correct (standalone
+stress test, ~1e-16 accuracy) and a genuine ~4% wall-clock win on `wilberforce` (bilateral blocks
+are dim=6, a good fit). Applying the *same* treatment to `RowBlock` itself (`Ja`/`Jb`/`Gii`/
+`GiiInv`, read by every sweep function) was also tried — measured a **~20% wall-clock regression on
+`domino`** (own from-scratch build vs an A/B-tested stash of the pre-change commit, not a rough
+estimate). Root cause: domino has ~13k mostly small-dim (1 or 3) contact blocks; forcing them into
+a 6x6 buffer wastes most of that memory as unused padding, and reading that padding-heavy struct
+thousands of times per sweep hurts cache locality more than avoiding heap allocation helps. Reverted
+that part; kept the `BlockSparseLDLT`-only version, which doesn't have this problem (bilateral
+blocks tend to actually use most of a 6x6 buffer).
+
+**Cached elimination order**: `CondensedAssembler` now caches the minimum-degree order across
+`solve()` calls, keyed on the bilateral graph's structure (dims + coupled-block pairs), invalidated
+only if that structure changes (never does, in every current scene — constraints aren't created or
+destroyed at runtime). `factorWithOrder()` still does the full numeric factorization on the current
+step's values regardless of a cache hit, so this can only affect performance, never correctness —
+verified bit-identical `totalKE` on domino/slinky/wilberforce/hangbridge before and after. Measured
+~14% faster `Condensed Setup` on `wilberforce` (327.9µs → 282.6µs average over 2000 calls). Total
+wall-clock effect was much smaller, because `Condensed Setup` itself is only ~5% of that scene's
+runtime — `Output Write` (VTK I/O, `output.interval_steps=1` writing every step) is ~90%. Noting
+this plainly rather than folding it into a bigger-sounding total-wall-clock number: if wall-clock on
+a similar scene matters, output frequency is a bigger lever than anything in this solver.
+
+**A real correctness question raised during review, resolved with a concrete test, not just an
+argument**: does this cache actually invalidate correctly if the bilateral topology changes at
+*runtime* (a constraint added/removed mid-simulation via `World::markStructureDirty()`), given no
+existing example scene's topology ever changes? Traced the mechanism:
+`DynamicsAssembler::updateStateDependentTerms()` calls `rebuildInteractionW_()` (which fully rebuilds
+`constraintResults()`) unconditionally every step, regardless of `m_structure_dirty` — that flag only
+gates the separate, cheaper-to-skip body-offset/dof bookkeeping in `refreshState()`. So
+`CondensedAssembler::buildTopology()` always reflects the live constraint set, and the cache's own
+`dims == cached && edgeNodes == cached` check (computed fresh from that live data every call) is a
+sufficient, self-contained invalidation signal — it doesn't need to consult `m_structure_dirty` at
+all. Rather than resting on that argument, added `examples/scenes/dynamic_constraint`: three point
+masses, one spring from the start, a second added via `updateScene()` at t=0.02s. Confirmed via
+`debug.pj=true` that `nSprings` actually grows 1→2 mid-run, and that `condensed` with
+`true_schur=true` (cache exercised) produces a `totalKE`/`posNormSum` fingerprint identical to both
+PGS and `condensed` with `true_schur=false` across the structural change. A genuine regression test
+for this guarantee, not just a plausibility argument.
+
+**Immediately followed up on**: does the cache actually *hit* when the structure is stable, or is
+it silently missing every call (which would mean the ~14% win was real by coincidence, not because
+caching is working)? Added an opt-in diagnostic (`CARDILLO_DEBUG_SCHUR_CACHE=1`, same convention as
+`CARDILLO_DUMP_STATE`) that prints HIT/MISS with running counts every call, and counted directly
+rather than inferring from timing: `wilberforce` — 999 hits / 1 miss over 1000 steps (misses only
+the very first call, exactly as expected for a scene whose bilateral topology never changes).
+`dynamic_constraint` — misses exactly at step 1 and at the step the second spring is added, hits
+every other call (98/100). Both match the theoretical prediction exactly, confirming the cache is
+doing what it's supposed to, not coincidentally correct.
+
+## Update: non-symmetric block support in `BlockSparseLDLT` (block LU)
+
+Third step of the same follow-up: implicit gyroscopic forces (Kahan-style second-order rigid body
+integration, `moreau.implicit_gyroscopy=true`) make a rigid body's effective mass block
+non-symmetric (`PjAssembler::buildAndFactorS()` already does this for PJ, adding
+`Grot = 0.5*([I*omega]_x - [omega]_x*I)` to `M_eff` and explicitly marking the resulting system
+non-symmetric). `condensed` doesn't yet port this — that's the next stage — but `BlockSparseLDLT`
+itself needed the *capability* first, validated standalone before any physics touches it, per this
+project's usual staging discipline.
+
+**Design constraint, explicitly requested**: the existing symmetric block-LDLT path must stay
+exactly as fast and behaviorally identical as before — every current example scene uses it, and
+paying a non-symmetric cost unconditionally would be a pure regression for the common case. So
+`BlockSparseLDLT` now has two fully separate algorithms, selected by a `symmetric` flag at `build()`
+time (default `true`, so every existing call site is unaffected):
+
+- `symmetric=true` (unchanged): undirected edges, `block(j,i)` derived as `block(i,j)^T`, one `L`
+  list per pivot — half the Schur-update work of the general case, exactly the original algorithm.
+- `symmetric=false` (new): directed edges — the caller supplies `(i,j)` and `(j,i)` independently
+  (an omitted direction is exactly zero, not "derived from the other"). Factors as a true block LU
+  (`S = L U`, `U` not unit-triangular): both an `L` list (rows below pivot) and a separate `U` list
+  (columns to the right, raw values, no `Dinv` applied) are stored per pivot, since nothing can be
+  derived via transpose anymore. Roughly double the Schur-update work of the symmetric path — the
+  reason the two stay separate functions (`factorSymmetric`/`factorNonSymmetric`,
+  `solveSymmetric`/`solveNonSymmetric`) rather than one branchy general algorithm.
+
+Pivot inversion also splits: `invertSmallSpd()` (Cholesky→LDLT→diagonal fallback, requires symmetry)
+for the symmetric path, a new `invertSmallGeneral()` (PartialPivLU→FullPivLU→diagonal fallback,
+`src/misc/block_diagonal.hpp`) for the non-symmetric one.
+
+**Validation**: extended the standalone stress-test harness with three new non-symmetric cases —
+a 6-node chain and a 6-node branching hub graph, both with fully independent (non-transpose)
+directed edges *and* non-symmetric diagonal blocks (mirroring a real gyroscopic `M_eff`), plus a
+case isolating non-symmetric-diagonal-only (symmetric coupling, asymmetric diagonal — the more
+realistic shape of the actual future use case). All three checked against Eigen's dense
+`PartialPivLU`, not `.ldlt()` (which requires symmetry and would silently misbehave on a genuinely
+asymmetric system). All passed at ~1e-16 relative error, the same standard the original symmetric
+cases were held to.
+
+**No-regression check on the symmetric path**: re-ran the pre-existing symmetric cases in the same
+harness — identical error values to before the restructuring, byte for byte. Then, since every
+current example scene only ever uses `symmetric=true` (Stage D hasn't wired the new mode into
+`CondensedAssembler` yet), did a proper A/B on the two scenes this file's cache work already used as
+regression guardrails: stashed this change, rebuilt at the pre-Stage-C commit, captured
+`CARDILLO_DUMP_STATE` fingerprints for `domino` and `wilberforce`; restored the change, rebuilt,
+re-ran — `diff` on both logs came back empty. Confirms the restructuring (splitting one function
+into a dispatcher plus a same-code-unchanged `*Symmetric` variant) introduced no behavior change at
+all on the only path any real scene currently exercises.
+
+## Update: implicit-gyroscopic support in `condensed` (Kahan-consistent rigid body integration)
+
+Fourth and final step of this follow-up: wire Stage C's non-symmetric `BlockSparseLDLT` mode into
+`CondensedAssembler`/`CondensedSolver` so `moreau.implicit_gyroscopy=true` is actually honored by
+`solver.type=condensed`, closing a real, silently-wrong-physics gap. Previously,
+`CondensedAssembler::rhs()` printed a warning every step and dropped the gyroscopic term entirely
+whenever implicit gyroscopy was requested with `condensed` -- not "missing an optimization", just
+silently wrong: the mass-matrix correction that makes the treatment *implicit* was never applied
+anywhere, so the body's dynamics were identical to gyroscopic forces not existing at all.
+
+**The fix**: `PjAssembler::buildAndFactorS()` already has the correct formula --
+`Grot = 0.5*([I*omega]_x - [omega]_x*I)`, `M_eff = M - dt*Grot` added to a rigid body's rotational
+3x3 block -- but PJ folds it into a big sparse system matrix it solves directly, while `condensed`'s
+whole architecture is a Schur-complement elimination that needs an explicit `Minv`, not `M`. Added
+`computeGyroscopicMinvBlocks()` (mirrors PJ's formula/filter exactly), producing a sparse per-body
+map (`CondensedTopology::gyroMinvBlocks`, keyed by body index, empty unless
+`moreau_implicit_gyroscopy=true` *and* the body actually has rotational dof) from
+`invertSmallGeneral((I - dt*Grot))` for the rotational 3x3, unchanged diagonal for translational.
+Every place that read `MinvDiag.segment(off,dof)` as a plain diagonal (`buildTopology()`'s three
+`Gii` accumulations, `ufree()`, `rhs()`'s `WMinvRhsVel`, `buildBilateralFactorization()`'s coupling,
+and `condensed_solver.cpp`'s `scatterDelta`/`jacobiSweep`/`chaoticSweep`, the sole point every sweep
+mode funnels velocity corrections through) now checks this map first and falls through to the
+*exact original expression, unchanged*, otherwise -- same discipline as Stage C: two branches, not
+one unified formula that pays a runtime cost even when nothing needs it.
+
+**A subtlety that cost a wrong first attempt**: `ufree()`'s original formula was `vn +
+Minv*dt*f_ext` -- correct only because `Minv*M=I` in the plain-diagonal case, letting `vn` stand in
+for `Minv*M*vn`. Once a body's `Minv_eff != M^{-1}`, that shortcut silently breaks: the system being
+solved is `M_eff*v_new = M*vn + dt*f_ext + W^T*lambda` (M_eff only on the LHS -- confirmed from
+PjAssembler's own construction, where `rhs`'s top block is plain `M*vn+dt*f_ext`, unchanged by
+`implicitGyro`), so with no constraint force the free velocity is `Minv_eff*(M*vn + dt*f_ext)`, not
+`vn + Minv_eff*dt*f_ext`. Caught by cross-checking against a (also-buggy, see next) PJ reference run
+that didn't match; fixed once identified.
+
+**A second, independent bug found while building that reference**: `ProjectedJacobiSolver::solve()`
+called `m_assembler.buildAndFactorS(dt, theta)` -- two arguments, silently taking `buildAndFactorS`'s
+`implicitGyro=false`/`lambdaTheta=false` *defaults* regardless of `moreau_implicit_gyroscopy`'s
+actual config value. `PjAssembler::rhs()` correctly reads the config flag internally, so PJ's RHS
+was already right, but its LHS system matrix never got the `M_eff` correction either -- the same
+"half-implemented" gap as `condensed` had, just via unwired defaults instead of a printed-and-dropped
+term. This meant PJ could not actually serve as a reference for validating `condensed`'s new
+treatment until fixed too (one-line fix: pass `m_cfg.moreau_implicit_gyroscopy`/
+`m_cfg.moreau_lambda_theta` through). Worth flagging on its own: this is a real, independent bug in
+`solver.type=projected_jacobi`, not part of `condensed`'s change, found only because building a
+cross-check reference forced actually exercising the code path.
+
+**Validation**: `wilberforce` (`moreau.implicit_gyroscopy=true`, `condensed.true_schur=true`,
+`condensed.sweep_mode=colored`) run to `t=1` (1000 steps): `totalKE=0.043010291077009`,
+`posNormSum=360.489737259483`. PJ with the same config (and the fix above) over the same run:
+`totalKE=0.0430102910769789`, `posNormSum=360.489737259483` -- agreement to ~10 significant figures
+on KE and exact agreement (to all printed digits) on the position fingerprint, between two
+independently-implemented treatments of the same physics (direct sparse solve vs Schur-complement
+elimination). `gauss_seidel` sweep mode reproduces `colored`'s result exactly (`0.043010291077009`),
+confirming the fix is sweep-mode-independent, not an artifact of one code path.
+`jacobi`/`chaotic` sweep modes diverge on `wilberforce` regardless of this change (reproduced
+identically with `moreau_implicit_gyroscopy=false`, i.e. before this feature existed at all) --
+a pre-existing instability of those modes at this scene's default tolerances, not a regression.
+
+**No-regression check**: `domino`/`hangbridge`/`slinky` (all `moreau_implicit_gyroscopy=false`,
+exercising only the "no gyro block" branch at every one of the ~10 touched call sites) and
+`dynamic_constraint` (Stage B's cache regression test) all produced bit-identical
+`CARDILLO_DUMP_STATE` fingerprints and identical Schur-cache hit/miss counts (98/2) to before this
+change.
+
+## Stage E (parallel cyclic-reduction elimination) -- deliberately not done
+
+The original 5-stage follow-up plan's last item was parallelizing `BlockSparseLDLT`'s elimination
+for chain-shaped bilateral graphs via cyclic reduction (O(log n) parallel depth instead of O(n)
+sequential). Explicitly skipped, by choice, before writing any code, for two reasons surfaced while
+scoping it:
+
+- **Small expected payoff for the sizes actually seen**: every current chain-shaped scene
+  (`wilberforce`, `slinky`) has a bilateral graph of a few hundred rows, and Stage B already
+  measured `Condensed Setup` (which includes this factorization) at only ~5% of `wilberforce`'s
+  total wall-clock -- `Output Write` (VTK I/O) dominates at ~90%. Amdahl's law leaves little room
+  for a parallel factorization to move the needle at this n, even with a correct implementation.
+- **Real correctness risk, identified before implementing**: the naive "eliminate all odd nodes in
+  this round simultaneously" formulation races -- two odd pivots can share an even neighbor (e.g.
+  pivots 1 and 3 both touch node 2's diagonal in a chain 0-1-2-3-4), so eliminating them as a
+  parallel *scatter* writes the same location from two threads. A correct version needs restructuring
+  as a *gather* over surviving nodes instead (each survivor pulls contributions from its own ≤2
+  odd neighbors, mirroring the gather-not-scatter pattern `jacobiSweep`'s pass 2 already uses
+  elsewhere in this codebase) -- a materially different, non-trivial code path from anything Stages
+  A-D touched, for a feature already expected to show a small win.
+
+Worth revisiting only if a scene with a much longer compliant chain shows up (the plan's own
+verification section flagged this exact caveat) -- not speculatively.
+
+## Update: Chebyshev semi-iterative acceleration ported to `condensed`
+
+Requested as a follow-up: PJ's `pj.chebyshev` (an alternative to Nesterov, no momentum/restart
+logic, just a fixed extrapolation schedule driven by a once-per-`solve()` spectral-radius estimate)
+had already been shown to match-or-beat Nesterov on PJ; the ask was to see whether the same held for
+`condensed`.
+
+**The porting challenge**: PJ's `estimateSpectralRadius()` power-iterates through
+`PjAssembler::solveS()` -- a real sparse linear solve, since PJ has an assembled system matrix.
+`condensed` has no such matrix by design. Resolved by noticing that with the sweep's rhs forced to
+zero and projection/Newton disabled, one sweep step becomes an *exact* linear map (`G(d) = A*d`, no
+affine offset), so plain power iteration on this zero-rhs, linear-only variant of the actual
+configured sweep (`gaussSeidelSweep`/`jacobiSweep`/`coloredSweep`, plus `exactBilateralStep` under
+`true_schur`) converges to the same quantity PJ's matrix-based power iteration finds — reusing the
+real sweep functions via a new `linearOnly` parameter (default `false`, so every existing call site
+is unaffected) rather than a separate reimplementation.
+
+**A real bug caught before shipping**: the first version of the Chebyshev loop ported PJ's
+`chebyshev_loop()`'s linearization-breakdown guard (checking the *extrapolated* state for
+finiteness) but not its separate raw-sweep-divergence guard (checking whether the sweep's own output
+was *already* non-finite before any extrapolation). Missing that check doesn't self-correct: once the
+underlying sweep itself started producing `nan` (triggered by testing `condensed.sweep_mode=jacobi`
+at `domino`'s tuned-for-colored `pj.alpha=1.0` — a pre-existing, already-documented jacobi
+instability, confirmed to *also* diverge with plain jacobi and jacobi+Nesterov at that same alpha),
+the fallback path kept feeding the same NaN state back into the sweep every remaining iteration,
+spinning silently through all 50000 configured iterations instead of throwing "Condensed solver
+diverged" the way Nesterov already does. Caught by deliberately testing an unstable configuration
+(not just the tuned ones), not by accident. Fixed by adding the identical raw-output check the
+Nesterov branch already had.
+
+**Validation**: `domino` and `slinky`, one run each, `condensed.sweep_mode=colored`:
+
+| Scene | Unaccelerated | Nesterov | Chebyshev |
+|---|---|---|---|
+| domino (21 steps) | 1774 total sweeps | 1514 | **1415** |
+| slinky (21 steps) | 1754 total sweeps | 1418 | **1403** |
+
+Chebyshev beat Nesterov on both (∼7% fewer on domino, ∼1% fewer on slinky — close to a tie there),
+consistent with the "matches or slightly beats Nesterov" finding already established for PJ. On
+`wilberforce` (pure DAE, `true_schur=true` already eliminates everything exactly), Chebyshev
+reproduced the un-accelerated fixed point bit-for-bit, as expected — nothing left to accelerate.
+`domino`/`slinky`/`wilberforce` with Chebyshev *disabled* (the default) remained bit-identical to
+pre-change builds, confirmed via the usual git-stash A/B rebuild.
+
+**An unrelated pre-existing bug found while regenerating test configs**: `hangbridge` segfaults
+(`malloc(): invalid size (unsorted)`) on a short test run — confirmed to reproduce *identically* on
+the pre-Chebyshev commit (`git stash` A/B), so this is not something introduced here. Not
+investigated further as part of this task; flagged for separate follow-up. (Also re-learned the
+established lesson from earlier in this session: the session's scratchpad directory can get wiped
+independently of the repo, and a stale/missing test config silently falls back to
+`Config`'s in-code defaults rather than failing loudly — an early "hang" on this same testing round
+turned out to be exactly that, not a real bug, before the actual bug above was found.)
+
+## Update: `alpha`/`relaxation` in-depth review — theory vs. implementation
+
+Requested follow-up: a detailed review of `pj.alpha`/`pj.relaxation`'s theoretical grounding across
+PGS/PJ/condensed, since the user suspected SOR was "implemented wrong" and that real over-relaxation
+had never actually been exercised. Focus redirected mid-investigation from `wilberforce` (already
+well-solved via `true_schur`, per explicit user feedback) to `domino`/`slinky` — the frictional
+contact solvers actually being tuned for speed.
+
+**What `alpha`/`relaxation` compute today, traced precisely, not from the doc comments:**
+
+- **PGS/condensed** (identical structure): `dlambda = relaxation * (GiiInv * r)`, then **only for
+  contact rows**, `dlambda *= alpha`, then `lambda += dlambda`, then (contacts only) projected.
+  `relaxation` is a uniform SOR-style delta-scale across every row kind; `alpha` is a *second*,
+  contact-only multiplier stacked on top.
+- **PJ** never references `pj_relaxation` at all (grepped: zero hits in `projected_jacobi.cpp`).
+  It bakes `alpha` directly into the contact preconditioner's *construction*, once per `solve()`
+  call: `R_block = alpha * D⁻¹` (`D` = the exact per-contact Delassus block, via Cholesky) — a
+  structurally different mechanism from PGS/condensed's per-iteration delta scaling, not just a
+  different tuning. This divergence is now documented directly in `config.hpp`.
+
+**The relevant theory** (see the prior chat-turn writeup for full citations): Ostrowski-Reich
+guarantees SOR converges for any `ω∈(0,2)` when the underlying matrix is symmetric positive
+definite — true for the bilateral (spring/damper) sub-system whenever `Minv` is symmetric. Every one
+of the ~70 tracked example configs uses `pj.relaxation=1.0` (a few use `0.5`/`0.9`/`0.0`) — **the
+over-relaxation half of that provably-safe range has never been exercised anywhere in this
+codebase.** Separately, Chebyshev's real-spectrum assumption is rigorously grounded (via similarity
+to a symmetric matrix) for a genuinely simultaneous (Jacobi-style) update or a consistently-ordered
+one (2-color red-black GS is the classical example); condensed's own default sweep mode
+(`gauss_seidel`, unordered, natural block order) has no such guarantee, and `colored`'s Welsh-Powell
+coloring (many colors, not 2) is *closer* to but not proven equivalent to that property.
+
+**Empirical spectral-radius measurements on `domino` (jacobi sweep, no springs — pure contact
+system), using `pj.chebyshev`'s own power-iteration estimator (`estimateSpectralRadius()`) at a
+range of `alpha`, `relaxation=1`:**
+
+| alpha | raw (unclamped) spectral radius |
+|---|---|
+| 0.05 | 0.994 |
+| 0.10 | 0.998 |
+| 0.20 | 1.694 |
+| 0.30 | 3.035 |
+| 0.50 | 5.711 |
+| 1.00 | 12.385 |
+
+This is a clean, near-perfectly linear fit once `alpha` is large enough to be dominated by the
+largest eigenvalue (`rho ≈ 13.4·alpha − 1`, i.e. an implied `λ_max(D⁻¹A) ≈ 13.4` for this
+scene/state) — and it **independently reproduces domino's own historical hand-tuning**: the scene's
+own config file has commented-out alternates from a manual sweep (`pj.alpha=0.1 # Jacobi: 97s`,
+`pj.alpha=0.05 # Jacobi: 91s`), landing almost exactly where the measured spectral radius crosses 1.
+Directly running the *actual* (non-linearized) jacobi sweep confirmed this: `alpha=0.03` converged
+cleanly (388 total sweeps over 21 steps); `alpha=0.05` also converged but needed more (538); `alpha
+≥ 0.08` **hung** (didn't converge within `pj.max_iterations` at some later step, not the first) —
+consistent with the spectral estimate being *state-dependent*, not a single fixed number for the
+whole run (see next finding).
+
+**Same measurement on `colored`/`gauss_seidel` (domino's actual defaults) at `alpha=1.0`** (the
+value domino is actually tuned and shipped with): raw spectral radius **0.999** for both — stable,
+but barely, and consistent with the classical Stein-Rosenberg result that sequential/ordered
+Gauss-Seidel-type updates have a much smaller spectral radius than the corresponding simultaneous
+Jacobi update for the same system (`ρ(GS) ≤ ρ(Jacobi)²` when `Jacobi` converges — here `Jacobi`
+doesn't even converge at this `alpha`, `12.385 ≫ 1`, yet `colored`/`gauss_seidel` stay just inside
+the stable region). This is the concrete, measured explanation for why domino's tuned config can use
+`alpha=1.0` with `colored` but needed `alpha≈0.05-0.1` for `jacobi` — not a coincidence of manual
+tuning, a structural property of the two update schemes that the spectral estimator correctly
+predicts.
+
+**A genuinely important caveat, also measured**: the spectral radius is **not static across a run**.
+On `slinky` (`jacobi` sweep, `alpha=0.3`), the estimate at successive steps was `0.929`, then
+`1.242` — swinging from comfortably stable to outright divergent within a single step, as the active
+contact set changes. A *fixed*, hand-picked `alpha` has to be conservative enough for the *worst*
+state anywhere in the run; the spectral estimate, recomputed fresh every `solve()` call for
+Chebyshev, already adapts to the *current* state every step — an argument for eventually deriving
+`alpha` itself from this same per-step estimate (already computed when Chebyshev is on) rather than
+a single static, scene-wide, hand-tuned constant. Not implemented here — a real behavior change to
+the non-Chebyshev sweep path needs its own dedicated validation pass, not a same-turn addition.
+
+**A separate caveat, also measured and honest to report**: the linear estimate is **overly
+pessimistic as a predictor of real convergence rate** for contact-rich scenes. `colored` measured
+`ρ≈0.999` on domino (implying tens of thousands of iterations to converge to a `1e-4` tolerance by
+the naive `ρ^N` estimate) while the real, projected sweep converges in tens to low hundreds of
+iterations per step in practice. The gap is the friction-cone projection itself: many contacts are
+inactive/separating at any instant, and the linear estimate (by construction, ignoring projection to
+get a well-defined linear map at all) treats every contact as fully, permanently coupled. Useful as a
+**stability certificate** (a value ≫1 reliably predicted domino's known `jacobi+alpha=1.0`
+divergence, confirmed multiple times this session), not a precise **performance predictor** for the
+real nonlinear iteration.
+
+**A real bug found and fixed while measuring this**: `estimateSpectralRadius()`'s bailout for "this
+probe collapsed to ~0, nothing to accelerate" used a threshold of `1e-300` — nowhere near the actual
+floating-point noise floor for this O(1)-scale computation. Traced directly (per-power-iteration):
+on `slinky`'s first (contact-free) step, with `condensed.true_schur=true` exactly solving the
+*entire* homogeneous probe, the vector correctly collapsed to `~8.5e-13` on the very first
+iteration — genuine floating-point noise, not a real small eigenvalue — but `1e-300` let it pass,
+renormalize back to unit length (amplifying that noise by ~10¹²×), and converge to a spurious
+`rho≈1` "eigenvalue" that was really just amplified rounding error. Fixed by raising the threshold
+to `1e-8`; verified the contact-free case now correctly reports `rho=0` (nothing to accelerate)
+instead of the bogus `~0.995`. This is a genuine implementation bug distinct from the Chebyshev
+theory caveats above — not just imprecise language, a wrong number in an edge case, now fixed. Two
+new opt-in diagnostics were added alongside it (both `debug_pj`/env-var gated, zero cost when
+unused): `CARDILLO_DEBUG_RHO_RAW=1` prints the raw unclamped spectral-radius estimate every call,
+and `debug.pj=true` alone now also prints the clamped `chebyshevRho` actually used.
+
+**Also added**: a `debug_pj`-gated warning (not an auto-disable — no empirical evidence either way
+yet that it actually misbehaves, so changing behavior isn't justified) when `pj.chebyshev` is active
+alongside an implicit-gyroscopic body: the real-eigenvalue argument requires symmetric `Minv`, which
+gyroscopic bodies break. This exact same gap exists, un-addressed, in `projected_jacobi.cpp` too
+(checked directly: no guard there either) — noted as a pre-existing, shared gap, not something newly
+introduced by porting Chebyshev to `condensed`.
+
+## Update: over-relaxation actually tested, auto-alpha implemented and tested (not just proposed)
+
+The previous update stopped short of two things it should have done: actually running
+`relaxation>1` on `domino`/`slinky`, and actually implementing+testing a spectral-estimate-derived
+`alpha` rather than just proposing it. Called out directly; both are now done, with real numbers.
+
+**Correctness of the relaxation formula, verified numerically, not just algebraically.** The code
+applies relaxation as `dlambda = relaxation*(GiiInv*r); lambda += dlambda` — a single multiplication,
+not the textbook `(1-ω)x_old + ω·x_GS` blend. A standalone check confirmed these are algebraically
+identical (the "increment" form is how virtually every real SOR implementation is written) — but the
+*first* attempt at this check had a bug in the *reference* implementation itself (it excluded an
+entire intra-block sub-matrix instead of just the row's own diagonal term when defining `x_GS` for a
+multi-row block with a diagonal-only `Dinv`), which produced a false "these don't match" result.
+Caught and fixed; the corrected check confirms bit-for-bit agreement (differences ~1e-15, pure
+rounding) between the two forms for a battery of `ω` including `1.3`, `1.7`, `1.95`, both for a plain
+scalar system and for a block-structured one with diagonal-only `Dinv` (mirroring `GiiInv` exactly).
+The formula itself is correct; worth being honest that the *first* verification attempt was not.
+
+**Over-relaxation on `domino`** (colored, `alpha=1.0`, `relaxation` swept, Nesterov/Chebyshev off,
+21 steps): monotonically **worse**, not better, as relaxation increases past 1 —
+
+| relaxation | 1.0 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 |
+|---|---|---|---|---|---|---|---|
+| total sweeps | 1774 | 2051 | 2231 | 2480 | 3047 | *fails to converge* | *fails* |
+
+This directly corrects the earlier, too-optimistic claim that "over-relaxation is provably safe up
+to `relaxation<2` (Ostrowski-Reich) and untested." Ostrowski-Reich's `(0,2)` guarantee is specifically
+for a *symmetric positive-definite linear* system — it applies to the bilateral (spring/damper)
+sub-block, which `domino` doesn't have at all (`nSprings=0`, pure contact). `relaxation` is applied
+*uniformly* to every row kind in this codebase, so on a contact-only scene raising it does nothing
+but push the *contact* rows (governed by PSOR/complementarity theory, not Ostrowski-Reich, and
+already close to its own stability boundary at `alpha=1.0`, measured `ρ≈0.999` earlier) further past
+where they're stable. The theorem I cited was real; applying it to this specific config's effect was
+not correct without checking which rows `relaxation` actually reaches.
+
+**Over-relaxation on `slinky`** (colored, `alpha=0.3`, has springs *and* contacts): much flatter,
+consistent with mixing a genuinely SPD-and-safe-to-over-relax bilateral part with a
+contact part that behaves like `domino`'s —
+
+| relaxation | 1.0 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.8 |
+|---|---|---|---|---|---|---|---|---|
+| total sweeps | 1754 | 1705 | 1763 | 1730 | 1713 | 1706 | 1921 | 1845 |
+
+A small, real improvement (~3%, at `1.1`) in a narrow window before contact-side degradation
+dominates again past `~1.5`. Not the dramatic, clearly-safe win the Ostrowski-Reich framing implied
+— genuinely marginal, and this codebase's uniform `relaxation` (rather than a separate one for
+bilateral vs. contact rows) is why it isn't larger: a `relaxation` that only touched bilateral rows
+could plausibly do better, but isn't what's implemented.
+
+**`condensed.auto_alpha` (new, experimental, opt-in, default off)**: derives `alpha` per step from
+the same power-iteration estimator built for Chebyshev — measure the raw spectral radius at
+`alpha=1`, then pick `alpha = clamp((target_rho+1)/(rho1+1), 1e-4, 1)` (the linear-regime
+extrapolation `rho(alpha) ≈ alpha·(rho1+1) - 1` confirmed earlier). Tested head-to-head against
+`domino`'s hand-tuned values, `condensed.sweep_mode=jacobi`:
+
+| target_rho | 0.7 | 0.5 | 0.3 | 0.2 | 0.1 | 0.05 | 0.0 |
+|---|---|---|---|---|---|---|---|
+| derived alpha | 0.127 | 0.112 | 0.097 | 0.090 | 0.082 | 0.078 | 0.075 |
+| total sweeps | 609 | 442 | 439 | 447 | 428 | 437 | 429 |
+
+vs. hand-tuned: `alpha=0.03` → 388 sweeps (best found by manual search), `alpha=0.05` → 538,
+`alpha≥0.08` → hangs (doesn't converge within `pj.max_iterations`). So auto-alpha: (a) never
+diverges across the whole `target_rho` range tried, (b) plateaus around 428-440 sweeps for
+`target_rho≤0.3` — genuinely close to, but not quite matching, the best hand-tuned value, because
+the linear extrapolation flattens out in the real (small-alpha) regime rather than continuing to
+track the true curve (measured earlier: `rho(0.05)=0.994`, `rho(0.1)=0.998` — much flatter than the
+large-alpha linear fit predicts). **Automated tuning gets you most of the way (no manual search, no
+risk of picking an unstable value) but the current linear-extrapolation heuristic leaves ~10-15% of
+hand-tuned performance on the table.**
+
+**A genuine limitation found by testing the *other* sweep mode too**: on `domino`'s actual default
+(`colored`, `alpha=1.0`, already stable — measured `ρ(alpha=1)=0.999` earlier), `auto_alpha` at
+`target_rho=0.7` derives `alpha≈0.85` and gives **1968 total sweeps — worse than just using the
+hand-tuned `alpha=1.0`'s 1774**. The formula targets a fixed `rho` unconditionally, so when the
+"natural" `alpha=1` is already close to (or better than) the target, it needlessly pulls `alpha`
+down. `auto_alpha` as implemented is a genuine, tested win specifically where hand-tuning is hard
+and fragile (`jacobi`), and a genuine, tested **regression** where the untouched default was already
+good (`colored`) — not a strict improvement in general. Left default-off; not recommended
+unconditionally without this caveat in mind.
+
+## Update: local Newton rho-strategy checked against Siconos; closed-form 3x3 inverse impact measured
+
+Two follow-ups from the same alpha/relaxation investigation, both grounded against Vincent Acary's
+own reference implementation (Siconos, https://github.com/siconos/siconos) rather than guessed.
+The Acary/Brémond/Huber paper itself (Section 4, on adaptive parameter choices) could not be
+fetched directly — HAL/INRIA's mirror is behind Anubis bot-protection (blocks both `WebFetch` and
+`curl`, even with a browser user-agent), ResearchGate returned 403, and Semantic Scholar's API was
+rate-limited twice. Cloned Siconos itself instead (`git clone --depth 1 --filter=blob:none --sparse`
+worked, since it's plain git protocol, not blocked) and read `fc3d_AlartCurnier_functions.c` and
+`fc3d_onecontact_nonsmooth_Newton_solvers.c` directly as ground truth.
+
+**Finding: this codebase's existing (only) Newton rho strategy already matches Siconos's own
+`compute_rho_split_spectral_norm`** — treating the normal (1-dof) and tangential (2-dof) blocks as
+decoupled sub-problems for the step-size choice, `rhoN=1/G(0,0)`, `rhoT=1/lambda_max(G_TT)`. Not a
+different or inferior approach, as might have been assumed going in.
+
+**Added `condensed.newton_rho_strategy=full`**, matching Siconos's *other* strategy,
+`compute_rho_spectral_norm`: a single `rho=1/lambda_max(sym(G))` from the full 3x3 block's largest
+eigenvalue (via `Eigen::SelfAdjointEigenSolver` on the symmetrized `G` — Siconos's own `eig_3x3()`
+closed-form solver is explicitly documented as requiring a symmetric input, and `G` is only
+guaranteed symmetric here when no implicit-gyroscopic body is active), capturing
+normal-tangential coupling that `split` ignores in its step-size choice (the full 3x3 `G` is still
+used in the Newton residual/Jacobian either way — only the preconditioner differs).
+
+**Head-to-head, `condensed.local_solve=newton`, `split` (default) vs `full`:**
+
+| Scene | split: totalKE / wall-clock | full: totalKE / wall-clock |
+|---|---|---|
+| domino (1250 steps) | 5.843 / 143.6s | 7.174 / 185.8s |
+| slinky (200 steps, 0.1s sim) | 1.25 s/step | ~2.52 s/step (~2x slower) |
+
+`full` is measurably slower on both — the extra `SelfAdjointEigenSolver` eigendecomposition per
+contact per Newton iteration costs more than `split`'s closed-form quadratic-formula
+`lambda_max` of the 2x2 tangential block, and the gap widens with contact count (domino ~30%
+slower, slinky's much higher contact count ~2x slower). `domino`'s `totalKE` differs substantially
+between the two (and both differ substantially from the `projection` baseline's 13.87) — expected,
+not a bug: domino's cascading collisions are a chaotic system, and Newton itself already diverges
+from `projection`'s trajectory by construction, so different rho strategies taking different Newton
+paths through the same cascade are expected to diverge further, not stay close. No scene tested
+here benefits from `full` over `split`; kept available (default `split`) as the direct Siconos
+analogue in case a not-yet-tested scene's contact geometry has enough normal-tangential coupling to
+change this.
+
+**The user's own concurrent edit: replacing the commented-out `FullPivLU` Jacobian solve with
+Eigen's closed-form 3x3 path.** Checked both the performance claim and a correctness concern:
+
+- *Performance*: confirmed, and large. A standalone microbenchmark (2M random well-conditioned 3x3
+  matrices) measured closed-form `.inverse()` at ~38x faster than `FullPivLU` (5.0ms vs 189.8ms for
+  2M calls) — expected for a fixed fixed-size 3x3, where avoiding a general pivoted decomposition's
+  overhead matters a lot. Confirmed in-context too: temporarily reverting `local_contact_newton.cpp`
+  to `FullPivLU` and rebuilding `domino` dropped the rate to ~0.24-0.48 it/s (would take over an
+  hour to finish 1250 steps) vs. ~8-9 it/s with the closed-form path — not run to completion, but
+  unambiguous.
+- *Correctness*: the original `Jphi.determinant() == 0` exact-equality check is a much weaker
+  singularity test than `FullPivLU::isInvertible()`'s relative-threshold test. Demonstrated on a
+  synthetic matrix with `det=1e-7` (condition number ~2e14, numerically singular): `determinant()
+  == 0` is `false` (doesn't trigger) and the closed-form inverse produces ~2e7-magnitude entries —
+  garbage, but *finite*, so it also passes the subsequent `delta.allFinite()` guard.
+  `FullPivLU::isInvertible()` on the same matrix correctly said not-invertible. **This has since
+  been superseded by the user's own further edit**, switching to
+  `Jphi.computeInverseWithCheck(JphiInv, invertible)` (and fixing what would otherwise have been a
+  redundant second inversion — the code briefly called `Jphi.inverse()` again right after already
+  computing `JphiInv`). Checked `computeInverseWithCheck`'s actual improvement here: its *default*
+  threshold (`NumTraits<double>::dummy_precision()`, ~1e-12) is an *absolute* determinant threshold,
+  not scaled by the matrix's own size the way `FullPivLU`'s is — on the same synthetic `det=1e-7`
+  (and even `det=1e-10`) matrix it still reports `invertible=true`, i.e. it does **not** meaningfully
+  improve on plain `determinant()==0` for a moderately (not extremely) ill-conditioned block; only
+  a determinant within ~1e-12 of exactly zero is caught either way.
+  - Practical risk: measured directly by instrumenting `local_contact_newton.cpp` to track the
+    minimum `|det(Jphi)|` seen across real `domino` Newton solves (~73 steps, thousands of
+    per-contact Newton block-solves): never dropped below ~0.168 — nowhere near any of these
+    thresholds. For the scenes tested, `G` (from a physically well-posed mass-normalized Delassus
+    block) never comes close to singular in practice, so this gap is real but latent, not observed.
+  - The residual-non-increase check (`if (it > 0 && phiTrial.norm() > phi.norm()) return false;`)
+    provides a partial safety net for a bad step slipping through on iteration 0 (this check is
+    deliberately skipped on `it==0` by original design, unrelated to this change) — a garbage first
+    step would typically get caught on the next iteration's residual comparison, though not
+    guaranteed.
+  - Not changed, since the measured risk is latent rather than observed: a scale-relative threshold
+    (e.g. `Jphi.computeInverseWithCheck(JphiInv, invertible, eps * std::pow(Jphi.norm(), 3))`) would
+    close this gap at effectively the same (fast) cost, if a future scene's contact geometry does
+    hit genuinely ill-conditioned blocks.
+
+**Follow-up question checked: should `delta`/`lamTrial` (both fixed-size `Vector3r`) be hoisted
+outside the Newton `for` loop instead of declared `const` inside it?** Measured no meaningful
+difference (163.9ms vs 157.9ms for 500M total iterations of a representative loop — within noise,
+and not reproducible as a consistent direction across reruns). `Vector3r`/`Matrix33r` are
+fixed-size, stack-only Eigen types (3 doubles / 9 doubles embedded directly, no heap pointer) --
+unlike a dynamically-sized `Eigen::VectorXd`/`MatrixXd`, there is no allocation to hoist out of the
+loop. Requested anyway for consistency/cleanliness: `local_contact_newton.cpp`'s hot loop now
+pre-declares `delta`/`lamTrial`/`phiTrial`/`JphiTrial` once before the loop and reassigns them each
+iteration, and `phiAt` was changed from returning a fresh `std::pair` each call to writing into
+out-params, for the same reason. Also removed at the same time: the dead commented-out `FullPivLU`
+code, the two stale TODOs (one resolved by keeping `computeInverseWithCheck`'s check -- it falls out
+of computing the inverse anyway, no extra cost; the other by confirming the hand-rolled closed-form
+tangential eigenvalue is already exact, so a generic 2x2 `SelfAdjointEigenSolver` would only add
+overhead), and the now-unused `<Eigen/LU>` include.
+
+**Follow-up: can `G`'s eigenvalues actually be complex, and is that guarded?** Checked concretely,
+not just in theory. A genuinely non-symmetric real 3x3 matrix CAN have complex eigenvalues --
+demonstrated with a synthetic rotation-like block (`[[0,-1,0],[1,0,0],[0,0,5]]`) whose true
+eigenvalues (via `Eigen::EigenSolver`, the general non-symmetric-aware solver) are `(0,±1),(5,0)` --
+genuinely complex. Feeding that same matrix directly to `Eigen::SelfAdjointEigenSolver` (which
+structurally can never return complex values -- its `eigenvalues()` return type is a real vector)
+silently reads only one triangle and returns `[-1,1,5]`: real, but meaningless with respect to the
+actual matrix. `rhoFullSpectral()` avoids this correctly: it symmetrizes first
+(`Gsym=0.5*(G+G^T)`), and for that same test matrix gives `Gsym=diag(0,0,5)` (the rotation part
+exactly cancels), eigenvalues `[0,0,5]` -- real and mathematically well-defined by the spectral
+theorem, since `Gsym` genuinely is symmetric regardless of `G`. Already correctly guarded.
+
+**This was not a hypothetical concern to check.** Asked an Explore agent to trace whether `G` can
+actually be non-symmetric in the live codebase today (not just in a not-yet-implemented future
+stage, which is what the top-level roadmap plan assumed). Finding: `Gii`/`G` genuinely IS
+non-symmetric already, reachable via `moreau.implicit_gyroscopy=true` for any dynamic rigid body
+with angular velocity -- `condensed_assembler.cpp`'s `computeGyroscopicMinvBlocks()` builds a
+non-diagonal, non-symmetric rotational `Minv` block via `invertSmallGeneral()` (explicitly the
+non-symmetric-safe inverse, since Cholesky/LDLT both require symmetry), which propagates directly
+into `Gii` for any contact touching that body. This is wired in and working, not dropped with a
+warning as an earlier planning pass assumed.
+
+Given that, the `Split` strategy's tangential formula had exactly the same latent bug the
+`rhoFullSpectral` comment already worried about, but unguarded: `b=G(1,2)` used only one
+off-diagonal entry, silently ignoring `G(2,1)`. This can't itself produce a complex or NaN result
+(the discriminant is clamped to `max(0,...)`, so the closed form is always real) -- but for a
+genuinely asymmetric tangential block it silently computes an arbitrary, not-actually-meaningful
+value, inconsistent with `rhoFullSpectral`'s principled symmetrization. Fixed by averaging both
+off-diagonal entries (`b=0.5*(G(1,2)+G(2,1))`), matching `rhoFullSpectral`'s convention.
+
+**Verified this fix is a genuine no-op for `domino`/`slinky`** (both run with
+`moreau.implicit_gyroscopy=false`): instrumented `blk.Gii(1,2)-blk.Gii(2,1)` directly and found the
+"asymmetry" there is pure floating-point rounding noise, ~1e-14 to 1e-15 absolute on entries of
+magnitude ~1-100 (i.e. relative error at the level of double precision) -- not a real asymmetry, as
+expected for a diagonal-`Minv` sandwich product, which is exactly symmetric in exact arithmetic.
+Rebuilding and rerunning `domino`'s Newton-`split` case after the fix, however, gave a substantially
+different `totalKE` (15.90 vs. the earlier 5.84) despite the change being ULP-level for this scene
+-- consistent with, and a further demonstration of, `domino`'s already-documented chaotic
+sensitivity (this exact cascading-collision scene has already been shown earlier in this document to
+diverge substantially under equally tiny perturbations -- different rho strategies, `FullPivLU` vs.
+closed-form -- not a sign this fix is wrong). The default (non-Newton) `projection` path, unaffected
+by any of this, remains bit-identical throughout (confirmed via the usual `CARDILLO_DUMP_STATE`
+A/B check).
+
+## Update: reusing the Newton local solve's eigenvalue estimate in the plain projection path
+
+User's question: since the local Newton solve already computes a closed-form eigenvalue estimate
+of the per-contact 3x3 (normal + 2-tangential) `Gii` block, and that estimate is cheap (derived
+from the Schur-complement/Delassus block that's assembled once per step regardless), could the
+plain (non-Newton) projection path -- the actual default, used on every scene in this
+repo -- reuse it instead of its current, cruder preconditioner?
+
+**Checked what `GiiInv` (the plain path's preconditioner) actually is first, since the answer
+depends entirely on it.** It is NOT the exact local inverse of `Gii`: `CondensedAssembler::
+updateCompliance()` (condensed_assembler.cpp) builds it as a pure **diagonal-only** approximation
+(`GiiInv(i,i) = 1/Gii(i,i)`, all off-diagonal terms zero), deliberately ignoring
+normal-tangential AND tangential-tangential coupling within a block. A full-inverse alternative is
+already present in the file, commented out, with a note that it was tried and found to diverge on
+domino's strongly-coupled multi-contact cascade. So the user's idea is not redundant with what's
+there -- it is a genuine middle ground between "diagonal only" (current default, ignores all
+intra-block coupling) and "full inverse" (already tried, diverges): the eigenvalue-based `rho`
+(`1/lambda_max`) is **strictly more conservative** than the full inverse for any real symmetric
+matrix (`1/lambda_max <= 1/(any diagonal entry)`), so it should not reproduce that divergence,
+while still capturing the tangential-tangential (and, for the full-spectral variant,
+normal-tangential) coupling the plain diagonal ignores entirely.
+
+**Also checked, per a follow-up question, whether `G`'s eigenvalues can go complex.** For a
+genuinely non-symmetric real 3x3 (reachable today via `moreau.implicit_gyroscopy=true`, confirmed
+earlier in this document), yes in general -- demonstrated with a synthetic rotation-like matrix
+whose true eigenvalues are `(0,±1),(5,0)`. `rhoFullSpectral` was already safe (symmetrizes before
+`SelfAdjointEigenSolver`, whose return type is real by construction). The `split` strategy's
+tangential formula was not -- it read only `G(1,2)`, silently ignoring `G(2,1)` -- fixed to average
+both off-diagonal entries, matching `rhoFullSpectral`'s convention (see previous section).
+
+**Implementation.** Extracted the rho computation (previously inlined only in
+`local_contact_newton.cpp`) into a new shared `misc/contact_rho.hpp/.cpp`
+(`cardillo::misc::ContactRhoStrategy` / `computeContactRho()`), since `condensed_assembler.cpp`
+(assembly layer) can't include a `solver/`-layer header without inverting the existing
+assembly->solver dependency direction (`condensed_solver.hpp` already includes
+`condensed_assembler.hpp`, so the reverse would be circular). `local_contact_newton.hpp`'s
+`NewtonRhoStrategy` is now a type alias for the shared enum, so no external call site changed.
+Added `condensed.projection_rho_strategy` (`diagonal` default | `split` | `full`), applied only to
+`ContactFrictional` (dim==3) blocks in `updateCompliance()`, computed once per step (`Gii` is fixed
+for the whole step's sweep) with a fallback to the existing diagonal if the estimate is
+(near-)singular.
+
+**Empirical result: genuinely mixed, not a clear win.** Tested `diagonal` (default) vs `split` vs
+`full` head-to-head on domino and slinky, all three variants run against the same build/binary
+(important -- see the build-provenance note below):
+
+| scene  | strategy | total iters (last step) | wall-clock | totalKE (1250/2500 steps) |
+|--------|----------|-------------------------|------------|---------------------------|
+| domino | diagonal | 162                      | 119.1 s    | 190.29 |
+| domino | split    | 163                      | 120.3 s    | 186.85 |
+| domino | full     | **97**                   | **103.6 s**| **19.72** |
+| slinky | diagonal | (completed, 5000 steps)  | 403.6 s    | 0.057 |
+| slinky | split    | climbing to 300-380/step, did not finish in 600s | -- | -- |
+| slinky | full     | climbing to 400-700+/step, did not finish in 300s| -- | -- |
+
+On domino, `full` looks like a real win (fewer iterations, faster wall-clock, and a much lower/more
+stable final KE). On slinky -- a long, tightly serial coil-contact chain -- both `split` and `full`
+make convergence markedly *worse* (per-step iteration counts climbing steadily rather than settling,
+consistent with the theoretical concern below). This directly confirms a concern flagged before
+testing: a single contact's own local `Gii` eigenvalues reflect only that block's own two-body
+self-coupling -- they carry no information about how strongly that contact is coupled to *other*
+contacts sharing the same bodies, which is exactly the cross-contact coupling that dominates
+convergence in a long serial chain like slinky. Traced this directly in `buildTopology()`: `Gii` is
+built purely from one block's own `Ja`/`Jb`/`Minv`, with no reference to `blocksOfBody` or any other
+contact -- structurally blind to the thing that actually limits convergence there. Verdict: kept
+`diagonal` as the default (no behavior change for existing scenes); `condensed.projection_rho_strategy`
+is available but scene-dependent -- measure before switching a scene off `diagonal`, exactly like
+`condensed.newton_rho_strategy` and `condensed.auto_alpha` before it.
+
+**Important build-provenance note, logged for posterity because it cost significant time to
+diagnose.** Mid-investigation, a `git diff`-based regression check showed the *default* (`diagonal`,
+should be a strict no-op) config producing a substantially different domino result than an earlier
+run in the same session (KE 13.87 -> 190.29, `numBodies` even differing by one). Extensive
+isolation (reverting every touched file individually via `git checkout HEAD --`, rebuilding between
+each) kept reproducing the divergent result even after reverting everything -- which briefly looked
+like genuine build-to-build nondeterminism (a real and concerning possibility for a chaotic scene
+like domino, since it would undermine every "bit-identical" regression check this document relies
+on). The actual cause was simpler and unrelated to nondeterminism: a merge commit
+(`31efd82`, "Merge branch 'main' of github.com:JonasBreuling/CardilloMPI") landed *during* this
+investigation, pulling in a separate branch of work from `origin/main` (`0947305` and its ancestors
+-- implicit-gyroscopic/non-symmetric-BlockSparseLDLT work, mostly already reflected earlier in this
+same document, suggesting parallel development on the same features) and, as part of that merge,
+touched `condensed_assembler.cpp` and deleted this report file outright (1080 lines). Because `git
+checkout HEAD --` always reverts to the *current* HEAD, and HEAD had silently moved to that merge
+commit mid-investigation, every "revert to HEAD" attempt was reverting to the new post-merge state,
+not back to this session's own pre-investigation baseline -- creating the illusion of
+irreducible nondeterminism. Restored this file from the pre-merge commit (`4c195d6`) rather than
+losing the session's accumulated documentation. The exact line that changed domino's trajectory
+was not pinned down further (traced one candidate -- a new restitution-handling branch in
+`CondensedAssembler::rhs()` -- and ruled it out: domino's `scene_condensed.config` uses the default
+zero restitution, so that branch never fires); doing so was out of scope for the question actually
+asked and is left for whoever next touches domino's behavior after this merge.
+
+## Suggested next steps, in priority order
+
+1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode
+   alpha stability, not a momentum effect) and the dead-restart-branch bug that made the loop
+   unable to even attempt recovery is fixed. See the update above.
+2. Run the full ablation in `tools/compare_solver_traces.py` with a multi-minute-per-case timeout
+   to replace this report's short, hand-picked comparisons with complete, systematic ones —
+   including a proper per-scene thread-count sweep (only domino's was swept exhaustively above),
+   and a `jacobi`+Nesterov slinky run at the corrected `pj.alpha=0.02`.
+3. ~~Cache `colored`'s coloring across timesteps~~ — turned out not to matter: at the large-alpha
+   operating point, `CondensedColoring` is only ~1.2% of wall-clock (iteration counts collapsed
+   from tens of thousands to double/triple digits once alpha was tuned properly), so the bottleneck
+   moved to the sweep itself before this was ever implemented. Not worth doing now.
+4. Re-run the TSan validation with a Clang/`libomp` toolchain if one becomes available, to get a
+   clean (not just argued-correct) result for the parallel sweep modes.
+5. Consider Chebyshev/Anderson acceleration too (PJ has both) now that the generic `doSweep()`
+   wrapper pattern exists for bolting an outer accelerator onto any sweep mode.
+6. Investigate why `true_schur` doesn't stack with the large-alpha/colored/Nesterov tuning that
+   already works well — is there a way to get both the exact-elimination win *and* the
+   large-alpha/parallel win on the same run, or are they fundamentally solving the same problem
+   twice? Would need to understand what's actually still costing hundreds of iterations at
+   `alpha=1.0` if it isn't chain diffusion.
+7. Extend `true_schur`'s exact elimination to cover contact-contact coupling *through* the chain
+   too (a fuller static-condensation/Guyan-reduction treatment), not just bilateral-bilateral
+   coupling — may be what's needed to make it help on contact-heavy branching scenes like
+   `hangbridge` where iteration count is dominated by something `true_schur` today doesn't touch.
+8. **Compile-time block dimensions** (flagged by the user as a distinct future step, not started):
+   extend the `Buf6`/`Vectorr<6>` fixed-size-buffer optimization already applied to per-block
+   *vectors* in `condensed_solver.cpp`'s hot path to `RowBlock`'s *matrices* (`Ja`, `Jb`, `Gii`,
+   `GiiInv`), which are still dynamically-sized `MatrixXXr` built once per `solve()` call. Lower
+   risk to attempt after `true_schur` is further validated, not alongside it — bundling two
+   structural changes at once multiplies the surface area for a subtle bug, which is exactly what
+   burned the user's own single-line `GiiInv` attempt earlier in this document.

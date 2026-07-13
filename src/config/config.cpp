@@ -187,6 +187,10 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.condensed_newton_max_iters = std::max(1, std::stoi(val));
             } catch (...) {
             }
+        } else if (key == "condensed.newton_rho_strategy") {
+            cfg.condensed_newton_rho_strategy = val;
+        } else if (key == "condensed.projection_rho_strategy") {
+            cfg.condensed_projection_rho_strategy = val;
         } else if (key == "condensed.newton_tol") {
             try {
                 cfg.condensed_newton_tol = static_cast<real_t>(std::stod(val));
@@ -206,6 +210,19 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.condensed_true_schur = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "condensed.auto_alpha") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.condensed_auto_alpha = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "condensed.auto_alpha_target_rho") {
+            try {
+                cfg.condensed_auto_alpha_target_rho = (real_t)std::stod(val);
+            } catch (...) {
+            }
+        } else if (key == "condensed.chebyshev_adaptive_rho") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.condensed_chebyshev_adaptive_rho = (v == "1" || v == "true" || v == "yes" || v == "on");
         } else if (key == "conicxx.warm_start") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });

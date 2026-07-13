@@ -34,11 +34,11 @@ touches a global system matrix after setup. Unlike PGS, it is not hardwired
 to one sequential order or one local-solve rule, so the sweep/local-solve
 choice can be tuned per scene, and the sweep loop can use OpenMP.
 
-**Acceleration:** ``gauss_seidel``, ``jacobi``, and ``colored`` support Nesterov
-acceleration via the same ``pj.nesterov`` config key PJ and PGS already use
-(no new keys) -- see `Nesterov acceleration`_ below, including a real
-scene-dependent divergence case to be aware of. Chebyshev and Anderson (both
-PJ-only today) are not yet ported.
+**Acceleration:** ``gauss_seidel``, ``jacobi``, and ``colored`` support both Nesterov
+(``pj.nesterov``) and Chebyshev semi-iterative (``pj.chebyshev``) acceleration, the
+same config keys PJ and PGS already use (no new keys) -- see `Nesterov
+acceleration`_ and `Chebyshev acceleration`_ below. Anderson (PJ-only today) is
+not yet ported.
 
 From the Moreau system to condensed's row-blocks
 --------------------------------------------------
@@ -846,14 +846,87 @@ stale by design raises questions not addressed here.
    bounded to ``[0,1]``, but the extrapolated vector's magnitude is not, so
    this is a distinct failure mode from a bad ``betak1``).
 
+Chebyshev acceleration
+------------------------
+
+``gauss_seidel``, ``jacobi``, and ``colored`` also support Chebyshev semi-iterative
+acceleration via ``pj.chebyshev`` -- the same key ``projected_jacobi`` already uses
+(no condensed-specific key), with the same precedence rule: ``pj.nesterov`` takes
+priority if both are set (``useChebyshev = pj_chebyshev && !pj_nesterov``). Unlike
+Nesterov's residual-dependent momentum/restart logic, Chebyshev uses a **fixed**
+extrapolation schedule
+(:math:`\omega_1 = 1/(1-\rho^2/2)`, :math:`\omega_{k+1} = 1/(1-\tfrac14\rho^2\omega_k)`,
+:math:`x_{k+1} = \omega_{k+1}(G(x_k) - x_{k-1}) + x_{k-1}`) driven entirely by one
+number, :math:`\rho`: an estimate of the spectral radius of the *linearized* sweep
+operator :math:`G` (i.e. with ``projectBlock()``/Newton disabled -- exactly the
+nonlinearities that make a rigorous spectral-radius argument inapplicable in the
+first place, the same caveat ``projected_jacobi``'s own Chebyshev implementation
+carries).
+
+**Estimating** :math:`\rho` (``estimateSpectralRadius()`` in ``condensed_solver.cpp``,
+computed once per ``solve()`` call, before the main iteration loop) has to work
+without ever assembling a matrix, unlike PJ's own estimator (which power-iterates
+through ``PjAssembler::solveS()``, a real sparse solve). The key observation: with
+the sweep's rhs forced to zero and projection/Newton disabled, one sweep step
+becomes an *exact* linear map :math:`G(d) = A\,d` -- no affine offset, since the
+rhs-dependent constant vanishes -- so plain power iteration (8 rounds, a
+deterministic all-ones probe vector, matching PJ's own choice of a fixed rather
+than randomized start) on this zero-rhs, linear-only variant of the *actual
+configured sweep* (``gaussSeidelSweep``/``jacobiSweep``/``coloredSweep``, plus
+``exactBilateralStep`` under ``condensed.true_schur`` -- reusing the real sweep
+functions with a ``linearOnly`` flag threaded through, not a separate
+reimplementation) converges to :math:`|A|`'s dominant eigenvalue magnitude, exactly
+analogous to PJ's power iteration on its own (matrix-based) linearized operator.
+Clamped to :math:`\le 0.995`, same reasoning as PJ: the :math:`\omega` recurrence
+divides by :math:`1-\tfrac14\rho^2\omega`, only well-defined for :math:`\rho<1`.
+
+.. note::
+   Verified: on ``wilberforce`` (pure DAE, ``condensed.true_schur=true`` exactly
+   eliminates every row already, so there's nothing to accelerate) Chebyshev
+   reproduces the un-accelerated fixed point exactly, bit for bit. On ``domino``
+   and ``slinky`` (frictional-contact-dominated, ``colored`` sweep), Chebyshev
+   needed **fewer total sweeps than Nesterov on both** in the one comparison run
+   so far (domino: 1415 vs. 1514 Nesterov vs. 1774 unaccelerated, ~20% fewer than
+   no acceleration; slinky: 1403 vs. 1418 Nesterov vs. 1754 unaccelerated) --
+   consistent with the "matches or beats Nesterov" finding already established for
+   PJ, now reproduced independently on ``condensed``'s different (matrix-free,
+   block-sweep) architecture. Not an exhaustive sweep (one machine, short runs,
+   two scenes) -- measure before trusting these specific numbers on a new scene,
+   same discipline as everything else in this file.
+
+.. warning::
+   Chebyshev inherits the exact same ``jacobi``-at-too-high-``alpha`` instability
+   documented in the Nesterov warning above -- confirmed directly: ``jacobi`` +
+   Chebyshev diverges on ``domino`` at ``pj.alpha=1.0`` (tuned for
+   ``colored``/``gauss_seidel``), and so do plain ``jacobi`` and ``jacobi`` +
+   Nesterov at that same alpha on that same scene -- this is ``jacobi``'s own
+   stability margin, not something any acceleration method is expected to fix.
+   Retune ``pj.alpha`` down first (as the Nesterov warning already advises) if
+   ``jacobi`` diverges on a new scene, regardless of which acceleration (if any)
+   is enabled.
+
+   Getting this case to fail *cleanly* took one extra guard beyond porting PJ's
+   ``chebyshev_loop()`` directly: PJ/Nesterov both check whether the **raw sweep
+   output itself** (before any extrapolation) has gone non-finite, and throw
+   immediately if so -- there's nothing left to fall back to or extrapolate from
+   at that point, only an already-diverged sweep. An initial port of Chebyshev
+   only guarded the *extrapolation's own* output (matching the `nan`-safety
+   already needed for the linearization-breakdown case), which is not the same
+   check -- without it, once the raw sweep itself started producing `nan` (e.g.
+   from the ``jacobi``-instability case above), the fallback path kept feeding
+   that same non-finite state back into the sweep every remaining iteration,
+   spinning silently for the rest of ``pj.max_iterations`` instead of failing
+   fast. Fixed by adding the identical raw-output check the Nesterov branch
+   already had.
+
 Config keys
 -----------
 
-Iteration count, tolerance, relaxation, ``alpha``, warmstart, and Nesterov are
-the same shared knobs PGS already reuses -- see :doc:`projected_jacobi`'s
-config table for ``solver.max_iterations`` / ``solver.tol_abs`` /
-``solver.tol_rel`` / ``solver.relaxation`` / ``solver.alpha`` /
-``solver.warmstart`` / ``solver.nesterov``.
+Iteration count, tolerance, relaxation, ``alpha``, warmstart, Nesterov, and
+Chebyshev are the same shared knobs PGS/PJ already reuse -- see
+:doc:`projected_jacobi`'s config table for ``solver.max_iterations`` /
+``solver.tol_abs`` / ``solver.tol_rel`` / ``solver.relaxation`` /
+``solver.alpha`` / ``solver.warmstart`` / ``solver.nesterov`` / ``pj.chebyshev``.
 
 .. list-table::
    :header-rows: 1

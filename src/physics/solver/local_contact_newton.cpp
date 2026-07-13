@@ -1,6 +1,5 @@
 #include "local_contact_newton.hpp"
 
-#include <Eigen/LU>
 #include <cmath>
 
 namespace cardillo::solver {
@@ -67,28 +66,28 @@ CaseEval evalCase(const Matrix33r& M, const Vector3r& y, real_t mu) {
 
 bool solveContactBlockNewtonAC(const Matrix33r& G, const Vector3r& r, real_t mu, Vector3r& lambda, const NewtonACParams& params) {
     const real_t eps = (real_t)1e-12;
-    if (G(0, 0) <= eps) return false;
-    const real_t rhoN = (real_t)1 / G(0, 0);
 
-    const real_t a = G(1, 1), d = G(2, 2), b = G(1, 2);
-    const real_t disc = std::max((real_t)0, (a - d) * (a - d) + (real_t)4 * b * b);
-    const real_t lambdaMaxTT = (real_t)0.5 * ((a + d) + std::sqrt(disc));
-    if (lambdaMaxTT <= eps) return false;
-    const real_t rhoT = (real_t)1 / lambdaMaxTT;
+    const Vector3r rho = cardillo::misc::computeContactRho(G, params.rhoStrategy, eps);
+    if ((rho.array() <= (real_t)0).any()) return false;
 
-    const Vector3r rho(rhoN, rhoT, rhoT);
     Matrix33r M = Matrix33r::Identity() - rho.asDiagonal() * G;
     const Vector3r q = r + G * lambda;
     const Vector3r c = rho.asDiagonal() * q;
 
-    auto phiAt = [&](const Vector3r& lam) {
+    // Writes into out-params rather than returning a fresh pair -- every call site below reuses
+    // the same pre-declared storage instead of constructing new Vector3r/Matrix33r each time.
+    auto phiAt = [&](const Vector3r& lam, Vector3r& phiOut, Matrix33r& JphiOut) {
         const Vector3r y = M * lam + c;
         const CaseEval ce = evalCase(M, y, mu);
-        return std::make_pair(Vector3r(lam - ce.g), Matrix33r(Matrix33r::Identity() - ce.Jg));
+        phiOut = lam - ce.g;
+        JphiOut = Matrix33r::Identity() - ce.Jg;
     };
 
     Vector3r lamIter = lambda;
-    auto [phi, Jphi] = phiAt(lamIter);
+    Vector3r phi, delta, lamTrial, phiTrial;
+    Matrix33r Jphi, JphiInv, JphiTrial;
+    bool invertible;
+    phiAt(lamIter, phi, Jphi);
 
     for (int it = 0; it < params.maxIters; ++it) {
         if (phi.norm() < params.tol) {
@@ -96,13 +95,17 @@ bool solveContactBlockNewtonAC(const Matrix33r& G, const Vector3r& r, real_t mu,
             return true;
         }
 
-        Eigen::FullPivLU<Matrix33r> lu(Jphi);
-        if (!lu.isInvertible()) return false;
-        const Vector3r delta = lu.solve(-phi);
+        // computeInverseWithCheck's invertibility flag falls out of computing the inverse itself
+        // (no extra decomposition/cost) and catches the exact/near-exact singular case cleanly;
+        // delta.allFinite() below is a second, independent guard against a bad step slipping
+        // through (see CONDENSED_SOLVER_REPORT.md for the measured gap and why it's latent here).
+        Jphi.computeInverseWithCheck(JphiInv, invertible);
+        if (!invertible) return false;
+        delta = JphiInv * (-phi);
         if (!delta.allFinite()) return false;
 
-        const Vector3r lamTrial = lamIter + delta;
-        auto [phiTrial, JphiTrial] = phiAt(lamTrial);
+        lamTrial = lamIter + delta;
+        phiAt(lamTrial, phiTrial, JphiTrial);
         if (it > 0 && phiTrial.norm() > phi.norm()) return false;
 
         lamIter = lamTrial;
