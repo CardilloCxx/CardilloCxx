@@ -129,6 +129,21 @@ struct Config {
     // (fc3d_AlartCurnier_functions.c) respectively -- checked directly against that codebase. See
     // CONDENSED_SOLVER_REPORT.md for a head-to-head comparison before switching a scene to "full".
     std::string condensed_newton_rho_strategy{"split"}; // condensed.newton_rho_strategy: split | full
+    // How GiiInv (the plain, non-Newton per-block preconditioner used by every sweep mode's
+    // fallback/default path) is derived for ContactFrictional (3-row, normal+2-tangential) blocks
+    // only -- "diagonal" (default) is the existing per-DOF-independent inverse
+    // (1/Gii(i,i) each), deliberately ignoring intra-block coupling (matches PgsAssembler::
+    // DinvDiag(); using the FULL block inverse here was tried and found to diverge on
+    // strongly-coupled multi-contact systems like domino -- see condensed_assembler.cpp's
+    // updateCompliance()). "split"/"full" instead scale the diagonal by the SAME closed-form
+    // rho estimate (misc/contact_rho.hpp) already computed for the Newton local solve --
+    // strictly more conservative than the full inverse (1/lambda_max <= 1/any diagonal entry for
+    // a real symmetric matrix), while still capturing tangential-tangential (and, for "full",
+    // normal-tangential) coupling the plain diagonal ignores entirely. Computed once per step in
+    // updateCompliance() (Gii is fixed for the whole step's sweep), not per sweep iteration. See
+    // CONDENSED_SOLVER_REPORT.md for a head-to-head comparison before switching a scene off
+    // "diagonal".
+    std::string condensed_projection_rho_strategy{"diagonal"}; // condensed.projection_rho_strategy: diagonal | split | full
     int condensed_chaotic_reshuffle_interval{50};        // condensed.chaotic_reshuffle_interval (sweeps between reshuffles)
     unsigned condensed_chaotic_seed{12345u};             // condensed.chaotic_seed
     // condensed.true_schur: exactly eliminate the bilateral (spring+damper) rows every outer

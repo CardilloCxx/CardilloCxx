@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "../../misc/block_diagonal.hpp"  // invertSmallGeneral
+#include "../../misc/contact_rho.hpp"
 #include "../../rigid_body/rigid_body.hpp"
 #include "../constraints/constraints.hpp"
 #include "contact_jacobian.hpp"
@@ -313,6 +314,24 @@ void CondensedAssembler::updateCompliance(CondensedTopology& topo, real_t dt, re
         // tmp.diagonal() += blk.complianceDiag;
         // // TOOD: Use ldlt here if implicit gyroscopic terms are not used or we can ensure that this is symmetric!
         // blk.GiiInv = tmp.partialPivLu().inverse();
+
+        // condensed.projection_rho_strategy (default "diagonal", a no-op here): for
+        // ContactFrictional blocks only (dim==3, contacts carry zero compliance -- see above --
+        // so Gii alone is what matters), replace the per-DOF-independent diagonal above with the
+        // SAME closed-form rho estimate already used by the Newton local solve
+        // (misc/contact_rho.hpp) -- strictly more conservative than the full inverse (never
+        // triggers the divergence noted above) while still capturing tangential-tangential (and,
+        // for "full", normal-tangential) coupling the plain diagonal ignores. Falls back to the
+        // diagonal above if the block's own Gii is (near-)singular for this estimate.
+        if (blk.kind == RowBlock::Kind::ContactFrictional && m_cfg.condensed_projection_rho_strategy != "diagonal") {
+            const auto strategy = (m_cfg.condensed_projection_rho_strategy == "full") ? cardillo::misc::ContactRhoStrategy::FullSpectral
+                                                                                       : cardillo::misc::ContactRhoStrategy::Split;
+            const Vector3r rho = cardillo::misc::computeContactRho(blk.Gii, strategy);
+            if ((rho.array() > (real_t)0).all()) {
+                blk.GiiInv.setZero();
+                blk.GiiInv.diagonal() = rho;
+            }
+        }
     }
 }
 

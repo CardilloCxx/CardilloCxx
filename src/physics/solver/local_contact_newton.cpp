@@ -1,25 +1,10 @@
 #include "local_contact_newton.hpp"
 
-#include <Eigen/Eigenvalues>
 #include <cmath>
 
 namespace cardillo::solver {
 
 namespace {
-
-// NewtonRhoStrategy::FullSpectral (see local_contact_newton.hpp): rho = 1/lambda_max(sym(G)),
-// applied to all three components -- matches Siconos's compute_rho_spectral_norm() exactly
-// (fc3d_AlartCurnier_functions.c, via op3x3.h's eig_3x3(), documented there as "eigenvalues of a
-// SYMMETRIC 3x3 real matrix"). G need not be exactly symmetric in this codebase once an
-// implicit-gyroscopic body is involved (see condensed_assembler.cpp) -- symmetrizing first, rather
-// than using a general (possibly-complex-eigenvalue) solver, mirrors what Siconos's own
-// closed-form routine assumes and keeps this a real scalar step size in every case.
-real_t rhoFullSpectral(const Matrix33r& G, real_t eps) {
-    const Matrix33r Gsym = (real_t)0.5 * (G + G.transpose());
-    Eigen::SelfAdjointEigenSolver<Matrix33r> es(Gsym, Eigen::EigenvaluesOnly);
-    const real_t lambdaMax = es.eigenvalues()(2);  // ascending order -- largest is last
-    return (lambdaMax > eps) ? (real_t)1 / lambdaMax : (real_t)-1;
-}
 
 // One case-split evaluation of the Alart-Curnier normal map, in PGS's lambda[0]<=0 convention.
 // Given the (per-Newton-call-constant) affine trial map y(lambda) = M*lambda + c, computes the
@@ -82,38 +67,9 @@ CaseEval evalCase(const Matrix33r& M, const Vector3r& y, real_t mu) {
 bool solveContactBlockNewtonAC(const Matrix33r& G, const Vector3r& r, real_t mu, Vector3r& lambda, const NewtonACParams& params) {
     const real_t eps = (real_t)1e-12;
 
-    Vector3r rho;
-    if (params.rhoStrategy == NewtonRhoStrategy::FullSpectral) {
-        // see Acary2018 equation (110): https://doi.org/10.1007/978-3-319-75972-2_10
-        const real_t rhoAll = rhoFullSpectral(G, eps);
-        if (rhoAll <= (real_t)0) return false;
-        rho = Vector3r(rhoAll, rhoAll, rhoAll);
-    } else {
-        // see Acary2018 equation (111): https://doi.org/10.1007/978-3-319-75972-2_10
-        if (G(0, 0) <= eps) return false;
-        const real_t rhoN = (real_t)1 / G(0, 0);
+    const Vector3r rho = cardillo::misc::computeContactRho(G, params.rhoStrategy, eps);
+    if ((rho.array() <= (real_t)0).any()) return false;
 
-        // Closed-form (quadratic-formula) largest eigenvalue of the symmetrized 2x2 tangential
-        // block -- already exact for a symmetric input, so routing this through a generic
-        // SelfAdjointEigenSolver would add setup overhead for no accuracy/robustness gain. `b` is
-        // averaged from both off-diagonal entries (not just G(1,2)) because G need not be
-        // symmetric here: an implicit-gyroscopic body (moreau.implicit_gyroscopy=true, see
-        // condensed_assembler.cpp's gyroMinvBlocks) makes Gii -- and hence this G -- genuinely
-        // non-symmetric, a live, reachable configuration, not a hypothetical one. Using only
-        // G(1,2) would silently ignore G(2,1) instead of accounting for it. Symmetrizing first
-        // also matches rhoFullSpectral's convention and, crucially, guarantees the discriminant
-        // below is exactly the real quantity (a-d)^2+4b^2 >= 0 for the symmetrized block -- the
-        // eigenvalues of the ACTUAL (unsymmetrized, possibly non-normal) 2x2 block could otherwise
-        // be genuinely complex (e.g. a rotation-like block), which this real closed-form formula
-        // cannot represent.
-        const real_t a = G(1, 1), d = G(2, 2), b = (real_t)0.5 * (G(1, 2) + G(2, 1));
-        const real_t disc = std::max((real_t)0, (a - d) * (a - d) + (real_t)4 * b * b);
-        const real_t lambdaMaxTT = (real_t)0.5 * ((a + d) + std::sqrt(disc));
-        if (lambdaMaxTT <= eps) return false;
-        const real_t rhoT = (real_t)1 / lambdaMaxTT;
-
-        rho = Vector3r(rhoN, rhoT, rhoT);
-    }
     Matrix33r M = Matrix33r::Identity() - rho.asDiagonal() * G;
     const Vector3r q = r + G * lambda;
     const Vector3r c = rho.asDiagonal() * q;

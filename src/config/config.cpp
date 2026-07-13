@@ -189,6 +189,8 @@ Config ConfigReader::fromFile(const std::string& path) {
             }
         } else if (key == "condensed.newton_rho_strategy") {
             cfg.condensed_newton_rho_strategy = val;
+        } else if (key == "condensed.projection_rho_strategy") {
+            cfg.condensed_projection_rho_strategy = val;
         } else if (key == "condensed.newton_tol") {
             try {
                 cfg.condensed_newton_tol = static_cast<real_t>(std::stod(val));
