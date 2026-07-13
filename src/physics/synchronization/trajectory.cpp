@@ -51,7 +51,7 @@ TrajectoryTwist differentiatePose(const TrajectoryPose& prev, const TrajectoryPo
     q0.normalize();
     q1 = MathHelper::alignQuaternionTo(q1.normalized(), q0);
 
-    Quaternion4r dq = q0.conjugate() * q1;
+    Quaternion4r dq = q1 * q0.conjugate();
     if (!dq.coeffs().allFinite() || dq.coeffs().squaredNorm() <= kEps) return out;
     dq.normalize();
 
