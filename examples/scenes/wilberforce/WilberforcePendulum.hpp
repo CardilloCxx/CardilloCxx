@@ -77,12 +77,20 @@ public:
         m_bob = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/bob2.obj"), physics::RigidState(Vector3r(0, 0, -0.025 - static_cast<real_t>(turns) * pitch - wireDiameter), Vector3r(0, 0, 0)),
                                     physics::RigidProps(tunedMass));
 
-        // Set inertia to match target Iz for cube
-        engine.ecs().get<cardillo::C_InertiaDiag>(m_bob).I *= 0.75;
+        // working:
+        // Bob inertia diag: Ixx = 0.000105331, Iyy = 0.000124083, Izz = 0.000124083
+        // Bob inertia world frame:
+        //  0.000124083 -4.08802e-12  1.32047e-10
+        // -4.08802e-12  0.000124083 -1.34392e-10
+        //  1.32047e-10 -1.34392e-10  0.000105331
+        // Bob mass: 0.524057 kg
+
+        // Set inertia
+        engine.ecs().get<cardillo::C_InertiaDiag>(m_bob).I = Vector3r(0.000124083, 0.000124083, 0.000105331);
 
         // track bob trajectory in csv file
         engine.track(m_bob, "bob");
-        // Print Inertia for verification
+        // Print Inertia and Mass for verification
         auto Idiag = engine.ecs().get<cardillo::C_InertiaDiag>(m_bob).I;
         std::cout << "Bob inertia diag: Ixx = " << Idiag.x() << ", Iyy = " << Idiag.y() << ", Izz = " << Idiag.z() << std::endl;
 

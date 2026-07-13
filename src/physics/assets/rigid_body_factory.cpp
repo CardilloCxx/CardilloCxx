@@ -132,6 +132,10 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
     const real_t mu = (props.friction >= (real_t)0) ? props.friction : cfg.friction_default_mu;
     reg.emplace<cardillo::C_Friction>(e, mu);
 
+    const real_t restN = (props.restitution_normal >= (real_t)0) ? props.restitution_normal : cfg.restitution_default_normal;
+    const real_t restT = (props.restitution_tangential >= (real_t)0) ? props.restitution_tangential : cfg.restitution_default_tangential;
+    reg.emplace<cardillo::C_Restitution>(e, std::max((real_t)0, restN), std::max((real_t)0, restT));
+
     // --- Helper for adding dynamic tags of rigid body ---
     const auto addRigidBody = [&](real_t mass, const Vector3r& inertiaDiag) {
         reg.emplace<cardillo::C_PhysicsObject>(e);

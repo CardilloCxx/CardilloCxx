@@ -49,13 +49,19 @@ VectorXr& ClarabelAssembler::b(real_t dt, real_t theta) {
     auto lambda_g = m_dyn->Lambda_g();
     if (lambda_g.size() != m_dyn->Cdiag().size()) lambda_g = VectorXr::Zero(m_dyn->Cdiag().size());
 
+    const auto& Wcontact = m_dyn->W().asSparse();
     VectorXr Smu = computeSmu();
+    VectorXr restitution = m_dyn->restitutionVec();
+    VectorXr biasImpulse = m_dyn->contactVVec();
+
+    VectorXr gamma_old = Wcontact * m_dyn->vVec() + m_dyn->contactVVec();
+
+    if ((restitution.array() != 0.0).any())
+        biasImpulse += restitution.cwiseProduct(gamma_old);
 
     VectorXr b_top = -(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(lambda_g) - ((1.0 - theta) / theta) * (m_dyn->Wg().asSparse() * m_dyn->vVec()) - (1.0 / theta) * m_dyn->C_v_vec();
     VectorXr b_mid = -((1.0 - theta) / theta) * (m_dyn->Wgamma().asSparse() * m_dyn->vVec()) - (1.0 / theta) * m_dyn->A_v_vec();
-    VectorXr b_contact = Smu.cwiseProduct(m_dyn->contactVVec());
-
-    VectorXr gamma_old = m_dyn->W().asSparseRowMajor() * m_dyn->vVec();
+    VectorXr b_contact = Smu.cwiseProduct(biasImpulse);
 
     for (int i = m_dyn->numFrictionlessContacts(); i < m_dyn->numContactRows(); i += 3) {
         const real_t y_1 = gamma_old[i + 1];

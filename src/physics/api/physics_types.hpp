@@ -134,6 +134,10 @@ struct RigidProps {
     std::optional<real_t> density;
     /// Coulomb friction coefficient. Negative value (-1) means use Config::friction_default_mu.
     real_t friction = -1;
+    /// Normal coefficient of restitution. Negative value (-1) means use Config::restitution_default_normal.
+    real_t restitution_normal = -1;
+    /// Tangential coefficient of restitution. Negative value (-1) means use Config::restitution_default_tangential.
+    real_t restitution_tangential = -1;
     /// Register this body with the collision detection system.
     bool collidable = true;
     /// Include this body in VTK output.

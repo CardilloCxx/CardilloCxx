@@ -127,39 +127,35 @@ def worker(repo_root: Path, case: Case, log_root: Path, timeout_s: int) -> tuple
     return case, result
 
 
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
-from scipy.ndimage import gaussian_filter1d
-
 def plot_combined_results(
     results: dict[tuple[str, str], tuple[list[int], list[int]]], 
     unique_scenes: list[str], 
     out_path: Path, 
     smoothness_fraction: float = 0.013
 ) -> None:
-    colors = {
-        ("pj", False): "#a0cbe8",
-        ("pj", True): "#1f77b4",
-        ("pgs", False): "#ff9896",
-        ("pgs", True): "#d62728",
-        ("clarabel", False): "#c5b0d5",
-        ("clarabel", True): "#9467bd",
-        ("condensed", False): "#98df8a",
-        ("condensed", True): "#2ca02c",
-    }
-    styles = {False: "-", True: "--"}
-    markers = {False: "o", True: "s"}
-
     num_scenes = len(unique_scenes)
     fig, axes = plt.subplots(num_scenes, 1, figsize=(13, 4.5 * num_scenes), sharex=False)
 
     if num_scenes == 1:
         axes = [axes]
 
-    condensed_cycle = plt.get_cmap("tab10").colors
+    case_labels_by_scene: dict[str, list[str]] = {}
+    for scene, label in results:
+        case_labels_by_scene.setdefault(scene, []).append(label)
 
-    def plot_series(ax: plt.Axes, steps: list[int], iters: list[int], label: str, color, linestyle: str, marker: str, max_steps: float) -> None:
+    label_order = {
+        "pj_nest": 0,
+        "pj_plain": 1,
+        "pj_anderson": 2,
+        "pj_chebyshev": 3,
+        "pgs_nest": 4,
+        "pgs_plain": 5,
+        "clarabel_plain": 6,
+        "conicxx_plain": 7,
+    }
+    palette = list(plt.get_cmap("tab20").colors) + list(plt.get_cmap("tab20b").colors) + list(plt.get_cmap("tab20c").colors)
+
+    def plot_series(ax: plt.Axes, steps: list[int], iters: list[int], label: str, color: str, max_steps: float) -> None:
         steps_arr = np.array(steps, dtype=float)
         iters_arr = np.array([it if it > 0 else 1 for it in iters], dtype=float)
 
@@ -175,36 +171,30 @@ def plot_combined_results(
             log_iters = np.log10(iters_arr)
             smoothed_log = gaussian_filter1d(log_iters, sigma=sigma, mode="nearest")
             line_iters = 10**smoothed_log
-            ax.plot(steps_arr, iters_arr, linestyle="None", marker=marker, markersize=0.5, color=color, alpha=0.3)
+            ax.plot(steps_arr, iters_arr, linestyle="None", marker="o", markersize=0.5, color=color, alpha=0.3)
         else:
             line_iters = iters_arr
 
-        ax.plot(steps_arr, line_iters, linestyle=linestyle, marker=None, linewidth=2, color=color, label=label)
+        ax.plot(steps_arr, line_iters, linestyle="-", marker=None, linewidth=2, color=color, label=label)
         ax.set_yscale("log")
 
     for ax, scene in zip(axes, unique_scenes, strict=True):
-
         max_steps = 0
         for (result_scene, label), (steps, _iters) in results.items():
             if result_scene == scene and steps:
                 max_steps = max(max_steps, max(steps))
 
-        for solver_type in ("pj", "pgs", "clarabel", "condensed"):
-            for nesterov in (False, True):
-                key = (scene, f"{solver_type}_{'nest' if nesterov else 'plain'}")
-                if key not in results:
-                    continue
-                steps, iters = results[key]
-                label = f"{solver_type.upper()} {'Nesterov' if nesterov else 'Plain'}"
-                plot_series(ax, steps, iters, label, colors[(solver_type, nesterov)], styles[nesterov], markers[nesterov], max_steps)
+        scene_labels = case_labels_by_scene.get(scene, [])
+        ordered_labels = sorted(
+            scene_labels,
+            key=lambda label: (label_order.get(label, 1000), label),
+        )
 
-        # Condensed cases don't fit the (solver_type, nesterov) grid -- one label per
-        # sweep_mode x local_solve combination (see main()'s condensed case generation) -- so
-        # plot every "condensed_*" result for this scene with its own color from a fixed cycle.
-        condensed_labels = sorted(label for (result_scene, label) in results if result_scene == scene and label.startswith("condensed_"))
-        for i, label in enumerate(condensed_labels):
+        for index, label in enumerate(ordered_labels):
             steps, iters = results[(scene, label)]
-            plot_series(ax, steps, iters, label, condensed_cycle[i % len(condensed_cycle)], "-", "o", max_steps)
+            color = palette[index % len(palette)]
+            pretty_label = label.replace("_", " ").title()
+            plot_series(ax, steps, iters, pretty_label, color, max_steps)
 
         display_title = scene.replace("_", " ").title() if scene != "3DPrinter" else "3DPrinter"
 
@@ -212,7 +202,7 @@ def plot_combined_results(
         ax.set_xlabel("Simulation step")
         ax.set_ylabel("Solver iterations")
         ax.grid(True, alpha=0.25)
-        ax.legend(ncol=3, fontsize=9, loc="upper right")
+        ax.legend(ncol=2, fontsize=9, loc="upper right")
 
     fig.tight_layout()
     fig.savefig(out_path, dpi=180)
@@ -233,54 +223,67 @@ def main() -> int:
 
     cases = [
         # Domino Scene Cases
-        Case("domino", "pj_plain", repo_root / "examples/scenes/domino/scene_standard.config", "pj", False, {"sim.T": "2.0"}),
+        # Case("domino", "pj_plain", repo_root / "examples/scenes/domino/scene_standard.config", "pj", False, {"sim.T": "2.0"}),
         Case("domino", "pj_nest", repo_root / "examples/scenes/domino/scene_standard.config", "pj", True, {"sim.T": "2.0"}),
-        Case("domino", "pgs_plain", repo_root / "examples/scenes/domino/scene_standard.config", "pgs", False, {"sim.T": "2.0"}),
+        Case("domino", "pj_anderson", repo_root / "examples/scenes/domino/scene_standard.config", "pj", False, {"sim.T": "2.0", "pj.anderson": "true"}),
+        Case("domino", "pj_chebyshev", repo_root / "examples/scenes/domino/scene_standard.config", "pj", False, {"sim.T": "2.0", "pj.chebyshev": "true"}),
+        # Case("domino", "pgs_plain", repo_root / "examples/scenes/domino/scene_standard.config", "pgs", False, {"sim.T": "2.0"}), 
         Case("domino", "pgs_nest", repo_root / "examples/scenes/domino/scene_standard.config", "pgs", True, {"sim.T": "2.0"}),
         Case("domino", "clarabel_plain", repo_root / "examples/scenes/domino/scene_standard.config", "clarabel", False, {"sim.T": "2.0"}),
+        Case("domino", "conicxx_plain", repo_root / "examples/scenes/domino/scene_standard.config", "conicxx", False, {"sim.T": "2.0"}),
+
         
         # Slinky Scene Cases
-        Case("slinky", "pj_plain", repo_root / "examples/scenes/slinky/scene_standard.config", "pj", False, {}),
+        # Case("slinky", "pj_plain", repo_root / "examples/scenes/slinky/scene_standard.config", "pj", False, {}),
         Case("slinky", "pj_nest", repo_root / "examples/scenes/slinky/scene_standard.config", "pj", True, {}),
-        Case("slinky", "pgs_plain", repo_root / "examples/scenes/slinky/scene_standard.config", "pgs", False, {}),
+        Case("slinky", "pj_anderson", repo_root / "examples/scenes/slinky/scene_standard.config", "pj", False, {"pj.anderson": "true"}),
+        Case("slinky", "pj_chebyshev", repo_root / "examples/scenes/slinky/scene_standard.config", "pj", False, {"pj.chebyshev": "true"}),
+        # Case("slinky", "pgs_plain", repo_root / "examples/scenes/slinky/scene_standard.config", "pgs", False, {}),
         Case("slinky", "pgs_nest", repo_root / "examples/scenes/slinky/scene_standard.config", "pgs", True, {}),
         Case("slinky", "clarabel_plain", repo_root / "examples/scenes/slinky/scene_standard.config", "clarabel", False, {}),
+        Case("slinky", "conicxx_plain", repo_root / "examples/scenes/slinky/scene_standard.config", "conicxx", False, {}),
         
         # 3DPrinter Scene Cases
-        Case("3DPrinter", "pj_plain", repo_root / "examples/scenes/3DPrinter/scene.config", "pj", False, {}),
+        # Case("3DPrinter", "pj_plain", repo_root / "examples/scenes/3DPrinter/scene.config", "pj", False, {}),
         Case("3DPrinter", "pj_nest", repo_root / "examples/scenes/3DPrinter/scene.config", "pj", True, {}),
-        Case("3DPrinter", "pgs_plain", repo_root / "examples/scenes/3DPrinter/scene.config", "pgs", False, {}),
+        Case("3DPrinter", "pj_anderson", repo_root / "examples/scenes/3DPrinter/scene.config", "pj", False, {"pj.anderson": "true"}),
+        Case("3DPrinter", "pj_chebyshev", repo_root / "examples/scenes/3DPrinter/scene.config", "pj", False, {"pj.chebyshev": "true"}),
+        # Case("3DPrinter", "pgs_plain", repo_root / "examples/scenes/3DPrinter/scene.config", "pgs", False, {}),
         Case("3DPrinter", "pgs_nest", repo_root / "examples/scenes/3DPrinter/scene.config", "pgs", True, {}),
         Case("3DPrinter", "clarabel_plain", repo_root / "examples/scenes/3DPrinter/scene.config", "clarabel", False, {}),
+        Case("3DPrinter", "conicxx_plain", repo_root / "examples/scenes/3DPrinter/scene.config", "conicxx", False, {}),
 
         # Stacked Spheres Scene Cases
-        Case("stacked_spheres", "pj_plain", repo_root / "examples/scenes/stacked_spheres/scene.config", "pj", False, {}),
+        # Case("stacked_spheres", "pj_plain", repo_root / "examples/scenes/stacked_spheres/scene.config", "pj", False, {}),
         Case("stacked_spheres", "pj_nest", repo_root / "examples/scenes/stacked_spheres/scene.config", "pj", True, {}),
-        Case("stacked_spheres", "pgs_plain", repo_root / "examples/scenes/stacked_spheres/scene.config", "pgs", False, {}),
+        Case("stacked_spheres", "pj_anderson", repo_root / "examples/scenes/stacked_spheres/scene.config", "pj", False, {"pj.anderson": "true"}),
+        Case("stacked_spheres", "pj_chebyshev", repo_root / "examples/scenes/stacked_spheres/scene.config", "pj", False, {"pj.chebyshev": "true"}),
+        # Case("stacked_spheres", "pgs_plain", repo_root / "examples/scenes/stacked_spheres/scene.config", "pgs", False, {}),
         Case("stacked_spheres", "pgs_nest", repo_root / "examples/scenes/stacked_spheres/scene.config", "pgs", True, {}),
         Case("stacked_spheres", "clarabel_plain", repo_root / "examples/scenes/stacked_spheres/scene.config", "clarabel", False, {}),
+        Case("stacked_spheres", "conicxx_plain", repo_root / "examples/scenes/stacked_spheres/scene.config", "conicxx", False, {}),
     ]
-
-    # Condensed solver ablation: sweep_mode x local_solve, on the two scenes this solver was
-    # specifically designed/validated against -- domino (pure rigid, contact-only) and slinky
-    # (compliant chain + friction). Uses each scene's own scene_standard.config as the base (same
-    # convention as the pj/pgs/clarabel cases above), overriding only the condensed.* keys; this
-    # inherits scene_standard.config's already-tuned pj.alpha (domino's dense contact set needs
-    # alpha=0.001 -- the generic default of 0.3 diverges in jacobi sweep mode on this scene).
-    for scene, sim_t_override in (("domino", {"sim.T": "2.0"}), ("slinky", {})):
-        base_config = repo_root / f"examples/scenes/{scene}/scene_standard.config"
-        for sweep in ("gauss_seidel", "jacobi", "colored", "chaotic"):
-            for local in ("projection", "newton"):
-                cases.append(
-                    Case(
-                        scene,
-                        f"condensed_{sweep}_{local}",
-                        base_config,
-                        "condensed",
-                        False,
-                        {**sim_t_override, "condensed.sweep_mode": sweep, "condensed.local_solve": local},
-                    )
-                )
+# 
+#     # Condensed solver ablation: sweep_mode x local_solve, on the two scenes this solver was
+#     # specifically designed/validated against -- domino (pure rigid, contact-only) and slinky
+#     # (compliant chain + friction). Uses each scene's own scene_standard.config as the base (same
+#     # convention as the pj/pgs/clarabel cases above), overriding only the condensed.* keys; this
+#     # inherits scene_standard.config's already-tuned pj.alpha (domino's dense contact set needs
+#     # alpha=0.001 -- the generic default of 0.3 diverges in jacobi sweep mode on this scene).
+#     for scene, sim_t_override in (("domino", {"sim.T": "2.0"}), ("slinky", {})):
+#         base_config = repo_root / f"examples/scenes/{scene}/scene_standard.config"
+#         for sweep in ("gauss_seidel", "jacobi", "colored", "chaotic"):
+#             for local in ("projection", "newton"):
+#                 cases.append(
+#                     Case(
+#                         scene,
+#                         f"condensed_{sweep}_{local}",
+#                         base_config,
+#                         "condensed",
+#                         False,
+#                         {**sim_t_override, "condensed.sweep_mode": sweep, "condensed.local_solve": local},
+#                     )
+#                 )
 
     unique_scenes = sorted(list(set(case.scene for case in cases)))
 

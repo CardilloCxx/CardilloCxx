@@ -95,10 +95,17 @@ QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
 }
 
 QOCOFloat* QocoAssembler::h(real_t dt, real_t theta) {
+    const auto& Wcontact = m_dyn->W().asSparse();
     VectorXr Smu = computeSmu();
-    m_h_cache = Smu.cwiseProduct(m_dyn->contactVVec());
+    VectorXr restitution = m_dyn->restitutionVec();
+    VectorXr biasImpulse = m_dyn->contactVVec();
 
-    VectorXr gamma_old = m_dyn->W().asSparseRowMajor() * m_dyn->vVec();
+    VectorXr gamma_old = Wcontact * m_dyn->vVec() + m_dyn->contactVVec();
+
+    if ((restitution.array() != 0.0).any())
+        biasImpulse += restitution.cwiseProduct(gamma_old);
+
+    m_h_cache = Smu.cwiseProduct(biasImpulse);
 
     for (int i = m_dyn->numFrictionlessContacts(); i < m_dyn->numContactRows(); i += 3) {
         const real_t y_1 = gamma_old[i + 1];

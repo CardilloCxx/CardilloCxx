@@ -196,6 +196,10 @@ class CARDILLO_API PhysicsEngine {
     collision::CollisionCoal& collisionManager();
     /// Access the timing manager owned by the engine.
     cardillo::misc::TimingManager& timings();
+    /// Access the underlying world owned by the engine.
+    cardillo::World& world();
+    /// Access the underlying world owned by the engine.
+    const cardillo::World& world() const;
     /// Query whether the pipeline reached the configured simulation end time.
     bool isFinished() const;
 

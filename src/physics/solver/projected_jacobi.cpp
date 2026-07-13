@@ -324,7 +324,8 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
 
     const auto& W = dyn.W().asSparseRowMajor();
     const auto& Minv = dyn.MinvDiag();
-    VectorXr contactBias = dyn.contactVVec();
+    const auto& contactBias = dyn.contactVVec();
+    const auto& restitution = dyn.restitutionVec();
 
     // Two mutually exclusive preconditioner modes (see buildBlockPreconditioner() above for the
     // rationale): the default per-row scalar diagonal folds R into a pre-scaled copy of W so each
@@ -332,16 +333,18 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
     // cannot be folded that way (block multiplication mixes a contact's 3 rows together), so it
     // keeps W/contactBias unscaled and applies R_block as a separate step in pj_sweep().
     Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW;
-    VectorXr biasImpulse;
+
+    VectorXr v_prev = W * dyn.vVec() + contactBias;   // Previous contact-relative velocity
+    VectorXr biasImpulse = contactBias + restitution.cwiseProduct(v_prev);
+
     std::optional<cardillo::BlockDiagonal> R_block;
     if (cfg.pj_rdiag_true_delassus) {
         RW = W;
-        biasImpulse = contactBias;
         R_block = buildBlockPreconditioner(W, Minv, Nnfc, Nfc, cfg.pj_alpha);
     } else {
         VectorXr Rdiag = rdiag_sparse(W, Minv, cfg.pj_alpha);
         RW = Rdiag.asDiagonal() * W;
-        biasImpulse = Rdiag.asDiagonal() * contactBias;
+        biasImpulse = Rdiag.asDiagonal() * biasImpulse;
     }
 
     // Base RHS without any contact-impulse correction (before warmstart is folded in). Note: we

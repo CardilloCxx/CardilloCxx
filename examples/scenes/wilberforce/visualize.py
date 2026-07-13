@@ -34,13 +34,13 @@ if __name__ == "__main__":
         print(f"Warning: no data in [{start_time}, {end_time}]s — plotting full range")
     else:
         t = t[mask]
-        alpha = alpha[mask]
+        gamma =gamma[mask]
         z = z[mask]
 
     fig, ax = plt.subplots(1, 1, figsize=(10, 5))
 
     # Plot alpha in black on left y-axis
-    ax.plot(t, alpha, color="black", label="alpha (deg)")
+    ax.plot(t, gamma, color="black", label="alpha (deg)")
     ax.set_xlabel("time")
     ax.set_ylabel("alpha (deg)", color="black")
     ax.tick_params(axis='y', labelcolor='black')

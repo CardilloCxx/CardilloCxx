@@ -398,6 +398,16 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.friction_default_mu = static_cast<real_t>(std::stod(val));
             } catch (...) {
             }
+        } else if (key == "restitution.default_normal") {
+            try {
+                cfg.restitution_default_normal = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "restitution.default_tangential") {
+            try {
+                cfg.restitution_default_tangential = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
         } else if (key == "scene.name") {
             cfg.scene_name = val;
         }

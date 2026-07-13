@@ -33,6 +33,10 @@ entt::entity BodyFactory::addPointMass(World& sys, real_t mass, const Vector3r& 
     if (!reg.any_of<cardillo::C_Friction>(e)) {
         reg.emplace<cardillo::C_Friction>(e, cardillo::C_Friction{sys.config().friction_default_mu});
     }
+    if (!reg.any_of<cardillo::C_Restitution>(e)) {
+        const auto& cfg = sys.config();
+        reg.emplace<cardillo::C_Restitution>(e, cardillo::C_Restitution{std::max((real_t)0, cfg.restitution_default_normal), std::max((real_t)0, cfg.restitution_default_tangential)});
+    }
     sys.markStructureDirty();
     return e;
 }

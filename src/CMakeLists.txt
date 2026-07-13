@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 project(cardillo LANGUAGES CXX)
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path prefix" FORCE)
 include(FetchContent)
+include(ExternalProject)
 find_package(OpenMP QUIET)
 
 # --- VTK (used by the VTK export writer) ---
@@ -72,15 +73,15 @@ set(CONICXX_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(eigen GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 5.0.1)
 FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.2)
 FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG v0.11.1)
-FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.0)
+FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.3)
 FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
-# Pinned past the initial "First working solver." integration point to
-# cddaa5d ("Custom ldlt backend with dynamic regularization."), which adds
-# two alternative KKT linear-solver backends (QDLDL, and a custom
-# regularized-LDLT) on top of the "Speed fixes" (190eb67) and "Improved ill
-# conditioned problems" (7dc4fab) commits already folded in at this point.
 FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG cddaa5d5454fc0eb82e7b5851a09fd07cf6777f3)
-FetchContent_MakeAvailable(eigen coal entt clarabel qoco)
+FetchContent_MakeAvailable(eigen)
+
+add_library(eigen3 INTERFACE IMPORTED GLOBAL)
+target_link_libraries(eigen3 INTERFACE eigen)
+FetchContent_MakeAvailable(entt clarabel qoco coal)
+
 
 # QOCO vendors its own copy of QDLDL under lib/qdldl (plain add_subdirectory,
 # not FetchContent) at *global* CMake target scope: it unconditionally defines
@@ -133,6 +134,30 @@ FetchContent_MakeAvailable(conicxx)
 # --- 2. Engine Targets ---
 file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_library(cardillo SHARED ${CARDILLO_SOURCES})
+
+
+# Python version of Coal:
+# find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+# include_directories( ${PYTHON3_INCLUDE_DIRS})
+# set(COAL_INSTALL_DIR ${CMAKE_BINARY_DIR}/external/coal)
+# ExternalProject_Add(coal_project
+#     PREFIX ${CMAKE_BINARY_DIR}/_deps/coal
+#     DOWNLOAD_COMMAND ""
+#     CONFIGURE_COMMAND ""
+#     BUILD_COMMAND ${Python3_EXECUTABLE} -m pip install coal -t ${COAL_INSTALL_DIR}
+#     INSTALL_COMMAND ""
+# )
+# 
+# add_dependencies(${PROJECT_NAME} coal_project)
+# target_include_directories(${PROJECT_NAME} PUBLIC
+#     "${COAL_INSTALL_DIR}/cmeel.prefix/include/"
+# )
+# 
+# target_link_directories(${PROJECT_NAME} PUBLIC
+#     "${COAL_INSTALL_DIR}/cmeel.prefix/lib/"
+# )
+# target_link_libraries(${PROJECT_NAME} INTERFACE coal)
+
 
 # --- 3. Link Dependencies ---
 target_link_libraries(cardillo PUBLIC
