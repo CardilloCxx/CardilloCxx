@@ -126,6 +126,39 @@ struct Config {
     // validated behavior; only affects scenes with springs/dampers (a no-op on e.g. domino).
     bool condensed_true_schur{false};                    // condensed.true_schur
 
+    // EXPERIMENTAL, opt-in, default off: derive `alpha` for THIS solve() call from the same
+    // zero-rhs/linearOnly power iteration built for pj.chebyshev, instead of using the fixed
+    // pj_alpha every scene currently hand-tunes once and leaves static for the whole run. Measures
+    // the raw (unclamped) spectral radius at alpha=1, then picks alpha so the resulting operator's
+    // estimated radius is approximately condensed_auto_alpha_target_rho (a linear-regime
+    // extrapolation: rho(alpha) ~= alpha*(rho(1)+1) - 1 for alpha large enough to be dominated by
+    // the largest eigenvalue, confirmed empirically on domino -- see CONDENSED_SOLVER_REPORT.md).
+    // Recomputed fresh every step, unlike a static hand-tuned alpha -- motivated by the measured
+    // finding that the true spectral radius is state-dependent and can swing between stable and
+    // divergent within a few steps of the same run. Not yet validated widely enough to change the
+    // default; see the report for head-to-head comparisons against hand-tuned alpha before relying
+    // on this for a scene not yet tested there.
+    bool condensed_auto_alpha{false};                    // condensed.auto_alpha
+    real_t condensed_auto_alpha_target_rho{(real_t)0.7}; // condensed.auto_alpha_target_rho
+
+    // EXPERIMENTAL, opt-in, default off, only meaningful with pj.chebyshev: instead of the
+    // separate zero-rhs/linearOnly power-iteration estimate above (measured to be overly
+    // pessimistic for contact-rich scenes -- it ignores the friction-cone projection's own
+    // stabilizing effect entirely), run a few real (unaccelerated, actually-projected) sweeps
+    // first and estimate rho from the OBSERVED residual-decay ratio instead (classical "adaptive
+    // SOR/Chebyshev", e.g. Manteuffel 1977/Ashby 1985).
+    // MEASURED RESULT (see CONDENSED_SOLVER_REPORT.md): on domino, this performed WORSE than the
+    // upfront linear estimate (1847 vs 1415 total sweeps), not better. Tracing the observed ratio
+    // per warmup iteration found why: it does not settle to a stable value even over 20
+    // iterations -- drifting from ~0.3 up through ~0.9 and transiently EXCEEDING 1 (residual
+    // growing) as the active contact set keeps resolving. The classical technique assumes a
+    // linearly-convergent iteration with a well-defined asymptotic ratio; this codebase's
+    // Gauss-Seidel/Jacobi-with-projection sweep doesn't obviously have one on any practically
+    // affordable observation window. Left available (not removed -- it's not wrong, just not
+    // beneficial so far) in case a longer/smarter ratio estimator or a different scene changes
+    // this finding; do not enable without re-measuring on your own scene first.
+    bool condensed_chebyshev_adaptive_rho{false};        // condensed.chebyshev_adaptive_rho
+
     real_t constraint_bias_factor{(real_t)0.001};  // constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)
 
     // Interior-point solver settings shared across QOCO, Clarabel and ConicXX

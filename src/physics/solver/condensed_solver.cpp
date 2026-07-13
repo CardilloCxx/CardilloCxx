@@ -430,11 +430,12 @@ real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& Min
         d_lambda /= n;
         d_u_corr /= n;
     }
-    // Clamp strictly below 1: the omega recurrence divides by (1 - rho^2/4*omega), only
-    // well-defined/stable for rho < 1 (a converging basic iteration to begin with) -- same clamp
-    // PJ's own estimateSpectralRadius() uses.
+    // Deliberately NOT clamped here -- callers need the raw value for different purposes (the
+    // Chebyshev omega recurrence needs it clamped strictly below 1; a caller deriving a safe `alpha`
+    // from this estimate needs the true, possibly-much-larger-than-1 magnitude to know how far past
+    // stability the current alpha/relaxation choice actually is). Clamp at each call site instead.
     if (getenv("CARDILLO_DEBUG_RHO_RAW")) std::cout << "[Condensed] raw (unclamped) spectral radius estimate: " << rho << std::endl;
-    return std::min(rho, (real_t)0.995);
+    return rho;
 }
 
 }  // namespace
@@ -491,7 +492,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     sc_setup.~Scope();
     auto sc_solve = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::Condensed);
 
-    const real_t alpha = m_cfg.pj_alpha;
+    real_t alpha = m_cfg.pj_alpha;
     const real_t relaxation = m_cfg.pj_relaxation;
 
     VectorXr res_v0(nV), res_v1(nV), res_diff(nV), res_q(nV);
@@ -544,6 +545,23 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     const bool useNewton = (m_cfg.condensed_local_solve == "newton");
     const NewtonACParams newtonParams{m_cfg.condensed_newton_max_iters, m_cfg.condensed_newton_tol};
 
+    // condensed.auto_alpha (experimental, default off -- see config.hpp): derive `alpha` for THIS
+    // step from the same power-iteration estimator pj.chebyshev uses, instead of the fixed
+    // hand-tuned pj.alpha. Measures the raw spectral radius at alpha=1 (rho1), then picks alpha so
+    // the resulting operator's radius lands near condensed_auto_alpha_target_rho, using the
+    // empirically-confirmed linear relationship rho(alpha) ~= alpha*(rho1+1) - 1 for alpha large
+    // enough to be dominated by the largest eigenvalue (see CONDENSED_SOLVER_REPORT.md). Overrides
+    // `alpha` for every use below, including the Chebyshev estimate itself if also enabled.
+    if (m_cfg.condensed_auto_alpha) {
+        auto sc_autoalpha = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSetup);
+        const real_t rho1 = estimateSpectralRadius(topo, MinvDiag, relaxation, (real_t)1.0, sweepMode, coloring, bodyVelOffsets, startBlock, useTrueSchur, bilateralLdlt, nV);
+        if (rho1 > 0) {
+            const real_t targetRho = m_cfg.condensed_auto_alpha_target_rho;
+            alpha = std::clamp((targetRho + (real_t)1.0) / (rho1 + (real_t)1.0), (real_t)1e-4, (real_t)1.0);
+        }
+        if (m_cfg.debug_pj) std::cout << "[Condensed] auto_alpha: raw rho(alpha=1)=" << rho1 << ", derived alpha=" << alpha << std::endl;
+    }
+
     // condensed.pj_chebyshev reuses PJ's own config key (pj.chebyshev) and precedence rule --
     // pj_nesterov takes priority if both are set (matching ProjectedJacobiSolver::solve()'s
     // `useChebyshev = pj_chebyshev && !pj_nesterov`) -- rather than inventing a condensed-specific
@@ -555,7 +573,12 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         std::cout << "[Condensed] pj.chebyshev has no effect on sweep_mode=chaotic; ignoring." << std::endl;
     }
     real_t chebyshevRho = 0;
-    if (useChebyshev) {
+    if (useChebyshev && !m_cfg.condensed_chebyshev_adaptive_rho) {
+        // Skipped entirely when condensed_chebyshev_adaptive_rho is set: that path derives rho from
+        // a warmup of real sweeps instead (see the Chebyshev branch below), making this upfront
+        // linearized power-iteration estimate redundant -- no point paying its cost just to
+        // immediately overwrite the result.
+        //
         // Chebyshev's spectral-radius estimate is only rigorously meaningful when the linearized
         // sweep operator has a REAL eigenvalue spectrum -- guaranteed (via similarity to a
         // symmetric matrix) when Minv is symmetric, i.e. no active implicit-gyroscopic override
@@ -574,7 +597,12 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
                       << std::endl;
         }
         auto sc_cheb = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSetup);
-        chebyshevRho = estimateSpectralRadius(topo, MinvDiag, relaxation, alpha, sweepMode, coloring, bodyVelOffsets, startBlock, useTrueSchur, bilateralLdlt, nV);
+        const real_t rawRho = estimateSpectralRadius(topo, MinvDiag, relaxation, alpha, sweepMode, coloring, bodyVelOffsets, startBlock, useTrueSchur, bilateralLdlt, nV);
+        // Clamp strictly below 1: the omega recurrence divides by (1 - rho^2/4*omega), only
+        // well-defined/stable for rho < 1 (a converging basic iteration to begin with) -- same
+        // clamp PJ's own estimateSpectralRadius() uses. estimateSpectralRadius() itself returns the
+        // raw, unclamped value now (see its own comment) -- clamping is this call site's job.
+        chebyshevRho = std::min(rawRho, (real_t)0.995);
         if (m_cfg.debug_pj) std::cout << "[Condensed] chebyshev spectral radius estimate: " << chebyshevRho << std::endl;
     }
 
@@ -753,11 +781,57 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         // spectral radius estimated once above via estimateSpectralRadius(). Mutually exclusive
         // with Nesterov (useChebyshev already required !pj_nesterov, matching
         // ProjectedJacobiSolver::solve()'s own precedence: pj_nesterov > pj_chebyshev).
+        real_t rho = chebyshevRho;
+        bool warmupConverged = false;
+        int warmupItersUsed = 0;
+        if (m_cfg.condensed_chebyshev_adaptive_rho) {
+            // Adaptive rho (the classical "adaptive SOR/Chebyshev" technique -- e.g. Manteuffel
+            // 1977/Ashby 1985's power-method-based adaptive parameter estimation): rather than a
+            // separate linearized, zero-rhs power-iteration pre-pass (measured earlier to be
+            // overly pessimistic for contact-rich scenes -- it ignores the stabilizing effect of
+            // the friction-cone projection entirely, treating every contact as permanently,
+            // fully coupled), run a few REAL (unaccelerated, actually-projected) sweeps first and
+            // estimate rho from the OBSERVED residual ratio: for a linearly-converging iteration,
+            // err_k/err_{k-1} -> rho asymptotically. These sweeps are real solve work, not thrown
+            // away (lambda/u_corr end the warmup already partway converged), and the estimate
+            // reflects THIS step's actual active set, not a linearized approximation of it.
+            // NOTE (see CONDENSED_SOLVER_REPORT.md): tracing this per-iteration on domino found the
+            // observed ratio does NOT settle to a stable value even over 20 iterations -- it drifts
+            // upward from ~0.3 to ~0.9 and transiently EXCEEDS 1 (residual growing) before this
+            // warmup budget runs out, for a genuinely nonsmooth reason (the active contact set is
+            // still resolving, not merely "not yet asymptotic"). This makes the observed-ratio
+            // estimate unreliable regardless of warmup length, not just too-short-a-warmup -- kept
+            // short (cheap) since a longer warmup measurably does NOT fix this.
+            constexpr int kWarmupIters = 4;
+            VectorXr u_prev = u_corr;
+            real_t lastErr = -1, ratioEstimate = -1;
+            for (int w = 0; w < kWarmupIters; ++w) {
+                auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
+                doSweep(lambda, u_corr);
+                sc_sweep.~Scope();
+                warmupItersUsed = w + 1;
+                const real_t err = residualNorm(u_prev, u_corr);
+                if (getenv("CARDILLO_DEBUG_WARMUP_TRACE")) std::cout << "  [warmup] w=" << w << " err=" << err << " ratio=" << (lastErr > 0 ? err / lastErr : -1) << std::endl;
+                if (err <= (real_t)1) {
+                    warmupConverged = true;  // converged during warmup alone -- nothing left to accelerate
+                    break;
+                }
+                if (lastErr > (real_t)0 && std::isfinite(err) && std::isfinite(lastErr)) ratioEstimate = err / lastErr;
+                lastErr = err;
+                u_prev = u_corr;
+            }
+            if (!warmupConverged && ratioEstimate > (real_t)0 && std::isfinite(ratioEstimate)) rho = std::min(ratioEstimate, (real_t)0.995);
+            if (m_cfg.debug_pj) {
+                std::cout << "[Condensed] chebyshev adaptive rho: warmup_iters=" << warmupItersUsed << " ratio_estimate=" << ratioEstimate << " using_rho=" << rho
+                          << (warmupConverged ? " (converged during warmup)" : "") << std::endl;
+            }
+        }
+
         VectorXr lambda_k = lambda, u_k = u_corr, lambda_y = lambda, u_y = u_corr;
-        const double rho2 = (double)chebyshevRho * (double)chebyshevRho;
+        const double rho2 = (double)rho * (double)rho;
         double omega = 1.0;
 
-        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
+        for (int iter = 0; !warmupConverged && iter < m_cfg.pj_max_iterations; ++iter) {
             auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
             lambda = lambda_y;
             u_corr = u_y;
@@ -766,7 +840,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
 
             const VectorXr lambda_k1 = lambda;
             const VectorXr u_k1 = u_corr;
-            m_last_iters = iter + 1;
+            m_last_iters = warmupItersUsed + iter + 1;
 
             const real_t err = residualNorm(u_y, u_k1);
             if (m_cfg.debug_pj && iter % 1000 == 0) std::cout << "[Condensed] chebyshev iter " << iter << ", residual norm: " << err << std::endl;
@@ -813,7 +887,10 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
             u_k = u_k1;
         }
         // `lambda`/`u_corr` already hold the latest post-sweep values from inside the loop above --
-        // no final reassignment needed, same fact the Nesterov branch above relies on.
+        // no final reassignment needed, same fact the Nesterov branch above relies on. If the
+        // adaptive-rho warmup itself already converged, the loop above never ran (its condition is
+        // `!warmupConverged && ...`), so m_last_iters was never set by it -- set it here instead.
+        if (warmupConverged) m_last_iters = warmupItersUsed;
     }
 
     if (nSprings > 0) m_dyn.setLambda_g(lambda.head(nSprings));

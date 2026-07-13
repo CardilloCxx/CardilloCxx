@@ -823,6 +823,86 @@ gyroscopic bodies break. This exact same gap exists, un-addressed, in `projected
 (checked directly: no guard there either) — noted as a pre-existing, shared gap, not something newly
 introduced by porting Chebyshev to `condensed`.
 
+## Update: over-relaxation actually tested, auto-alpha implemented and tested (not just proposed)
+
+The previous update stopped short of two things it should have done: actually running
+`relaxation>1` on `domino`/`slinky`, and actually implementing+testing a spectral-estimate-derived
+`alpha` rather than just proposing it. Called out directly; both are now done, with real numbers.
+
+**Correctness of the relaxation formula, verified numerically, not just algebraically.** The code
+applies relaxation as `dlambda = relaxation*(GiiInv*r); lambda += dlambda` — a single multiplication,
+not the textbook `(1-ω)x_old + ω·x_GS` blend. A standalone check confirmed these are algebraically
+identical (the "increment" form is how virtually every real SOR implementation is written) — but the
+*first* attempt at this check had a bug in the *reference* implementation itself (it excluded an
+entire intra-block sub-matrix instead of just the row's own diagonal term when defining `x_GS` for a
+multi-row block with a diagonal-only `Dinv`), which produced a false "these don't match" result.
+Caught and fixed; the corrected check confirms bit-for-bit agreement (differences ~1e-15, pure
+rounding) between the two forms for a battery of `ω` including `1.3`, `1.7`, `1.95`, both for a plain
+scalar system and for a block-structured one with diagonal-only `Dinv` (mirroring `GiiInv` exactly).
+The formula itself is correct; worth being honest that the *first* verification attempt was not.
+
+**Over-relaxation on `domino`** (colored, `alpha=1.0`, `relaxation` swept, Nesterov/Chebyshev off,
+21 steps): monotonically **worse**, not better, as relaxation increases past 1 —
+
+| relaxation | 1.0 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 |
+|---|---|---|---|---|---|---|---|
+| total sweeps | 1774 | 2051 | 2231 | 2480 | 3047 | *fails to converge* | *fails* |
+
+This directly corrects the earlier, too-optimistic claim that "over-relaxation is provably safe up
+to `relaxation<2` (Ostrowski-Reich) and untested." Ostrowski-Reich's `(0,2)` guarantee is specifically
+for a *symmetric positive-definite linear* system — it applies to the bilateral (spring/damper)
+sub-block, which `domino` doesn't have at all (`nSprings=0`, pure contact). `relaxation` is applied
+*uniformly* to every row kind in this codebase, so on a contact-only scene raising it does nothing
+but push the *contact* rows (governed by PSOR/complementarity theory, not Ostrowski-Reich, and
+already close to its own stability boundary at `alpha=1.0`, measured `ρ≈0.999` earlier) further past
+where they're stable. The theorem I cited was real; applying it to this specific config's effect was
+not correct without checking which rows `relaxation` actually reaches.
+
+**Over-relaxation on `slinky`** (colored, `alpha=0.3`, has springs *and* contacts): much flatter,
+consistent with mixing a genuinely SPD-and-safe-to-over-relax bilateral part with a
+contact part that behaves like `domino`'s —
+
+| relaxation | 1.0 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.8 |
+|---|---|---|---|---|---|---|---|---|
+| total sweeps | 1754 | 1705 | 1763 | 1730 | 1713 | 1706 | 1921 | 1845 |
+
+A small, real improvement (~3%, at `1.1`) in a narrow window before contact-side degradation
+dominates again past `~1.5`. Not the dramatic, clearly-safe win the Ostrowski-Reich framing implied
+— genuinely marginal, and this codebase's uniform `relaxation` (rather than a separate one for
+bilateral vs. contact rows) is why it isn't larger: a `relaxation` that only touched bilateral rows
+could plausibly do better, but isn't what's implemented.
+
+**`condensed.auto_alpha` (new, experimental, opt-in, default off)**: derives `alpha` per step from
+the same power-iteration estimator built for Chebyshev — measure the raw spectral radius at
+`alpha=1`, then pick `alpha = clamp((target_rho+1)/(rho1+1), 1e-4, 1)` (the linear-regime
+extrapolation `rho(alpha) ≈ alpha·(rho1+1) - 1` confirmed earlier). Tested head-to-head against
+`domino`'s hand-tuned values, `condensed.sweep_mode=jacobi`:
+
+| target_rho | 0.7 | 0.5 | 0.3 | 0.2 | 0.1 | 0.05 | 0.0 |
+|---|---|---|---|---|---|---|---|
+| derived alpha | 0.127 | 0.112 | 0.097 | 0.090 | 0.082 | 0.078 | 0.075 |
+| total sweeps | 609 | 442 | 439 | 447 | 428 | 437 | 429 |
+
+vs. hand-tuned: `alpha=0.03` → 388 sweeps (best found by manual search), `alpha=0.05` → 538,
+`alpha≥0.08` → hangs (doesn't converge within `pj.max_iterations`). So auto-alpha: (a) never
+diverges across the whole `target_rho` range tried, (b) plateaus around 428-440 sweeps for
+`target_rho≤0.3` — genuinely close to, but not quite matching, the best hand-tuned value, because
+the linear extrapolation flattens out in the real (small-alpha) regime rather than continuing to
+track the true curve (measured earlier: `rho(0.05)=0.994`, `rho(0.1)=0.998` — much flatter than the
+large-alpha linear fit predicts). **Automated tuning gets you most of the way (no manual search, no
+risk of picking an unstable value) but the current linear-extrapolation heuristic leaves ~10-15% of
+hand-tuned performance on the table.**
+
+**A genuine limitation found by testing the *other* sweep mode too**: on `domino`'s actual default
+(`colored`, `alpha=1.0`, already stable — measured `ρ(alpha=1)=0.999` earlier), `auto_alpha` at
+`target_rho=0.7` derives `alpha≈0.85` and gives **1968 total sweeps — worse than just using the
+hand-tuned `alpha=1.0`'s 1774**. The formula targets a fixed `rho` unconditionally, so when the
+"natural" `alpha=1` is already close to (or better than) the target, it needlessly pulls `alpha`
+down. `auto_alpha` as implemented is a genuine, tested win specifically where hand-tuning is hard
+and fragile (`jacobi`), and a genuine, tested **regression** where the untouched default was already
+good (`colored`) — not a strict improvement in general. Left default-off; not recommended
+unconditionally without this caveat in mind.
+
 ## Suggested next steps, in priority order
 
 1. ~~Harden Nesterov against the `jacobi` divergence case~~ — done: root-caused (per-sweep-mode

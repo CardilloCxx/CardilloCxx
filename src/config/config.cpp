@@ -206,6 +206,19 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.condensed_true_schur = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "condensed.auto_alpha") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.condensed_auto_alpha = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "condensed.auto_alpha_target_rho") {
+            try {
+                cfg.condensed_auto_alpha_target_rho = (real_t)std::stod(val);
+            } catch (...) {
+            }
+        } else if (key == "condensed.chebyshev_adaptive_rho") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.condensed_chebyshev_adaptive_rho = (v == "1" || v == "true" || v == "yes" || v == "on");
         } else if (key == "conicxx.warm_start") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
