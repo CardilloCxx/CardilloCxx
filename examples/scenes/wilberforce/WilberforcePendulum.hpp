@@ -74,7 +74,7 @@ public:
 
         real_t tunedMass = 0.5240569245269475;
 
-        m_bob = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/bob2.obj"), physics::RigidState(Vector3r(0, 0, -0.025 - static_cast<real_t>(turns) * pitch - wireDiameter), Vector3r(0, 0, 0)),
+        m_bob = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/bob3.obj"), physics::RigidState(Vector3r(0, 0, -0.025 - static_cast<real_t>(turns) * pitch - wireDiameter), Vector3r(0, 0, 0)),
                                     physics::RigidProps(tunedMass));
 
         // working:

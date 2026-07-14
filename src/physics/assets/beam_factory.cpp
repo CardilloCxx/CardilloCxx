@@ -40,19 +40,33 @@ void appendSplineSamples(const misc::SplinePattern& spline, size_t segments, std
         const Vector3r midPos = (si0.position + si1.position) * (real_t)0.5;
         const Vector3r midTangent = (si1.position - si0.position) / localSegLen;
 
-        Vector3r midNormal = si0.normal + si1.normal;
+        Vector3r n0 = si0.normal;
+        Vector3r n1 = si1.normal;
+        Vector3r b0 = si0.binormal;
+        Vector3r b1 = si1.binormal;
+
+        // Detect and correct sudden 180-degree flips in the frame
+        if (n0.dot(n1) < (real_t)0.0) {
+            n1 = -n1;
+            b1 = -b1; // Flip binormal as well to maintain handedness
+        }
+
+        // Average the aligned normals
+        Vector3r midNormal = n0 + n1;
+        
+        // Orthonormalize the normal against the new midTangent via Gram-Schmidt
+        midNormal -= midTangent * midTangent.dot(midNormal);
+        
         if (midNormal.allFinite() && midNormal.squaredNorm() > minSegLen * minSegLen) {
             midNormal.normalize();
         } else {
-            midNormal = Vector3r::Zero();
+            // Fallback: If normal calculation completely fails, generate an arbitrary orthogonal vector
+            Vector3r up = (std::abs(midTangent.z()) < (real_t)0.999) ? Vector3r::UnitZ() : Vector3r::UnitX();
+            midNormal = midTangent.cross(up).normalized();
         }
 
-        Vector3r midBinormal = si0.binormal + si1.binormal;
-        if (midBinormal.allFinite() && midBinormal.squaredNorm() > minSegLen * minSegLen) {
-            midBinormal.normalize();
-        } else {
-            midBinormal = Vector3r::Zero();
-        }
+        // The binormal is strictly the cross product of tangent and normal
+        Vector3r midBinormal = midTangent.cross(midNormal).normalized();
 
         outSamples.push_back(BeamSample{midPos, midTangent, midNormal, midBinormal, localSegLen});
     }
