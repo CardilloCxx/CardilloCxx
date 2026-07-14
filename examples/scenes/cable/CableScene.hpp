@@ -67,7 +67,7 @@ public:
         std::optional<std::function<TrajectoryPose(real_t)>> poseFunc = [trajSpline, initialPlugRot](real_t t) -> TrajectoryPose {
             real_t time_clamped = std::min(t, (real_t)4.0);
             real_t progress = time_clamped / (real_t)4.0;
-            
+
             real_t s = progress * progress * (3 - 2 * progress);
             
             TrajectoryPose pose;
@@ -94,7 +94,7 @@ public:
         physics::BeamCrossSection cableSection(d, d, physics::BeamBodyType::Capsule);
         auto cableSprings = physics::BeamSpringParams::fromMaterial((real_t)5e7, (real_t)0.4);
         cableSprings.setDampingFromFactor((real_t)1.0);
-        cableSprings.kappa0 = Vector3r::Zero();   // Set relaxed curvature to zero for a straight cable
+        // cableSprings.kappa0 = Vector3r::Zero();   // Set relaxed curvature to zero for a straight cable
         
         physics::RigidProps cableProps = physics::RigidProps::withDensity((real_t)1200.0);
         physics::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());
