@@ -68,43 +68,43 @@ public:
 
             // LINEAR DISTANCE CONSTRAINTS 
 
-            // engine.addLinearDistanceConstraint(sphereEnt, leftTopBar, Vector3r::Zero(), leftAnchor - leftPos);  // Left wire
-            // engine.addLinearDistanceConstraint(sphereEnt, rightTopBar, Vector3r::Zero(), rightAnchor - rightPos); // Right wire
+            engine.addLinearDistanceConstraint(sphereEnt, leftTopBar, Vector3r::Zero(), leftAnchor - leftPos);  // Left wire
+            engine.addLinearDistanceConstraint(sphereEnt, rightTopBar, Vector3r::Zero(), rightAnchor - rightPos); // Right wire
 
             // WIRES BETWEEN SPHERE AND TOP BARS
 
-            auto rightSpline = misc::LinearSpline({rightAnchor, state.position});
-            auto leftSpline = misc::LinearSpline({leftAnchor, state.position});
-            auto crossSection = physics::BeamCrossSection(0.002, 0.002);
-            auto springs = physics::BeamSpringParams::fromMaterial(1e9, 0.3, 500.0);
-
-            auto rightBeam = engine.createBeam(
-                rightSpline,
-                crossSection,
-                springs,
-                physics::RigidState(Vector3r::Zero(), Quaternion4r::Identity()),
-                physics::RigidProps::withDensity(50.0),
-                10
-            );
-
-            engine.disableCollisionBetween(sphereEnt, rightBeam.second);
-            engine.addTranslationalConstraint(sphereEnt, rightBeam.second, physics::JointFrame{rightBeam.second});
-            engine.disableCollisionBetween(rightTopBar, rightBeam.first);
-            engine.addTranslationalConstraint(rightTopBar, rightBeam.first, physics::JointFrame{rightBeam.first});
-
-            auto leftBeam = engine.createBeam(
-                leftSpline,
-                crossSection,
-                springs,
-                physics::RigidState(Vector3r::Zero(), Quaternion4r::Identity()),
-                physics::RigidProps::withDensity(50.0),
-                10
-            );
-
-            engine.disableCollisionBetween(sphereEnt, leftBeam.second);
-            engine.addTranslationalConstraint(sphereEnt, leftBeam.second, physics::JointFrame{ leftBeam.second});
-            engine.disableCollisionBetween(leftTopBar, leftBeam.first);
-            engine.addTranslationalConstraint(leftTopBar, leftBeam.first, physics::JointFrame{leftBeam.first});
+//             auto rightSpline = misc::LinearSpline({rightAnchor, state.position});
+//             auto leftSpline = misc::LinearSpline({leftAnchor, state.position});
+//             auto crossSection = physics::BeamCrossSection(0.002, 0.002);
+//             auto springs = physics::BeamSpringParams::fromMaterial(1e9, 0.3, 500.0);
+// 
+//             auto rightBeam = engine.createBeam(
+//                 rightSpline,
+//                 crossSection,
+//                 springs,
+//                 physics::RigidState(Vector3r::Zero(), Quaternion4r::Identity()),
+//                 physics::RigidProps::withDensity(50.0),
+//                 10
+//             );
+// 
+//             engine.disableCollisionBetween(sphereEnt, rightBeam.second);
+//             engine.addTranslationalConstraint(sphereEnt, rightBeam.second, physics::JointFrame{rightBeam.second});
+//             engine.disableCollisionBetween(rightTopBar, rightBeam.first);
+//             engine.addTranslationalConstraint(rightTopBar, rightBeam.first, physics::JointFrame{rightBeam.first});
+// 
+//             auto leftBeam = engine.createBeam(
+//                 leftSpline,
+//                 crossSection,
+//                 springs,
+//                 physics::RigidState(Vector3r::Zero(), Quaternion4r::Identity()),
+//                 physics::RigidProps::withDensity(50.0),
+//                 10
+//             );
+// 
+//             engine.disableCollisionBetween(sphereEnt, leftBeam.second);
+//             engine.addTranslationalConstraint(sphereEnt, leftBeam.second, physics::JointFrame{ leftBeam.second});
+//             engine.disableCollisionBetween(leftTopBar, leftBeam.first);
+//             engine.addTranslationalConstraint(leftTopBar, leftBeam.first, physics::JointFrame{leftBeam.first});
         }
     }
 };

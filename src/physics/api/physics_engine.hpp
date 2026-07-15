@@ -140,13 +140,21 @@ class CARDILLO_API PhysicsEngine {
     Vector3r getInertiaDiag(entt::entity e) const { return m_world->getInertiaDiag(e); }
     /// Query the generalized position vector for an entity.
     VectorXr getPosition(entt::entity e) const { return m_world->getPosition(e); }
+    /// Query the linear velocity vector for an entity.
+    VectorXr getLinearVelocity(entt::entity e) const { return m_world->getVelocity(e).head(3); }
+    /// Query the angular velocity vector for an entity.
+    VectorXr getAngularVelocity(entt::entity e) const { return m_world->getVelocity(e).tail(3); }
     /// Query the kinetic energy for an entity.
     real_t getKineticEnergy(entt::entity e) const { return m_world->getKineticEnergy(e); }
+    /// Query whether an entity is static (has no mass or is explicitly marked as static).
+    bool isStatic(entt::entity e) const { return RigidBody::isStatic(m_world->ecs(), e); }
 
     /// Apply a world-space force and torque to an entity.
     void applyForce(entt::entity e, const Vector3r& f, const Vector3r& tau) { m_world->applyForce(e, f, tau); }
     /// Apply a pure world-space torque to an entity.
     void applyInertialTorque(entt::entity e, const Vector3r& tau) { m_world->applyInertialTorque(e, tau); }
+    /// Apply a world-space force at a local point on the entity, optionally with an additional torque.
+    void applyForceAt(entt::entity e, const Vector3r& f, const Vector3r& r_local, const Vector3r& tau = Vector3r::Zero());
 
     /// Set the position of an entity.
     void setPosition(entt::entity e, const Vector3r& p) { m_world->setPosition(e, p); }

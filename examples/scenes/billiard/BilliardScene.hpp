@@ -7,9 +7,9 @@
 
 using namespace cardillo;
 
-class BillardScene : public SceneBase {
+class BilliardScene : public SceneBase {
    public:
-    const char* sceneName() const override { return "billard"; }
+    const char* sceneName() const override { return "billiard"; }
 
     void populate(cardillo::physics::PhysicsEngine& engine) override {
         using namespace cardillo;

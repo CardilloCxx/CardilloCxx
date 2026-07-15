@@ -21,7 +21,7 @@ public:
 
         // Build a Jenga tower
         const Vector3r blockHalf((real_t)0.075, (real_t)0.0225, (real_t)0.0125); // example block half extents
-        const int layers = 12;
+        const int layers = 18;
         const real_t gap = (real_t)0.002;
         const real_t density = (real_t)600.0;
         const Vector3r baseCenter(0.0, 0.0, 0.0);

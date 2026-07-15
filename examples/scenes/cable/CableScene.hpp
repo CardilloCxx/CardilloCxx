@@ -21,23 +21,23 @@ public:
         using namespace cardillo::misc;
 
         // Set standard gravity (Z is up)
-        engine.setGravity(Vector3r(0,  -9.81, 0));
+        engine.setGravity(Vector3r(0,  0, -9.81));
 
         // Add a ground plane somewhat below the jack to catch the longer cable
-        physics::CubeShape groundShape(Vector3r(10.0, 0.1, 10.0));
-        engine.addStaticBody(groundShape, physics::RigidState(Vector3r(0.0, -0.5, 0.0)));
+        physics::CubeShape groundShape(Vector3r(10.0, 10.0, 0.1));
+        engine.addStaticBody(groundShape, physics::RigidState(Vector3r(0.0, 0.0, -0.5)));
 
         physics::MeshShape jackShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/ethernet_jack.obj");
         engine.addStaticBody(jackShape, physics::RigidState(Vector3r::Zero()));
 
-        Vector3r loosePortPos(-0.5, 0.0, 0.3);
-        Vector3r initialPlugPos(0.0, 0.0, 0.6);
+        Vector3r loosePortPos(-0.3, -0.5, 0.0);
+        Vector3r initialPlugPos(-0.6, 0.0, 0.0);
 
         std::vector<Vector3r> cablePoints = {
             loosePortPos,
-            Vector3r(0.0, 0.2, 0.4),
-            Vector3r(0.3, -0.1, 0.3),
-            Vector3r(-0.1, 0.2, 0.1),
+            Vector3r(-0.4, 0.0, 0.2),
+            Vector3r(-0.3, 0.3, -0.1),
+            Vector3r(- 0.1,-0.1, 0.2),
             initialPlugPos
         };
         
@@ -52,14 +52,14 @@ public:
         SplineSample cableEndSample = cableSpline.sample(1.0);
         
         // The cable enters from -Z in untransformed space. 
-        Quaternion4r initialPlugRot = Eigen::Quaternion<real_t>::FromTwoVectors(Vector3r::UnitZ(), -cableEndSample.tangent);
+        Quaternion4r initialPlugRot = Eigen::Quaternion<real_t>::FromTwoVectors(-Vector3r::UnitX(), -cableEndSample.tangent);
         entt::entity movingPlug = engine.addRigidBody(plugShape, physics::RigidState(initialPlugPos, initialPlugRot), movingPlugProps);
 
         // Define the insertion trajectory via a spline
         std::vector<Vector3r> trajPoints = {
             initialPlugPos,
-            Vector3r(0.15, -0.1, 0.4), // Swoop to the side
-            Vector3r(0.0, 0.0, 0.15),  // Align straight above the jack
+            Vector3r(-0.4, 0.15,-0.1), // Swoop to the side
+            Vector3r(-0.15, 0.0, 0.0),  // Align straight above the jack
             Vector3r::Zero()           // Final docked position
         };
         CatmullRomSpline trajSpline(trajPoints, false);
@@ -85,7 +85,7 @@ public:
         SplineSample cableStartSample = cableSpline.sample(0.0);
         
         // At the start of the spline, the cable runs in the +tangent direction.
-        Quaternion4r looseRot = Eigen::Quaternion<real_t>::FromTwoVectors(Vector3r::UnitZ(), cableStartSample.tangent);
+        Quaternion4r looseRot = Eigen::Quaternion<real_t>::FromTwoVectors(-Vector3r::UnitX(), cableStartSample.tangent);
         entt::entity loosePort = engine.addRigidBody(plugShape, physics::RigidState(loosePortPos, looseRot), loosePortProps);
 
         const real_t r_cable = (real_t)0.003;

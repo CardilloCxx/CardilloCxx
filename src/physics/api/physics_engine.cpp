@@ -55,6 +55,19 @@ const cardillo::World& PhysicsEngine::world() const {
     throw std::runtime_error("PhysicsEngine::world() const: world not initialized");
 }
 
+void PhysicsEngine::applyForceAt(entt::entity e, const Vector3r& f, const Vector3r& r_local, const Vector3r& tau) {
+    if (!m_world) throw std::runtime_error("PhysicsEngine::applyForce(): world not initialized");
+    
+    const RigidState& state = RigidBody::getState(m_world->ecs(), e);
+
+    Vector3r r_world = state.rotation * r_local; 
+    Vector3r induced_tau = r_world.cross(f);
+    Vector3r tauEff = tau + induced_tau; 
+    Vector3r tauEff_body = state.rotation.transpose() * tauEff;
+
+    m_world->applyForce(e, f, tauEff_body);
+}
+
 void PhysicsEngine::disableCollisionBetween(entt::entity a, entt::entity b) {
     if (m_collision_mgr) m_collision_mgr->disablePair(a, b);
 }
