@@ -58,8 +58,8 @@ void resolveBodySide(const entt::registry& reg, const std::vector<int>& velOffse
 // overwhelming common case) -- callers treat "body absent from this map" as "use the existing plain
 // -diagonal MinvDiag", so an empty map is exactly behaviorally equivalent to this feature not
 // existing at all.
-std::unordered_map<int, Matrixr<6, 6>> computeGyroscopicMinvBlocks(const cardillo::physics::DynamicsAssembler& dyn, real_t dt, bool implicitGyro) {
-    std::unordered_map<int, Matrixr<6, 6>> blocks;
+std::unordered_map<int, Matrix66r> computeGyroscopicMinvBlocks(const cardillo::physics::DynamicsAssembler& dyn, real_t dt, bool implicitGyro) {
+    std::unordered_map<int, Matrix66r> blocks;
     if (!implicitGyro) return blocks;
 
     const auto& velOffsets = dyn.bodyVelOffsets();
@@ -84,7 +84,7 @@ std::unordered_map<int, Matrixr<6, 6>> computeGyroscopicMinvBlocks(const cardill
         const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * Idiag);
         const Matrix33r Mrot = Idiag - dt * Grot;
 
-        Matrixr<6, 6> block = Matrixr<6, 6>::Zero();
+        Matrix66r block = Matrix66r::Zero();
         block.topLeftCorner<3, 3>() = MinvDiag.segment(off, 3).asDiagonal().toDenseMatrix();
         block.bottomRightCorner<3, 3>() = invertSmallGeneral(MatrixXXr(Mrot));
         blocks.emplace(b, block);
@@ -95,7 +95,7 @@ std::unordered_map<int, Matrixr<6, 6>> computeGyroscopicMinvBlocks(const cardill
 // nullptr for every body without an active override -- the overwhelming common case, so every call
 // site below keeps its original plain-diagonal-MinvDiag expression unchanged in that branch (see
 // each call site's comment) rather than routing through one generic "maybe non-diagonal" helper.
-const Matrixr<6, 6>* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrixr<6, 6>>& gyroBlocks) {
+const Matrix66r* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrix66r>& gyroBlocks) {
     if (bodyIndex < 0 || gyroBlocks.empty()) return nullptr;
     auto it = gyroBlocks.find(bodyIndex);
     return it == gyroBlocks.end() ? nullptr : &it->second;

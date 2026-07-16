@@ -70,7 +70,7 @@ void blockResidual(const RowBlock& blk, const VectorXr& rhs, const VectorXr& u_c
 // nullptr for every body without an active implicit-gyroscopic override -- the overwhelming common
 // case, so every call site below keeps its original plain-diagonal-MinvDiag expression unchanged in
 // that branch. See CondensedTopology::gyroMinvBlocks.
-const Matrixr<6, 6>* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrixr<6, 6>>& gyroBlocks) {
+const Matrix66r* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrix66r>& gyroBlocks) {
     if (bodyIndex < 0 || gyroBlocks.empty()) return nullptr;
     auto it = gyroBlocks.find(bodyIndex);
     return it == gyroBlocks.end() ? nullptr : &it->second;
@@ -81,7 +81,7 @@ const Matrixr<6, 6>* gyroBlockFor(int bodyIndex, const std::unordered_map<int, M
 // Buf6, also heap-free). `gyroBlocks` is topo.gyroMinvBlocks -- empty for every scene without an
 // active implicit-gyroscopic body, in which case every branch below reduces to exactly the original
 // expression (see gyroBlockFor()).
-void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const std::unordered_map<int, Matrixr<6, 6>>& gyroBlocks, const Buf6& dlambda, VectorXr& u_corr, Buf6& tmp) {
+void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const std::unordered_map<int, Matrix66r>& gyroBlocks, const Buf6& dlambda, VectorXr& u_corr, Buf6& tmp) {
     if (blk.aDof > 0) {
         tmp.head(blk.aDof).noalias() = blk.Ja.transpose() * dlambda.head(blk.dim);
         if (const auto* gA = gyroBlockFor(blk.bodyIndexA, gyroBlocks))

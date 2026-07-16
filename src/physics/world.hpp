@@ -76,11 +76,13 @@ class World {
     const Vector3r& gravity() const { return m_gravity; }
 
     // Dynamics getters (Cache them inside the entity to avoid recomputation)
-    MatrixXXr getMass(entt::entity e) const;  // Linear Inertia and Angular Inertia
-    // Inverse mass diagonal (vector) for the entity's velocity-space dofs.
+    // Mass diagonal (vector) for the entity's velocity-space dofs.
     // Order matches getVelocity():
-    //  - Rigid body: [1/m, 1/m, 1/m, 1/Ixx, 1/Iyy, 1/Izz]
-    //  - Point mass: [1/m, 1/m, 1/m]
+    //  - Rigid body: [m, m, m, Ixx, Iyy, Izz]
+    //  - Point mass: [m, m, m]
+    VectorXr getMassDiag(entt::entity e) const;
+    MatrixXXr getMass(entt::entity e) const;  // Linear Inertia and Angular Inertia
+    // Inverse mass diagonal (vector), see getMassDiag
     VectorXr getMassInverseDiag(entt::entity e) const;
     // Generalized inertia diagonal getter (body frame). Computes or retrieves best-known diag.
     Vector3r getInertiaDiag(entt::entity e) const;

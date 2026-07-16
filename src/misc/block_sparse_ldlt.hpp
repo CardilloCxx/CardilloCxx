@@ -85,7 +85,7 @@ class BlockSparseLDLT {
     const std::vector<int>& order() const { return m_order; }
 
    private:
-    // Every node's dof is <=6 (see class comment), so every block below is a fixed-size Matrixr<6,6>
+    // Every node's dof is <=6 (see class comment), so every block below is a fixed-size Matrix66r
     // stack buffer accessed via `.topLeftCorner(dims[i], dims[j])`, exactly the Buf6-style pattern
     // used for the condensed solver's own per-block hot-path temporaries: this is the actual hot
     // loop (factor()'s Schur update touches every stored block once per pivot; solve()'s forward/
@@ -93,13 +93,13 @@ class BlockSparseLDLT {
     // ingestion in build(), so this is where fixing the storage size actually pays off.
     struct PivotFactor {
         int k{0};
-        Matrixr<6, 6> Dinv{Matrixr<6, 6>::Zero()};                    // .topLeftCorner(dims[k], dims[k])
-        std::vector<std::pair<int, Matrixr<6, 6>>> L;                 // (neighbor p, L_{p,k} = block(p,k)_at_elimination * Dinv), .topLeftCorner(dims[p], dims[k])
+        Matrix66r Dinv{Matrix66r::Zero()};                    // .topLeftCorner(dims[k], dims[k])
+        std::vector<std::pair<int, Matrix66r>> L;                 // (neighbor p, L_{p,k} = block(p,k)_at_elimination * Dinv), .topLeftCorner(dims[p], dims[k])
         // Non-symmetric mode only: U_{k,q} = block(k,q)_at_elimination (the raw current row-k
         // value, no Dinv applied -- Dinv is applied once, after subtracting U-contributions, in
         // the backward solve). Empty and unused in symmetric mode, where U is recovered from L via
         // transpose instead of stored separately.
-        std::vector<std::pair<int, Matrixr<6, 6>>> U;                 // (neighbor q, U_{k,q}), .topLeftCorner(dims[k], dims[q])
+        std::vector<std::pair<int, Matrix66r>> U;                 // (neighbor q, U_{k,q}), .topLeftCorner(dims[k], dims[q])
     };
 
     // Symbolic-only simulation of the same fill-in process factorWithOrder() performs, tracking
@@ -120,8 +120,8 @@ class BlockSparseLDLT {
 
     std::vector<int> m_dims;
     bool m_symmetric{true};
-    std::vector<Matrixr<6, 6>> m_diag;                              // working diagonal blocks (.topLeftCorner(dims[i],dims[i])), mutated during factor()
-    std::vector<std::unordered_map<int, Matrixr<6, 6>>> m_off;      // m_off[i][j]: block(i,j) (.topLeftCorner(dims[i],dims[j])). Symmetric mode: both directions stored, block(j,i) kept as its transpose. Non-symmetric mode: exactly what was supplied/computed for that direction, independent of m_off[j][i].
+    std::vector<Matrix66r> m_diag;                              // working diagonal blocks (.topLeftCorner(dims[i],dims[i])), mutated during factor()
+    std::vector<std::unordered_map<int, Matrix66r>> m_off;      // m_off[i][j]: block(i,j) (.topLeftCorner(dims[i],dims[j])). Symmetric mode: both directions stored, block(j,i) kept as its transpose. Non-symmetric mode: exactly what was supplied/computed for that direction, independent of m_off[j][i].
     std::vector<int> m_order;
     std::vector<PivotFactor> m_factors;  // filled by factor()/factorWithOrder(), in elimination order
 };

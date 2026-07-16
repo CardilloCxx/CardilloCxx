@@ -41,15 +41,14 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bo
             const int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - off;
             if (nV < 6) continue;
             if (!reg.all_of<cardillo::C_RigidBodyTag, cardillo::C_AngularVelocity3>(e)) continue;
-            const Vector3r omega = reg.get<cardillo::C_AngularVelocity3>(e).value;  // body-frame
-            const Vector3r I = m_dyn->system().getInertiaDiag(e);
-            const Vector3r Iomega = I.cwiseProduct(omega);
-            const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
+            const Vector3r& omega = reg.get<cardillo::C_AngularVelocity3>(e).value;
+            const Vector3r& I = m_dyn->system().getInertiaDiag(e);
+            const Vector3r& Iomega = I.cwiseProduct(omega);
             const Matrix33r omegaSkew = SkewSymmetricMatrix3r(omega);
             const Matrix33r IomegaSkew = SkewSymmetricMatrix3r(Iomega);
 
             // G_rot = 0.5 * ( [I*omega]_x - [omega]_x * I )
-            const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * Idiag);
+            const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * I.asDiagonal());
             const Matrix33r corr = -dt * Grot;  // M_eff = M - dt*G
 
             for (int r = 0; r < 3; ++r) {

@@ -37,6 +37,8 @@ using SkewSymmetricMatrix3r = Eigen::SkewSymmetricMatrix3<real_t>;
 
 using Vector4r = Eigen::Matrix<real_t, 4, 1>;
 using Matrix44r = Eigen::Matrix<real_t, 4, 4>;
+using Vector6r = Eigen::Matrix<real_t, 6, 1>;
+using Matrix66r = Eigen::Matrix<real_t, 6, 6>;
 
 using AngleAxis3r = Eigen::AngleAxis<real_t>;
 using Quaternion4r = Eigen::Quaternion<real_t>;

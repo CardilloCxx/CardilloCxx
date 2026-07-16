@@ -61,7 +61,7 @@ struct CondensedTopology {
     // PjAssembler::buildAndFactorS() for the reference formula this mirrors). Absent from this map
     // == "use MinvDiag as before", so an empty map is exactly behaviorally equivalent to this
     // feature not existing.
-    std::unordered_map<int, Matrixr<6, 6>> gyroMinvBlocks;
+    std::unordered_map<int, Matrix66r> gyroMinvBlocks;
 };
 
 // Builds and evaluates the condensed (block-sparse, matrix-free) system in exactly the same
