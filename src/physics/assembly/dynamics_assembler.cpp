@@ -365,7 +365,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
     const real_t EPS_A = (real_t)1e-10;
 
     // Emit a single 1xN row into W triplets without temporaries
-    auto emitRowRef = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const Eigen::Ref<const Eigen::Matrix<real_t, Eigen::Dynamic, 1>>& col) {
+    auto emitColRef = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const Eigen::Ref<const VectorXr>& col) {
         if (!reg.any_of<cardillo::C_BodyIndex>(ent)) return false;
         int b = reg.get<cardillo::C_BodyIndex>(ent).b;
         if (b < 0 || b >= (int)m_body_vel_offsets.size() - 1) return false;
@@ -420,8 +420,8 @@ void DynamicsAssembler::rebuildInteractionW_() {
                 g_error_vec.push_back(posError[i]);
                 const int row = springRowCounter++;
                 constraint.c_used[i] = true;
-                if (addA && i < constraint.WgA.cols()) emitRowRef(tripsWg, row, constraint.a, constraint.WgA.col(i));
-                if (addB && i < constraint.WgB.cols()) emitRowRef(tripsWg, row, constraint.b, constraint.WgB.col(i));
+                if (addA && i < constraint.WgA.cols()) emitColRef(tripsWg, row, constraint.a, constraint.WgA.col(i));
+                if (addB && i < constraint.WgB.cols()) emitColRef(tripsWg, row, constraint.b, constraint.WgB.col(i));
             }
         }
         // Damper rows
@@ -433,8 +433,8 @@ void DynamicsAssembler::rebuildInteractionW_() {
                 A_vel.push_back(velDamper[i]);
                 const int row = damperRowCounter++;
                 constraint.a_used[i] = true;
-                if (addA && i < constraint.WgammaA.cols()) emitRowRef(tripsWgamma, row, constraint.a, constraint.WgammaA.col(i));
-                if (addB && i < constraint.WgammaB.cols()) emitRowRef(tripsWgamma, row, constraint.b, constraint.WgammaB.col(i));
+                if (addA && i < constraint.WgammaA.cols()) emitColRef(tripsWgamma, row, constraint.a, constraint.WgammaA.col(i));
+                if (addB && i < constraint.WgammaB.cols()) emitColRef(tripsWgamma, row, constraint.b, constraint.WgammaB.col(i));
             }
         }
     }

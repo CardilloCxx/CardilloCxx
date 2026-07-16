@@ -141,9 +141,9 @@ class CARDILLO_API PhysicsEngine {
     /// Query the generalized position vector for an entity.
     VectorXr getPosition(entt::entity e) const { return m_world->getPosition(e); }
     /// Query the linear velocity vector for an entity.
-    VectorXr getLinearVelocity(entt::entity e) const { return m_world->getVelocity(e).head(3); }
+    VectorXr getLinearVelocity(entt::entity e) const { return m_world->getVelocity(e).head<3>(); }
     /// Query the angular velocity vector for an entity.
-    VectorXr getAngularVelocity(entt::entity e) const { return m_world->getVelocity(e).tail(3); }
+    VectorXr getAngularVelocity(entt::entity e) const { return m_world->getVelocity(e).tail<3>(); }
     /// Query the kinetic energy for an entity.
     real_t getKineticEnergy(entt::entity e) const { return m_world->getKineticEnergy(e); }
     /// Query whether an entity is static (has no mass or is explicitly marked as static).
