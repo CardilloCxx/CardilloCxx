@@ -51,18 +51,16 @@ TrajectoryTwist differentiatePose(const TrajectoryPose& prev, const TrajectoryPo
     q0.normalize();
     q1 = MathHelper::alignQuaternionTo(q1.normalized(), q0);
 
-    Quaternion4r dq = q1 * q0.conjugate();
+    // calculate relative quaternion in body-fixed basis
+    Quaternion4r dq = q0.conjugate() * q1;
     if (!dq.coeffs().allFinite() || dq.coeffs().squaredNorm() <= kEps) return out;
     dq.normalize();
-
-    const Vector3r imag = dq.vec();
-    const real_t imag_norm = imag.norm();
-    if (imag_norm <= kEps) return out;
-
-    real_t angle = (real_t)2 * std::atan2(imag_norm, std::clamp(dq.w(), (real_t)-1, (real_t)1));
-    if (angle > (real_t)M_PI) angle -= (real_t)2 * (real_t)M_PI;
-    if (angle < (real_t)-M_PI) angle += (real_t)2 * (real_t)M_PI;
-    out.second = (imag / imag_norm) * (angle / dt);
+    
+    // convert to Angle-Axis representation
+    AngleAxis3r angle_axis(dq);
+    
+    // angular velocity: scale the axis by the angular speed (angle / dt)
+    out.second = angle_axis.axis() * (angle_axis.angle() / dt);
     return out;
 }
 

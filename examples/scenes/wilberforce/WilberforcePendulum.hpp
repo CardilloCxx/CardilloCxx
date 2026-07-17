@@ -55,20 +55,30 @@ public:
         auto endpoints = engine.createBeams(parts, sec, springs, physics::RigidState{}, physics::RigidProps::withDensity(density), segments);
         m_top = endpoints.first;
         // cube_constraint = engine.addRigidConstraint(m_top);
+        // TODO: I think `getPosition` should be named `getPose`
+        VectorXr pose0 = engine.getPosition(m_top);
+        Vector3r position0 = pose0.head<3>();
+        Quaternion4r orientation0 = Quaternion4r(pose0.tail<4>().data());
         engine.makeStatic(m_top);
         engine.addTrajectory(m_top,
-                             // [](real_t t) {
-                             //     TrajectoryPose pose;
-                             //     pose.first = {0, 0.5 * std::sin(t), 0.0};
-                             //     pose.second = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 2, Vector3r::UnitY()));
-                             //     return pose;
-                             // },
-                             std::nullopt, [](real_t t) {
-                                 TrajectoryTwist twist;
-                                 twist.first = {0, 0.0 * std::sin(10 * t), 0.0};
-                                 twist.second = Vector3r::Zero();
-                                 return twist;
-                             });
+                            [position0, orientation0](real_t t) {
+                                TrajectoryPose pose;
+                                pose.first = position0 + Vector3r(0.0, 0.05 * std::sin(t), 0.0);
+                                pose.second = (
+                                    Quaternion4r(Eigen::AngleAxis<real_t>(0.25 * M_PI * std::sin(t), Vector3r::UnitX()))
+                                    * orientation0
+                                ).normalized();
+                                return pose;
+                            },
+                            std::nullopt
+                            );
+                            //  std::nullopt, 
+                            //  [](real_t t) {
+                            //      TrajectoryTwist twist;
+                            //      twist.first = {0, 0.0 * std::sin(10 * t), 0.0};
+                            //      twist.second = Vector3r::Zero();
+                            //      return twist;
+                            //  });
 
         m_bottom = endpoints.second;
 
