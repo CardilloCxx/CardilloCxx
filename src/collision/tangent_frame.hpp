@@ -11,7 +11,8 @@ namespace collision {
  * @brief Builds a right-handed orthonormal basis (t1, t2, n) from a contact normal.
  *
  * Uses a numerically stable variant of Frisvad's construction
- * (https://graphics.pixar.com/library/OrthonormalB/paper.pdf), with an additional
+ * (https://graphics.pixar.com/library/OrthonormalB/paper.pdf), 
+ * (https://backend.orbit.dtu.dk/ws/files/126824972/onb_frisvad_jgt2012_v2.pdf), with an additional
  * re-orthogonalization step near the south pole (n.z() -> -1) to keep (t1, t2) exactly
  * orthogonal to `n_in` even when it is only approximately antiparallel to +z.
  *
