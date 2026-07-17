@@ -28,18 +28,18 @@ inline Quaternion4r sanitizeQuaternion(const Quaternion4r& q_in) {
     return q;
 }
 
-inline Vector3r pointToWorld(const RigidBody::RigidState& f, const Vector3r& r_f) {
-    return f.position + f.rotation * r_f;
+inline Vector3r bodyToInertialPoint(const RigidBody::RigidState& s, const Vector3r& r_body) {
+    return s.position + s.rotation * r_body;
 }
-inline Vector3r worldToPoint(const RigidBody::RigidState& f, const Vector3r& r_w) {
-    return f.rotation.transpose() * (r_w - f.position);
+inline Vector3r inertialToBodyPoint(const RigidBody::RigidState& s, const Vector3r& r_inertial) {
+    return s.rotation.transpose() * (r_inertial - s.position);
 }
 
-inline Vector3r vecToWorld(const RigidBody::RigidState& f, const Vector3r& x_f) {
-    return f.rotation * x_f;
+inline Vector3r bodyToInertialVector(const RigidBody::RigidState& s, const Vector3r& x_body) {
+    return s.rotation * x_body;
 }
-inline Vector3r worldToVec(const RigidBody::RigidState& f, const Vector3r& x_w) {
-    return f.rotation.transpose() * x_w;
+inline Vector3r inertialToBodyVector(const RigidBody::RigidState& s, const Vector3r& x_inertial) {
+    return s.rotation.transpose() * x_inertial;
 }
 
 inline Quaternion4r orientation(const Quaternion4r& q, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
@@ -49,21 +49,21 @@ inline Quaternion4r orientation(const Quaternion4r& q, const RigidBody::RigidSta
     return MathHelper::alignQuaternionTo(q_out, Quaternion4r::Identity());
 }
 
-inline Vector3r bodyPointVelocityWorld(const RigidBody::RigidState& f, const Vector3r& r_world) {
-    const Vector3r omega_world = vecToWorld(f, f.angularVelocity);
-    return f.linearVelocity + omega_world.cross(r_world);
+inline Vector3r bodyToInertialVelocity(const RigidBody::RigidState& s, const Vector3r& r_inertial) {
+    const Vector3r omega_world = bodyToInertialVector(s, s.angularVelocity);
+    return s.linearVelocity + omega_world.cross(r_inertial);
 }
 
 }  // namespace detail
 
 /// Re-expresses a point given in `from`'s local frame as a point in `to`'s local frame.
 inline Vector3r point(const Vector3r& point, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
-    return detail::worldToPoint(to, detail::pointToWorld(from, point));
+    return detail::inertialToBodyPoint(to, detail::bodyToInertialPoint(from, point));
 }
 
 /// Re-expresses a free direction vector (no translation) from `from`'s local frame into `to`'s local frame.
 inline Vector3r direction(const Vector3r& dir, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
-    return detail::worldToVec(to, detail::vecToWorld(from, dir));
+    return detail::inertialToBodyVector(to, detail::bodyToInertialVector(from, dir));
 }
 
 /// Re-expresses a rotation matrix defined relative to `from`'s axes as one relative to `to`'s axes.
@@ -85,13 +85,13 @@ inline Vector3r linearVelocity(const Vector3r& v, const Vector3r& position, cons
     const auto& fromFrame = from;
     const auto& toFrame = to;
 
-    const Vector3r p_world = detail::pointToWorld(fromFrame, position);
+    const Vector3r p_world = detail::bodyToInertialPoint(fromFrame, position);
     const Vector3r r_from_world = p_world - fromFrame.position;
     const Vector3r r_to_world = p_world - toFrame.position;
 
-    const Vector3r v_world = detail::bodyPointVelocityWorld(fromFrame, r_from_world) + detail::vecToWorld(fromFrame, v);
-    const Vector3r v_rel_world = v_world - detail::bodyPointVelocityWorld(toFrame, r_to_world);
-    return detail::worldToVec(toFrame, v_rel_world);
+    const Vector3r v_world = detail::bodyToInertialVelocity(fromFrame, r_from_world) + detail::bodyToInertialVector(fromFrame, v);
+    const Vector3r v_rel_world = v_world - detail::bodyToInertialVelocity(toFrame, r_to_world);
+    return detail::inertialToBodyVector(toFrame, v_rel_world);
 }
 
 /**
@@ -103,8 +103,8 @@ inline Vector3r angularVelocity(const Vector3r& omega, const RigidBody::RigidSta
     const auto& fromFrame = from;
     const auto& toFrame = to;
 
-    const Vector3r w_world = detail::vecToWorld(fromFrame, fromFrame.angularVelocity + omega);
-    return detail::worldToVec(toFrame, w_world) - toFrame.angularVelocity;
+    const Vector3r w_world = detail::bodyToInertialVector(fromFrame, fromFrame.angularVelocity + omega);
+    return detail::inertialToBodyVector(toFrame, w_world) - toFrame.angularVelocity;
 }
 
 /// Re-expresses a full rigid-body state (of a body rigidly attached to `from`) relative to `to` instead.

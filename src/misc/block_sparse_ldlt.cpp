@@ -280,7 +280,7 @@ VectorXr BlockSparseLDLT::solveSymmetric(const VectorXr& rhs) const {
     std::vector<int> offset(n + 1, 0);
     for (int i = 0; i < n; ++i) offset[(size_t)i + 1] = offset[(size_t)i] + m_dims[(size_t)i];
 
-    std::vector<Vectorr<6>> y(n, Vectorr<6>::Zero());
+    std::vector<Vector6r> y(n, Vector6r::Zero());
     for (int i = 0; i < n; ++i) y[(size_t)i].head(m_dims[(size_t)i]) = rhs.segment(offset[(size_t)i], m_dims[(size_t)i]);
 
     // Forward substitution (L y = rhs, L unit lower-triangular in elimination order): visiting
@@ -294,7 +294,7 @@ VectorXr BlockSparseLDLT::solveSymmetric(const VectorXr& rhs) const {
         }
     }
 
-    std::vector<Vectorr<6>> x = y;
+    std::vector<Vector6r> x = y;
     for (const auto& pf : m_factors) {
         const int dimK = m_dims[(size_t)pf.k];
         x[(size_t)pf.k].head(dimK) = pf.Dinv.topLeftCorner(dimK, dimK) * y[(size_t)pf.k].head(dimK);
@@ -324,7 +324,7 @@ VectorXr BlockSparseLDLT::solveNonSymmetric(const VectorXr& rhs) const {
     std::vector<int> offset(n + 1, 0);
     for (int i = 0; i < n; ++i) offset[(size_t)i + 1] = offset[(size_t)i] + m_dims[(size_t)i];
 
-    std::vector<Vectorr<6>> y(n, Vectorr<6>::Zero());
+    std::vector<Vector6r> y(n, Vector6r::Zero());
     for (int i = 0; i < n; ++i) y[(size_t)i].head(m_dims[(size_t)i]) = rhs.segment(offset[(size_t)i], m_dims[(size_t)i]);
 
     // Forward substitution (L y = rhs) -- same structure as the symmetric case, L is unit
@@ -339,7 +339,7 @@ VectorXr BlockSparseLDLT::solveNonSymmetric(const VectorXr& rhs) const {
 
     // Backward substitution (U x = y), reverse elimination order: x_k = Dinv_k * (y_k - sum_q
     // U_{k,q} * x_q) -- subtract first, then apply Dinv, using the stored raw U blocks.
-    std::vector<Vectorr<6>> x = y;
+    std::vector<Vector6r> x = y;
     for (auto it = m_factors.rbegin(); it != m_factors.rend(); ++it) {
         const int dimK = m_dims[(size_t)it->k];
         for (const auto& pr : it->U) {

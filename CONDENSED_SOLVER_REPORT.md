@@ -294,7 +294,7 @@ scene/alpha combination, not a Nesterov-specific risk.**
 
 Replaced every per-block temporary in the hot path (`blockResidual`'s residual, `lamOld`, the
 Newton/projection update, the scatter delta, the Jacobi-gather accumulator, the chaotic-mode
-per-block scratch) with `Vectorr<6>` — a fixed-size, stack-allocated Eigen type already used
+per-block scratch) with `Vector6r` — a fixed-size, stack-allocated Eigen type already used
 elsewhere in this codebase — instead of dynamically-sized `VectorXr`. `RowBlock::Ja`/`Jb`/`Gii`/
 `GiiInv` were deliberately left as dynamically-sized `MatrixXXr`: they're built once per `solve()`
 call in `CondensedAssembler`, not once per block per sweep, so they were never the bottleneck.
@@ -1165,7 +1165,7 @@ asked and is left for whoever next touches domino's behavior after this merge.
    coupling — may be what's needed to make it help on contact-heavy branching scenes like
    `hangbridge` where iteration count is dominated by something `true_schur` today doesn't touch.
 8. **Compile-time block dimensions** (flagged by the user as a distinct future step, not started):
-   extend the `Buf6`/`Vectorr<6>` fixed-size-buffer optimization already applied to per-block
+   extend the `Buf6`/`Vector6r` fixed-size-buffer optimization already applied to per-block
    *vectors* in `condensed_solver.cpp`'s hot path to `RowBlock`'s *matrices* (`Ja`, `Jb`, `Gii`,
    `GiiInv`), which are still dynamically-sized `MatrixXXr` built once per `solve()` call. Lower
    risk to attempt after `true_schur` is further validated, not alongside it — bundling two
