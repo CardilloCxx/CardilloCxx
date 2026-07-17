@@ -68,7 +68,7 @@ class CsvWriter {
         for (auto e : view) {
             const auto& tag = view.get<cardillo::C_TrackTag>(e);
             const auto state = cardillo::RigidBody::getState(reg, e);
-            const auto& euler = state.rotation.eulerAngles(0, 1, 2);
+            const auto euler = state.rotation.canonicalEulerAngles(0, 1, 2);
             writeRow(t, tag.name, state.position.x(), state.position.y(), state.position.z(), state.linearVelocity.x(), state.linearVelocity.y(), state.linearVelocity.z(), state.angularVelocity.x(),
                      state.angularVelocity.y(), state.angularVelocity.z(), euler.x(), euler.y(), euler.z());
         }

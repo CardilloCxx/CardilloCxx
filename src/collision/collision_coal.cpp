@@ -31,15 +31,18 @@ CollisionCoal::CollisionCoal(cardillo::World& world, cardillo::misc::TimingManag
 CollisionCoal::~CollisionCoal() = default;
 
 namespace {
+// TODO: We should align real_t and coal::CoalScalar in CMake and remove these conversations?
 inline coal::Quatf toCoalQuat(const Quaternion4r& q) {
-    return coal::Quatf(q.w(), q.x(), q.y(), q.z());
+    return coal::Quatf(q);
+    // return q.template cast<coal::CoalScalar>();
 }
 inline coal::Vec3s toCoalVec3(const Vector3r& v) {
-    return coal::Vec3s(v.x(), v.y(), v.z());
+    return coal::Vec3s(v);
+    // return v.cast<coal::CoalScalar>();
 }
 inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e) {
-    coal::Transform3s X;
-    X.setIdentity();
+    coal::Transform3s X{}; // sets identity in ctor
+    // X.setIdentity(); // TODO: This is already done?
     Vector3r x = Vector3r::Zero();
     Quaternion4r q = Quaternion4r::Identity();
     if (reg.any_of<cardillo::C_Position3>(e)) x = reg.get<cardillo::C_Position3>(e).value;
@@ -145,7 +148,7 @@ inline Contact makeContact(entt::entity ea, entt::entity eb, const cardillo::Rig
     cardillo::collision::tangentFrameFromNormal(nN, c.tangent1, c.tangent2);
     c.point = (p1W + p2W) * (real_t)0.5;
     c.penetration = std::max<real_t>(0.0, depth);
-    const cardillo::RigidBody::RigidState inertial = cardillo::RigidBody::RigidState::inertial();
+    const cardillo::RigidBody::RigidState inertial{}; // default ctro => identity
     c.pointA_body = cardillo::transform::point(c.point, inertial, stateA);
     c.normalA_body = cardillo::transform::direction(c.normal, inertial, stateA);
     c.pointB_body = cardillo::transform::point(c.point, inertial, stateB);
@@ -189,7 +192,7 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
             const coal::ContactPatch& patch = patch_res.getContactPatch(ip);
             const std::size_t m = patch.size();
             if (m == 0) continue;
-            const Vector3r nW(patch.getNormal().x(), patch.getNormal().y(), patch.getNormal().z());
+            const Vector3r nW(patch.getNormal());
             const real_t depth = (real_t)patch.penetration_depth;
 
             ContactManifold cm;
@@ -200,9 +203,7 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
             for (std::size_t iv = 0; iv < m; ++iv) {
                 const auto p1Wc = patch.getPointShape1(iv);
                 const auto p2Wc = patch.getPointShape2(iv);
-                const Vector3r p1W(p1Wc.x(), p1Wc.y(), p1Wc.z());
-                const Vector3r p2W(p2Wc.x(), p2Wc.y(), p2Wc.z());
-                Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, depth);
+                Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1Wc, p2Wc, nW, depth);
                 if (iv == 0) {
                     cm.normal = c.normal;
                     cm.tangent1 = c.tangent1;
@@ -223,10 +224,7 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
     // contact, since there's no patch to group them by.
     for (int k = 0; k < cres.numContacts(); ++k) {
         const coal::Contact c0 = cres.getContact(k);
-        const Vector3r nW(c0.normal.x(), c0.normal.y(), c0.normal.z());
-        const Vector3r p1W(c0.nearest_points[0].x(), c0.nearest_points[0].y(), c0.nearest_points[0].z());
-        const Vector3r p2W(c0.nearest_points[1].x(), c0.nearest_points[1].y(), c0.nearest_points[1].z());
-        Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1W, p2W, nW, (real_t)c0.penetration_depth);
+        Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, c0.nearest_points[0], c0.nearest_points[1], c0.normal, (real_t)c0.penetration_depth);
 
         ContactManifold cm;
         cm.a = ea;

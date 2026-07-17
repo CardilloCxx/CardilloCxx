@@ -36,7 +36,7 @@ namespace {
 // of sweeps). Switching those temporaries to Buf6 removes that allocation churn entirely; `Ja`/
 // `Jb`/`Gii`/`GiiInv` stay dynamically-sized MatrixXXr (built once per solve() call in
 // CondensedAssembler, not per sweep, so their allocation cost is amortized and not the bottleneck).
-using Buf6 = Vectorr<6>;
+using Buf6 = Vector6r;
 
 // Same clip as ProjectedGaussSeidel's project()/project_all(): normal impulse (index 0) clamped to
 // <= 0, tangential (indices 1,2) scaled toward the Coulomb disk of radius -mu*lambda[0]. No-op for
