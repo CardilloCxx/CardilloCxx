@@ -59,8 +59,8 @@ VectorXr World::getMassDiag(entt::entity e) const {
     if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass>(e)) {
         return VectorXr::Constant(3, m_reg.get<C_Mass>(e).m);
     }
+
     throw std::runtime_error("World::getMassDiag() called on entity without known mass.");
-    // return VectorXr(0);
 }
 
 MatrixXXr World::getMass(entt::entity e) const {
@@ -85,7 +85,6 @@ VectorXr World::getPosition(entt::entity e) const {
         return m_reg.get<C_Position3>(e).value;
     }
     throw std::runtime_error("World::getPosition() called on entity without position.");
-    // return VectorXr(0);
 }
 
 VectorXr World::getVelocity(entt::entity e) const {
@@ -101,7 +100,9 @@ VectorXr World::getVelocity(entt::entity e) const {
         return m_reg.get<C_LinearVelocity3>(e).value; // linear velocity in inertial basis
     }
 
-    // TODO: Is this fallback required?
+    // throw std::runtime_error("World::getVelocity() called on entity without velocity.");
+
+    // TODO: Where is this required?
     auto state = RigidBody::getState(m_reg, e);
     VectorXr v(6);
     v.head<3>() = state.linearVelocity;
@@ -146,7 +147,6 @@ VectorXr World::getForceExternal(entt::entity e) const {
         return fg;
     }
     throw std::runtime_error("World::getForceExternal() called on entity without external force.");
-    // return VectorXr(0);
 }
 
 VectorXr World::getForceGyroscopic(entt::entity e) const {
@@ -161,10 +161,13 @@ VectorXr World::getForceGyroscopic(entt::entity e) const {
         }
         return out;
     }
-    // // Point masses have no gyroscopic contribution
-    // if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass>(e)) {
-    //     return VectorXr::Zero(3);
-    // }
+
+    // Point masses have no gyroscopic contribution; returning a zero torque 
+    // is still required for the current interface.
+    if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass>(e)) {
+        return VectorXr::Zero(3);
+    }
+
     throw std::runtime_error("World::getForceGyroscopic() called on entity without gyroscopy.");
     // return VectorXr(0);
 }
@@ -181,11 +184,11 @@ Vector3r World::getInertiaDiag(entt::entity e) const {
     }
 
     throw std::runtime_error("World::getInertiaDiag() called on entity without inertia.");
-    // return Vector3r::Zero();
 }
 
 real_t World::getKineticEnergy(entt::entity e) const {
     real_t KE = (real_t)0;
+    
     // Rigid body
     if (m_reg.all_of<C_RigidBodyTag, C_PhysicsObject, C_Mass, C_InertiaDiag, C_LinearVelocity3, C_AngularVelocity3>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
@@ -194,15 +197,17 @@ real_t World::getKineticEnergy(entt::entity e) const {
         const Vector3r& w = m_reg.get<C_AngularVelocity3>(e).value;
         KE += (real_t)0.5 * m * v.squaredNorm(); // linear velocity
         KE += (real_t)0.5 * w.dot(Idiag.cwiseProduct(w)); // angular velocity
+        return KE;
     }
 
-    // TODO: Can an entity be both a pint mass and a rigid body?
     // Point mass
-    else if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass, C_LinearVelocity3>(e)) {
+    if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass, C_LinearVelocity3>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
         const Vector3r v = m_reg.get<C_LinearVelocity3>(e).value;
         KE += (real_t)0.5 * m * v.squaredNorm();
+        return KE;
     }
+
     return KE;
 }
 
