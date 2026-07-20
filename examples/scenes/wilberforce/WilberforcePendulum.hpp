@@ -104,7 +104,7 @@ public:
         auto Idiag = engine.ecs().get<C_InertiaDiag>(m_bob).I;
         std::cout << "Bob inertia diag: Ixx = " << Idiag.x() << ", Iyy = " << Idiag.y() << ", Izz = " << Idiag.z() << std::endl;
 
-        auto RotMat = engine.ecs().get<C_Orientation>(m_bob).value.toRotationMatrix();
+        auto RotMat = engine.ecs().get<C_Orientation>(m_bob).rotation;
         std::cout << "Bob inertia world frame:\n" << RotMat * Idiag.asDiagonal() * RotMat.transpose() << std::endl;
         std::cout << "Bob mass: " << engine.getMass(m_bob).col(0).row(0) << " kg" << std::endl;
 

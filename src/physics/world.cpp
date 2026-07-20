@@ -284,11 +284,11 @@ void World::setOrientation(entt::entity e, const Quaternion4r& q_in) {
     if (!m_reg.valid(e)) return;
     if (m_reg.any_of<C_Orientation>(e)) {
         const Quaternion4r& q_ref = m_reg.get<C_Orientation>(e).value;
-        m_reg.get<C_Orientation>(e).value = MathHelper::alignQuaternionTo(q_in, q_ref);
+        m_reg.get<C_Orientation>(e).setValue(MathHelper::alignQuaternionTo(q_in, q_ref));
     } else {
         Quaternion4r q = q_in;
         q.normalize();
-        m_reg.emplace<C_Orientation>(e, C_Orientation{q});
+        m_reg.emplace<C_Orientation>(e, C_Orientation::fromQuaternion(q));
     }
     markStateDirty();
 }

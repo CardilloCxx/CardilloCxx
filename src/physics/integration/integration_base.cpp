@@ -19,12 +19,13 @@ void IntegrationBase::explicitPositionUpdate(World& world, real_t h) {
         const Vector3r& omega = angularVel.value;
         const Quaternion4r q_prev = orientation.value;
 
-        Vector4r& P = orientation.value.coeffs();
+        Quaternion4r q = q_prev;
+        Vector4r& P = q.coeffs();
         real_t w = P(3);
         P(3) -= h * 0.5 * P.head<3>().dot(omega);
         P.head<3>() += h * 0.5 * (w * omega + P.head<3>().cross(omega));
 
-        orientation.value = MathHelper::alignQuaternionTo(orientation.value, q_prev);
+        orientation.setValue(MathHelper::alignQuaternionTo(q, q_prev));
     }
 }
 
@@ -51,10 +52,10 @@ void IntegrationBase::linearImplicitPositionUpdate(World& world, real_t h) {
 
         const Matrix44r A = Matrix44r::Identity() - 0.5 * h * D;
 
-        Vector4r& P = orientation.value.coeffs();
-        P = A.inverse() * P;
+        Quaternion4r q = q_prev;
+        q.coeffs() = A.inverse() * q.coeffs();
 
-        orientation.value = MathHelper::alignQuaternionTo(orientation.value, q_prev);
+        orientation.setValue(MathHelper::alignQuaternionTo(q, q_prev));
     }
 }
 

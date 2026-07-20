@@ -32,6 +32,13 @@ struct C_AngularAcceleration3 {
 };
 struct C_Orientation {
     Quaternion4r value;
+    Matrix33r rotation;  // kept in sync with `value`; always update both via setValue()/fromQuaternion()
+
+    static C_Orientation fromQuaternion(const Quaternion4r& q) { return C_Orientation{q, q.toRotationMatrix()}; }
+    void setValue(const Quaternion4r& q) {
+        value = q;
+        rotation = q.toRotationMatrix();
+    }
 };
 struct C_DirectorTriad {
     Matrix33r value;
