@@ -68,8 +68,6 @@ ConstraintResult LinearDistanceConstraint::getConstraint() const {
 
     Vector3r n = (len > (real_t)0) ? (r / len) : Vector3r((real_t)1, (real_t)0, (real_t)0);
 
-    const Vector3r rAw = wa.RA * m_rA_local;
-    const Vector3r rBw = wa.RB * m_rB_local;
     // Prepare single-row matrices (6 x 1)
     out.WgA = MatrixXXr::Zero(6, 1);
     out.WgB = MatrixXXr::Zero(6, 1);

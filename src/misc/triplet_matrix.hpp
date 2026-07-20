@@ -18,7 +18,7 @@ class TripletMatrix {
 
     TripletMatrix(int rows, int cols) : n_rows_(rows), n_cols_(cols) {}
 
-    TripletMatrix(int rows, int cols, std::shared_ptr<std::vector<Triplet>> data) : n_rows_(rows), n_cols_(cols) { blocks_.push_back({0, 0, 1.0, false, data}); }
+    TripletMatrix(int rows, int cols, std::shared_ptr<std::vector<Triplet>> data) : n_rows_(rows), n_cols_(cols) { blocks_.push_back({0, 0, 1.0, false, std::move(data)}); }
 
     // Static constructors
     static TripletMatrix zero(int rows, int cols) { return TripletMatrix(rows, cols); }
