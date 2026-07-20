@@ -7,7 +7,7 @@
 namespace cardillo::physics::assembly {
 PjAssembler::~PjAssembler() = default;
 bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bool lambdaTheta) {
-    auto sc = m_dyn->timings()->scope(cardillo::misc::TimingManager::TimerId::BuildAndFactorS);
+    auto sc = m_dyn->timings()->scope(misc::TimingManager::TimerId::BuildAndFactorS);
 
     const int totalV = (m_dyn->bodyVelOffsets().empty() ? 0 : m_dyn->bodyVelOffsets().back());
     const int nSprings = m_dyn->Wg().nRows();
@@ -33,23 +33,22 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bo
     // This adds -dt * G(omega_n) to each rigid body's rotational 3x3 block and breaks symmetry.
     if (implicitGyro) {
         const auto& reg = m_dyn->system().ecs();
-        auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
+        auto view = reg.view<C_BodyIndex, C_PhysicsObject>();
         for (auto [e, bi] : view.each()) {
             const int b = bi.b;
             if (b < 0 || b + 1 >= (int)m_dyn->bodyVelOffsets().size()) continue;
             const int off = m_dyn->bodyVelOffsets()[(size_t)b];
             const int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - off;
             if (nV < 6) continue;
-            if (!reg.all_of<cardillo::C_RigidBodyTag, cardillo::C_AngularVelocity3>(e)) continue;
-            const Vector3r omega = reg.get<cardillo::C_AngularVelocity3>(e).value;  // body-frame
-            const Vector3r I = m_dyn->system().getInertiaDiag(e);
-            const Vector3r Iomega = I.cwiseProduct(omega);
-            const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
+            if (!reg.all_of<C_RigidBodyTag, C_AngularVelocity3>(e)) continue;
+            const Vector3r& omega = reg.get<C_AngularVelocity3>(e).value;
+            const Vector3r& I = m_dyn->system().getInertiaDiag(e);
+            const Vector3r& Iomega = I.cwiseProduct(omega);
             const Matrix33r omegaSkew = SkewSymmetricMatrix3r(omega);
             const Matrix33r IomegaSkew = SkewSymmetricMatrix3r(Iomega);
 
             // G_rot = 0.5 * ( [I*omega]_x - [omega]_x * I )
-            const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * Idiag);
+            const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * I.asDiagonal());
             const Matrix33r corr = -dt * Grot;  // M_eff = M - dt*G
 
             for (int r = 0; r < 3; ++r) {

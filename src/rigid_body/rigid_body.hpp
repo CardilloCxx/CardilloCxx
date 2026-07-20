@@ -12,7 +12,7 @@
  */
 namespace cardillo::RigidBody {
 
-using RigidState = cardillo::physics::RigidState;
+using RigidState = physics::RigidState;
 
 namespace detail {
 
@@ -24,8 +24,10 @@ inline RigidState readStateFromComponents(const entt::registry& reg, entt::entit
     if (const auto* c = reg.try_get<C_Position3>(e)) state.position = c->value;
     if (const auto* c = reg.try_get<C_LinearVelocity3>(e)) state.linearVelocity = c->value;
     if (const auto* c = reg.try_get<C_AngularVelocity3>(e)) state.angularVelocity = c->value;
-    if (const auto* c = reg.try_get<C_Orientation>(e)) state.orientation = c->value;
-    state.rotation = state.orientation.toRotationMatrix();
+    if (const auto* c = reg.try_get<C_Orientation>(e)) {
+        state.orientation = c->value;
+        state.rotation = c->rotation;
+    }
     return state;
 }
 

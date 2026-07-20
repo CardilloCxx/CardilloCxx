@@ -962,7 +962,7 @@ These are specific, reproducible findings from that comparison, not general
 claims:
 
 - The per-block hot path (residual, update, scatter) uses fixed-size
-  ``Vectorr<6>`` stack buffers, not dynamically-sized ``VectorXr`` -- an
+  ``Vector6r`` stack buffers, not dynamically-sized ``VectorXr`` -- an
   earlier version allocated several small ``VectorXr`` temporaries per block
   per sweep, which dominated wall-clock on scenes with many contacts. This
   closed roughly a third of the wall-clock gap to PGS on ``gauss_seidel``

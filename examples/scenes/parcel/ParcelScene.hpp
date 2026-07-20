@@ -13,7 +13,7 @@ public:
     ParcelScene() = default;
     ~ParcelScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
         // Create a treadmill that moves with given velocity
@@ -100,7 +100,7 @@ public:
         engine.setAngularVelocity(m_treatmill_entity, Vector3r::Zero());
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         maybeSpawnParcel(engine, t);
         if (m_treatmill_entity != entt::null) {
             resetPosition(engine);

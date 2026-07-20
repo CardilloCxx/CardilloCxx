@@ -57,7 +57,7 @@ public:
                                                /*D_rot*/   Vector3r::Zero());
         } else {
             using namespace cardillo;
-            using namespace cardillo::misc;
+            using namespace misc;
 
             const real_t wireDiameter = (real_t)0.0003;                // 0.3 mm
             const real_t coilRadius   = (real_t)0.001;                  // 1 mm

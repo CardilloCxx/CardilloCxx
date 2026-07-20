@@ -15,7 +15,7 @@ class ConveyorScene : public SceneBase {
    public:
     const char* sceneName() const override { return "conveyor"; }
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
         m_engine = &engine;
@@ -116,7 +116,7 @@ class ConveyorScene : public SceneBase {
         createRollers(rollerStart, rollerEnd, rollerSpacing, rollerRadius, rollerHalfLength, (real_t)0.000005);
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         // Spawn new packages at regular intervals with random shape and initial velocity.
         const real_t spawnInterval = (real_t)0.5;
         if (t >= m_nextSpawnTime) {
@@ -273,7 +273,7 @@ class ConveyorScene : public SceneBase {
     }
 
    private:
-    cardillo::physics::PhysicsEngine* m_engine{nullptr};
+    physics::PhysicsEngine* m_engine{nullptr};
     real_t m_nextSpawnTime{0};
     Vector3r m_leftFeederSpawn{Vector3r::Zero()};
     Vector3r m_rightFeederSpawn{Vector3r::Zero()};

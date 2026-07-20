@@ -103,7 +103,7 @@ class ProgressBar {
         bar.reserve(m_barBlocks);
         for (std::size_t i = 0; i < m_barBlocks; ++i) {
             if (i < filled) {
-                bar += std::string("█");
+                bar += "█";
             } else {
                 bar += ' ';
             }

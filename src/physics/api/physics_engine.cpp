@@ -18,9 +18,9 @@ PhysicsEngine::PhysicsEngine(const config::Config& cfg) : PhysicsEngine() {
 void PhysicsEngine::initFromConfig(const config::Config& cfg) {
     m_cfg = cfg;
     if (!m_world) m_world = std::make_unique<World>(m_cfg);
-    m_timings = std::make_unique<cardillo::misc::TimingManager>();
-    m_collision_mgr = std::make_unique<cardillo::collision::CollisionCoal>(*m_world, m_timings.get(), m_cfg);
-    m_pipeline = std::make_unique<cardillo::physics::pipeline::PhysicsPipeline>(*m_world, m_cfg, m_collision_mgr.get(), m_timings.get());
+    m_timings = std::make_unique<misc::TimingManager>();
+    m_collision_mgr = std::make_unique<collision::CollisionCoal>(*m_world, m_timings.get(), m_cfg);
+    m_pipeline = std::make_unique<physics::pipeline::PhysicsPipeline>(*m_world, m_cfg, m_collision_mgr.get(), m_timings.get());
 }
 
 void PhysicsEngine::step(real_t dt) {
@@ -36,7 +36,7 @@ collision::CollisionCoal& PhysicsEngine::collisionManager() {
     throw std::runtime_error("PhysicsEngine::collisionManager(): collision manager not initialized");
 }
 
-cardillo::misc::TimingManager& PhysicsEngine::timings() {
+misc::TimingManager& PhysicsEngine::timings() {
     if (m_timings) return *m_timings;
     throw std::runtime_error("PhysicsEngine::timings(): timings manager not initialized");
 }
@@ -45,12 +45,12 @@ bool PhysicsEngine::isFinished() const {
     return m_pipeline ? m_pipeline->isFinished() : true;
 }
 
-cardillo::World& PhysicsEngine::world() {
+World& PhysicsEngine::world() {
     if (m_world) return *m_world;
     throw std::runtime_error("PhysicsEngine::world(): world not initialized");
 }
 
-const cardillo::World& PhysicsEngine::world() const {
+const World& PhysicsEngine::world() const {
     if (m_world) return *m_world;
     throw std::runtime_error("PhysicsEngine::world() const: world not initialized");
 }
@@ -73,7 +73,7 @@ void PhysicsEngine::disableCollisionBetween(entt::entity a, entt::entity b) {
 }
 
 void PhysicsEngine::setConstraintScalarVelocity(size_t constraintIndex, real_t v) {
-    if (constraintIndex < 0 || constraintIndex >= m_world->constraintPatterns().size()) {
+    if (constraintIndex >= m_world->constraintPatterns().size()) {
         std::cerr << "Warning: setConstraintScalarVelocity: constraintIndex " << constraintIndex << " out of bounds" << std::endl;
         return;
     }
@@ -81,7 +81,7 @@ void PhysicsEngine::setConstraintScalarVelocity(size_t constraintIndex, real_t v
 }
 
 void PhysicsEngine::setConstraintLinearVelocity(size_t constraintIndex, const Vector3r& v) {
-    if (constraintIndex < 0 || constraintIndex >= m_world->constraintPatterns().size()) {
+    if (constraintIndex >= m_world->constraintPatterns().size()) {
         std::cerr << "Warning: setConstraintLinearVelocity: constraintIndex " << constraintIndex << " out of bounds" << std::endl;
         return;
     }
@@ -89,7 +89,7 @@ void PhysicsEngine::setConstraintLinearVelocity(size_t constraintIndex, const Ve
 }
 
 void PhysicsEngine::setConstraintAngularVelocity(size_t constraintIndex, const Vector3r& w) {
-    if (constraintIndex < 0 || constraintIndex >= m_world->constraintPatterns().size()) {
+    if (constraintIndex >= m_world->constraintPatterns().size()) {
         std::cerr << "Warning: setConstraintAngularVelocity: constraintIndex " << constraintIndex << " out of bounds" << std::endl;
         return;
     }

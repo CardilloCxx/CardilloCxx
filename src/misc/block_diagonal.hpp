@@ -108,7 +108,7 @@ class BlockDiagonal {
      * heap allocation operator* incurs on every call, which matters when applied once per
      * CG/PJ iteration -- @p out is expected to be a buffer reused across iterations by the caller.
      * Every block in this codebase's usage is <=6x6 (contact/spring/damper rows), so the per-block
-     * product is staged through a fixed Vectorr<6> stack scratch even when out aliases in.
+     * product is staged through a fixed Vector6r stack scratch even when out aliases in.
      */
     void applyTo(const VectorXr& in, VectorXr& out) const {
         if ((std::size_t)in.size() != n_) throw std::invalid_argument("Dimension mismatch." + std::to_string(in.size()) + " vs " + std::to_string(n_));
@@ -120,7 +120,7 @@ class BlockDiagonal {
             return;
         }
 
-        Vectorr<6> scratch;
+        Vector6r scratch;
         int offset = 0;
         for (const auto& block : blocks_) {
             const int blockSize = block.rows();

@@ -61,7 +61,7 @@ struct CondensedTopology {
     // PjAssembler::buildAndFactorS() for the reference formula this mirrors). Absent from this map
     // == "use MinvDiag as before", so an empty map is exactly behaviorally equivalent to this
     // feature not existing.
-    std::unordered_map<int, Matrixr<6, 6>> gyroMinvBlocks;
+    std::unordered_map<int, Matrix66r> gyroMinvBlocks;
 };
 
 // Builds and evaluates the condensed (block-sparse, matrix-free) system in exactly the same
@@ -71,7 +71,7 @@ struct CondensedTopology {
 // never through Eigen::SparseMatrix.
 class CondensedAssembler {
    public:
-    CondensedAssembler(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
+    CondensedAssembler(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
 
     // Builds the RowBlock list + body incidence from the current constraintResults()/contacts(),
     // and (see CondensedTopology::gyroMinvBlocks) each implicit-gyroscopic body's effective inverse
@@ -106,11 +106,11 @@ class CondensedAssembler {
     // genuinely non-symmetric; otherwise (every scene without an active implicit-gyroscopic body in
     // its compliant chain) uses the default symmetric=true mode, unchanged in cost from before this
     // capability existed.
-    cardillo::misc::BlockSparseLDLT buildBilateralFactorization(const CondensedTopology& topo) const;
+    misc::BlockSparseLDLT buildBilateralFactorization(const CondensedTopology& topo) const;
 
    private:
-    cardillo::physics::DynamicsAssembler* m_dyn;
-    cardillo::config::Config m_cfg;
+    physics::DynamicsAssembler* m_dyn;
+    config::Config m_cfg;
 
     // Cache of the last elimination order computed by buildBilateralFactorization(), keyed on the
     // bilateral graph's *structure* (dims + edge node pairs -- not the numeric Gii/complianceDiag

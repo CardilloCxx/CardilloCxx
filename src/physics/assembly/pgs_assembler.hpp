@@ -10,7 +10,7 @@ namespace cardillo::physics::assembly {
 
 class PgsAssembler {
    public:
-    PgsAssembler(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
+    PgsAssembler(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
 
     // Convenience overload: computes ufree() internally. Prefer the explicit overload below when
     // the caller already needs ufree() itself, to avoid computing it twice per solve.
@@ -24,8 +24,8 @@ class PgsAssembler {
     VectorXr C(real_t dt, real_t theta) const;
 
    private:
-    cardillo::physics::DynamicsAssembler* m_dyn{nullptr};
-    cardillo::config::Config m_cfg;
+    physics::DynamicsAssembler* m_dyn{nullptr};
+    config::Config m_cfg;
 };
 
 }  // namespace cardillo::physics::assembly

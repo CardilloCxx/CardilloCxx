@@ -16,9 +16,9 @@ class CableBunchScene : public SceneBase {
     CableBunchScene() = default;
     ~CableBunchScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         // Gravity on (Z is up)
         engine.setGravity(Vector3r(0, 0, -9.81));
@@ -146,7 +146,7 @@ class CableBunchScene : public SceneBase {
         engine.addTrajectory(anchor, trajSpline, (real_t)6.0);
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override { (void)engine; }
+    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override { (void)engine; }
 
    private:
     entt::entity m_anchor;

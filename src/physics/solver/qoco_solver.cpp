@@ -26,8 +26,8 @@ T loadSymbol(void* handle, const char* name) {
 
 }  // namespace
 
-QocoSolver::QocoSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(dyn), m_cfg(cfg) {
-    m_assembler = cardillo::physics::assembly::QocoAssembler(m_dyn);
+QocoSolver::QocoSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(dyn), m_cfg(cfg) {
+    m_assembler = physics::assembly::QocoAssembler(m_dyn);
 }
 
 QocoSolver::~QocoSolver() {
@@ -116,7 +116,7 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
     QOCOCscMatrix *P, *A, *G;
     QOCOFloat *c, *b, *h;
     {
-        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoAssembly);
+        auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::QocoAssembly);
         P = m_assembler.P(dt, theta);
         c = m_assembler.c(dt, theta);
         A = (p > 0) ? m_assembler.A(dt, theta) : nullptr;
@@ -166,7 +166,7 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
                          "config setting.\n";
     }
 
-    auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoSetup);
+    auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::QocoSetup);
 
     m_qoco_solver = (QOCOSolver*)malloc(sizeof(QOCOSolver));
     QOCOInt exit = m_qoco_setup(m_qoco_solver, n, m, p, P, c, A, b, G, h, l, nsoc, nsoc ? qvec.data() : nullptr, settings);
@@ -192,7 +192,7 @@ VectorXr QocoSolver::solve(real_t dt, real_t theta) {
     else
         updateQocoSolver(dt, theta);
 
-    auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::QocoSolve);
+    auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::QocoSolve);
     QOCOInt exit = m_qoco_solve(m_qoco_solver);
 
     if (exit != QOCO_SOLVED) {
@@ -223,7 +223,7 @@ VectorXr QocoSolver::solve(real_t dt, real_t theta) {
     VectorXr Smu = m_assembler.computeSmu();
     VectorXr impulse = VectorXr::Zero(m_dyn.numContactRows());
     for (int i = 0; i < impulse.size(); ++i) impulse[i] = sol->z[i] * Smu[i];
-    cardillo::solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
+    solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
 
     // Solution vector x contains stacked [v, lambda_g, lambda_gamma]
     VectorXr x_vec = VectorXr::Zero(m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers());

@@ -16,9 +16,9 @@ public:
     CableScene() = default;
     ~CableScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         // Set standard gravity (Z is up)
         engine.setGravity(Vector3r(0,  0, -9.81));
@@ -111,7 +111,7 @@ public:
         engine.addRigidConstraint(cableEnds.second, movingPlug);
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t dt) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t dt) override {
         (void)engine;
         (void)t;
         (void)dt;

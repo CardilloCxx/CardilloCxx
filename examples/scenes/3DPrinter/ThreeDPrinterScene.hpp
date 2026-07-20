@@ -18,7 +18,7 @@ class ThreeDPrinterScene : public SceneBase {
    public:
     const char* sceneName() const override { return "3DPrinter"; }
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
         m_motor_constraints.clear();
@@ -329,7 +329,7 @@ class ThreeDPrinterScene : public SceneBase {
         engine.track(getE("Gantry"), "Gantry");
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         auto right_motor = m_motor_constraints[0];
         auto left_motor = m_motor_constraints[1];
 

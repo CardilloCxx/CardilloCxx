@@ -47,7 +47,7 @@ namespace pipeline {
 class PhysicsPipeline {
    public:
     /// Construct the pipeline around a world and engine-owned subsystems.
-    PhysicsPipeline(World& world, config::Config& cfg, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings);
+    PhysicsPipeline(World& world, config::Config& cfg, collision::CollisionCoal* collision_mgr, misc::TimingManager* timings);
 
     /// Advance the pipeline by one step given dt.
     void step(real_t dt);
@@ -56,30 +56,30 @@ class PhysicsPipeline {
     bool isFinished() const { return m_finished; }
 
     /// Access the dynamics assembler.
-    cardillo::physics::DynamicsAssembler& dynamicsAssembler() { return *m_dyn; }
+    physics::DynamicsAssembler& dynamicsAssembler() const { return *m_dyn; }
     /// Access the active integrator.
-    cardillo::integration::IntegrationBase& integrator() { return *m_integrator; }
+    integration::IntegrationBase& integrator() const { return *m_integrator; }
     /// Access the VTK writer, if output is enabled.
-    cardillo::io::VtkWriter* vtkWriter() { return m_vtk_writer.get(); }
+    io::VtkWriter* vtkWriter() const { return m_vtk_writer.get(); }
     /// Access the collision manager.
-    cardillo::collision::CollisionCoal& collisionManager() { return *m_collision_mgr; }
+    collision::CollisionCoal& collisionManager() const { return *m_collision_mgr; }
 
     ~PhysicsPipeline();
 
    private:
     World& m_world;
     config::Config& m_cfg;
-    cardillo::collision::CollisionCoal* m_collision_mgr{nullptr};
-    cardillo::misc::TimingManager* m_timings;
+    collision::CollisionCoal* m_collision_mgr{nullptr};
+    misc::TimingManager* m_timings;
 
     // Owned pipeline components
-    std::unique_ptr<cardillo::physics::DynamicsAssembler> m_dyn;
-    std::unique_ptr<cardillo::integration::IntegrationBase> m_integrator;
-    std::unique_ptr<cardillo::solver::SolverBase> m_solver;
-    std::unique_ptr<cardillo::io::VtkWriter> m_vtk_writer;
-    std::unique_ptr<cardillo::io::CsvWriter> m_tracked_writer;
+    std::unique_ptr<physics::DynamicsAssembler> m_dyn;
+    std::unique_ptr<integration::IntegrationBase> m_integrator;
+    std::unique_ptr<solver::SolverBase> m_solver;
+    std::unique_ptr<io::VtkWriter> m_vtk_writer;
+    std::unique_ptr<io::CsvWriter> m_tracked_writer;
     // Owned progress bar
-    std::unique_ptr<cardillo::misc::ProgressBar> m_pbar;
+    std::unique_ptr<misc::ProgressBar> m_pbar;
 
     // Internal step/time bookkeeping
     int m_current_step{0};

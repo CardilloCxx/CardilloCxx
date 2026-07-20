@@ -15,9 +15,9 @@ public:
     HangbrideScene() = default;
     ~HangbrideScene() override = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::physics;
+        using namespace physics;
 
         // Basic scales
         const real_t cliffHeight = (real_t)0.6;
@@ -65,15 +65,15 @@ public:
                 auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){
                 auto& reg = engine.ecs();
                 auto e = reg.create();
-                reg.emplace<cardillo::C_PhysicsObject>(e);
-                reg.emplace<cardillo::C_PointMassTag>(e);
-                reg.emplace<cardillo::C_Collidable>(e);
-                reg.emplace<cardillo::C_VisualObject>(e);
-                reg.emplace<cardillo::C_PointVisualTag>(e);
-                reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
-                reg.emplace<cardillo::C_Position3>(e, cardillo::C_Position3{p});
-                reg.emplace<cardillo::C_LinearVelocity3>(e, cardillo::C_LinearVelocity3{Vector3r::Zero()});
-                reg.emplace<cardillo::C_Radius>(e, cardillo::C_Radius{radius});
+                reg.emplace<C_PhysicsObject>(e);
+                reg.emplace<C_PointMassTag>(e);
+                reg.emplace<C_Collidable>(e);
+                reg.emplace<C_VisualObject>(e);
+                reg.emplace<C_PointVisualTag>(e);
+                reg.emplace<C_Mass>(e, C_Mass{mass});
+                reg.emplace<C_Position3>(e, C_Position3{p});
+                reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{Vector3r::Zero()});
+                reg.emplace<C_Radius>(e, C_Radius{radius});
                 // Friction component optional; omit to avoid registry version differences
                 engine.markStructureDirty();
                 return e;
@@ -143,15 +143,15 @@ public:
         auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){
             auto& reg = engine.ecs();
             auto e = reg.create();
-            reg.emplace<cardillo::C_PhysicsObject>(e);
-            reg.emplace<cardillo::C_PointMassTag>(e);
-            reg.emplace<cardillo::C_Collidable>(e);
-            reg.emplace<cardillo::C_VisualObject>(e);
-            reg.emplace<cardillo::C_PointVisualTag>(e);
-            reg.emplace<cardillo::C_Mass>(e, cardillo::C_Mass{mass});
-            reg.emplace<cardillo::C_Position3>(e, cardillo::C_Position3{p});
-            reg.emplace<cardillo::C_LinearVelocity3>(e, cardillo::C_LinearVelocity3{Vector3r::Zero()});
-            reg.emplace<cardillo::C_Radius>(e, cardillo::C_Radius{radius});
+            reg.emplace<C_PhysicsObject>(e);
+            reg.emplace<C_PointMassTag>(e);
+            reg.emplace<C_Collidable>(e);
+            reg.emplace<C_VisualObject>(e);
+            reg.emplace<C_PointVisualTag>(e);
+            reg.emplace<C_Mass>(e, C_Mass{mass});
+            reg.emplace<C_Position3>(e, C_Position3{p});
+            reg.emplace<C_LinearVelocity3>(e, C_LinearVelocity3{Vector3r::Zero()});
+            reg.emplace<C_Radius>(e, C_Radius{radius});
             // Friction component optional; omit to avoid registry version differences
             engine.markStructureDirty();
             return e;
@@ -266,9 +266,9 @@ public:
             auto& reg = engine.ecs();
             Vector3r posA = Vector3r::Zero();
             Vector3r posB = Vector3r::Zero();
-            if (auto pa = reg.try_get<cardillo::C_Position3>(A)) posA = pa->value + rA;
+            if (auto pa = reg.try_get<C_Position3>(A)) posA = pa->value + rA;
             else posA = rA;
-            if (auto pb = reg.try_get<cardillo::C_Position3>(B)) posB = pb->value + rB;
+            if (auto pb = reg.try_get<C_Position3>(B)) posB = pb->value + rB;
             else posB = rB;
 
             // Create rope nodes (point masses) between posA and posB

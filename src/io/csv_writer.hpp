@@ -54,7 +54,7 @@ class CsvWriter {
 
    private:
     static bool hasTracked(const entt::registry& reg) {
-        for (auto e : reg.view<cardillo::C_TrackTag>()) {
+        for (auto e : reg.view<C_TrackTag>()) {
             (void)e;
             return true;
         }
@@ -64,11 +64,11 @@ class CsvWriter {
     static std::vector<std::string> trackedHeader() { return std::vector<std::string>{"t", "name", "px", "py", "pz", "vx", "vy", "vz", "wx", "wy", "wz", "euler_x", "euler_y", "euler_z"}; }
 
     void writeEntities(real_t t, const entt::registry& reg) {
-        auto view = reg.view<cardillo::C_TrackTag, cardillo::C_Position3, cardillo::C_LinearVelocity3, cardillo::C_AngularVelocity3, cardillo::C_Orientation>();
+        auto view = reg.view<C_TrackTag, C_Position3, C_LinearVelocity3, C_AngularVelocity3, C_Orientation>();
         for (auto e : view) {
-            const auto& tag = view.get<cardillo::C_TrackTag>(e);
-            const auto state = cardillo::RigidBody::getState(reg, e);
-            const auto& euler = state.rotation.eulerAngles(0, 1, 2);
+            const auto& tag = view.get<C_TrackTag>(e);
+            const auto state = RigidBody::getState(reg, e);
+            const auto euler = state.rotation.canonicalEulerAngles(0, 1, 2);
             writeRow(t, tag.name, state.position.x(), state.position.y(), state.position.z(), state.linearVelocity.x(), state.linearVelocity.y(), state.linearVelocity.z(), state.angularVelocity.x(),
                      state.angularVelocity.y(), state.angularVelocity.z(), euler.x(), euler.y(), euler.z());
         }

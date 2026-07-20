@@ -20,8 +20,8 @@
 
 namespace cardillo::solver {
 
-using cardillo::physics::assembly::CondensedTopology;
-using cardillo::physics::assembly::RowBlock;
+using physics::assembly::CondensedTopology;
+using physics::assembly::RowBlock;
 
 namespace {
 
@@ -36,7 +36,7 @@ namespace {
 // of sweeps). Switching those temporaries to Buf6 removes that allocation churn entirely; `Ja`/
 // `Jb`/`Gii`/`GiiInv` stay dynamically-sized MatrixXXr (built once per solve() call in
 // CondensedAssembler, not per sweep, so their allocation cost is amortized and not the bottleneck).
-using Buf6 = Vectorr<6>;
+using Buf6 = Vector6r;
 
 // Same clip as ProjectedGaussSeidel's project()/project_all(): normal impulse (index 0) clamped to
 // <= 0, tangential (indices 1,2) scaled toward the Coulomb disk of radius -mu*lambda[0]. No-op for
@@ -70,7 +70,7 @@ void blockResidual(const RowBlock& blk, const VectorXr& rhs, const VectorXr& u_c
 // nullptr for every body without an active implicit-gyroscopic override -- the overwhelming common
 // case, so every call site below keeps its original plain-diagonal-MinvDiag expression unchanged in
 // that branch. See CondensedTopology::gyroMinvBlocks.
-const Matrixr<6, 6>* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrixr<6, 6>>& gyroBlocks) {
+const Matrix66r* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrix66r>& gyroBlocks) {
     if (bodyIndex < 0 || gyroBlocks.empty()) return nullptr;
     auto it = gyroBlocks.find(bodyIndex);
     return it == gyroBlocks.end() ? nullptr : &it->second;
@@ -81,7 +81,7 @@ const Matrixr<6, 6>* gyroBlockFor(int bodyIndex, const std::unordered_map<int, M
 // Buf6, also heap-free). `gyroBlocks` is topo.gyroMinvBlocks -- empty for every scene without an
 // active implicit-gyroscopic body, in which case every branch below reduces to exactly the original
 // expression (see gyroBlockFor()).
-void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const std::unordered_map<int, Matrixr<6, 6>>& gyroBlocks, const Buf6& dlambda, VectorXr& u_corr, Buf6& tmp) {
+void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const std::unordered_map<int, Matrix66r>& gyroBlocks, const Buf6& dlambda, VectorXr& u_corr, Buf6& tmp) {
     if (blk.aDof > 0) {
         tmp.head(blk.aDof).noalias() = blk.Ja.transpose() * dlambda.head(blk.dim);
         if (const auto* gA = gyroBlockFor(blk.bodyIndexA, gyroBlocks))
@@ -105,7 +105,7 @@ void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const std::unor
 // equality constraints (projectBlock() already no-ops for them), so unlike the projected contact
 // rows there is no iteration needed once their joint linear system is solved exactly. A no-op when
 // there are no bilateral blocks (e.g. domino), by construction.
-void exactBilateralStep(const CondensedTopology& topo, const cardillo::misc::BlockSparseLDLT& ldlt, const VectorXr& rhs, const VectorXr& MinvDiag, VectorXr& lambda, VectorXr& u_corr) {
+void exactBilateralStep(const CondensedTopology& topo, const misc::BlockSparseLDLT& ldlt, const VectorXr& rhs, const VectorXr& MinvDiag, VectorXr& lambda, VectorXr& u_corr) {
     const int n = topo.numBilateralBlocks;
     if (n == 0) return;
 
@@ -217,7 +217,7 @@ std::vector<std::vector<int>> buildBlockAdjacency(const CondensedTopology& topo,
 // Graph-colored Gauss-Seidel: sequential across colors, (eventually) parallel within a color.
 // Safe by construction -- no two blocks in the same color class share a body, so their reads/
 // writes of u_corr touch disjoint index ranges.
-void coloredSweep(const CondensedTopology& topo, const cardillo::misc::Coloring& coloring, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
+void coloredSweep(const CondensedTopology& topo, const misc::Coloring& coloring, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
                    const NewtonACParams& newtonParams, VectorXr& lambda, VectorXr& u_corr, bool linearOnly = false) {
     const int numColors = coloring.numColors;
     // Single team for the whole sweep (all colors), not one team per color: spawning/joining an
@@ -384,8 +384,8 @@ void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const 
 // matrix-based) linearized operator. Uses a deterministic all-ones probe vector (matching PJ's own
 // choice) rather than a randomized one, so this doesn't introduce a new nondeterminism source into
 // the solver.
-real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, const std::string& sweepMode, const cardillo::misc::Coloring& coloring,
-                               const std::vector<int>& bodyVelOffsets, int startBlock, bool useTrueSchur, const cardillo::misc::BlockSparseLDLT& bilateralLdlt, int nV) {
+real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, const std::string& sweepMode, const misc::Coloring& coloring,
+                               const std::vector<int>& bodyVelOffsets, int startBlock, bool useTrueSchur, const misc::BlockSparseLDLT& bilateralLdlt, int nV) {
     constexpr int kPowerIterations = 8;
     const int numLambda = topo.numLambda;
     if (numLambda == 0) return (real_t)0;
@@ -441,7 +441,7 @@ real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& Min
 }  // namespace
 
 VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
-    auto sc_setup = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSetup);
+    auto sc_setup = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSetup);
 
     CondensedTopology topo = m_assembler.buildTopology(dt);
     m_assembler.updateCompliance(topo, dt, theta);
@@ -490,7 +490,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
 #endif
 
     sc_setup.~Scope();
-    auto sc_solve = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::Condensed);
+    auto sc_solve = m_dyn.timings()->scope(misc::TimingManager::TimerId::Condensed);
 
     real_t alpha = m_cfg.pj_alpha;
     const real_t relaxation = m_cfg.pj_relaxation;
@@ -527,17 +527,17 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         std::cout << "[Condensed] condensed.true_schur has no effect on sweep_mode=chaotic; ignoring." << std::endl;
     }
 
-    cardillo::misc::BlockSparseLDLT bilateralLdlt;
+    misc::BlockSparseLDLT bilateralLdlt;
     if (useTrueSchur && topo.numBilateralBlocks > 0) {
-        auto sc_schur = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSetup);
+        auto sc_schur = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSetup);
         bilateralLdlt = m_assembler.buildBilateralFactorization(topo);
     }
 
-    cardillo::misc::Coloring coloring;
+    misc::Coloring coloring;
     if (sweepMode == "colored") {
-        auto sc_color = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedColoring);
+        auto sc_color = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedColoring);
         const auto adjacency = buildBlockAdjacency(topo, startBlock);
-        coloring = cardillo::misc::colorGreedyWelshPowell((int)topo.blocks.size() - startBlock, adjacency);
+        coloring = misc::colorGreedyWelshPowell((int)topo.blocks.size() - startBlock, adjacency);
         for (auto& cls : coloring.colorClasses)
             for (auto& idx : cls) idx += startBlock;
     }
@@ -554,7 +554,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     // enough to be dominated by the largest eigenvalue (see CONDENSED_SOLVER_REPORT.md). Overrides
     // `alpha` for every use below, including the Chebyshev estimate itself if also enabled.
     if (m_cfg.condensed_auto_alpha) {
-        auto sc_autoalpha = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSetup);
+        auto sc_autoalpha = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSetup);
         const real_t rho1 = estimateSpectralRadius(topo, MinvDiag, relaxation, (real_t)1.0, sweepMode, coloring, bodyVelOffsets, startBlock, useTrueSchur, bilateralLdlt, nV);
         if (rho1 > 0) {
             const real_t targetRho = m_cfg.condensed_auto_alpha_target_rho;
@@ -597,7 +597,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
                          "making Minv non-symmetric -- the estimate may not be reliable here."
                       << std::endl;
         }
-        auto sc_cheb = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSetup);
+        auto sc_cheb = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSetup);
         const real_t rawRho = estimateSpectralRadius(topo, MinvDiag, relaxation, alpha, sweepMode, coloring, bodyVelOffsets, startBlock, useTrueSchur, bilateralLdlt, nV);
         // Clamp strictly below 1: the omega recurrence divides by (1 - rho^2/4*omega), only
         // well-defined/stable for rho < 1 (a converging basic iteration to begin with) -- same
@@ -648,7 +648,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     if (sweepMode == "chaotic") {
         VectorXr u_prev = u_corr;
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-            auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
+            auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
             chaoticSweep(topo, chaoticOrder, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, m_cfg.condensed_chaotic_reshuffle_interval, iter, chaoticRng, lambda, u_corr_atomic);
             for (int i = 0; i < nV; ++i) u_corr[i] = u_corr_atomic[(size_t)i].load(std::memory_order_relaxed);
             sc_sweep.~Scope();
@@ -660,7 +660,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     } else if (!m_cfg.pj_nesterov && !useChebyshev) {
         VectorXr u_prev = u_corr;
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-            auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
+            auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
             doSweep(lambda, u_corr);
             sc_sweep.~Scope();
 
@@ -682,7 +682,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         bool momentum_disabled = false;
 
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-            auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
+            auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
             lambda = lambda_y;
             u_corr = u_y;
             doSweep(lambda, u_corr);
@@ -807,7 +807,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
             VectorXr u_prev = u_corr;
             real_t lastErr = -1, ratioEstimate = -1;
             for (int w = 0; w < kWarmupIters; ++w) {
-                auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
+                auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
                 doSweep(lambda, u_corr);
                 sc_sweep.~Scope();
                 warmupItersUsed = w + 1;
@@ -833,7 +833,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         double omega = 1.0;
 
         for (int iter = 0; !warmupConverged && iter < m_cfg.pj_max_iterations; ++iter) {
-            auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::CondensedSweep);
+            auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
             lambda = lambda_y;
             u_corr = u_y;
             doSweep(lambda, u_corr);

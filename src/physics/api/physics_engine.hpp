@@ -65,13 +65,13 @@ class CARDILLO_API PhysicsEngine {
     }
 
     /// Sample a spline into a beam chain and return the root and tip entities.
-    inline std::pair<entt::entity, entt::entity> createBeam(const cardillo::misc::SplinePattern& spline, const BeamCrossSection& section, const BeamSpringParams& springs,
+    inline std::pair<entt::entity, entt::entity> createBeam(const misc::SplinePattern& spline, const BeamCrossSection& section, const BeamSpringParams& springs,
                                                             const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments) {
         return BodyFactory::createBeam(*m_world, spline, section, springs, stateDefaults, propsDefaults, segments, m_collision_mgr.get());
     }
 
     /// Create several beams from a list of spline patterns.
-    inline std::pair<entt::entity, entt::entity> createBeams(const std::vector<const cardillo::misc::SplinePattern*>& splines, const BeamCrossSection& section, const BeamSpringParams& springs,
+    inline std::pair<entt::entity, entt::entity> createBeams(const std::vector<const misc::SplinePattern*>& splines, const BeamCrossSection& section, const BeamSpringParams& springs,
                                                              const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments) {
         return BodyFactory::createBeams(*m_world, splines, section, springs, stateDefaults, propsDefaults, segments, m_collision_mgr.get());
     }
@@ -141,9 +141,9 @@ class CARDILLO_API PhysicsEngine {
     /// Query the generalized position vector for an entity.
     VectorXr getPosition(entt::entity e) const { return m_world->getPosition(e); }
     /// Query the linear velocity vector for an entity.
-    VectorXr getLinearVelocity(entt::entity e) const { return m_world->getVelocity(e).head(3); }
+    VectorXr getLinearVelocity(entt::entity e) const { return m_world->getVelocity(e).head<3>(); }
     /// Query the angular velocity vector for an entity.
-    VectorXr getAngularVelocity(entt::entity e) const { return m_world->getVelocity(e).tail(3); }
+    VectorXr getAngularVelocity(entt::entity e) const { return m_world->getVelocity(e).tail<3>(); }
     /// Query the kinetic energy for an entity.
     real_t getKineticEnergy(entt::entity e) const { return m_world->getKineticEnergy(e); }
     /// Query whether an entity is static (has no mass or is explicitly marked as static).
@@ -171,7 +171,7 @@ class CARDILLO_API PhysicsEngine {
         m_world->setTrajectory(e, std::move(positionFunc), std::move(velocityFunc));
     }
     /// Attach a periodic spline trajectory to an entity.
-    template <class TSpline, std::enable_if_t<std::is_base_of_v<cardillo::misc::SplinePattern, TSpline>, int> = 0>
+    template <class TSpline, std::enable_if_t<std::is_base_of_v<misc::SplinePattern, TSpline>, int> = 0>
     void addTrajectory(entt::entity e, const TSpline& spline, real_t period) {
         auto splineCopy = std::make_shared<TSpline>(spline);
         const real_t safePeriod = std::max(period, (real_t)1e-8);
@@ -203,22 +203,22 @@ class CARDILLO_API PhysicsEngine {
     /// Access the collision manager owned by the engine.
     collision::CollisionCoal& collisionManager();
     /// Access the timing manager owned by the engine.
-    cardillo::misc::TimingManager& timings();
+    misc::TimingManager& timings();
     /// Access the underlying world owned by the engine.
-    cardillo::World& world();
+    World& world();
     /// Access the underlying world owned by the engine.
-    const cardillo::World& world() const;
+    const World& world() const;
     /// Query whether the pipeline reached the configured simulation end time.
     bool isFinished() const;
 
    private:
-    std::unique_ptr<cardillo::World> m_world;
+    std::unique_ptr<World> m_world;
     // Owned subsystems
     config::Config m_cfg{};                                               // global config
-    std::unique_ptr<cardillo::collision::CollisionCoal> m_collision_mgr;  // engine-owned
-    std::unique_ptr<cardillo::misc::TimingManager> m_timings;             // engine-owned
+    std::unique_ptr<collision::CollisionCoal> m_collision_mgr;  // engine-owned
+    std::unique_ptr<misc::TimingManager> m_timings;             // engine-owned
     // Pipeline (orchestrates collision, assembly, solver, integrator)
-    std::unique_ptr<cardillo::physics::pipeline::PhysicsPipeline> m_pipeline;
+    std::unique_ptr<physics::pipeline::PhysicsPipeline> m_pipeline;
 };
 
 }  // namespace physics

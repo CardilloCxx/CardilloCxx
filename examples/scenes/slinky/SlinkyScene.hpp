@@ -13,9 +13,9 @@ public:
     SlinkyScene() = default;
     ~SlinkyScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
         // Build staircase as static cubes
         const int steps = 12;
         const real_t rise = (real_t)0.0025 * 50.0;
@@ -73,9 +73,9 @@ public:
     
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t dt) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t dt) override {
         (void)dt;
-        auto A_IK = engine.ecs().get<cardillo::C_Orientation>(m_slinky_end_entity).value.toRotationMatrix();
+        auto A_IK = engine.ecs().get<C_Orientation>(m_slinky_end_entity).rotation;
         
         if (t < 0.28) engine.applyForce(m_slinky_end_entity, Vector3r(0.00, 0.0, 0.0), A_IK.transpose()* Vector3r(0.0, -0.015, 0.0));
 //         engine.setAngularVelocity(m_guide_entity, Vector3r(0.0, -0.1, 0.0));

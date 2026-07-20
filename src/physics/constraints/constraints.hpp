@@ -74,16 +74,16 @@ struct JointProperties {
     JointProperties() = default;
 
     explicit JointProperties(entt::registry& reg, entt::entity A, entt::entity B, const JointFrame& jf) : entityA(A), entityB(B) {
-        const auto inertial = cardillo::RigidBody::RigidState::inertial();
-        const auto refState = jf.ref.has_value() ? cardillo::RigidBody::getState(reg, *jf.ref) : inertial;
+        const auto inertial = RigidBody::RigidState::inertial();
+        const auto refState = jf.ref.has_value() ? RigidBody::getState(reg, *jf.ref) : inertial;
 
-        const auto stateA = cardillo::RigidBody::getState(reg, A);
-        const auto stateB = cardillo::RigidBody::getState(reg, B);
+        const auto stateA = RigidBody::getState(reg, A);
+        const auto stateB = RigidBody::getState(reg, B);
 
-        K1_r_S1J = cardillo::transform::point(jf.r_refJ, refState, stateA);
-        K2_r_S2J = cardillo::transform::point(jf.r_refJ, refState, stateB);
+        K1_r_S1J = transform::point(jf.r_refJ, refState, stateA);
+        K2_r_S2J = transform::point(jf.r_refJ, refState, stateB);
 
-        A_K1J = cardillo::transform::rotation(jf.A_refJ, refState, stateA);
+        A_K1J = transform::rotation(jf.A_refJ, refState, stateA);
 
         // Precompute local skew matrices
         K1_r_S1J_skew = SkewSymmetricMatrix3r(K1_r_S1J);
@@ -229,14 +229,14 @@ class TranslationRotationConstraint : public ConstraintPattern {
 // Kf: [F1, F2, F3] stiffnesses for torsion/bending
 class BeamConstraint : public ConstraintPattern {
    public:
-    BeamConstraint(entt::registry& reg, entt::entity a, entt::entity b, const cardillo::physics::BeamSpringParams& springs, const cardillo::physics::BeamCrossSection& section);
+    BeamConstraint(entt::registry& reg, entt::entity a, entt::entity b, const physics::BeamSpringParams& springs, const physics::BeamCrossSection& section);
 
     // Fill W and compliance vectors for 6 beam rows
     ConstraintResult getConstraint() const override;
 
    private:
-    cardillo::physics::BeamSpringParams m_springs{};
-    cardillo::physics::BeamCrossSection m_section{};
+    physics::BeamSpringParams m_springs{};
+    physics::BeamCrossSection m_section{};
     Vector3r m_gamma0{Vector3r::Zero()};
     Vector3r m_kappa0{Vector3r::Zero()};
     real_t l_0{0};

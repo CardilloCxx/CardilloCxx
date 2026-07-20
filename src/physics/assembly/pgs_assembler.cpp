@@ -75,7 +75,6 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) cons
 VectorXr PgsAssembler::ufree(real_t dt, real_t theta) const {
     const auto& vn = m_dyn->vVec();
     const auto& M_inv = m_dyn->MinvDiag();
-    const int totalV = m_dyn->numV();
 
     VectorXr ufree = vn + M_inv.cwiseProduct(dt * m_dyn->fVecExternal());
     if (!m_cfg.moreau_implicit_gyroscopy) ufree += M_inv.cwiseProduct(dt * m_dyn->fVecGyroscopic());
@@ -129,7 +128,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
             MatrixXXr blockSpring = MatrixXXr::Zero(nSprings, nSprings);
 
             if (addA) {
-                int b = reg.get<cardillo::C_BodyIndex>(constraint.a).b;
+                int b = reg.get<C_BodyIndex>(constraint.a).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
                 const MatrixXXr WgA_sel = selectCols(constraint.WgA, c_used);
@@ -137,7 +136,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
             }
 
             if (addB) {
-                int b = reg.get<cardillo::C_BodyIndex>(constraint.b).b;
+                int b = reg.get<C_BodyIndex>(constraint.b).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
                 const MatrixXXr WgB_sel = selectCols(constraint.WgB, c_used);
@@ -158,7 +157,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
             MatrixXXr blockDamper = MatrixXXr::Zero(nDampers, nDampers);
 
             if (addA) {
-                int b = reg.get<cardillo::C_BodyIndex>(constraint.a).b;
+                int b = reg.get<C_BodyIndex>(constraint.a).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
                 const MatrixXXr WgammaA_sel = selectCols(constraint.WgammaA, a_used);
@@ -166,7 +165,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
             }
 
             if (addB) {
-                int b = reg.get<cardillo::C_BodyIndex>(constraint.b).b;
+                int b = reg.get<C_BodyIndex>(constraint.b).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
                 const MatrixXXr WgammaB_sel = selectCols(constraint.WgammaB, a_used);

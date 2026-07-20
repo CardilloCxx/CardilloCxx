@@ -64,7 +64,7 @@ public:
         {"i",     {"gcki",   "hi"   }},
     };
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         const real_t slopeDeg = (real_t)3.0;
         const real_t slopeRad = slopeDeg * (real_t)M_PI / (real_t)180.0;
         // Tilt gravity instead of the ground plane: downhill +x
@@ -359,7 +359,7 @@ private:
                                  (real_t)0.01, // thin along normal between leg planes
                                  halfHeight); // height just to cover axles
             Quaternion4r q; {
-                Eigen::Matrix<real_t,3,3> R; R.col(0) = u; R.col(1) = n; R.col(2) = v; q = Quaternion4r(R);
+                Matrix33r R; R.col(0) = u; R.col(1) = n; R.col(2) = v; q = Quaternion4r(R);
             }
             entt::entity frameBar = addFrameCube(engine, center, halfExtents, q, /*density*/ 500.0);
             frames.push_back(frameBar);

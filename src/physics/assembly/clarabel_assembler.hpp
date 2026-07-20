@@ -19,7 +19,7 @@ namespace cardillo::physics::assembly {
 
 class ClarabelAssembler {
    public:
-    explicit ClarabelAssembler(cardillo::physics::DynamicsAssembler& dyn) : m_dyn(&dyn) {}
+    explicit ClarabelAssembler(physics::DynamicsAssembler& dyn) : m_dyn(&dyn) {}
 
     const SparseMatrix<Eigen::ColMajor>& P(real_t dt, real_t theta);
     VectorXr& q(real_t dt, real_t theta);
@@ -33,7 +33,7 @@ class ClarabelAssembler {
     VectorXr computeSmu() const;
 
    private:
-    cardillo::physics::DynamicsAssembler* m_dyn{nullptr};
+    physics::DynamicsAssembler* m_dyn{nullptr};
 
     SparseMatrix<Eigen::ColMajor> m_P_cache;
     SparseMatrix<Eigen::ColMajor> m_A_cache;

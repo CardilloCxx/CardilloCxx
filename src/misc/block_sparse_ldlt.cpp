@@ -12,7 +12,7 @@ void BlockSparseLDLT::build(std::vector<int> dims, std::vector<MatrixXXr> diagBl
     m_symmetric = symmetric;
     const int n = (int)m_dims.size();
 
-    m_diag.assign(n, Matrixr<6, 6>::Zero());
+    m_diag.assign(n, Matrix66r::Zero());
     for (int i = 0; i < n; ++i) m_diag[(size_t)i].topLeftCorner(m_dims[(size_t)i], m_dims[(size_t)i]) = diagBlocks[(size_t)i];
 
     m_off.assign(n, {});
@@ -23,9 +23,9 @@ void BlockSparseLDLT::build(std::vector<int> dims, std::vector<MatrixXXr> diagBl
         for (size_t e = 0; e < edgeNodes.size(); ++e) {
             const int i = edgeNodes[e][0];
             const int j = edgeNodes[e][1];
-            Matrixr<6, 6> Bij = Matrixr<6, 6>::Zero();
+            Matrix66r Bij = Matrix66r::Zero();
             Bij.topLeftCorner(m_dims[(size_t)i], m_dims[(size_t)j]) = edgeBlocks[e];
-            Matrixr<6, 6> Bji = Matrixr<6, 6>::Zero();
+            Matrix66r Bji = Matrix66r::Zero();
             Bji.topLeftCorner(m_dims[(size_t)j], m_dims[(size_t)i]) = edgeBlocks[e].transpose();
             m_off[(size_t)i][j] = Bij;
             m_off[(size_t)j][i] = Bji;
@@ -37,7 +37,7 @@ void BlockSparseLDLT::build(std::vector<int> dims, std::vector<MatrixXXr> diagBl
         for (size_t e = 0; e < edgeNodes.size(); ++e) {
             const int i = edgeNodes[e][0];
             const int j = edgeNodes[e][1];
-            Matrixr<6, 6> Bij = Matrixr<6, 6>::Zero();
+            Matrix66r Bij = Matrix66r::Zero();
             Bij.topLeftCorner(m_dims[(size_t)i], m_dims[(size_t)j]) = edgeBlocks[e];
             m_off[(size_t)i][j] = Bij;
         }
@@ -138,7 +138,7 @@ void BlockSparseLDLT::factorSymmetric(const std::vector<int>& order) {
             // Uninitialized, not Zero(): only ever read back via the same .topLeftCorner(dimP,dimK)
             // written here (dims[] are fixed for the object's lifetime), so the padding is never
             // read -- skip the wasted zero-fill of the untouched region.
-            Matrixr<6, 6> Lpk;
+            Matrix66r Lpk;
             Lpk.topLeftCorner(dimP, dimK).noalias() = m_off[(size_t)p].at(k).topLeftCorner(dimP, dimK) * pf.Dinv.topLeftCorner(dimK, dimK);
             pf.L.emplace_back(p, std::move(Lpk));
         }
@@ -168,13 +168,13 @@ void BlockSparseLDLT::factorSymmetric(const std::vector<int>& order) {
                     if (it == m_off[(size_t)p].end()) {
                         // Fresh fill-in edge: no prior value to subtract from, so assign the
                         // negation directly rather than zero-filling first then subtracting.
-                        Matrixr<6, 6> fresh;
+                        Matrix66r fresh;
                         fresh.topLeftCorner(dimP, dimQ).noalias() = -(Lp * Bkq);
                         it = m_off[(size_t)p].emplace(q, std::move(fresh)).first;
                     } else {
                         it->second.topLeftCorner(dimP, dimQ).noalias() -= Lp * Bkq;
                     }
-                    Matrixr<6, 6> transposed;
+                    Matrix66r transposed;
                     transposed.topLeftCorner(dimQ, dimP) = it->second.topLeftCorner(dimP, dimQ).transpose();
                     m_off[(size_t)q][p] = std::move(transposed);
                 }
@@ -217,8 +217,8 @@ void BlockSparseLDLT::factorNonSymmetric(const std::vector<int>& order) {
         }
         std::vector<int> nbrs(nbrSet.begin(), nbrSet.end());
 
-        auto blockOrZero = [&](int a, int b, int dimA, int dimB) -> Matrixr<6, 6> {
-            Matrixr<6, 6> out = Matrixr<6, 6>::Zero();
+        auto blockOrZero = [&](int a, int b, int dimA, int dimB) -> Matrix66r {
+            Matrix66r out = Matrix66r::Zero();
             auto it = m_off[(size_t)a].find(b);
             if (it != m_off[(size_t)a].end()) out.topLeftCorner(dimA, dimB) = it->second.topLeftCorner(dimA, dimB);
             return out;
@@ -231,12 +231,12 @@ void BlockSparseLDLT::factorNonSymmetric(const std::vector<int>& order) {
         pf.U.reserve(nbrs.size());
         for (int p : nbrs) {
             const int dimP = m_dims[(size_t)p];
-            Matrixr<6, 6> Apk = blockOrZero(p, k, dimP, dimK);
-            Matrixr<6, 6> Lpk;
+            Matrix66r Apk = blockOrZero(p, k, dimP, dimK);
+            Matrix66r Lpk;
             Lpk.topLeftCorner(dimP, dimK).noalias() = Apk.topLeftCorner(dimP, dimK) * pf.Dinv.topLeftCorner(dimK, dimK);
             pf.L.emplace_back(p, std::move(Lpk));
 
-            Matrixr<6, 6> Ukq = blockOrZero(k, p, dimK, dimP);
+            Matrix66r Ukq = blockOrZero(k, p, dimK, dimP);
             pf.U.emplace_back(p, std::move(Ukq));
         }
 
@@ -259,7 +259,7 @@ void BlockSparseLDLT::factorNonSymmetric(const std::vector<int>& order) {
                 }
                 auto it = m_off[(size_t)p].find(q);
                 if (it == m_off[(size_t)p].end()) {
-                    Matrixr<6, 6> fresh;
+                    Matrix66r fresh;
                     fresh.topLeftCorner(dimP, dimQ).noalias() = -(Lp * Ukq);
                     m_off[(size_t)p].emplace(q, std::move(fresh));
                 } else {
@@ -280,7 +280,7 @@ VectorXr BlockSparseLDLT::solveSymmetric(const VectorXr& rhs) const {
     std::vector<int> offset(n + 1, 0);
     for (int i = 0; i < n; ++i) offset[(size_t)i + 1] = offset[(size_t)i] + m_dims[(size_t)i];
 
-    std::vector<Vectorr<6>> y(n, Vectorr<6>::Zero());
+    std::vector<Vector6r> y(n, Vector6r::Zero());
     for (int i = 0; i < n; ++i) y[(size_t)i].head(m_dims[(size_t)i]) = rhs.segment(offset[(size_t)i], m_dims[(size_t)i]);
 
     // Forward substitution (L y = rhs, L unit lower-triangular in elimination order): visiting
@@ -294,7 +294,7 @@ VectorXr BlockSparseLDLT::solveSymmetric(const VectorXr& rhs) const {
         }
     }
 
-    std::vector<Vectorr<6>> x = y;
+    std::vector<Vector6r> x = y;
     for (const auto& pf : m_factors) {
         const int dimK = m_dims[(size_t)pf.k];
         x[(size_t)pf.k].head(dimK) = pf.Dinv.topLeftCorner(dimK, dimK) * y[(size_t)pf.k].head(dimK);
@@ -324,7 +324,7 @@ VectorXr BlockSparseLDLT::solveNonSymmetric(const VectorXr& rhs) const {
     std::vector<int> offset(n + 1, 0);
     for (int i = 0; i < n; ++i) offset[(size_t)i + 1] = offset[(size_t)i] + m_dims[(size_t)i];
 
-    std::vector<Vectorr<6>> y(n, Vectorr<6>::Zero());
+    std::vector<Vector6r> y(n, Vector6r::Zero());
     for (int i = 0; i < n; ++i) y[(size_t)i].head(m_dims[(size_t)i]) = rhs.segment(offset[(size_t)i], m_dims[(size_t)i]);
 
     // Forward substitution (L y = rhs) -- same structure as the symmetric case, L is unit
@@ -339,7 +339,7 @@ VectorXr BlockSparseLDLT::solveNonSymmetric(const VectorXr& rhs) const {
 
     // Backward substitution (U x = y), reverse elimination order: x_k = Dinv_k * (y_k - sum_q
     // U_{k,q} * x_q) -- subtract first, then apply Dinv, using the stored raw U blocks.
-    std::vector<Vectorr<6>> x = y;
+    std::vector<Vector6r> x = y;
     for (auto it = m_factors.rbegin(); it != m_factors.rend(); ++it) {
         const int dimK = m_dims[(size_t)it->k];
         for (const auto& pr : it->U) {

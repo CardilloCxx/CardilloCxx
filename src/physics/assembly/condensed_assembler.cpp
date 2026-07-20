@@ -38,13 +38,13 @@ MatrixXXr selectActiveCols(const MatrixXXr& A, const std::vector<bool>& mask) {
 // Resolves body index + velocity-vector [offset, dof) for one side of a constraint/contact.
 // Returns bodyIndex=-1, off=0, dof=0 for a static/absent entity (matches RigidBody::isStatic).
 void resolveBodySide(const entt::registry& reg, const std::vector<int>& velOffsets, entt::entity e, int& bodyIndex, int& off, int& dof) {
-    if (cardillo::RigidBody::isStatic(reg, e)) {
+    if (RigidBody::isStatic(reg, e)) {
         bodyIndex = -1;
         off = 0;
         dof = 0;
         return;
     }
-    bodyIndex = reg.get<cardillo::C_BodyIndex>(e).b;
+    bodyIndex = reg.get<C_BodyIndex>(e).b;
     off = velOffsets[(size_t)bodyIndex];
     dof = velOffsets[(size_t)bodyIndex + 1] - off;
 }
@@ -58,33 +58,33 @@ void resolveBodySide(const entt::registry& reg, const std::vector<int>& velOffse
 // overwhelming common case) -- callers treat "body absent from this map" as "use the existing plain
 // -diagonal MinvDiag", so an empty map is exactly behaviorally equivalent to this feature not
 // existing at all.
-std::unordered_map<int, Matrixr<6, 6>> computeGyroscopicMinvBlocks(const cardillo::physics::DynamicsAssembler& dyn, real_t dt, bool implicitGyro) {
-    std::unordered_map<int, Matrixr<6, 6>> blocks;
+std::unordered_map<int, Matrix66r> computeGyroscopicMinvBlocks(const DynamicsAssembler& dyn, real_t dt, bool implicitGyro) {
+    std::unordered_map<int, Matrix66r> blocks;
     if (!implicitGyro) return blocks;
 
     const auto& velOffsets = dyn.bodyVelOffsets();
     const auto& MinvDiag = dyn.MinvDiag();
     const auto& reg = dyn.system().ecs();
-    auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
+    auto view = reg.view<C_BodyIndex, C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b < 0 || b + 1 >= (int)velOffsets.size()) continue;
         const int off = velOffsets[(size_t)b];
         const int nV = velOffsets[(size_t)b + 1] - off;
         if (nV < 6) continue;
-        if (!reg.all_of<cardillo::C_RigidBodyTag, cardillo::C_AngularVelocity3>(e)) continue;
+        if (!reg.all_of<C_RigidBodyTag, C_AngularVelocity3>(e)) continue;
 
-        const Vector3r omega = reg.get<cardillo::C_AngularVelocity3>(e).value;
-        const Vector3r I = dyn.system().getInertiaDiag(e);
+        const Vector3r& omega = reg.get<C_AngularVelocity3>(e).value;
+        const Vector3r& I = dyn.system().getInertiaDiag(e);
         const Vector3r Iomega = I.cwiseProduct(omega);
         const Matrix33r Idiag = I.asDiagonal().toDenseMatrix();
-        const Matrix33r omegaSkew = cardillo::SkewSymmetricMatrix3r(omega);
-        const Matrix33r IomegaSkew = cardillo::SkewSymmetricMatrix3r(Iomega);
+        const Matrix33r omegaSkew = SkewSymmetricMatrix3r(omega);
+        const Matrix33r IomegaSkew = SkewSymmetricMatrix3r(Iomega);
 
         const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * Idiag);
         const Matrix33r Mrot = Idiag - dt * Grot;
 
-        Matrixr<6, 6> block = Matrixr<6, 6>::Zero();
+        Matrix66r block = Matrix66r::Zero();
         block.topLeftCorner<3, 3>() = MinvDiag.segment(off, 3).asDiagonal().toDenseMatrix();
         block.bottomRightCorner<3, 3>() = invertSmallGeneral(MatrixXXr(Mrot));
         blocks.emplace(b, block);
@@ -95,7 +95,7 @@ std::unordered_map<int, Matrixr<6, 6>> computeGyroscopicMinvBlocks(const cardill
 // nullptr for every body without an active override -- the overwhelming common case, so every call
 // site below keeps its original plain-diagonal-MinvDiag expression unchanged in that branch (see
 // each call site's comment) rather than routing through one generic "maybe non-diagonal" helper.
-const Matrixr<6, 6>* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrixr<6, 6>>& gyroBlocks) {
+const Matrix66r* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matrix66r>& gyroBlocks) {
     if (bodyIndex < 0 || gyroBlocks.empty()) return nullptr;
     auto it = gyroBlocks.find(bodyIndex);
     return it == gyroBlocks.end() ? nullptr : &it->second;
@@ -128,8 +128,8 @@ CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
         const int nSp = (int)std::count(c_used.begin(), c_used.end(), true);
         if (nSp == 0) continue;
 
-        const bool addA = !cardillo::RigidBody::isStatic(reg, constraint.a);
-        const bool addB = !cardillo::RigidBody::isStatic(reg, constraint.b);
+        const bool addA = !RigidBody::isStatic(reg, constraint.a);
+        const bool addB = !RigidBody::isStatic(reg, constraint.b);
         if (!addA && !addB) continue;
 
         RowBlock blk;
@@ -168,8 +168,8 @@ CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
         const int nDa = (int)std::count(a_used.begin(), a_used.end(), true);
         if (nDa == 0) continue;
 
-        const bool addA = !cardillo::RigidBody::isStatic(reg, constraint.a);
-        const bool addB = !cardillo::RigidBody::isStatic(reg, constraint.b);
+        const bool addA = !RigidBody::isStatic(reg, constraint.a);
+        const bool addB = !RigidBody::isStatic(reg, constraint.b);
         if (!addA && !addB) continue;
 
         RowBlock blk;
@@ -217,8 +217,8 @@ CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
         blk.mu = c.friction_mu;
         blk.contactIndex = ci;
 
-        const bool aDyn = !cardillo::RigidBody::isStatic(reg, c.a);
-        const bool bDyn = !cardillo::RigidBody::isStatic(reg, c.b);
+        const bool aDyn = !RigidBody::isStatic(reg, c.a);
+        const bool bDyn = !RigidBody::isStatic(reg, c.b);
         resolveBodySide(reg, velOffsets, c.a, blk.bodyIndexA, blk.aOff, blk.aDof);
         resolveBodySide(reg, velOffsets, c.b, blk.bodyIndexB, blk.bOff, blk.bDof);
 
@@ -324,9 +324,9 @@ void CondensedAssembler::updateCompliance(CondensedTopology& topo, real_t dt, re
         // for "full", normal-tangential) coupling the plain diagonal ignores. Falls back to the
         // diagonal above if the block's own Gii is (near-)singular for this estimate.
         if (blk.kind == RowBlock::Kind::ContactFrictional && m_cfg.condensed_projection_rho_strategy != "diagonal") {
-            const auto strategy = (m_cfg.condensed_projection_rho_strategy == "full") ? cardillo::misc::ContactRhoStrategy::FullSpectral
-                                                                                       : cardillo::misc::ContactRhoStrategy::Split;
-            const Vector3r rho = cardillo::misc::computeContactRho(blk.Gii, strategy);
+            const auto strategy = (m_cfg.condensed_projection_rho_strategy == "full") ? misc::ContactRhoStrategy::FullSpectral
+                                                                                       : misc::ContactRhoStrategy::Split;
+            const Vector3r rho = misc::computeContactRho(blk.Gii, strategy);
             if ((rho.array() > (real_t)0).all()) {
                 blk.GiiInv.setZero();
                 blk.GiiInv.diagonal() = rho;
@@ -466,7 +466,7 @@ int offAt(const RowBlock& blk, int b) { return (blk.bodyIndexA == b) ? blk.aOff 
 int dofAt(const RowBlock& blk, int b) { return (blk.bodyIndexA == b) ? blk.aDof : blk.bDof; }
 }  // namespace
 
-cardillo::misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(const CondensedTopology& topo) const {
+misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(const CondensedTopology& topo) const {
     const auto& MinvDiag = m_dyn->MinvDiag();
     const int n = topo.numBilateralBlocks;
 
@@ -574,7 +574,7 @@ cardillo::misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(
         }
     }
 
-    cardillo::misc::BlockSparseLDLT ldlt;
+    misc::BlockSparseLDLT ldlt;
     // `dims` is passed by value (copied, not moved) so it's still available below for the cache
     // comparison -- cheap, it's just n ints.
     ldlt.build(dims, std::move(diagBlocks), edgeNodes, edgeBlocks, /*symmetric=*/!anyAsym);
