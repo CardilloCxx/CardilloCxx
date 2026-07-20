@@ -61,7 +61,7 @@ class World {
 
     config::Config m_cfg{};  // global config
 
-    std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>> m_constraints_new;
+    std::vector<std::unique_ptr<physics::ConstraintPattern>> m_constraints_new;
     std::shared_ptr<class PhysicsAssets> m_assets;
 
     // Access global config
@@ -102,8 +102,8 @@ class World {
     entt::registry& ecs() { return m_reg; }
 
     // Access all constraint patterns (mutable and const)
-    std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() { return m_constraints_new; }
-    const std::vector<std::unique_ptr<cardillo::physics::ConstraintPattern>>& constraintPatterns() const { return m_constraints_new; }
+    std::vector<std::unique_ptr<physics::ConstraintPattern>>& constraintPatterns() { return m_constraints_new; }
+    const std::vector<std::unique_ptr<physics::ConstraintPattern>>& constraintPatterns() const { return m_constraints_new; }
 
     int numBodies() const;
 

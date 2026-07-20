@@ -20,9 +20,9 @@ public:
     FabricScene() = default;
     ~FabricScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         engine.setGravity(Vector3r(0, 0, -9.81));
 
@@ -136,7 +136,7 @@ public:
         //         // Close open loops manually by rigidly constraining ends to elements 6 steps inward for "res/bcc/openwork_trellis_pattern.bcc"
         //         if(bccRel == "res/bcc/openwork_trellis_pattern.bcc") {
         //             auto& reg = engine.ecs();
-        //                 auto view = reg.view<cardillo::C_BeamElement>();
+        //                 auto view = reg.view<C_BeamElement>();
         //             std::unordered_set<entt::entity> visited;
         //             const size_t offsetSteps = 6;
         //
@@ -146,8 +146,8 @@ public:
         //                 entt::entity start = e;
         //                 bool isLoop = false;
         //                 std::unordered_set<entt::entity> backSeen;
-        //                 while (reg.valid(start) && reg.any_of<cardillo::C_BeamElement>(start)) {
-        //                     const auto& be = reg.get<cardillo::C_BeamElement>(start);
+        //                 while (reg.valid(start) && reg.any_of<C_BeamElement>(start)) {
+        //                     const auto& be = reg.get<C_BeamElement>(start);
         //                     if (!be.prev.has_value()) break;
         //                     if (be.prev.value() == start || backSeen.count(be.prev.value())) { isLoop = true; break; }
         //                     backSeen.insert(start);
@@ -162,11 +162,11 @@ public:
         //                 // Collect the chain
         //                 std::vector<entt::entity> chain;
         //                 entt::entity cur = start;
-        //                 while (reg.valid(cur) && reg.any_of<cardillo::C_BeamElement>(cur)) {
+        //                 while (reg.valid(cur) && reg.any_of<C_BeamElement>(cur)) {
         //                     if (visited.count(cur)) break;
         //                     visited.insert(cur);
         //                     chain.push_back(cur);
-        //                     const auto& be = reg.get<cardillo::C_BeamElement>(cur);
+        //                     const auto& be = reg.get<C_BeamElement>(cur);
         //                     if (!be.next.has_value()) break;
         //                     if (be.next.value() == cur) break;
         //                     cur = be.next.value();
@@ -218,7 +218,7 @@ public:
         //         struct Candidate { entt::entity e; Vector3r p; };
         //         std::vector<Candidate> allCandidates;
         //
-        //         auto view = engine.ecs().view<cardillo::C_BeamElement, cardillo::C_Position3>();
+        //         auto view = engine.ecs().view<C_BeamElement, C_Position3>();
         //         real_t minX = std::numeric_limits<real_t>::infinity();
         //         real_t maxX = -std::numeric_limits<real_t>::infinity();
         //         for (auto [e, be, pos] : view.each()) {
@@ -281,11 +281,11 @@ public:
         //
         //         // Print total number of beam elements created
         //         size_t beamCount = 0;
-        //         engine.ecs().view<cardillo::C_BeamElement>().each([&](auto&) { ++beamCount; });
+        //         engine.ecs().view<C_BeamElement>().each([&](auto&) { ++beamCount; });
         //         // std::cout << "[FabricScene] Created " << beamCount << " beam elements." << std::endl;
     }
 
-    //     void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    //     void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
     //         using namespace cardillo;
     //
     //         auto smoothstep = [](real_t x) {

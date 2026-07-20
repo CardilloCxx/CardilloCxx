@@ -12,7 +12,7 @@ public:
     SpringTestScene() = default;
     ~SpringTestScene() override = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
     // ground (static obstacle cube via unified API)
@@ -99,12 +99,12 @@ private:
     // - segmentMass: mass for each intermediate segment body.
     // This implementation creates small spherical segments and connects consecutive bodies with
     // very large stiffness translational springs (approximate infinite stiffness).
-    void createRope(cardillo::physics::PhysicsEngine& engine, entt::entity eA, entt::entity eB,
+    void createRope(physics::PhysicsEngine& engine, entt::entity eA, entt::entity eB,
                     int numSegments, real_t slack = (real_t)0.0, real_t segmentMass = (real_t)0.05,
                     const Vector3r& attachA_local = Vector3r::Zero(),
                     const Vector3r& attachB_local = Vector3r::Zero()) {
         using namespace cardillo;
-        using namespace cardillo::physics;
+        using namespace physics;
         if (numSegments <= 0) return;
 
         entt::registry& reg = engine.ecs();
@@ -114,18 +114,18 @@ private:
         Vector3r centerB = Vector3r::Zero();
         Quaternion4r qA = Quaternion4r::Identity();
         Quaternion4r qB = Quaternion4r::Identity();
-        if (reg.all_of<cardillo::C_Position3>(eA)) centerA = reg.get<cardillo::C_Position3>(eA).value;
-        if (reg.all_of<cardillo::C_Position3>(eB)) centerB = reg.get<cardillo::C_Position3>(eB).value;
-        if (reg.all_of<cardillo::C_Orientation>(eA)) qA = reg.get<cardillo::C_Orientation>(eA).value;
-        if (reg.all_of<cardillo::C_Orientation>(eB)) qB = reg.get<cardillo::C_Orientation>(eB).value;
+        if (reg.all_of<C_Position3>(eA)) centerA = reg.get<C_Position3>(eA).value;
+        if (reg.all_of<C_Position3>(eB)) centerB = reg.get<C_Position3>(eB).value;
+        if (reg.all_of<C_Orientation>(eA)) qA = reg.get<C_Orientation>(eA).value;
+        if (reg.all_of<C_Orientation>(eB)) qB = reg.get<C_Orientation>(eB).value;
 
         // Determine local attachment offsets. For spheres, ensure attachment lies on surface.
         Vector3r rA_local = attachA_local;
         Vector3r rB_local = attachB_local;
         const real_t eps = (real_t)1e-9;
         // If attachment not provided and A is a sphere, point toward B; if provided and A is sphere, project to surface
-        if (reg.all_of<cardillo::C_RB_Sphere>(eA) && reg.all_of<cardillo::C_Radius>(eA)) {
-            real_t radiusA = reg.get<cardillo::C_Radius>(eA).r;
+        if (reg.all_of<C_RB_Sphere>(eA) && reg.all_of<C_Radius>(eA)) {
+            real_t radiusA = reg.get<C_Radius>(eA).r;
             if (rA_local.squaredNorm() < eps) {
                 // default: direction from center to other body center in world frame
                 Vector3r worldDir = (centerB - centerA);
@@ -138,8 +138,8 @@ private:
             }
         }
         // Same for B
-        if (reg.all_of<cardillo::C_RB_Sphere>(eB) && reg.all_of<cardillo::C_Radius>(eB)) {
-            real_t radiusB = reg.get<cardillo::C_Radius>(eB).r;
+        if (reg.all_of<C_RB_Sphere>(eB) && reg.all_of<C_Radius>(eB)) {
+            real_t radiusB = reg.get<C_Radius>(eB).r;
             if (rB_local.squaredNorm() < eps) {
                 Vector3r worldDir = (centerA - centerB);
                 if (worldDir.norm() < eps) worldDir = Vector3r::UnitZ(); else worldDir.normalize();

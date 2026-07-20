@@ -203,7 +203,7 @@ real_t World::getKineticEnergy(entt::entity e) const {
     // Point mass
     if (m_reg.all_of<C_PointMassTag, C_PhysicsObject, C_Mass, C_LinearVelocity3>(e)) {
         const real_t m = m_reg.get<C_Mass>(e).m;
-        const Vector3r v = m_reg.get<C_LinearVelocity3>(e).value;
+        const Vector3r& v = m_reg.get<C_LinearVelocity3>(e).value;
         KE += (real_t)0.5 * m * v.squaredNorm();
         return KE;
     }
@@ -283,7 +283,7 @@ void World::setPosition(entt::entity e, const Vector3r& p) {
 void World::setOrientation(entt::entity e, const Quaternion4r& q_in) {
     if (!m_reg.valid(e)) return;
     if (m_reg.any_of<C_Orientation>(e)) {
-        const Quaternion4r q_ref = m_reg.get<C_Orientation>(e).value;
+        const Quaternion4r& q_ref = m_reg.get<C_Orientation>(e).value;
         m_reg.get<C_Orientation>(e).value = MathHelper::alignQuaternionTo(q_in, q_ref);
     } else {
         Quaternion4r q = q_in;

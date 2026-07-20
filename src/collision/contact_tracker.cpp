@@ -21,7 +21,7 @@ void ContactTracker::applyPrevImpulses(std::vector<Contact>& currFlattened, cons
 
 void ContactTracker::registerNextContacts(ContactMap& curr) {
     // Timings
-    auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::CollisionMatching);
+    auto sc = m_timings->scope(misc::TimingManager::TimerId::CollisionMatching);
 
     // For each pair in the current map, find the corresponding pair in the previous map and match
     // contacts

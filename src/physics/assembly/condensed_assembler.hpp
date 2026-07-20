@@ -71,7 +71,7 @@ struct CondensedTopology {
 // never through Eigen::SparseMatrix.
 class CondensedAssembler {
    public:
-    CondensedAssembler(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
+    CondensedAssembler(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
 
     // Builds the RowBlock list + body incidence from the current constraintResults()/contacts(),
     // and (see CondensedTopology::gyroMinvBlocks) each implicit-gyroscopic body's effective inverse
@@ -106,11 +106,11 @@ class CondensedAssembler {
     // genuinely non-symmetric; otherwise (every scene without an active implicit-gyroscopic body in
     // its compliant chain) uses the default symmetric=true mode, unchanged in cost from before this
     // capability existed.
-    cardillo::misc::BlockSparseLDLT buildBilateralFactorization(const CondensedTopology& topo) const;
+    misc::BlockSparseLDLT buildBilateralFactorization(const CondensedTopology& topo) const;
 
    private:
-    cardillo::physics::DynamicsAssembler* m_dyn;
-    cardillo::config::Config m_cfg;
+    physics::DynamicsAssembler* m_dyn;
+    config::Config m_cfg;
 
     // Cache of the last elimination order computed by buildBilateralFactorization(), keyed on the
     // bilateral graph's *structure* (dims + edge node pairs -- not the numeric Gii/complianceDiag

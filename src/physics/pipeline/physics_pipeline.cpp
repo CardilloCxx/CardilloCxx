@@ -23,27 +23,27 @@ namespace pipeline {
 
 PhysicsPipeline::~PhysicsPipeline() = default;
 
-PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Config& cfg, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings)
+PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::CollisionCoal* collision_mgr, misc::TimingManager* timings)
     : m_world(world), m_cfg(cfg), m_collision_mgr(collision_mgr), m_timings(timings) {
     // Use engine-owned collision manager (passed-in)
     // Create owned components
-    m_dyn = std::make_unique<cardillo::physics::DynamicsAssembler>(m_world, m_collision_mgr, m_timings, m_cfg);
+    m_dyn = std::make_unique<physics::DynamicsAssembler>(m_world, m_collision_mgr, m_timings, m_cfg);
 
     // Choose solver based on config
-    using namespace cardillo::solver;
-    if (cfg.solver == cardillo::config::SolverType::ProjectedJacobi) {
+    using namespace solver;
+    if (cfg.solver == config::SolverType::ProjectedJacobi) {
         m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);
-    } else if (cfg.solver == cardillo::config::SolverType::ConjugateGradient) {
+    } else if (cfg.solver == config::SolverType::ConjugateGradient) {
         m_solver = std::make_unique<ConjugateGradientSolver>(*m_dyn, m_cfg);
-    } else if (cfg.solver == cardillo::config::SolverType::ProjectedGaussSeidel) {
+    } else if (cfg.solver == config::SolverType::ProjectedGaussSeidel) {
         m_solver = std::make_unique<ProjectedGaussSeidelSolver>(*m_dyn, m_cfg);
-    } else if (cfg.solver == cardillo::config::SolverType::Qoco) {
+    } else if (cfg.solver == config::SolverType::Qoco) {
         m_solver = std::make_unique<QocoSolver>(*m_dyn, m_cfg);
-    } else if (cfg.solver == cardillo::config::SolverType::Clarabel) {
+    } else if (cfg.solver == config::SolverType::Clarabel) {
         m_solver = std::make_unique<ClarabelSolver>(*m_dyn, m_cfg);
-    } else if (cfg.solver == cardillo::config::SolverType::Conicxx) {
+    } else if (cfg.solver == config::SolverType::Conicxx) {
         m_solver = std::make_unique<ConicxxSolver>(*m_dyn, m_cfg);
-    } else if (cfg.solver == cardillo::config::SolverType::Condensed) {
+    } else if (cfg.solver == config::SolverType::Condensed) {
         m_solver = std::make_unique<CondensedSolver>(*m_dyn, m_cfg);
     } else {
         std::cerr << "Warning: Unrecognized solver type in config; defaulting to ProjectedJacobi.\n";
@@ -51,8 +51,8 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Confi
     }
 
     // Choose integrator based on config
-    using namespace cardillo::integration;
-    if (cfg.integrator == cardillo::config::IntegratorType::Moreau) {
+    using namespace integration;
+    if (cfg.integrator == config::IntegratorType::Moreau) {
         m_integrator = std::make_unique<MoreauIntegrator>(m_world, *m_solver, *m_dyn, *m_timings, m_cfg);
     } else {
         std::cerr << "Warning: Unrecognized integrator type in config; defaulting to Moreau." << std::endl;
@@ -61,18 +61,18 @@ PhysicsPipeline::PhysicsPipeline(cardillo::World& world, cardillo::config::Confi
 
     // Create VTK writer if output is enabled
     if (cfg.output_interval_steps > 0) {
-        m_vtk_writer = std::make_unique<cardillo::io::VtkWriter>(cfg);
+        m_vtk_writer = std::make_unique<io::VtkWriter>(cfg);
     }
 
     // Create tracked CSV writer object but do not open file yet; CsvWriter will open lazily on
     // first write
-    m_tracked_writer = std::make_unique<cardillo::io::CsvWriter>(m_cfg);
+    m_tracked_writer = std::make_unique<io::CsvWriter>(m_cfg);
 
     // Create progress bar if sim parameters are available
     if (cfg.sim_dt > 0 && cfg.sim_T > 0) {
         m_total_steps = static_cast<int>(std::ceil(cfg.sim_T / cfg.sim_dt));
         if (m_total_steps > 0) {
-            m_pbar = std::make_unique<cardillo::misc::ProgressBar>(static_cast<std::size_t>(m_total_steps), std::cout);
+            m_pbar = std::make_unique<misc::ProgressBar>(static_cast<std::size_t>(m_total_steps), std::cout);
             m_pbar->set_description("Simulating");
         }
     }

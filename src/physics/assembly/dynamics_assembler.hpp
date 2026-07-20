@@ -16,7 +16,7 @@ namespace cardillo::physics {
 
 class DynamicsAssembler {
    public:
-    explicit DynamicsAssembler(World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings, const cardillo::config::Config& cfg)
+    explicit DynamicsAssembler(World& sys, collision::CollisionCoal* collision_mgr, misc::TimingManager* timings, const config::Config& cfg)
 
         : m_world(sys), m_collision_mgr(collision_mgr), m_timings(timings), m_cfg(cfg) {}
 
@@ -70,8 +70,8 @@ class DynamicsAssembler {
     void refreshState();
     void updateStateDependentTerms(real_t dt);
 
-    cardillo::misc::TimingManager* timings() const { return m_timings; }
-    cardillo::collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
+    misc::TimingManager* timings() const { return m_timings; }
+    collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
 
     // Accessors for newly added matrices
     const TripletMatrix& Wg() const { return m_Wg; }
@@ -100,7 +100,7 @@ class DynamicsAssembler {
     void setLambda_gamma(const VectorXr& lam) { m_Lambda_gamma = lam; }
 
     std::vector<collision::Contact>* m_contacts_ptr{nullptr};
-    void setContactLastImpulse(int global_out_index, const cardillo::Vector3r& imp);
+    void setContactLastImpulse(int global_out_index, const Vector3r& imp);
 
     // Cached sizes
     index_t m_numQ{0};
@@ -115,9 +115,9 @@ class DynamicsAssembler {
    private:
     World& m_world;
     // Non-owning pointers to external subsystems (moved out of World)
-    cardillo::collision::CollisionCoal* m_collision_mgr{nullptr};
-    cardillo::misc::TimingManager* m_timings{nullptr};
-    const cardillo::config::Config& m_cfg;
+    collision::CollisionCoal* m_collision_mgr{nullptr};
+    misc::TimingManager* m_timings{nullptr};
+    const config::Config& m_cfg;
 
     // Cached data
     // Concatenated state

@@ -21,7 +21,7 @@ class DynamicConstraintScene : public SceneBase {
 public:
     const char* sceneName() const override { return "dynamic_constraint"; }
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
         const real_t mass = (real_t)0.2;
@@ -38,7 +38,7 @@ public:
         m_springD = d;
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         if (!m_added && t >= m_addAt) {
             engine.addLinearDistanceConstraint(m_b, m_c, Vector3r::Zero(), Vector3r::Zero(), m_springK, m_springD);
             m_added = true;

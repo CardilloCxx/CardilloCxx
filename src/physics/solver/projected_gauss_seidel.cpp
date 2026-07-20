@@ -54,7 +54,7 @@ static inline void project_all(VectorXr& impulse, VectorXr& dlambda, const Vecto
 }
 
 VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
-    auto sc_setup = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedGaussSeidelSetup);
+    auto sc_setup = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedGaussSeidelSetup);
 
     const VectorXr u_free = m_assembler.ufree(dt, theta);
 
@@ -100,7 +100,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
         lambda.segment(nSprings + nDampers, nContacts) = l_contact;
     }
 
-    auto sc_solve = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedGaussSeidel);
+    auto sc_solve = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedGaussSeidel);
 
     const real_t alpha = m_cfg.pj_alpha;
 
@@ -142,7 +142,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
     // Single sweep callable used by both standard and Nesterov loops
     auto pgs_sweep = [&](int iter) -> void {
-        auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
+        auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
         // real_t res_norm_sq = 0;
         const bool backward = false;
 
@@ -169,7 +169,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     };
 
     auto pj_sweep = [&](int iter) -> void {
-        auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
+        auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
 
         res = rhs;
         res -= W_row * u_corr;

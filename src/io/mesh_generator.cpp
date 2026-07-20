@@ -270,71 +270,71 @@ const LocalMeshCache& getOrBuildLocalMesh(entt::entity e, BuildFn&& build) {
 enum class MeshKind { Unsupported, SoftBody, Plane, Cube, Capsule, Cylinder, Cone, MeshAsset, Sphere };
 
 MeshKind detectMeshKind(const entt::registry& reg, entt::entity e) {
-    if (reg.any_of<cardillo::C_SoftBodySurface>(e)) return MeshKind::SoftBody;
-    if (reg.any_of<cardillo::C_Plane>(e) && reg.any_of<cardillo::C_Position3>(e)) return MeshKind::Plane;
-    if (reg.any_of<cardillo::C_Cube>(e)) return MeshKind::Cube;
-    if (reg.any_of<cardillo::C_Capsule>(e)) return MeshKind::Capsule;
-    if (reg.any_of<cardillo::C_Cylinder>(e)) return MeshKind::Cylinder;
-    if (reg.any_of<cardillo::C_Cone>(e)) return MeshKind::Cone;
-    if (reg.any_of<cardillo::C_Mesh>(e)) return MeshKind::MeshAsset;
-    if (reg.any_of<cardillo::C_RB_Sphere, cardillo::C_Radius>(e)) return MeshKind::Sphere;
+    if (reg.any_of<C_SoftBodySurface>(e)) return MeshKind::SoftBody;
+    if (reg.any_of<C_Plane>(e) && reg.any_of<C_Position3>(e)) return MeshKind::Plane;
+    if (reg.any_of<C_Cube>(e)) return MeshKind::Cube;
+    if (reg.any_of<C_Capsule>(e)) return MeshKind::Capsule;
+    if (reg.any_of<C_Cylinder>(e)) return MeshKind::Cylinder;
+    if (reg.any_of<C_Cone>(e)) return MeshKind::Cone;
+    if (reg.any_of<C_Mesh>(e)) return MeshKind::MeshAsset;
+    if (reg.any_of<C_RB_Sphere, C_Radius>(e)) return MeshKind::Sphere;
     return MeshKind::Unsupported;
 }
 
-void fillCommonEntityData(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
-    out = cardillo::io::MeshGenerator::EntityMesh{};
+void fillCommonEntityData(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
+    out = io::MeshGenerator::EntityMesh{};
     out.entity = e;
     out.entityId = static_cast<int>(entt::to_integral(e));
-    out.isDynamic = reg.any_of<cardillo::C_PhysicsObject, cardillo::C_StaticTrajectory>(e);
+    out.isDynamic = reg.any_of<C_PhysicsObject, C_StaticTrajectory>(e);
 
-    if (reg.any_of<cardillo::C_BeamElement>(e)) {
-        const auto& be = reg.get<cardillo::C_BeamElement>(e);
+    if (reg.any_of<C_BeamElement>(e)) {
+        const auto& be = reg.get<C_BeamElement>(e);
         out.beamLengthRatio = (be.l0 > (real_t)0) ? (be.l / be.l0) : (real_t)1;
     }
 
-    const auto state = cardillo::RigidBody::getState(reg, e);
+    const auto state = RigidBody::getState(reg, e);
 
-    if (reg.any_of<cardillo::C_LinearVelocity3>(e)) {
+    if (reg.any_of<C_LinearVelocity3>(e)) {
         out.vlin = state.linearVelocity;
         out.hasKinematics = true;
     }
-    if (reg.any_of<cardillo::C_AngularVelocity3>(e)) {
+    if (reg.any_of<C_AngularVelocity3>(e)) {
         out.omega = state.angularVelocity;
         out.hasKinematics = true;
     }
-    if (reg.any_of<cardillo::C_LinearAcceleration3>(e)) {
-        out.alin = reg.get<cardillo::C_LinearAcceleration3>(e).value;
+    if (reg.any_of<C_LinearAcceleration3>(e)) {
+        out.alin = reg.get<C_LinearAcceleration3>(e).value;
     }
-    if (reg.any_of<cardillo::C_AngularAcceleration3>(e)) {
-        out.alpha = reg.get<cardillo::C_AngularAcceleration3>(e).value;
+    if (reg.any_of<C_AngularAcceleration3>(e)) {
+        out.alpha = reg.get<C_AngularAcceleration3>(e).value;
     }
 
     out.center = state.position;
     out.R = state.rotation;
 }
 
-bool buildSoftBodyMesh(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
-    const auto& surf = reg.get<cardillo::C_SoftBodySurface>(e);
+bool buildSoftBodyMesh(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
+    const auto& surf = reg.get<C_SoftBodySurface>(e);
     out.center.setZero();
     out.vertices.reserve(surf.nodes.size());
     out.perVertexVelocity.reserve(surf.nodes.size());
     out.perVertexAcceleration.reserve(surf.nodes.size());
 
     for (entt::entity node : surf.nodes) {
-        if (reg.valid(node) && reg.any_of<cardillo::C_Position3>(node)) {
-            out.vertices.push_back(reg.get<cardillo::C_Position3>(node).value);
+        if (reg.valid(node) && reg.any_of<C_Position3>(node)) {
+            out.vertices.push_back(reg.get<C_Position3>(node).value);
         } else {
             out.vertices.emplace_back(Vector3r::Zero());
         }
 
-        if (reg.valid(node) && reg.any_of<cardillo::C_LinearVelocity3>(node)) {
-            out.perVertexVelocity.push_back(reg.get<cardillo::C_LinearVelocity3>(node).value);
+        if (reg.valid(node) && reg.any_of<C_LinearVelocity3>(node)) {
+            out.perVertexVelocity.push_back(reg.get<C_LinearVelocity3>(node).value);
         } else {
             out.perVertexVelocity.emplace_back(Vector3r::Zero());
         }
 
-        if (reg.valid(node) && reg.any_of<cardillo::C_LinearAcceleration3>(node)) {
-            out.perVertexAcceleration.push_back(reg.get<cardillo::C_LinearAcceleration3>(node).value);
+        if (reg.valid(node) && reg.any_of<C_LinearAcceleration3>(node)) {
+            out.perVertexAcceleration.push_back(reg.get<C_LinearAcceleration3>(node).value);
         } else {
             out.perVertexAcceleration.emplace_back(Vector3r::Zero());
         }
@@ -344,9 +344,9 @@ bool buildSoftBodyMesh(const entt::registry& reg, entt::entity e, cardillo::io::
     return !out.vertices.empty();
 }
 
-bool buildPlaneMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
-    const auto& pl = reg.get<cardillo::C_Plane>(e);
-    const auto state = cardillo::RigidBody::getState(reg, e);
+bool buildPlaneMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
+    const auto& pl = reg.get<C_Plane>(e);
+    const auto state = RigidBody::getState(reg, e);
     const auto& pos = state.position;
     out.center = pos;
 
@@ -368,8 +368,8 @@ bool buildPlaneMeshTriangles(const entt::registry& reg, entt::entity e, cardillo
     return true;
 }
 
-bool buildCubeMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
-    const auto& c = reg.get<cardillo::C_Cube>(e);
+bool buildCubeMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
+    const auto& c = reg.get<C_Cube>(e);
     Quaternion4r qLocal = c.q;
     Matrix33r Rw = out.R * qLocal.toRotationMatrix();
     out.R = Rw;
@@ -399,10 +399,10 @@ bool buildCubeMeshTriangles(const entt::registry& reg, entt::entity e, cardillo:
     return true;
 }
 
-bool buildCapsuleMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
+bool buildCapsuleMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
     const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>&) {
-        const auto& c = reg.get<cardillo::C_Capsule>(e);
-        cardillo::io::MeshGenerator::generateCapsuleMesh(8, 3, 1, c.radius, c.halfLength, v, t);
+        const auto& c = reg.get<C_Capsule>(e);
+        io::MeshGenerator::generateCapsuleMesh(8, 3, 1, c.radius, c.halfLength, v, t);
     });
     out.triangles = cached.triangles;
     out.vertices.resize(cached.vertices.size());
@@ -410,10 +410,10 @@ bool buildCapsuleMeshTriangles(const entt::registry& reg, entt::entity e, cardil
     return !out.vertices.empty();
 }
 
-bool buildCylinderMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
+bool buildCylinderMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
     const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>&) {
-        const auto& c = reg.get<cardillo::C_Cylinder>(e);
-        cardillo::io::MeshGenerator::generateCylinderMesh(16, c.radius, c.halfLength, v, t);
+        const auto& c = reg.get<C_Cylinder>(e);
+        io::MeshGenerator::generateCylinderMesh(16, c.radius, c.halfLength, v, t);
     });
     out.triangles = cached.triangles;
     out.vertices.resize(cached.vertices.size());
@@ -421,10 +421,10 @@ bool buildCylinderMeshTriangles(const entt::registry& reg, entt::entity e, cardi
     return !out.vertices.empty();
 }
 
-bool buildConeMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
+bool buildConeMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
     const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>&) {
-        const auto& c = reg.get<cardillo::C_Cone>(e);
-        cardillo::io::MeshGenerator::generateConeMesh(24, c.radius, c.height, v, t);
+        const auto& c = reg.get<C_Cone>(e);
+        io::MeshGenerator::generateConeMesh(24, c.radius, c.height, v, t);
     });
     out.triangles = cached.triangles;
     out.vertices.resize(cached.vertices.size());
@@ -432,7 +432,7 @@ bool buildConeMeshTriangles(const entt::registry& reg, entt::entity e, cardillo:
     return !out.vertices.empty();
 }
 
-bool buildMeshAssetTriangles(const cardillo::World& sys, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
+bool buildMeshAssetTriangles(const World& sys, entt::entity e, io::MeshGenerator::EntityMesh& out) {
     try {
         const auto& asset = sys.getMeshAsset(e);
         if (!asset.bvh || !asset.bvh->vertices || !asset.bvh->tri_indices) return false;
@@ -459,11 +459,11 @@ bool buildMeshAssetTriangles(const cardillo::World& sys, entt::entity e, cardill
 
 // HeightField mesh generation removed
 
-bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, cardillo::io::MeshGenerator::EntityMesh& out) {
+bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
     const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>& uvs) {
-        const real_t radius = reg.get<cardillo::C_Radius>(e).r;
+        const real_t radius = reg.get<C_Radius>(e).r;
         std::vector<Vector3r> unitVerts;
-        cardillo::io::MeshGenerator::generateUVSphere(12, 24, unitVerts, t);
+        io::MeshGenerator::generateUVSphere(12, 24, unitVerts, t);
         v.reserve(unitVerts.size());
         uvs.reserve(unitVerts.size());
         for (const auto& uv : unitVerts) {
@@ -483,9 +483,9 @@ bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, cardill
 
 }  // namespace
 
-bool MeshGenerator::buildEntityMesh(const cardillo::World& sys, entt::entity e, EntityMesh& out) {
+bool MeshGenerator::buildEntityMesh(const World& sys, entt::entity e, EntityMesh& out) {
     const auto& reg = sys.ecs();
-    if (!reg.valid(e) || !reg.any_of<cardillo::C_VisualObject>(e)) {
+    if (!reg.valid(e) || !reg.any_of<C_VisualObject>(e)) {
         return false;
     }
 

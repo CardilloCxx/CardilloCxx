@@ -64,7 +64,7 @@ public:
         {"i",     {"gcki",   "hi"   }},
     };
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         const real_t slopeDeg = (real_t)3.0;
         const real_t slopeRad = slopeDeg * (real_t)M_PI / (real_t)180.0;
         // Tilt gravity instead of the ground plane: downhill +x

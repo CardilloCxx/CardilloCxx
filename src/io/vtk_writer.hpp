@@ -39,17 +39,17 @@ namespace cardillo::io {
 // writer thread so the actual serialize-to-disk work doesn't block the simulation loop.
 class VtkWriter {
    public:
-    VtkWriter(const cardillo::config::Config& cfg);
+    VtkWriter(const config::Config& cfg);
     ~VtkWriter();
 
     void setOutputDir(const std::string& dir);
     void setBaseName(const std::string& name);
     void setFrequency(int freq);
 
-    void maybeWrite(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
-                    cardillo::physics::DynamicsAssembler* dyn = nullptr);
-    void write(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
-               cardillo::physics::DynamicsAssembler* dyn = nullptr);
+    void maybeWrite(int step, real_t time, const World& sys, collision::CollisionCoal* collision_mgr, misc::TimingManager* timings,
+                    physics::DynamicsAssembler* dyn = nullptr);
+    void write(int step, real_t time, const World& sys, collision::CollisionCoal* collision_mgr, misc::TimingManager* timings,
+               physics::DynamicsAssembler* dyn = nullptr);
 
     void enableSpringsOutput(bool enable, const std::string& baseName) {
         m_writeSprings = enable;
@@ -61,7 +61,7 @@ class VtkWriter {
     }
 
    private:
-    const cardillo::config::Config& m_cfg;
+    const config::Config& m_cfg;
     std::string m_outputDir;
     std::string m_baseName;
     int m_frequency{1};
@@ -74,14 +74,14 @@ class VtkWriter {
     using EntityMesh = MeshGenerator::EntityMesh;
 
     // Helpers (run synchronously on the calling/sim thread)
-    void enrichPressure(std::vector<EntityMesh>& meshes, const cardillo::World& sys, const std::vector<cardillo::collision::Contact>& contacts) const;
-    void enrichManifolds(std::vector<cardillo::collision::ContactManifold>& manifolds, const std::vector<cardillo::collision::Contact>& contacts, real_t dt) const;
+    void enrichPressure(std::vector<EntityMesh>& meshes, const World& sys, const std::vector<collision::Contact>& contacts) const;
+    void enrichManifolds(std::vector<collision::ContactManifold>& manifolds, const std::vector<collision::Contact>& contacts, real_t dt) const;
     std::string buildPath(const std::string& prefix, int step) const;
     std::string pvdPath(const std::string& prefix) const;
 
     vtkSmartPointer<vtkPolyData> meshesToPolyData(const std::vector<EntityMesh>& meshes) const;
-    vtkSmartPointer<vtkPolyData> springsToPolyData(const cardillo::World& sys) const;
-    vtkSmartPointer<vtkPolyData> contactManifoldsToPolyData(const std::vector<cardillo::collision::ContactManifold>& manifolds) const;
+    vtkSmartPointer<vtkPolyData> springsToPolyData(const World& sys) const;
+    vtkSmartPointer<vtkPolyData> contactManifoldsToPolyData(const std::vector<collision::ContactManifold>& manifolds) const;
 
     static void writeVtp(const vtkSmartPointer<vtkPolyData>& pd, const std::string& path);
 

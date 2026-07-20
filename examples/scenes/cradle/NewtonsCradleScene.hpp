@@ -10,7 +10,7 @@ class NewtonsCradleScene : public SceneBase {
 public:
     const char* sceneName() const override { return "newtons_cradle"; }
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         engine.setGravity(Vector3r(0.0, 0.0, -9.81));
 
         const real_t t = 0.02;         // Half-thickness for pillars and bars

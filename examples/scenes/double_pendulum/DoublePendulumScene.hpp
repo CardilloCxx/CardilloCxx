@@ -13,10 +13,10 @@ public:
     DoublePendulumScene() = default;
     ~DoublePendulumScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
-        using namespace cardillo::physics;
+        using namespace misc;
+        using namespace physics;
 
         real_t density = 7750.0; // kg/m^3
         Vector3r scale{1.0, 1.0, 1.0};
@@ -84,7 +84,7 @@ public:
         // engine.disableCollisionBetween(m_base, m_rb2);
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         (void)engine;
         (void)t;
         // nothing done here

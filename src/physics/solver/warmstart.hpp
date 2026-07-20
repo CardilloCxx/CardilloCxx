@@ -23,7 +23,7 @@ class WarmstartProvider {
     // boundary without touching its own internal algebra or the canonical storage convention.
     //
     // Apply a warmstart hint using per-contact stored impulses in `contactsAll`.
-    static void applyWarmstart(cardillo::VectorXr& p, cardillo::physics::DynamicsAssembler& dyn, bool invertNormalSign = false) {
+    static void applyWarmstart(VectorXr& p, physics::DynamicsAssembler& dyn, bool invertNormalSign = false) {
         const auto& contacts = dyn.contacts();
         for (const auto& c : contacts) {
             if (c.impulse_base_index < 0) continue;
@@ -38,14 +38,14 @@ class WarmstartProvider {
 
     // Extract per-contact impulses and store them into contactsAll (by reference to underlying
     // contacts)
-    static void storeImpulse(const cardillo::VectorXr& p, cardillo::physics::DynamicsAssembler& dyn, bool invertNormalSign = false) {
+    static void storeImpulse(const VectorXr& p, physics::DynamicsAssembler& dyn, bool invertNormalSign = false) {
         // Iterate contacts and write last_impulse directly into the assembler's contact storage
         const auto& contacts = dyn.contacts();
         for (const auto& c : contacts) {
             if (c.impulse_base_index < 0) continue;
             const int base = c.impulse_base_index;
             if (base >= p.size()) continue;
-            cardillo::Vector3r imp = cardillo::Vector3r::Zero();
+            Vector3r imp = Vector3r::Zero();
             imp(0) = invertNormalSign ? -p[base] : p[base];
             if (c.impulse_size > 1 && base + 1 < p.size()) imp(1) = p[base + 1];
             if (c.impulse_size > 2 && base + 2 < p.size()) imp(2) = p[base + 2];

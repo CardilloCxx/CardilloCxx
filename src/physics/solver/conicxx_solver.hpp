@@ -25,7 +25,7 @@ namespace cardillo::solver {
 // so no explicit setWarmStart() bookkeeping is needed here.
 class ConicxxSolver : public SolverBase {
    public:
-    explicit ConicxxSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg);
+    explicit ConicxxSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg);
     ~ConicxxSolver() override;
 
     VectorXr solve(real_t dt, real_t theta) override;
@@ -36,9 +36,9 @@ class ConicxxSolver : public SolverBase {
     conicxx::Settings makeSettings() const;
     bool coneSpecChanged(const conicxx::ConeSpec& spec) const;
 
-    cardillo::physics::DynamicsAssembler& m_dyn;
-    cardillo::physics::assembly::ConicxxAssembler m_assembler;
-    cardillo::config::Config m_cfg;
+    physics::DynamicsAssembler& m_dyn;
+    physics::assembly::ConicxxAssembler m_assembler;
+    config::Config m_cfg;
 
     conicxx::Solver m_solver;
     bool m_setup_done{false};

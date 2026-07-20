@@ -26,13 +26,13 @@ class BodyFactory {
 
     static std::pair<entt::entity, entt::entity> createBeam(World& sys, const misc::SplinePattern& spline, const physics::BeamCrossSection& section, const physics::BeamSpringParams& springs,
                                                             const physics::RigidState& stateDefaults, const physics::RigidProps& propsDefaults, size_t segments,
-                                                            cardillo::collision::CollisionCoal* collision_mgr = nullptr) {
+                                                            collision::CollisionCoal* collision_mgr = nullptr) {
         return BeamFactory::createBeam(sys, spline, section, springs, stateDefaults, propsDefaults, segments, collision_mgr);
     }
 
     static std::pair<entt::entity, entt::entity> createBeams(World& sys, const std::vector<const misc::SplinePattern*>& splines, const physics::BeamCrossSection& section,
                                                              const physics::BeamSpringParams& springs, const physics::RigidState& stateDefaults, const physics::RigidProps& propsDefaults,
-                                                             size_t segments, cardillo::collision::CollisionCoal* collision_mgr = nullptr) {
+                                                             size_t segments, collision::CollisionCoal* collision_mgr = nullptr) {
         return BeamFactory::createBeams(sys, splines, section, springs, stateDefaults, propsDefaults, segments, collision_mgr);
     }
 
@@ -41,7 +41,7 @@ class BodyFactory {
     static std::vector<entt::entity> addSoftBody(World& sys, const std::string& objPath, real_t stiffness, real_t damping, const Vector3r& position = Vector3r::Zero(),
                                                  const Quaternion4r& orientation = Quaternion4r::Identity(), const Vector3r& linearVelocity = Vector3r::Zero(),
                                                  const Vector3r& angularVelocity = Vector3r::Zero(), real_t totalMass = (real_t)0.0, real_t nodeRadius = (real_t)0.02,
-                                                 cardillo::collision::CollisionCoal* collision_mgr = nullptr);
+                                                 collision::CollisionCoal* collision_mgr = nullptr);
 };
 
 }  // namespace physics

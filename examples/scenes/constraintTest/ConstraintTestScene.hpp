@@ -13,9 +13,9 @@ public:
     ConstraintTestScene() = default;
     ~ConstraintTestScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         // Floor (static)
         auto floor = engine.addStaticBody(physics::CubeShape(Vector3r(15.0, 15.0, 0.1)), physics::RigidState(Vector3r(0,0,-0.1)));
@@ -270,7 +270,7 @@ public:
         // engine.track(m_lever_4, "lever_Iz=" + std::to_string(Iz_hinge_4) + "_k_=2");
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         const Vector3r torque(0.0, 0.0, 5.0);
 
         engine.applyForce(m_lever_1, Vector3r::Zero(), torque);

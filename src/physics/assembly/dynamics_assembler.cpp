@@ -45,7 +45,7 @@ void DynamicsAssembler::rebuildMass_() {
     m_M_diag = VectorXr::Zero(totalV);
 
     const auto& reg = m_world.ecs();
-    auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
+    auto view = reg.view<C_BodyIndex, C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b < 0 || b >= Nb) continue;
@@ -68,7 +68,7 @@ void DynamicsAssembler::rebuildForces_() {
     m_f_vec_external = VectorXr::Zero(totalV);
     m_f_vec_gyroscopic = VectorXr::Zero(totalV);
     const auto& reg = m_world.ecs();
-    auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
+    auto view = reg.view<C_BodyIndex, C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b >= 0 && b < Nb) {
@@ -86,13 +86,13 @@ void DynamicsAssembler::rebuildForces_() {
     }
     // One-shot: clear external force/torque components after assembling forces
     auto& reg_mut = const_cast<entt::registry&>(m_world.ecs());
-    auto viewF = reg_mut.view<cardillo::C_ExternalForce>();
+    auto viewF = reg_mut.view<C_ExternalForce>();
     for (auto e : viewF) {
-        reg_mut.get<cardillo::C_ExternalForce>(e).f.setZero();
+        reg_mut.get<C_ExternalForce>(e).f.setZero();
     }
-    auto viewT = reg_mut.view<cardillo::C_ExternalTorque>();
+    auto viewT = reg_mut.view<C_ExternalTorque>();
     for (auto e : viewT) {
-        reg_mut.get<cardillo::C_ExternalTorque>(e).tau.setZero();
+        reg_mut.get<C_ExternalTorque>(e).tau.setZero();
     }
 }
 
@@ -103,7 +103,7 @@ void DynamicsAssembler::loadStateFromSystem() {
     m_q_vec = VectorXr::Zero(totalQ);
     m_v_vec = VectorXr::Zero(totalV);
     const auto& reg = m_world.ecs();
-    auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
+    auto view = reg.view<C_BodyIndex, C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b >= 0 && b < Nb) {
@@ -121,20 +121,20 @@ void DynamicsAssembler::loadStateFromSystem() {
 
 void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
     const auto& reg = m_world.ecs();
-    auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
+    auto view = reg.view<C_BodyIndex, C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b >= 0 && b < (int)m_body_pos_offsets.size() - 1) {
             const int offQ = m_body_pos_offsets[(size_t)b];
             const int nQ = m_body_pos_offsets[(size_t)b + 1] - offQ;
             VectorXr qb = (nQ > 0) ? q.segment(offQ, nQ) : VectorXr(0);
-            if (qb.size() >= 3 && reg.any_of<cardillo::C_Position3>(e)) {
-                const_cast<cardillo::C_Position3&>(reg.get<cardillo::C_Position3>(e)).value = qb.head<3>();
+            if (qb.size() >= 3 && reg.any_of<C_Position3>(e)) {
+                const_cast<C_Position3&>(reg.get<C_Position3>(e)).value = qb.head<3>();
             }
-            if (qb.size() >= 7 && reg.any_of<cardillo::C_Orientation>(e)) {
+            if (qb.size() >= 7 && reg.any_of<C_Orientation>(e)) {
                 Quaternion4r qn(qb.tail<4>());
-                const Quaternion4r q_ref = reg.get<cardillo::C_Orientation>(e).value;
-                const_cast<cardillo::C_Orientation&>(reg.get<cardillo::C_Orientation>(e)).value = MathHelper::alignQuaternionTo(qn, q_ref);
+                const Quaternion4r q_ref = reg.get<C_Orientation>(e).value;
+                const_cast<C_Orientation&>(reg.get<C_Orientation>(e)).value = MathHelper::alignQuaternionTo(qn, q_ref);
             }
         }
     }
@@ -144,40 +144,40 @@ void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
 
 void DynamicsAssembler::writeVelocityToSystem(const VectorXr& v, real_t dt) {
     auto& reg = m_world.ecs();
-    auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
+    auto view = reg.view<C_BodyIndex, C_PhysicsObject>();
     for (auto [e, bi] : view.each()) {
         const int b = bi.b;
         if (b >= 0 && b < (int)m_body_vel_offsets.size() - 1) {
             const int offV = m_body_vel_offsets[(size_t)b];
             const int nV = m_body_vel_offsets[(size_t)b + 1] - offV;
             VectorXr vb = (nV > 0) ? v.segment(offV, nV) : VectorXr(0);
-            if (vb.size() >= 3 && reg.any_of<cardillo::C_LinearVelocity3>(e)) {
-                auto& vlinComp = reg.get<cardillo::C_LinearVelocity3>(e);
+            if (vb.size() >= 3 && reg.any_of<C_LinearVelocity3>(e)) {
+                auto& vlinComp = reg.get<C_LinearVelocity3>(e);
                 const Vector3r prev = vlinComp.value;
                 const Vector3r curr = vb.head<3>();
                 vlinComp.value = curr;
 
                 if (dt > (real_t)0) {
                     const Vector3r a = (curr - prev) / dt;
-                    if (reg.any_of<cardillo::C_LinearAcceleration3>(e)) {
-                        reg.get<cardillo::C_LinearAcceleration3>(e).value = a;
+                    if (reg.any_of<C_LinearAcceleration3>(e)) {
+                        reg.get<C_LinearAcceleration3>(e).value = a;
                     } else {
-                        reg.emplace<cardillo::C_LinearAcceleration3>(e, a);
+                        reg.emplace<C_LinearAcceleration3>(e, a);
                     }
                 }
             }
-            if (vb.size() >= 6 && reg.any_of<cardillo::C_AngularVelocity3>(e)) {
-                auto& omegaComp = reg.get<cardillo::C_AngularVelocity3>(e);
+            if (vb.size() >= 6 && reg.any_of<C_AngularVelocity3>(e)) {
+                auto& omegaComp = reg.get<C_AngularVelocity3>(e);
                 const Vector3r prev = omegaComp.value;
                 const Vector3r curr = vb.tail<3>();
                 omegaComp.value = curr;
 
                 if (dt > (real_t)0) {
                     const Vector3r alpha = (curr - prev) / dt;
-                    if (reg.any_of<cardillo::C_AngularAcceleration3>(e)) {
-                        reg.get<cardillo::C_AngularAcceleration3>(e).value = alpha;
+                    if (reg.any_of<C_AngularAcceleration3>(e)) {
+                        reg.get<C_AngularAcceleration3>(e).value = alpha;
                     } else {
-                        reg.emplace<cardillo::C_AngularAcceleration3>(e, alpha);
+                        reg.emplace<C_AngularAcceleration3>(e, alpha);
                     }
                 }
             }
@@ -198,10 +198,10 @@ void DynamicsAssembler::assignDofs() {
     int nextBody = 0;
     m_numQ = 0;
     m_numV = 0;
-    auto view = reg.view<cardillo::C_PhysicsObject, cardillo::C_Position3, cardillo::C_LinearVelocity3>();
+    auto view = reg.view<C_PhysicsObject, C_Position3, C_LinearVelocity3>();
     for (auto e : view) {
         entt::entity ent = static_cast<entt::entity>(e);
-        reg.emplace_or_replace<cardillo::C_BodyIndex>(ent, cardillo::C_BodyIndex{nextBody});
+        reg.emplace_or_replace<C_BodyIndex>(ent, C_BodyIndex{nextBody});
         ++nextBody;
         m_numQ += (index_t)m_world.getPosition(ent).size();
         m_numV += (index_t)m_world.getVelocity(ent).size();
@@ -209,7 +209,7 @@ void DynamicsAssembler::assignDofs() {
 }
 
 void DynamicsAssembler::rebuildW_() {
-    auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::RebuildContactJacobians);
+    auto sc = m_timings->scope(misc::TimingManager::TimerId::RebuildContactJacobians);
 
     const int C_all = (int)m_contacts_ptr->size();
     const int Nb = m_world.numBodies();
@@ -248,8 +248,8 @@ void DynamicsAssembler::rebuildW_() {
 
             auto getRestitution = [&](entt::entity e, bool tangential) -> real_t {
                 if (!reg.valid(e)) return (real_t)0;
-                if (reg.any_of<cardillo::C_Restitution>(e)) {
-                    const auto& r = reg.get<cardillo::C_Restitution>(e);
+                if (reg.any_of<C_Restitution>(e)) {
+                    const auto& r = reg.get<C_Restitution>(e);
                     return tangential ? std::max<real_t>((real_t)0, r.tangential) : std::max<real_t>((real_t)0, r.normal);
                 }
                 return tangential ? std::max<real_t>((real_t)0, m_cfg.restitution_default_tangential) : std::max<real_t>((real_t)0, m_cfg.restitution_default_normal);
@@ -263,8 +263,8 @@ void DynamicsAssembler::rebuildW_() {
                 if (!reg.valid(ent)) return;
 
                 if (dyn) {
-                    if (!reg.any_of<cardillo::C_BodyIndex>(ent)) return;
-                    const int b = reg.get<cardillo::C_BodyIndex>(ent).b;
+                    if (!reg.any_of<C_BodyIndex>(ent)) return;
+                    const int b = reg.get<C_BodyIndex>(ent).b;
                     if (b < 0 || b >= Nb) return;
                     const int col0 = m_body_vel_offsets[(size_t)b];
                     const int dof = m_body_vel_offsets[(size_t)b + 1] - col0;
@@ -331,7 +331,7 @@ void DynamicsAssembler::rebuildW_() {
     m_mu_vec.conservativeResize((index_t)C_dyn);
 }
 
-void DynamicsAssembler::setContactLastImpulse(int global_out_index, const cardillo::Vector3r& imp) {
+void DynamicsAssembler::setContactLastImpulse(int global_out_index, const Vector3r& imp) {
     if (!m_contacts_ptr) return;
     if (global_out_index < 0 || global_out_index >= (int)m_contacts_ptr->size()) return;
     (*m_contacts_ptr)[(size_t)global_out_index].last_impulse = imp;
@@ -339,7 +339,7 @@ void DynamicsAssembler::setContactLastImpulse(int global_out_index, const cardil
 
 // Rebuild auxiliary block matrices derived from W and current contacts/state.
 void DynamicsAssembler::rebuildInteractionW_() {
-    auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::RebuildConstraintJacobians);
+    auto sc = m_timings->scope(misc::TimingManager::TimerId::RebuildConstraintJacobians);
 
     // Build m_Wg/m_Wgamma and diagonals from new constraint patterns first, then legacy springs
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
@@ -366,8 +366,8 @@ void DynamicsAssembler::rebuildInteractionW_() {
 
     // Emit a single 1xN row into W triplets without temporaries
     auto emitColRef = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const Eigen::Ref<const VectorXr>& col) {
-        if (!reg.any_of<cardillo::C_BodyIndex>(ent)) return false;
-        int b = reg.get<cardillo::C_BodyIndex>(ent).b;
+        if (!reg.any_of<C_BodyIndex>(ent)) return false;
+        int b = reg.get<C_BodyIndex>(ent).b;
         if (b < 0 || b >= (int)m_body_vel_offsets.size() - 1) return false;
         int row0 = m_body_vel_offsets[(size_t)b];
         int nV = m_body_vel_offsets[(size_t)b + 1] - row0;
@@ -467,7 +467,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
 }
 
 void DynamicsAssembler::refreshState() {
-    auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::DynamicsAssembler_RefreshState);
+    auto sc = m_timings->scope(misc::TimingManager::TimerId::DynamicsAssembler_RefreshState);
     bool structureChanged = false;
     if (m_world.consumeStructureDirty()) {
         structureChanged = true;
@@ -480,7 +480,7 @@ void DynamicsAssembler::refreshState() {
         // First gather sizes per body index
         std::vector<int> vSizes((size_t)Nb, 0), qSizes((size_t)Nb, 0);
         const auto& reg = m_world.ecs();
-        auto view = reg.view<cardillo::C_BodyIndex, cardillo::C_PhysicsObject>();
+        auto view = reg.view<C_BodyIndex, C_PhysicsObject>();
         for (auto [e, bi] : view.each()) {
             const int b = bi.b;
             if (b < 0 || b >= Nb) continue;
@@ -514,7 +514,7 @@ void DynamicsAssembler::refreshState() {
 
 void DynamicsAssembler::updateStateDependentTerms(real_t dt) {
     {
-        auto sc = m_timings->scope(cardillo::misc::TimingManager::TimerId::UpdateEntities);
+        auto sc = m_timings->scope(misc::TimingManager::TimerId::UpdateEntities);
         DerivedEntitySync::updateEntities(m_world, dt);
     }
     updateContactsFromSystem();

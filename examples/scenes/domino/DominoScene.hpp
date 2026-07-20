@@ -13,7 +13,7 @@ public:
     DominoScene() = default;
     ~DominoScene() override = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
         // Create a ground plate (static cube via unified API)

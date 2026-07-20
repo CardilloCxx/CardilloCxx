@@ -21,7 +21,7 @@ namespace cardillo::solver {
 // - alpha in (0,2) typically for convergence; default alpha=1.
 class ProjectedJacobiSolver : public SolverBase {
    public:
-    explicit ProjectedJacobiSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg)
+    explicit ProjectedJacobiSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg)
         : m_dyn(dyn),
           m_cfg(cfg),
           m_alpha(cfg.pj_alpha),
@@ -47,9 +47,9 @@ class ProjectedJacobiSolver : public SolverBase {
     const char* name() const override { return "ProjectedJacobi"; }
 
    private:
-    cardillo::physics::DynamicsAssembler& m_dyn;
-    cardillo::physics::assembly::PjAssembler m_assembler;
-    cardillo::config::Config m_cfg;
+    physics::DynamicsAssembler& m_dyn;
+    physics::assembly::PjAssembler m_assembler;
+    config::Config m_cfg;
 
     real_t m_alpha{(real_t)1};
     // No internal row-vector warmstart fallback; only via external cache when enabled

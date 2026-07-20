@@ -13,9 +13,9 @@ public:
     GearsScene() = default;
     ~GearsScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         //floor 
         auto floor = engine.addStaticBody(physics::CubeShape{Vector3r{5,5,1}}, physics::RigidState{Vector3r{0,0,-1.0}});
@@ -97,7 +97,7 @@ public:
         }
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         engine.applyForce(m_gear1, Vector3r(0.0, 0.0, 0.0), Vector3r(0.0, 0.0, 5.0));
         engine.applyForce(m_gear4, Vector3r(0.0, 0.0, 0.0), Vector3r(0.0, 0.0, 5.0));
         engine.applyForce(m_gear5, Vector3r(0.0, 0.0, 0.0), Vector3r(0.0, 0.0, 5.0));

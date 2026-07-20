@@ -19,14 +19,14 @@ std::string PhysicsAssets::meshKey_(const std::string& path, const Vector3r& s, 
 namespace {
 struct MeshNormalizationResult {
     coal::BVHModelPtr_t bvh;  // normalized (if requested)
-    cardillo::Vector3r inertia_diag_unit{cardillo::Vector3r::Zero()};
+    Vector3r inertia_diag_unit{Vector3r::Zero()};
     real_t volume{(real_t)0.0};
-    cardillo::Matrix33r Rpa{cardillo::Matrix33r::Identity()};
+    Matrix33r Rpa{Matrix33r::Identity()};
     coal::Vec3s com{0, 0, 0};
 };
 
 // Normalize mesh: scale, center at COM, rotate to principal axes
-MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardillo::Vector3r& scale) {
+MeshNormalizationResult normalizeMesh(const std::string& meshPath, const Vector3r& scale) {
     MeshNormalizationResult out;
     coal::MeshLoader loader(coal::BV_AABB);
     coal::BVHModelPtr_t bvh = loader.load(meshPath);
@@ -67,7 +67,7 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardill
     }
 
     // Inertia about COM
-    cardillo::Matrix33r Icom = cardillo::Matrix33r::Zero();
+    Matrix33r Icom = Matrix33r::Zero();
     if (!Vcentered.empty()) {
         auto temp1 = std::make_shared<coal::BVHModel<coal::AABB>>();
         temp1->beginModel();
@@ -81,10 +81,10 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardill
             (real_t)Icoal(2, 2);
     }
     // Principal axes
-    cardillo::Matrix33r Rpa = cardillo::Matrix33r::Identity();
-    cardillo::Vector3r Idiag = cardillo::Vector3r::Zero();
+    Matrix33r Rpa = Matrix33r::Identity();
+    Vector3r Idiag = Vector3r::Zero();
     if (Icom.allFinite()) {
-        Eigen::SelfAdjointEigenSolver<cardillo::Matrix33r> es(Icom);
+        Eigen::SelfAdjointEigenSolver<Matrix33r> es(Icom);
         if (es.info() == Eigen::Success) {
             Rpa = es.eigenvectors();
             if (Rpa.determinant() < 0) Rpa.col(0) = -Rpa.col(0);
@@ -98,8 +98,8 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardill
     std::vector<coal::Vec3s> Vnorm;
     Vnorm.reserve(Vcentered.size());
     for (const auto& v : Vcentered) {
-        cardillo::Vector3r vc((real_t)v[0], (real_t)v[1], (real_t)v[2]);
-        cardillo::Vector3r vp = Rpa.transpose() * vc;
+        Vector3r vc((real_t)v[0], (real_t)v[1], (real_t)v[2]);
+        Vector3r vp = Rpa.transpose() * vc;
         Vnorm.emplace_back((coal::CoalScalar)vp.x(), (coal::CoalScalar)vp.y(), (coal::CoalScalar)vp.z());
     }
     auto temp = std::make_shared<coal::BVHModel<coal::AABB>>();
@@ -114,7 +114,7 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const cardill
     return out;
 }
 
-coal::BVHModelPtr_t buildScaledBVH(const std::string& meshPath, const cardillo::Vector3r& scale) {
+coal::BVHModelPtr_t buildScaledBVH(const std::string& meshPath, const Vector3r& scale) {
     coal::MeshLoader loader(coal::BV_AABB);
     coal::BVHModelPtr_t bvh = loader.load(meshPath);
     if (!bvh) return nullptr;

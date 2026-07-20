@@ -15,9 +15,9 @@ public:
     SpaghettiScene()  = default;
     ~SpaghettiScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         // Gravity on (spaghetti should hang, z is up).
         engine.setGravity(Vector3r(0, 0, -9.81));
@@ -98,7 +98,7 @@ public:
         }
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override {
         (void)engine;
         // Passive scene: gravity causes the spaghetti to drape over the bowl.
     }

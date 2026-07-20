@@ -15,8 +15,8 @@ namespace cardillo::integration {
 class MoreauIntegrator : public IntegrationBase {
    public:
     /// Construct the integrator from the shared world, solver, dynamics assembler, and timings.
-    explicit MoreauIntegrator(cardillo::World& world, cardillo::solver::SolverBase& solver, cardillo::physics::DynamicsAssembler& dyn, cardillo::misc::TimingManager& timings,
-                              cardillo::config::Config& config)
+    explicit MoreauIntegrator(World& world, solver::SolverBase& solver, physics::DynamicsAssembler& dyn, misc::TimingManager& timings,
+                              config::Config& config)
         : IntegrationBase(world, solver, dyn, timings, config) {}
 
     /// Advance one Moreau theta step.

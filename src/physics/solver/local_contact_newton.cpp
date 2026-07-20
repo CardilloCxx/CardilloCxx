@@ -67,7 +67,7 @@ CaseEval evalCase(const Matrix33r& M, const Vector3r& y, real_t mu) {
 bool solveContactBlockNewtonAC(const Matrix33r& G, const Vector3r& r, real_t mu, Vector3r& lambda, const NewtonACParams& params) {
     const real_t eps = (real_t)1e-12;
 
-    const Vector3r rho = cardillo::misc::computeContactRho(G, params.rhoStrategy, eps);
+    const Vector3r rho = misc::computeContactRho(G, params.rhoStrategy, eps);
     if ((rho.array() <= (real_t)0).any()) return false;
 
     Matrix33r M = Matrix33r::Identity() - rho.asDiagonal() * G;

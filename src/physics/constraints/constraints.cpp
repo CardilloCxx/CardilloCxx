@@ -16,8 +16,8 @@ bool ConstraintPattern::getAttachPointsWorld(Vector3r& xA, Vector3r& xB) const {
 ConstraintPattern::WorldAttachments ConstraintPattern::computeAttachments_() const {
     WorldAttachments wa;
     if (m_reg) {
-        const auto stateA = cardillo::RigidBody::getState(*m_reg, m_a);
-        const auto stateB = cardillo::RigidBody::getState(*m_reg, m_b);
+        const auto stateA = RigidBody::getState(*m_reg, m_a);
+        const auto stateB = RigidBody::getState(*m_reg, m_b);
 
         wa.qA = stateA.orientation;
         wa.qB = MathHelper::alignQuaternionTo(stateB.orientation, wa.qA);
@@ -176,7 +176,7 @@ VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g, cons
 }
 
 // ===================== BeamConstraint =====================
-BeamConstraint::BeamConstraint(entt::registry& reg, entt::entity a, entt::entity b, const cardillo::physics::BeamSpringParams& springs, const cardillo::physics::BeamCrossSection& section)
+BeamConstraint::BeamConstraint(entt::registry& reg, entt::entity a, entt::entity b, const physics::BeamSpringParams& springs, const physics::BeamCrossSection& section)
     : ConstraintPattern(reg, a, b, 6), m_springs(springs), m_section(section) {
     const auto wa = computeAttachments_();
     const Quaternion4r qMidQ(0.5 * (wa.qA.coeffs() + wa.qB.coeffs()));  // 0.5*(qA + qB)

@@ -53,7 +53,7 @@ vtkSmartPointer<vtkIntArray> makeIntArray(const char* name) {
 
 }  // namespace
 
-VtkWriter::VtkWriter(const cardillo::config::Config& cfg)
+VtkWriter::VtkWriter(const config::Config& cfg)
     : m_cfg(cfg),
       m_outputDir(cfg.output_folder),
       m_baseName(cfg.output_filename_prefix),
@@ -89,21 +89,21 @@ void VtkWriter::setFrequency(int freq) {
     m_frequency = std::max(1, freq);
 }
 
-void VtkWriter::maybeWrite(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
-                           cardillo::physics::DynamicsAssembler* dyn) {
+void VtkWriter::maybeWrite(int step, real_t time, const World& sys, collision::CollisionCoal* collision_mgr, misc::TimingManager* timings,
+                           physics::DynamicsAssembler* dyn) {
     if (step % m_frequency == 0) write(step, time, sys, collision_mgr, timings, dyn);
 }
 
-void VtkWriter::write(int step, real_t time, const cardillo::World& sys, cardillo::collision::CollisionCoal* collision_mgr, cardillo::misc::TimingManager* timings,
-                      cardillo::physics::DynamicsAssembler* dyn) {
-    auto sc = timings->scope(cardillo::misc::TimingManager::TimerId::OutputWrite);
+void VtkWriter::write(int step, real_t time, const World& sys, collision::CollisionCoal* collision_mgr, misc::TimingManager* timings,
+                      physics::DynamicsAssembler* dyn) {
+    auto sc = timings->scope(misc::TimingManager::TimerId::OutputWrite);
 
-    std::vector<cardillo::collision::Contact> contacts;
+    std::vector<collision::Contact> contacts;
     if (dyn) contacts = dyn->contacts();
 
     std::vector<EntityMesh> meshes;
     const auto& reg = sys.ecs();
-    auto vis = reg.view<cardillo::C_VisualObject>();
+    auto vis = reg.view<C_VisualObject>();
     for (auto e : vis) {
         EntityMesh mesh;
         if (MeshGenerator::buildEntityMesh(sys, static_cast<entt::entity>(e), mesh)) {
@@ -136,7 +136,7 @@ void VtkWriter::write(int step, real_t time, const cardillo::World& sys, cardill
     }
 
     if (m_writeContactManifolds && collision_mgr) {
-        std::vector<cardillo::collision::ContactManifold> manifolds = collision_mgr->m_contactManifolds;
+        std::vector<collision::ContactManifold> manifolds = collision_mgr->m_contactManifolds;
         enrichManifolds(manifolds, contacts, m_cfg.sim_dt);
         const std::string path = buildPath(m_contactManifoldsBase, step);
         enqueueFrame(contactManifoldsToPolyData(manifolds), m_pvdContactManifolds, pvdPath(m_contactManifoldsBase), path, fs::path(path).filename().string(), step, time);
@@ -151,7 +151,7 @@ void VtkWriter::write(int step, real_t time, const cardillo::World& sys, cardill
     }
 }
 
-void VtkWriter::enrichPressure(std::vector<EntityMesh>& meshes, const cardillo::World& sys, const std::vector<cardillo::collision::Contact>& contacts) const {
+void VtkWriter::enrichPressure(std::vector<EntityMesh>& meshes, const World& sys, const std::vector<collision::Contact>& contacts) const {
     const auto& reg = sys.ecs();
     const real_t invDt = (m_cfg.sim_dt > (real_t)0) ? ((real_t)1 / m_cfg.sim_dt) : (real_t)1;
     constexpr real_t kMinArea = (real_t)1e-12;
@@ -192,7 +192,7 @@ void VtkWriter::enrichPressure(std::vector<EntityMesh>& meshes, const cardillo::
     }
 }
 
-void VtkWriter::enrichManifolds(std::vector<cardillo::collision::ContactManifold>& manifolds, const std::vector<cardillo::collision::Contact>& contacts, real_t dt) const {
+void VtkWriter::enrichManifolds(std::vector<collision::ContactManifold>& manifolds, const std::vector<collision::Contact>& contacts, real_t dt) const {
     // detectAll() runs before the solve step, so Contact::last_impulse there is still last
     // step's warmstart seed. `contacts` here is fetched after the solve (same as the existing
     // contacts stream), so match manifold points to their solved Contact by position instead --
@@ -330,7 +330,7 @@ vtkSmartPointer<vtkPolyData> VtkWriter::meshesToPolyData(const std::vector<Entit
     return pd;
 }
 
-vtkSmartPointer<vtkPolyData> VtkWriter::springsToPolyData(const cardillo::World& sys) const {
+vtkSmartPointer<vtkPolyData> VtkWriter::springsToPolyData(const World& sys) const {
     const auto& patterns = sys.constraintPatterns();
     std::vector<Vector3r> positions;
     positions.reserve(patterns.size());
@@ -353,16 +353,16 @@ vtkSmartPointer<vtkPolyData> VtkWriter::springsToPolyData(const cardillo::World&
             toAtoB.push_back(xA - xB);
         }
 
-        if (auto* tr = dynamic_cast<const cardillo::physics::TranslationRotationConstraint*>(uptr.get())) {
+        if (auto* tr = dynamic_cast<const physics::TranslationRotationConstraint*>(uptr.get())) {
             const Vector3r jointPos = xB;
 
             const auto& reg = sys.ecs();
             const entt::entity a = tr->entityA();
-            if (a == entt::null || !reg.all_of<cardillo::C_Orientation>(a)) continue;
-            const auto stateA = cardillo::RigidBody::getState(reg, a);
+            if (a == entt::null || !reg.all_of<C_Orientation>(a)) continue;
+            const auto stateA = RigidBody::getState(reg, a);
             const Matrix33r A_IK1 = stateA.rotation;
 
-            const cardillo::physics::JointProperties& jp = tr->jointProperties();
+            const physics::JointProperties& jp = tr->jointProperties();
             const Matrix33r A_IJ = A_IK1 * jp.A_K1J;
 
             tr_jointPos.push_back(jointPos);
@@ -422,7 +422,7 @@ vtkSmartPointer<vtkPolyData> VtkWriter::springsToPolyData(const cardillo::World&
     return pd;
 }
 
-vtkSmartPointer<vtkPolyData> VtkWriter::contactManifoldsToPolyData(const std::vector<cardillo::collision::ContactManifold>& manifolds) const {
+vtkSmartPointer<vtkPolyData> VtkWriter::contactManifoldsToPolyData(const std::vector<collision::ContactManifold>& manifolds) const {
     vtkNew<vtkPoints> points;
     vtkNew<vtkCellArray> verts;
     vtkNew<vtkCellArray> lines;

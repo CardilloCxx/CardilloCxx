@@ -12,9 +12,9 @@ public:
     NetScene() = default;
     ~NetScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         const real_t radius = 0.5;
         const real_t length = 2.0 * M_PI * radius;
@@ -64,7 +64,7 @@ public:
         std::cout << "Boulder KE: " << engine.getKineticEnergy(boulder) << " J" << std::endl;
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         (void)engine;
         (void)t;
 //         // Apply a twisting moment at the rod end

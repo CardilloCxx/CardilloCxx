@@ -7,7 +7,7 @@ namespace cardillo::solver {
 
 // See misc/contact_rho.hpp for the Split/FullSpectral strategies and their theory -- shared with
 // CondensedAssembler's GiiInv construction, which needs the same per-block rho estimate.
-using NewtonRhoStrategy = cardillo::misc::ContactRhoStrategy;
+using NewtonRhoStrategy = misc::ContactRhoStrategy;
 
 struct NewtonACParams {
     int maxIters{8};

@@ -6,7 +6,7 @@ namespace cardillo::solver {
 VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
     if (m_dyn.numContacts() > 0) throw std::runtime_error("Conjugate Gradient does not handle contact constraints");
 
-    auto sc_setup = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ConjugateGradientSetup);
+    auto sc_setup = m_dyn.timings()->scope(misc::TimingManager::TimerId::ConjugateGradientSetup);
 
     const VectorXr u_free = m_assembler.ufree(dt, theta);
 
@@ -58,10 +58,10 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
 
     // ---------------------- CONJUGATE GRADIENT ITERATION ----------------------
 
-    auto sc_solve = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ConjugateGradientSolve);
+    auto sc_solve = m_dyn.timings()->scope(misc::TimingManager::TimerId::ConjugateGradientSolve);
 
     for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-        auto sc_sweep = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ConjugateGradientSweep);
+        auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::ConjugateGradientSweep);
 
         // Ap = A * p
         u_temp.noalias() = W_T * p;
