@@ -57,6 +57,10 @@ class ConstraintFactory {
         return insertPattern(world, std::unique_ptr<ConstraintPattern>(new BeamConstraint(world.ecs(), a, b, springs, section)));
     }
 
+    static size_t addConstraint(World& world, std::unique_ptr<ConstraintPattern> pattern) {
+        return insertPattern(world, std::move(pattern));
+    }
+
    private:
     static size_t insertPattern(World& world, std::unique_ptr<ConstraintPattern> pattern) {
         auto& patterns = world.constraintPatterns();

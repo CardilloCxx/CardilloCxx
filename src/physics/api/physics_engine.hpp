@@ -117,6 +117,11 @@ class CARDILLO_API PhysicsEngine {
         return ConstraintFactory::addBeamConstraint(*m_world, a, b, springs, section);
     }
 
+    // Generic insertion point for ConstraintPattern subclasses defined outside cardillo.
+    inline size_t addConstraint(std::unique_ptr<ConstraintPattern> pattern) {
+        return ConstraintFactory::addConstraint(*m_world, std::move(pattern));
+    }
+
     /// Set the scalar target velocity for a constraint pattern.
     void setConstraintScalarVelocity(size_t constraintIndex, real_t v);
     /// Set the translational target velocity for a constraint pattern.

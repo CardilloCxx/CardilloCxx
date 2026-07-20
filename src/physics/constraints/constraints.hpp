@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cassert>
 #include <cmath>
 #include <entt/entt.hpp>
 #include <iostream>
 #include <limits>
 #include <optional>
+#include <utility>
 #include "../../misc/types.hpp"
 #include "../../rigid_body/rigid_body.hpp"
 #include "../../rigid_body/transformations.hpp"
@@ -32,6 +34,34 @@ struct ConstraintResult {
 
     std::vector<bool> c_used;
     std::vector<bool> a_used;
+
+    // Additional bodies coupled by this constraint. Empty for
+    // classic two-body constraints 
+    std::vector<entt::entity> extraEntities;
+    std::vector<MatrixXXr> extraWg;
+    std::vector<MatrixXXr> extraWgamma;
+
+    // Uniform accessors over all coupled bodies (index 0/1 = a/b, 2.. =
+    // extraEntities)
+    std::size_t numEntities() const { return 2 + extraEntities.size(); }
+
+    entt::entity entity(std::size_t i) const { return i == 0 ? a : (i == 1 ? b : extraEntities[i - 2]); }
+
+    const MatrixXXr& Wg(std::size_t i) const {
+        if (i == 0) return WgA;
+        if (i == 1) return WgB;
+        assert(i - 2 < extraWg.size() && "extraWg shorter than extraEntities");
+        return extraWg[i - 2];
+    }
+    MatrixXXr& Wg(std::size_t i) { return const_cast<MatrixXXr&>(static_cast<const ConstraintResult&>(*this).Wg(i)); }
+
+    const MatrixXXr& Wgamma(std::size_t i) const {
+        if (i == 0) return WgammaA;
+        if (i == 1) return WgammaB;
+        assert(i - 2 < extraWgamma.size() && "extraWgamma shorter than extraEntities");
+        return extraWgamma[i - 2];
+    }
+    MatrixXXr& Wgamma(std::size_t i) { return const_cast<MatrixXXr&>(static_cast<const ConstraintResult&>(*this).Wgamma(i)); }
 };
 
 /// Describes the position and orientation of a joint in a reference frame.
@@ -131,6 +161,12 @@ class ConstraintPattern {
 
     bool getAttachPointsWorld(Vector3r& xA, Vector3r& xB) const;
 
+    // Bodies coupled by this constraint beyond entityA()/entityB()
+    virtual std::vector<entt::entity> getExtraEntities() const { return {}; }
+
+    // Entity pairs to draw as line segments for visualization
+    virtual std::vector<std::pair<entt::entity, entt::entity>> getVisualEdges() const { return {}; }
+
    protected:
     // Helper to fetch world transforms and attachment points
     struct WorldAttachments {
@@ -178,6 +214,7 @@ class LinearDistanceConstraint : public ConstraintPattern {
     ConstraintResult getConstraint() const override;
     VectorXr getSource() const override { return VectorXr::Constant(1, scalarVelocity); }
     void setScalarVelocity(real_t v) override { scalarVelocity = v; }
+    std::vector<std::pair<entt::entity, entt::entity>> getVisualEdges() const override { return {{m_a, m_b}}; }
 
    private:
     real_t L0{(real_t)-1.0};  // rest length
@@ -203,6 +240,7 @@ class TranslationRotationConstraint : public ConstraintPattern {
     }
     void setLinearVelocity(const Vector3r& v) override { m_translational_velocity = v; }
     void setAngularVelocity(const Vector3r& w) override { m_angular_velocity = w; }
+    std::vector<std::pair<entt::entity, entt::entity>> getVisualEdges() const override { return {{m_a, m_b}}; }
 
     // Access joint-frame description for visualization/debugging
     const JointProperties& jointProperties() const { return m_joint; }
