@@ -56,13 +56,13 @@ class PhysicsPipeline {
     bool isFinished() const { return m_finished; }
 
     /// Access the dynamics assembler.
-    physics::DynamicsAssembler& dynamicsAssembler() { return *m_dyn; }
+    physics::DynamicsAssembler& dynamicsAssembler() const { return *m_dyn; }
     /// Access the active integrator.
-    integration::IntegrationBase& integrator() { return *m_integrator; }
+    integration::IntegrationBase& integrator() const { return *m_integrator; }
     /// Access the VTK writer, if output is enabled.
-    io::VtkWriter* vtkWriter() { return m_vtk_writer.get(); }
+    io::VtkWriter* vtkWriter() const { return m_vtk_writer.get(); }
     /// Access the collision manager.
-    collision::CollisionCoal& collisionManager() { return *m_collision_mgr; }
+    collision::CollisionCoal& collisionManager() const { return *m_collision_mgr; }
 
     ~PhysicsPipeline();
 

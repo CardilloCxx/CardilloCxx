@@ -73,7 +73,7 @@ void PhysicsEngine::disableCollisionBetween(entt::entity a, entt::entity b) {
 }
 
 void PhysicsEngine::setConstraintScalarVelocity(size_t constraintIndex, real_t v) {
-    if (constraintIndex < 0 || constraintIndex >= m_world->constraintPatterns().size()) {
+    if (constraintIndex >= m_world->constraintPatterns().size()) {
         std::cerr << "Warning: setConstraintScalarVelocity: constraintIndex " << constraintIndex << " out of bounds" << std::endl;
         return;
     }
@@ -81,7 +81,7 @@ void PhysicsEngine::setConstraintScalarVelocity(size_t constraintIndex, real_t v
 }
 
 void PhysicsEngine::setConstraintLinearVelocity(size_t constraintIndex, const Vector3r& v) {
-    if (constraintIndex < 0 || constraintIndex >= m_world->constraintPatterns().size()) {
+    if (constraintIndex >= m_world->constraintPatterns().size()) {
         std::cerr << "Warning: setConstraintLinearVelocity: constraintIndex " << constraintIndex << " out of bounds" << std::endl;
         return;
     }
@@ -89,7 +89,7 @@ void PhysicsEngine::setConstraintLinearVelocity(size_t constraintIndex, const Ve
 }
 
 void PhysicsEngine::setConstraintAngularVelocity(size_t constraintIndex, const Vector3r& w) {
-    if (constraintIndex < 0 || constraintIndex >= m_world->constraintPatterns().size()) {
+    if (constraintIndex >= m_world->constraintPatterns().size()) {
         std::cerr << "Warning: setConstraintAngularVelocity: constraintIndex " << constraintIndex << " out of bounds" << std::endl;
         return;
     }

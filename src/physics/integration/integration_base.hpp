@@ -13,7 +13,7 @@ class IntegrationBase {
    public:
     explicit IntegrationBase(World& world, solver::SolverBase& solver, physics::DynamicsAssembler& dyn, misc::TimingManager& timings,
                              config::Config& config)
-        : m_world(world), m_solver(solver), m_dyn(dyn), m_timings(timings), m_config(config) {}
+        : m_world(world), m_dyn(dyn), m_timings(timings), m_solver(solver), m_config(config) {}
 
     virtual ~IntegrationBase() = default;
     virtual void step(real_t dt) = 0;

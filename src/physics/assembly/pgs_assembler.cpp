@@ -75,7 +75,6 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) cons
 VectorXr PgsAssembler::ufree(real_t dt, real_t theta) const {
     const auto& vn = m_dyn->vVec();
     const auto& M_inv = m_dyn->MinvDiag();
-    const int totalV = m_dyn->numV();
 
     VectorXr ufree = vn + M_inv.cwiseProduct(dt * m_dyn->fVecExternal());
     if (!m_cfg.moreau_implicit_gyroscopy) ufree += M_inv.cwiseProduct(dt * m_dyn->fVecGyroscopic());

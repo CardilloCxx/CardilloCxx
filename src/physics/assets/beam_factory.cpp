@@ -42,7 +42,6 @@ void appendSplineSamples(const misc::SplinePattern& spline, size_t segments, std
 
         Vector3r n0 = si0.normal;
         Vector3r n1 = si1.normal;
-        Vector3r b0 = si0.binormal;
         Vector3r b1 = si1.binormal;
 
         // Detect and correct sudden 180-degree flips in the frame

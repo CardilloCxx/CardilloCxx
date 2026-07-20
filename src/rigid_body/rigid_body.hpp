@@ -12,7 +12,7 @@
  */
 namespace cardillo::RigidBody {
 
-using RigidState = cardillo::physics::RigidState;
+using RigidState = physics::RigidState;
 
 namespace detail {
 
