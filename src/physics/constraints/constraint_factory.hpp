@@ -13,8 +13,8 @@ namespace physics {
 class ConstraintFactory {
    public:
     static size_t addLinearDistanceConstraint(World& world, entt::entity a, entt::entity b, const Vector3r& rA_local = Vector3r::Zero(), const Vector3r& rB_local = Vector3r::Zero(),
-                                              real_t stiffness = std::numeric_limits<real_t>::infinity(), real_t damping = (real_t)0) {
-        return insertPattern(world, std::unique_ptr<ConstraintPattern>(new LinearDistanceConstraint(world.ecs(), a, b, rA_local, rB_local, stiffness, damping)));
+                                              real_t stiffness = std::numeric_limits<real_t>::infinity(), real_t damping = (real_t)0, real_t targetDistance = (real_t)-1.0) {
+        return insertPattern(world, std::unique_ptr<ConstraintPattern>(new LinearDistanceConstraint(world.ecs(), a, b, rA_local, rB_local, stiffness, damping, targetDistance)));
     }
 
     static size_t addRigidConstraint(World& world, entt::entity a, entt::entity b) {

@@ -81,8 +81,8 @@ class CARDILLO_API PhysicsEngine {
 
     /// Add a linear distance constraint between two entities.
     inline size_t addLinearDistanceConstraint(entt::entity a, entt::entity b, const Vector3r& rA_local = Vector3r::Zero(), const Vector3r& rB_local = Vector3r::Zero(),
-                                              real_t stiffness = std::numeric_limits<real_t>::infinity(), real_t damping = (real_t)0) {
-        return ConstraintFactory::addLinearDistanceConstraint(*m_world, a, b, rA_local, rB_local, stiffness, damping);
+                                              real_t stiffness = std::numeric_limits<real_t>::infinity(), real_t damping = (real_t)0, real_t targetDistance = (real_t)-1.0) {
+        return ConstraintFactory::addLinearDistanceConstraint(*m_world, a, b, rA_local, rB_local, stiffness, damping, targetDistance);
     }
 
     /// Constrain two entities to the same rigid frame.

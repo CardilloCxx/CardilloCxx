@@ -50,3 +50,4 @@ cardillo_add_scene_example(dynamic_constraint "scenes/dynamic_constraint/Dynamic
 cardillo_add_scene_example(billiard "scenes/billiard/BilliardScene.hpp" BilliardScene)
 cardillo_add_scene_example(cable "scenes/cable/CableScene.hpp" CableScene)
 cardillo_add_scene_example(cradle "scenes/cradle/NewtonsCradleScene.hpp" NewtonsCradleScene)
+cardillo_add_scene_example(chain_fountain "scenes/chainFountain/ChainFountain.hpp" ChainFountainScene)

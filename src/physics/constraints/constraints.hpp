@@ -166,12 +166,13 @@ class ConstraintPattern {
 class LinearDistanceConstraint : public ConstraintPattern {
    public:
     LinearDistanceConstraint(entt::registry& reg, entt::entity a, entt::entity b, const Vector3r& rA_local = Vector3r::Zero(), const Vector3r& rB_local = Vector3r::Zero(),
-                             real_t stiffness = std::numeric_limits<real_t>::infinity(), real_t damping = (real_t)0)
-        : ConstraintPattern(reg, a, b, 1), m_k(stiffness), m_d(damping) {
+                             real_t stiffness = std::numeric_limits<real_t>::infinity(), real_t damping = (real_t)0, real_t targetDistance = (real_t)-1.0)
+        : ConstraintPattern(reg, a, b, 1), m_k(stiffness), m_d(damping), L0(targetDistance) {
         m_rA_local = rA_local;
         m_rB_local = rB_local;
         WorldAttachments wa = computeAttachments_();
-        L0 = (wa.xB - wa.xA).norm();
+        if (L0 < (real_t)0)
+            L0 = (wa.xB - wa.xA).norm();
     }
 
     ConstraintResult getConstraint() const override;
@@ -179,7 +180,7 @@ class LinearDistanceConstraint : public ConstraintPattern {
     void setScalarVelocity(real_t v) override { scalarVelocity = v; }
 
    private:
-    real_t L0{(real_t)0};  // rest length
+    real_t L0{(real_t)-1.0};  // rest length
     real_t scalarVelocity = (real_t)0;
     real_t m_k{(real_t)0};
     real_t m_d{(real_t)0};

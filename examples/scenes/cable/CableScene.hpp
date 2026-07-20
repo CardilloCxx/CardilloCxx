@@ -28,6 +28,8 @@ public:
         engine.addStaticBody(groundShape, physics::RigidState(Vector3r(0.0, 0.0, -0.5)));
 
         physics::MeshShape jackShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/ethernet_jack.obj");
+        jackShape.use_bbox_collider = true;
+
         engine.addStaticBody(jackShape, physics::RigidState(Vector3r::Zero()));
 
         Vector3r loosePortPos(-0.3, -0.5, 0.0);
@@ -45,6 +47,8 @@ public:
 
         // --------------------------------------------------------
         physics::MeshShape plugShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/ethernet_plug.obj");
+        plugShape.use_bbox_collider = true;
+
         physics::RigidProps movingPlugProps;
         movingPlugProps.mass = (real_t)0.0; 
         movingPlugProps.collidable = false; 
@@ -79,7 +83,6 @@ public:
         engine.addTrajectory(movingPlug, poseFunc, std::nullopt);
 
         physics::RigidProps loosePortProps = physics::RigidProps::withDensity((real_t)500.0);
-        loosePortProps.collidable = false; 
         
         // Sample the beginning of the cable spline (alpha = 0.0
         SplineSample cableStartSample = cableSpline.sample(0.0);
@@ -94,7 +97,7 @@ public:
         physics::BeamCrossSection cableSection(d, d, physics::BeamBodyType::Capsule);
         auto cableSprings = physics::BeamSpringParams::fromMaterial((real_t)5e7, (real_t)0.4);
         cableSprings.setDampingFromFactor((real_t)1.0);
-        // cableSprings.kappa0 = Vector3r::Zero();   // Set relaxed curvature to zero for a straight cable
+        cableSprings.kappa0 = Vector3r::Zero();   // Set relaxed curvature to zero for a straight cable
         
         physics::RigidProps cableProps = physics::RigidProps::withDensity((real_t)1200.0);
         physics::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());

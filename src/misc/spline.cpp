@@ -133,7 +133,7 @@ void CatmullRomSpline::rebuild() {
         m_lutSamplesPerSeg = 0;
         m_lutSegCount = 0;
     } else {
-        buildArcLengthLUT(20);
+        buildArcLengthLUT(50);
     }
 }
 

@@ -463,7 +463,7 @@ bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, cardill
     const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>& uvs) {
         const real_t radius = reg.get<cardillo::C_Radius>(e).r;
         std::vector<Vector3r> unitVerts;
-        cardillo::io::MeshGenerator::generateUVSphere(12, 24, unitVerts, t);
+        cardillo::io::MeshGenerator::generateUVSphere(6, 10, unitVerts, t);
         v.reserve(unitVerts.size());
         uvs.reserve(unitVerts.size());
         for (const auto& uv : unitVerts) {
