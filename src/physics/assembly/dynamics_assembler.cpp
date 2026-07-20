@@ -134,7 +134,7 @@ void DynamicsAssembler::writePositionToSystem(const VectorXr& q) {
             if (qb.size() >= 7 && reg.any_of<C_Orientation>(e)) {
                 Quaternion4r qn(qb.tail<4>());
                 const Quaternion4r q_ref = reg.get<C_Orientation>(e).value;
-                const_cast<C_Orientation&>(reg.get<C_Orientation>(e)).value = MathHelper::alignQuaternionTo(qn, q_ref);
+                const_cast<C_Orientation&>(reg.get<C_Orientation>(e)).setValue(MathHelper::alignQuaternionTo(qn, q_ref));
             }
         }
     }

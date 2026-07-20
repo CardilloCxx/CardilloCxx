@@ -75,7 +75,7 @@ public:
 
     void updateScene(physics::PhysicsEngine& engine, real_t t, real_t dt) override {
         (void)dt;
-        auto A_IK = engine.ecs().get<C_Orientation>(m_slinky_end_entity).value.toRotationMatrix();
+        auto A_IK = engine.ecs().get<C_Orientation>(m_slinky_end_entity).rotation;
         
         if (t < 0.28) engine.applyForce(m_slinky_end_entity, Vector3r(0.00, 0.0, 0.0), A_IK.transpose()* Vector3r(0.0, -0.015, 0.0));
 //         engine.setAngularVelocity(m_guide_entity, Vector3r(0.0, -0.1, 0.0));
