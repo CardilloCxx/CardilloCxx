@@ -11,7 +11,7 @@ class BilliardScene : public SceneBase {
    public:
     const char* sceneName() const override { return "billiard"; }
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
         engine.setGravity(Vector3r(0, 0, -9.81));

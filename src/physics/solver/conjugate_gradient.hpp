@@ -14,16 +14,16 @@ namespace cardillo::solver {
 
 class ConjugateGradientSolver : public SolverBase {
    public:
-    explicit ConjugateGradientSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(dyn), m_cfg(cfg), m_assembler(dyn, cfg) {}
+    explicit ConjugateGradientSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(dyn), m_cfg(cfg), m_assembler(dyn, cfg) {}
 
     VectorXr solve(real_t dt, real_t theta) override;
 
     const char* name() const override { return "ConjugateGradient"; }
 
    private:
-    cardillo::physics::DynamicsAssembler& m_dyn;
-    cardillo::config::Config m_cfg;
-    cardillo::physics::assembly::PgsAssembler m_assembler;
+    physics::DynamicsAssembler& m_dyn;
+    config::Config m_cfg;
+    physics::assembly::PgsAssembler m_assembler;
 };
 
 }  // namespace cardillo::solver

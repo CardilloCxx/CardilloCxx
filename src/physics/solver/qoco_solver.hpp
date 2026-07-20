@@ -10,7 +10,7 @@ namespace cardillo::solver {
 
 class QocoSolver : public SolverBase {
    public:
-    explicit QocoSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg);
+    explicit QocoSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg);
     ~QocoSolver() override;
 
     VectorXr solve(real_t dt, real_t theta) override;
@@ -22,9 +22,9 @@ class QocoSolver : public SolverBase {
     void updateQocoSolver(real_t dt, real_t theta);
     void ensureQocoApiLoaded(bool first_init);
 
-    cardillo::physics::DynamicsAssembler& m_dyn;
-    cardillo::physics::assembly::QocoAssembler m_assembler{m_dyn};
-    cardillo::config::Config m_cfg;
+    physics::DynamicsAssembler& m_dyn;
+    physics::assembly::QocoAssembler m_assembler{m_dyn};
+    config::Config m_cfg;
 
     QOCOSolver* m_qoco_solver{nullptr};
 

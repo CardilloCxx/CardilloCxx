@@ -14,7 +14,7 @@ class PjAssembler
 
 {
    public:
-    PjAssembler(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
+    PjAssembler(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
     ~PjAssembler();
 
     bool buildAndFactorS(real_t dt, real_t theta, bool implicitGyro = false, bool lambdaTheta = false);
@@ -25,8 +25,8 @@ class PjAssembler
    private:
     TripletMatrix m_S;
     std::optional<Eigen::SparseLU<CscMatrix>> m_S_sparse_lu;
-    cardillo::physics::DynamicsAssembler* m_dyn{nullptr};
-    cardillo::config::Config m_cfg;
+    physics::DynamicsAssembler* m_dyn{nullptr};
+    config::Config m_cfg;
 
     // Structural sparsity-pattern cache: SparseLU::analyzePattern() (fill-reducing column ordering +
     // symbolic elimination) is far more expensive than factorize() and only needs to be redone when

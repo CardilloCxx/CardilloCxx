@@ -18,15 +18,15 @@ namespace cardillo::solver {
 // single-threaded, to validate the block representation against PGS before adding parallelism.
 class CondensedSolver : public SolverBase {
    public:
-    explicit CondensedSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(dyn), m_cfg(cfg), m_assembler(dyn, cfg) {}
+    explicit CondensedSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(dyn), m_cfg(cfg), m_assembler(dyn, cfg) {}
 
     VectorXr solve(real_t dt, real_t theta) override;
     const char* name() const override { return "Condensed"; }
 
    private:
-    cardillo::physics::DynamicsAssembler& m_dyn;
-    cardillo::config::Config m_cfg;
-    cardillo::physics::assembly::CondensedAssembler m_assembler;
+    physics::DynamicsAssembler& m_dyn;
+    config::Config m_cfg;
+    physics::assembly::CondensedAssembler m_assembler;
 };
 
 }  // namespace cardillo::solver

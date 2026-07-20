@@ -44,9 +44,9 @@ class CollisionCoal {
     coal::Transform3s makeTransformFromQ_(const VectorXr& q) const;
 
     // Backrefs
-    cardillo::World* m_world = nullptr;                  // not owned
-    cardillo::misc::TimingManager* m_timings = nullptr;  // optional timings pointer
-    cardillo::config::Config& m_cfg;                     // reference to global config for easy access
+    World* m_world = nullptr;                  // not owned
+    misc::TimingManager* m_timings = nullptr;  // optional timings pointer
+    config::Config& m_cfg;                     // reference to global config for easy access
 
     // Persistent scratch buffers for detectAll(), cleared (not reallocated) at the start of each
     // call to avoid a fresh heap allocation/rehash of the broadphase pair list and contact map
@@ -55,7 +55,7 @@ class CollisionCoal {
     ContactMap m_mapCurr;
 
    public:
-    CollisionCoal(cardillo::World& world, cardillo::misc::TimingManager* timings, cardillo::config::Config& cfg);
+    CollisionCoal(World& world, misc::TimingManager* timings, config::Config& cfg);
     ~CollisionCoal();
 
     // (Re)build the COAL scene from ECS collidables (creates geometries & objects and registers

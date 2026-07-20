@@ -13,10 +13,10 @@ public:
     PendulumScene() = default;
     ~PendulumScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         (void)engine;
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         // floor 
         auto floor = engine.addStaticBody(            physics::CubeShape{Vector3r{5,5,0.1}}, 
@@ -94,7 +94,7 @@ public:
             d_axis2);
     }
 
-    // void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    // void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
     //     sys.applyForce(m_gear1, Vector3r(0.0, 0.0, 0.0), Vector3r(0.0, 0.0, 5.0));
     //     sys.applyForce(m_gear4, Vector3r(0.0, 0.0, 0.0), Vector3r(0.0, 0.0, 5.0));
     //     sys.applyForce(m_gear5, Vector3r(0.0, 0.0, 0.0), Vector3r(0.0, 0.0, 5.0));

@@ -14,7 +14,7 @@ inline uint64_t edge_key(int a, int b) {
 }
 }  // namespace
 
-bool load_obj_softbody(const std::string& path, SoftBodyMesh& out, const cardillo::Vector3r& scale) {
+bool load_obj_softbody(const std::string& path, SoftBodyMesh& out, const Vector3r& scale) {
     out.positions.clear();
     out.edges.clear();
     out.triangles.clear();

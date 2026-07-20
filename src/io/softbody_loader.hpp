@@ -12,7 +12,7 @@ namespace cardillo::io {
 // - positions: one point-mass per OBJ vertex
 // - edges: unique, undirected edges derived from triangle topology
 struct SoftBodyMesh {
-    std::vector<cardillo::Vector3r> positions;
+    std::vector<Vector3r> positions;
     std::vector<std::pair<int, int>> edges;  // indices into positions
     std::vector<Eigen::Vector3i> triangles;  // triangle indices into positions
 };
@@ -20,6 +20,6 @@ struct SoftBodyMesh {
 // Load an OBJ mesh and extract a vertex-edge graph suitable for a mass-spring system.
 // Returns true on success and fills out with vertex positions and unique edges.
 // Optional uniform scale can be applied to positions.
-bool load_obj_softbody(const std::string& path, SoftBodyMesh& out, const cardillo::Vector3r& scale = cardillo::Vector3r(1, 1, 1));
+bool load_obj_softbody(const std::string& path, SoftBodyMesh& out, const Vector3r& scale = Vector3r(1, 1, 1));
 
 }  // namespace cardillo::io

@@ -4,7 +4,7 @@ namespace cardillo {
 namespace integration {
 
 void IntegrationBase::explicitPositionUpdate(World& world, real_t h) {
-    auto _sc = m_timings.scope(cardillo::misc::TimingManager::TimerId::Integration);
+    auto _sc = m_timings.scope(misc::TimingManager::TimerId::Integration);
     auto& reg = world.ecs();
 
     auto position_view = reg.view<C_Position3, const C_LinearVelocity3>();
@@ -29,7 +29,7 @@ void IntegrationBase::explicitPositionUpdate(World& world, real_t h) {
 }
 
 void IntegrationBase::linearImplicitPositionUpdate(World& world, real_t h) {
-    auto _sc = m_timings.scope(cardillo::misc::TimingManager::TimerId::Integration);
+    auto _sc = m_timings.scope(misc::TimingManager::TimerId::Integration);
     auto& reg = world.ecs();
 
     auto position_view = reg.view<C_Position3, const C_LinearVelocity3>();

@@ -15,7 +15,7 @@ public:
 
     const char* sceneName() const override { return "euler_disk"; }
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
         // Ground plane

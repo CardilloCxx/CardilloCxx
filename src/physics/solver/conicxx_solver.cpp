@@ -16,7 +16,7 @@ const char* statusToString(conicxx::Status status) { return conicxx::toString(st
 
 }  // namespace
 
-ConicxxSolver::ConicxxSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(dyn), m_assembler(m_dyn), m_cfg(cfg) {}
+ConicxxSolver::ConicxxSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(dyn), m_assembler(m_dyn), m_cfg(cfg) {}
 
 ConicxxSolver::~ConicxxSolver() = default;
 
@@ -62,7 +62,7 @@ VectorXr ConicxxSolver::solve(real_t dt, real_t theta) {
     VectorXr* b = nullptr;
     conicxx::ConeSpec cone_spec;
     {
-        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ConicxxAssembly);
+        auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::ConicxxAssembly);
         P = &m_assembler.P(dt, theta);
         q = &m_assembler.q(dt, theta);
         A = &m_assembler.A(dt, theta);
@@ -79,7 +79,7 @@ VectorXr ConicxxSolver::solve(real_t dt, real_t theta) {
     bool need_setup = !m_setup_done || coneSpecChanged(cone_spec);
 
     {
-        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ConicxxSetup);
+        auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::ConicxxSetup);
         if (!need_setup) {
             m_solver.setSettings(settings);
             if (!m_solver.updateData(P, q, A, b)) need_setup = true;
@@ -106,7 +106,7 @@ VectorXr ConicxxSolver::solve(real_t dt, real_t theta) {
 
     const conicxx::Solution* solution = nullptr;
     {
-        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ConicxxSolve);
+        auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::ConicxxSolve);
         solution = &m_solver.solve();
     }
     m_last_iters = solution->info.iterations;
@@ -130,7 +130,7 @@ VectorXr ConicxxSolver::solve(real_t dt, real_t theta) {
             impulse[i] = static_cast<real_t>(solution->z[dual_index]) * Smu[i];
         }
     }
-    cardillo::solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
+    solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
 
     VectorXr x_vec = VectorXr::Zero(m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers());
     const int x_copy_len = std::min<int>(x_vec.size(), static_cast<int>(solution->x.size()));

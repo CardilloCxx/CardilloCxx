@@ -67,7 +67,7 @@ public:
                 physics::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
                 physics::RigidProps props; props.mass = mass; props.friction = curr_friction;
                 auto rod = engine.addRigidBody(rodShape, state, props);
-                engine.ecs().get<cardillo::C_InertiaDiag>(rod).I = Vector3r(J, J, J);
+                engine.ecs().get<C_InertiaDiag>(rod).I = Vector3r(J, J, J);
                 engine.track(rod, "painleve_rod_fric_" + std::to_string(curr_friction) + "_phi_" + std::to_string(curr_phi));
             }
         }

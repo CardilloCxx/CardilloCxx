@@ -10,9 +10,9 @@ class StringTestScene : public SceneBase {
    public:
     const char* sceneName() const override { return "StringTest"; }
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         engine.setGravity(Vector3r(0, 0, -9.81));
 

@@ -18,7 +18,7 @@ struct workspace {
     // Present only when cfg.pj_rdiag_true_delassus is enabled: the exact per-contact local
     // Delassus block (3x3 for frictional contacts, 1x1 otherwise), applied as a second stage
     // after RW/biasImpulse instead of being folded into a per-row scale (see pj_sweep()).
-    const std::optional<cardillo::BlockDiagonal> R_block;
+    const std::optional<BlockDiagonal> R_block;
 
     VectorXr x;
     VectorXr prev_x;
@@ -28,11 +28,11 @@ struct workspace {
     VectorXr rhs;  // reusable RHS buffer for solveS
 
     int iter = 0;
-    cardillo::misc::TimingManager* timer;
-    cardillo::physics::assembly::PjAssembler* assembler;
+    misc::TimingManager* timer;
+    physics::assembly::PjAssembler* assembler;
 
     workspace(int nv, int ns, int nd, int nnfc, int nfc, int nc, Eigen::SparseMatrix<real_t, Eigen::RowMajor> W, Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW, VectorXr biasImpulse, VectorXr mu,
-              std::optional<cardillo::BlockDiagonal> R_block, VectorXr p_init, VectorXr x_init, cardillo::misc::TimingManager* timer, cardillo::physics::assembly::PjAssembler* assembler)
+              std::optional<BlockDiagonal> R_block, VectorXr p_init, VectorXr x_init, misc::TimingManager* timer, physics::assembly::PjAssembler* assembler)
         : Nv(nv),
           Ns(ns),
           Nd(nd),
@@ -78,8 +78,8 @@ static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::Row
 // never reaches it) frictional contacts.
 // Nfc is the number of *frictional rows* (Nc - Nnfc, i.e. 3 per frictional contact), matching the
 // convention used by workspace::Nfc and project() above -- not the number of frictional contacts.
-static inline cardillo::BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, int Nnfc, int Nfc, real_t alpha) {
-    cardillo::BlockDiagonal D_scaled;  // holds D/alpha per block, so calculateInverse() yields alpha*D^{-1} directly
+static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, int Nnfc, int Nfc, real_t alpha) {
+    BlockDiagonal D_scaled;  // holds D/alpha per block, so calculateInverse() yields alpha*D^{-1} directly
     const real_t invAlpha = (alpha > (real_t)0) ? ((real_t)1 / alpha) : (real_t)0;
 
     for (int cid = 0; cid < Nnfc; ++cid) {
@@ -119,7 +119,7 @@ static inline void project(std::unique_ptr<workspace>& ws) {
 }
 
 static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
-    auto scope = ws->timer->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobiSweep);
+    auto scope = ws->timer->scope(misc::TimingManager::TimerId::ProjectedJacobiSweep);
 
     ws->prev_x = ws->x;
     ws->prev_impulse = ws->impulse;
@@ -137,7 +137,7 @@ static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
     ws->x += ws->assembler->solveS(ws->rhs);
 }
 
-static inline real_t residual(const VectorXr& v, const VectorXr& v_prev, cardillo::config::Config& cfg) {
+static inline real_t residual(const VectorXr& v, const VectorXr& v_prev, config::Config& cfg) {
     const int Nv = (int)v.size();
     const VectorXr q = v.cwiseAbs().cwiseMax(v_prev.cwiseAbs()) * cfg.pj_tol_rel + VectorXr::Constant(Nv, cfg.pj_tol_abs);
     return 1.0 / sqrt((double)Nv) * (v - v_prev).cwiseQuotient(q).norm();
@@ -153,7 +153,7 @@ static inline real_t residual(const VectorXr& v, const VectorXr& v_prev, cardill
 // used in practice on the full nonlinear one, with a restart safeguard in chebyshev_loop() for
 // when that approximation breaks down.
 static inline real_t estimateSpectralRadius(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& RW,
-                                            const std::optional<cardillo::BlockDiagonal>& R_block, cardillo::physics::assembly::PjAssembler& assembler, int fullSize, int Nv) {
+                                            const std::optional<BlockDiagonal>& R_block, physics::assembly::PjAssembler& assembler, int fullSize, int Nv) {
     constexpr int kPowerIterations = 8;
     if (Nv <= 0 || fullSize <= 0) return (real_t)0;
 
@@ -176,7 +176,7 @@ static inline real_t estimateSpectralRadius(const Eigen::SparseMatrix<real_t, Ei
     return std::min<real_t>(lambda, (real_t)0.995);
 }
 
-static inline void chebyshev_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg, real_t rho) {
+static inline void chebyshev_loop(std::unique_ptr<workspace>& ws, config::Config& cfg, real_t rho) {
     VectorXr xk = ws->x;
     VectorXr pk = ws->impulse;
     VectorXr xk1 = ws->x;
@@ -239,7 +239,7 @@ static inline void chebyshev_loop(std::unique_ptr<workspace>& ws, cardillo::conf
 // single available residual difference) -- solving it via the same general least-squares path
 // below is mathematically identical, just without a special case, since the normal equations for
 // a single column ARE exactly that formula.
-static inline void anderson_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg, int m) {
+static inline void anderson_loop(std::unique_ptr<workspace>& ws, config::Config& cfg, int m) {
     const int Nfull = (int)ws->x.size();  // Nv + Ns + Nd
     const int Nc = ws->Nc;
     const int Ntot = Nfull + Nc;
@@ -313,7 +313,7 @@ static inline void anderson_loop(std::unique_ptr<workspace>& ws, cardillo::confi
     ws->impulse = z.tail(Nc);
 }
 
-static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::DynamicsAssembler& dyn, cardillo::physics::assembly::PjAssembler& assembler, cardillo::config::Config& cfg, real_t dt,
+static inline std::unique_ptr<workspace> build_workspace(physics::DynamicsAssembler& dyn, physics::assembly::PjAssembler& assembler, config::Config& cfg, real_t dt,
                                                          real_t theta) {
     const int Nv = (int)dyn.numV();
     const int Nc = (int)dyn.numContactRows();
@@ -337,7 +337,7 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
     VectorXr v_prev = W * dyn.vVec() + contactBias;   // Previous contact-relative velocity
     VectorXr biasImpulse = contactBias + restitution.cwiseProduct(v_prev);
 
-    std::optional<cardillo::BlockDiagonal> R_block;
+    std::optional<BlockDiagonal> R_block;
     if (cfg.pj_rdiag_true_delassus) {
         RW = W;
         R_block = buildBlockPreconditioner(W, Minv, Nnfc, Nfc, cfg.pj_alpha);
@@ -356,7 +356,7 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
 
     // Warm-start impulse
     VectorXr p = VectorXr::Zero(Nc);
-    if (cfg.pj_warmstart) cardillo::solver::WarmstartProvider::applyWarmstart(p, dyn);
+    if (cfg.pj_warmstart) solver::WarmstartProvider::applyWarmstart(p, dyn);
 
     VectorXr rhs_init = rhs_free;
     rhs_init.segment(0, Nv).noalias() += W.transpose() * p;
@@ -368,7 +368,7 @@ static inline std::unique_ptr<workspace> build_workspace(cardillo::physics::Dyna
                                         &assembler);
 }
 
-static inline void standard_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg) {
+static inline void standard_loop(std::unique_ptr<workspace>& ws, config::Config& cfg) {
     for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
         pj_sweep(ws);
         ws->iter = iter + 1;
@@ -376,7 +376,7 @@ static inline void standard_loop(std::unique_ptr<workspace>& ws, cardillo::confi
     }
 }
 
-static inline void nesterov_loop(std::unique_ptr<workspace>& ws, cardillo::config::Config& cfg) {
+static inline void nesterov_loop(std::unique_ptr<workspace>& ws, config::Config& cfg) {
     VectorXr xk = ws->x;
     VectorXr pk = ws->impulse;
     VectorXr xk1 = ws->x;
@@ -471,13 +471,13 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
     const bool useChebyshev = m_cfg.pj_chebyshev && !m_cfg.pj_nesterov;
     const bool useAnderson = m_cfg.pj_anderson && !m_cfg.pj_nesterov && !useChebyshev;
     {
-        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobiSetup);
+        auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedJacobiSetup);
         ws = build_workspace(m_dyn, m_assembler, m_cfg, dt, theta);
         if (useChebyshev) chebyshevRho = estimateSpectralRadius(ws->W, ws->RW, ws->R_block, *ws->assembler, (int)ws->x.size(), ws->Nv);
     }
 
     {
-        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ProjectedJacobi);
+        auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedJacobi);
         if (m_cfg.pj_nesterov)
             nesterov_loop(ws, m_cfg);
         else if (useChebyshev)
@@ -490,7 +490,7 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
 
     m_last_iters = ws->iter;
 
-    cardillo::solver::WarmstartProvider::storeImpulse(ws->impulse, m_dyn);
+    solver::WarmstartProvider::storeImpulse(ws->impulse, m_dyn);
 
     // ws->x is the absolute solution; update lambdas with contact correction included
     m_dyn.setLambda_g(ws->x.segment(numV, numS));

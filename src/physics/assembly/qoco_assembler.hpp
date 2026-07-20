@@ -18,7 +18,7 @@ namespace cardillo::physics::assembly {
 
 class QocoAssembler {
    public:
-    QocoAssembler(cardillo::physics::DynamicsAssembler& dyn) : m_dyn(&dyn) {}
+    QocoAssembler(physics::DynamicsAssembler& dyn) : m_dyn(&dyn) {}
 
     QOCOCscMatrix* toQocoCSC(SparseMatrix<Eigen::ColMajor>& A, QOCOCscMatrix& view);
     QOCOFloat* toQocoVector(Eigen::VectorX<real_t>& v);
@@ -34,7 +34,7 @@ class QocoAssembler {
     VectorXr computeSmu();
 
    private:
-    cardillo::physics::DynamicsAssembler* m_dyn{nullptr};
+    physics::DynamicsAssembler* m_dyn{nullptr};
 
     // Keep all sparse/vector storage alive while QOCO consumes raw pointers.
     SparseMatrix<Eigen::ColMajor> m_A_cache;

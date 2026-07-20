@@ -17,7 +17,7 @@ class UnilateralScene : public SceneBase {
 public:
     const char* sceneName() const override { return "unilateral"; }
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
         const auto formatAForName = [](real_t aVal) {

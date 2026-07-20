@@ -31,7 +31,7 @@ public:
 
         const auto& reg = engine.ecs();
         entt::entity rodEntity = entt::null;
-        for (auto entity : reg.view<cardillo::C_RigidBodyTag>()) {
+        for (auto entity : reg.view<C_RigidBodyTag>()) {
             rodEntity = entity; break;
         }
         if (rodEntity != entt::null) {

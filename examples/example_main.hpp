@@ -18,7 +18,7 @@
 namespace cardillo::examples {
 
 namespace detail {
-inline cardillo::physics::PhysicsEngine* g_engine = nullptr;
+inline physics::PhysicsEngine* g_engine = nullptr;
 
 inline void printTimingsAtExit(int sig) {
     (void)sig;
@@ -32,7 +32,7 @@ int runExample(int argc, char** argv) {
     std::signal(SIGINT, detail::printTimingsAtExit);
     Eigen::setNbThreads(1);
 
-    cardillo::config::Config cfg = (argc > 1) ? cardillo::config::ConfigReader::fromFile(argv[1]) : cardillo::config::Config{};
+    config::Config cfg = (argc > 1) ? config::ConfigReader::fromFile(argv[1]) : config::Config{};
 
     if (argc <= 1) std::cout << "No config file provided, using defaults." << std::endl;
 
@@ -40,7 +40,7 @@ int runExample(int argc, char** argv) {
     cfg.scene_name = scene.sceneName();
     cfg.output_filename_prefix = scene.sceneName();
 
-    cardillo::physics::PhysicsEngine engine(cfg);
+    physics::PhysicsEngine engine(cfg);
     detail::g_engine = &engine;
     scene.populate(engine);
 
@@ -59,7 +59,7 @@ int runExample(int argc, char** argv) {
         real_t velNormSum = 0;
         int numBodies = 0;
         const auto& reg = engine.ecs();
-        auto view = reg.view<cardillo::C_BodyIndex>();
+        auto view = reg.view<C_BodyIndex>();
         for (auto e : view) {
             ++numBodies;
             totalKE += engine.getKineticEnergy(e);

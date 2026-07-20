@@ -18,9 +18,9 @@ public:
     WilberforcePendulumScene() = default;
     ~WilberforcePendulumScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
 
         // Spring parameters
         const real_t wireDiameter = 0.001;               // wire diameter 1 mm
@@ -96,15 +96,15 @@ public:
         // Bob mass: 0.524057 kg
 
         // Set inertia
-        engine.ecs().get<cardillo::C_InertiaDiag>(m_bob).I = Vector3r(0.000124083, 0.000124083, 0.000105331);
+        engine.ecs().get<C_InertiaDiag>(m_bob).I = Vector3r(0.000124083, 0.000124083, 0.000105331);
 
         // track bob trajectory in csv file
         engine.track(m_bob, "bob");
         // Print Inertia and Mass for verification
-        auto Idiag = engine.ecs().get<cardillo::C_InertiaDiag>(m_bob).I;
+        auto Idiag = engine.ecs().get<C_InertiaDiag>(m_bob).I;
         std::cout << "Bob inertia diag: Ixx = " << Idiag.x() << ", Iyy = " << Idiag.y() << ", Izz = " << Idiag.z() << std::endl;
 
-        auto RotMat = engine.ecs().get<cardillo::C_Orientation>(m_bob).value.toRotationMatrix();
+        auto RotMat = engine.ecs().get<C_Orientation>(m_bob).value.toRotationMatrix();
         std::cout << "Bob inertia world frame:\n" << RotMat * Idiag.asDiagonal() * RotMat.transpose() << std::endl;
         std::cout << "Bob mass: " << engine.getMass(m_bob).col(0).row(0) << " kg" << std::endl;
 
@@ -118,7 +118,7 @@ public:
         engine.addRigidConstraint(m_bottom, m_bob);
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override 
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override 
     {
         // Pull bob downward slowly to start vertical oscillation
         const real_t vz0 = -0.5;

@@ -15,9 +15,9 @@ public:
     DiscreteRodScene() = default;
     ~DiscreteRodScene() = default;
 
-    void populate(cardillo::physics::PhysicsEngine& engine) override {
+    void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
-        using namespace cardillo::misc;
+        using namespace misc;
         // Simple ground
         engine.addStaticBody(physics::CubeShape(Vector3r(15.0, 15.0, 0.1)), physics::RigidState(Vector3r(0,0,-0.1)));
 
@@ -63,7 +63,7 @@ public:
         engine.disableCollisionBetween(m_rightRod, arcLeftEnds.second);
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
         (void)t;
         // Cancel gravity and prescribe motion for the two rods
         const real_t v_sep = (real_t)0.5;    // move apart along ±X

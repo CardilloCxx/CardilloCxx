@@ -11,22 +11,22 @@ namespace cardillo::integration {
 
 class IntegrationBase {
    public:
-    explicit IntegrationBase(cardillo::World& world, cardillo::solver::SolverBase& solver, cardillo::physics::DynamicsAssembler& dyn, cardillo::misc::TimingManager& timings,
-                             cardillo::config::Config& config)
+    explicit IntegrationBase(World& world, solver::SolverBase& solver, physics::DynamicsAssembler& dyn, misc::TimingManager& timings,
+                             config::Config& config)
         : m_world(world), m_solver(solver), m_dyn(dyn), m_timings(timings), m_config(config) {}
 
     virtual ~IntegrationBase() = default;
     virtual void step(real_t dt) = 0;
 
-    void explicitPositionUpdate(cardillo::World& world, real_t h);
-    void linearImplicitPositionUpdate(cardillo::World& world, real_t h);
+    void explicitPositionUpdate(World& world, real_t h);
+    void linearImplicitPositionUpdate(World& world, real_t h);
 
    protected:
-    cardillo::World& m_world;
-    cardillo::physics::DynamicsAssembler& m_dyn;
-    cardillo::misc::TimingManager& m_timings;
-    cardillo::solver::SolverBase& m_solver;
-    cardillo::config::Config& m_config;
+    World& m_world;
+    physics::DynamicsAssembler& m_dyn;
+    misc::TimingManager& m_timings;
+    solver::SolverBase& m_solver;
+    config::Config& m_config;
 };
 
 }  // namespace cardillo::integration

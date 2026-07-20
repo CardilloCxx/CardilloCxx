@@ -41,7 +41,7 @@ const char* statusToString(clarabel::SolverStatus status) {
 
 }  // namespace
 
-ClarabelSolver::ClarabelSolver(cardillo::physics::DynamicsAssembler& dyn, const cardillo::config::Config& cfg) : m_dyn(dyn), m_assembler(m_dyn), m_cfg(cfg) {}
+ClarabelSolver::ClarabelSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(dyn), m_assembler(m_dyn), m_cfg(cfg) {}
 
 ClarabelSolver::~ClarabelSolver() = default;
 
@@ -64,7 +64,7 @@ void ClarabelSolver::initSolver(real_t dt, real_t theta, bool first_init) {
     VectorXr* b = nullptr;
     const std::vector<clarabel::SupportedConeT<double>>* cones = nullptr;
     {
-        auto sc = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ClarabelAssembly);
+        auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::ClarabelAssembly);
         P = &m_assembler.P(dt, theta);
         q = &m_assembler.q(dt, theta);
         A = &m_assembler.A(dt, theta);
@@ -80,7 +80,7 @@ void ClarabelSolver::initSolver(real_t dt, real_t theta, bool first_init) {
         std::cout << "  Cones: " << cones->size() << "\n";
     }
 
-    auto setup_scope = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ClarabelSetup);
+    auto setup_scope = m_dyn.timings()->scope(misc::TimingManager::TimerId::ClarabelSetup);
     m_solver = std::make_unique<clarabel::DefaultSolver<double>>(*P, *q, *A, *b, *cones, settings);
 }
 
@@ -94,14 +94,14 @@ void ClarabelSolver::updateSolver(real_t dt, real_t theta) {
     //     const std::vector<clarabel::SupportedConeT<double>>* cones = nullptr;
     //     {
     //         auto sc =
-    //         m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ClarabelAssembly); q =
+    //         m_dyn.timings()->scope(misc::TimingManager::TimerId::ClarabelAssembly); q =
     //         &m_assembler.q(dt, theta); A = &m_assembler.A(dt, theta); b = &m_assembler.b(dt,
     //         theta); cones = &m_assembler.cones();
     //     }
     //
     //     // m_solver->update_P(m_assembler.P(dt, theta)); // P is constant in our formulation, so
     //     we don't update it after the first initialization auto setup_scope =
-    //     m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ClarabelSetup);
+    //     m_dyn.timings()->scope(misc::TimingManager::TimerId::ClarabelSetup);
     //     m_solver->update_q(*q);
     //     m_solver->update_A(*A);
     //     m_solver->update_b(*b);
@@ -114,7 +114,7 @@ VectorXr ClarabelSolver::solve(real_t dt, real_t theta) {
     else
         updateSolver(dt, theta);
 
-    auto solve_scope = m_dyn.timings()->scope(cardillo::misc::TimingManager::TimerId::ClarabelSolve);
+    auto solve_scope = m_dyn.timings()->scope(misc::TimingManager::TimerId::ClarabelSolve);
     m_solver->solve();
 
     const auto solution = m_solver->solution();
@@ -143,7 +143,7 @@ VectorXr ClarabelSolver::solve(real_t dt, real_t theta) {
             impulse[i] = static_cast<real_t>(solution.z[dual_index]) * Smu[i];
         }
     }
-    cardillo::solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
+    solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
 
     VectorXr x_vec = VectorXr::Zero(m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers());
     const int x_copy_len = std::min<int>(x_vec.size(), static_cast<int>(solution.x.size()));

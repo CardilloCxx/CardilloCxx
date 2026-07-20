@@ -46,7 +46,7 @@ class MeshGenerator {
 
     // Extract a renderable mesh for a visual entity in world coordinates.
     // Returns false if the entity has no supported visual geometry.
-    static bool buildEntityMesh(const cardillo::World& sys, entt::entity e, EntityMesh& out);
+    static bool buildEntityMesh(const World& sys, entt::entity e, EntityMesh& out);
 };
 
 }  // namespace cardillo::io
