@@ -51,3 +51,5 @@ cardillo_add_scene_example(billiard "scenes/billiard/BilliardScene.hpp" Billiard
 cardillo_add_scene_example(cable "scenes/cable/CableScene.hpp" CableScene)
 cardillo_add_scene_example(cradle "scenes/cradle/NewtonsCradleScene.hpp" NewtonsCradleScene)
 cardillo_add_scene_example(chain_fountain "scenes/chainFountain/ChainFountain.hpp" ChainFountainScene)
+cardillo_add_scene_example(rock_cluster "scenes/rock_fragmentation/RockCluster.hpp" RockClusterScene)
+cardillo_add_scene_example(rock_quarters "scenes/rock_fragmentation/RockQuarters.hpp" RockQuartersScene)

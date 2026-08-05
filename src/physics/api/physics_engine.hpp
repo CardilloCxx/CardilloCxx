@@ -117,6 +117,12 @@ class CARDILLO_API PhysicsEngine {
         return ConstraintFactory::addBeamConstraint(*m_world, a, b, springs, section);
     }
 
+    /// Return the bilateral constraint impulses of one constraint pattern from the last solved step.
+    VectorXr constraintImpulse(size_t constraintIndex) const;
+
+    /// Remove a constraint pattern. Indices of all other patterns stay valid.
+    void removeConstraint(size_t constraintIndex);
+
     /// Set the scalar target velocity for a constraint pattern.
     void setConstraintScalarVelocity(size_t constraintIndex, real_t v);
     /// Set the translational target velocity for a constraint pattern.
@@ -131,6 +137,8 @@ class CARDILLO_API PhysicsEngine {
 
     /// Disable collision checks for a specific pair.
     void disableCollisionBetween(entt::entity a, entt::entity b);
+    /// Re-enable collision checks for a specific pair.
+    void enableCollisionBetween(entt::entity a, entt::entity b);
     /// Convert a dynamic entity into a static one.
     void makeStatic(entt::entity e) { m_world->makeStatic(e); }
 
