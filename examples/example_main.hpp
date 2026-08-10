@@ -4,6 +4,7 @@
 #include "physics/integration/integration_base.hpp"
 #include "physics/integration/moreau.hpp"
 
+#include <Eigen/Core>
 #include <Eigen/Geometry>
 
 #include <csignal>
