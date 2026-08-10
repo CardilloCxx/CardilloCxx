@@ -1,0 +1,18 @@
+material {
+    name : "pickingId",
+    shadingModel : unlit,
+    culling : back,
+    parameters : [
+        { type : uint, name : entityId }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+
+        vec3 worldPos = getWorldPosition();
+        float packedId = uintBitsToFloat(materialParams.entityId);
+        material.baseColor = vec4(worldPos, packedId);
+    }
+}

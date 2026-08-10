@@ -1,0 +1,66 @@
+material {
+    name : "PBR_VertexColor",
+    shadingModel : lit,
+    culling : back,
+    quality : high,
+    blending : transparent,
+    refractionMode : screenspace,
+    refractionType: solid,
+    transparencyMode : twoPassesTwoSides,
+
+    parameters : [
+        { type : float4, name : "albedo" },            // x: r, y: g, z: b, w: a
+        { type : float, name : "roughness" },
+        { type : float, name : "roughnessMapScale" },
+        { type : float, name : "reflectance" },
+        { type : float, name : "transmission" },
+        { type : float, name : "thickness" },
+        { type : float, name : "dispersion" },
+
+        { type : float4, name : "uvCoordScale" },      // xy: offset, zw: scale
+        
+        { type : float4, name : "textureSwitches" },   // x: albedo, y: normal, z: roughness, w: metallic
+        { type : float, name : "textureSwitches2" },  // x: ao
+        
+        { type : sampler2d, name : "albedoMap" },
+        { type : sampler2d, name : "normalMap" },
+        { type : sampler2d, name : "roughnessMap" }
+    ],
+    requires : [
+        tangents,
+        uv0
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs inputs) {
+
+        vec2 uv = getUV0() * materialParams.uvCoordScale.zw + materialParams.uvCoordScale.xy;
+
+        if (materialParams.textureSwitches.y > 0.5) {
+            inputs.normal = normalize(texture(materialParams_normalMap, uv).xyz * 2.0 - 1.0);
+        }
+        
+        prepareMaterial(inputs);
+
+        if (materialParams.textureSwitches.x > 0.5) {
+            vec4 linearColor = texture(materialParams_albedoMap, uv);
+            inputs.baseColor.rgb = linearColor.rgb; //pow(linearColor.rgb, vec3(1.0 / 2.2));
+        } else {
+            inputs.baseColor = materialParams.albedo;
+        }
+
+        if (materialParams.textureSwitches.z > 0.5) {
+            float roughnessValue = texture(materialParams_roughnessMap, uv).r;
+            inputs.roughness = roughnessValue * materialParams.roughnessMapScale;
+        } else {
+            inputs.roughness = materialParams.roughness;
+        }
+
+        inputs.transmission  = materialParams.transmission;
+        inputs.reflectance = materialParams.reflectance;
+
+        inputs.thickness = 10.0;
+        inputs.dispersion = 0.33;
+    }
+}

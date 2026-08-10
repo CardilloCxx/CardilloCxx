@@ -17,4 +17,3 @@ docs/_build
 .venv*
 uv.lock
 src/config/path.hpp
-frontend*
