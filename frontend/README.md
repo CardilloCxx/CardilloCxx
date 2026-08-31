@@ -12,3 +12,6 @@ g++ --version
 
 # Install Vulkan Devtools
 sudo apt install libvulkan-dev vulkan-tools
+
+# Required Ubuntu dependency
+sudo apt install xorg-dev libglu1-mesa-dev

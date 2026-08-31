@@ -152,8 +152,10 @@ public:
         physics::SphereShape sphereShape(m_capRadius);
         
         physics::RigidProps capProps = physics::RigidProps::withDensity(8000.0);
-        capProps.restitution_normal = 0.1;
-        capProps.restitution_tangential = 0.05;
+        // capProps.restitution_normal = 0.1;
+        // capProps.restitution_tangential = 0.05;
+        capProps.restitution_normal = 0.0;
+        capProps.restitution_tangential = 0.0;
         real_t currentAlpha = 0.0;
         
         while (currentAlpha <= 1.0) {

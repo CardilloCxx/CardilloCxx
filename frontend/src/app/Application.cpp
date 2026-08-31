@@ -29,7 +29,8 @@ int Application::run() {
     world->initialize();
 
     physicsBridge_ = std::make_unique<frontend::physics::CardilloPhysicsBridge>(*world);
-    physicsBridge_->initialize("examples/scenes/jenga/scene.config");
+    // physicsBridge_->initialize("examples/scenes/jenga/scene.config");
+    physicsBridge_->initialize("examples/scenes/domino/scene_condensed.config");
     // frontend::scene::setupCornellBox(*world);
 
     const double targetFPS = 60.0;
