@@ -70,13 +70,13 @@ set(CONICXX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CONICXX_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(CONICXX_INSTALL OFF CACHE BOOL "" FORCE)
 
-FetchContent_Declare(eigen GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 5.0.1)
+FetchContent_Declare(Eigen3 GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 5.0.1 OVERRIDE_FIND_PACKAGE)
 FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.2)
 FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG v0.11.1)
 FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.4)
 FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
 FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG cddaa5d5454fc0eb82e7b5851a09fd07cf6777f3)
-FetchContent_MakeAvailable(eigen)
+FetchContent_MakeAvailable(Eigen3)
 
 add_library(eigen3 INTERFACE IMPORTED GLOBAL)
 target_link_libraries(eigen3 INTERFACE eigen)
@@ -123,7 +123,7 @@ FetchContent_Declare(qdldl
     GIT_REPOSITORY https://github.com/osqp/qdldl.git
     GIT_TAG v0.1.9
     GIT_SHALLOW TRUE
-    PATCH_COMMAND sed -i -f "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/qdldl_rename_targets.sed" CMakeLists.txt
+    PATCH_COMMAND sed -i.bak -f "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/qdldl_rename_targets.sed" CMakeLists.txt
 )
 FetchContent_MakeAvailable(qdldl)
 if(NOT TARGET qdldl::qdldl)

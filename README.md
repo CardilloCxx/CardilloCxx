@@ -34,11 +34,23 @@ sudo apt install -y build-essential cmake ninja-build git curl pkg-config \
    python3 python3-dev python3-pip libeigen3-dev
 ```
 
+Mac packages:
+
+```bash
+brew update
+xcode-select --install
+brew install cmake ninja git curl pkg-config python3 eigen
+```
+
 Coal also needs Assimp and Octomap headers on many Linux setups:
 
 ```bash
 sudo apt update
 sudo apt install libassimp-dev liboctomap-dev
+```
+
+```Bash
+brew install assimp octomap
 ```
 
 ## Install Rust/Cargo (needed for Clarabel)
@@ -64,13 +76,14 @@ QOCO CUDA backend requires NVIDIA cuDSS in addition to CUDA Toolkit.
 - cuDSS: https://developer.nvidia.com/cudss
 
 If cuDSS is not found, build will continue with CPU backend only.
+This is the default case for MacOS.
 
 ## Configure and build
 
 From repository root:
 
 ```bash
-cd CardilloMPI
+cd CardilloCxx
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
@@ -115,6 +128,10 @@ Install the required system tools:
 
 ```bash
 sudo apt update && sudo apt install -y doxygen graphviz
+```
+
+```bash
+brew install doxygen graphviz
 ```
 
 ## Build Instructions
