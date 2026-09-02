@@ -13,4 +13,5 @@ dependencies = [
     "sphinxcontrib.bibtex",
     "scipy>=1.17.1",
     "matplotlib>=3.11.0",
+    "vtk>=9.7.0",
 ]
