@@ -124,7 +124,7 @@ private:
         Vector3r rB_local = attachB_local;
         const real_t eps = (real_t)1e-9;
         // If attachment not provided and A is a sphere, point toward B; if provided and A is sphere, project to surface
-        if (reg.all_of<C_RB_Sphere>(eA) && reg.all_of<C_Radius>(eA)) {
+        if (reg.all_of<C_Collider_Sphere>(eA) && reg.all_of<C_Radius>(eA)) {
             real_t radiusA = reg.get<C_Radius>(eA).r;
             if (rA_local.squaredNorm() < eps) {
                 // default: direction from center to other body center in world frame
@@ -138,7 +138,7 @@ private:
             }
         }
         // Same for B
-        if (reg.all_of<C_RB_Sphere>(eB) && reg.all_of<C_Radius>(eB)) {
+        if (reg.all_of<C_Collider_Sphere>(eB) && reg.all_of<C_Radius>(eB)) {
             real_t radiusB = reg.get<C_Radius>(eB).r;
             if (rB_local.squaredNorm() < eps) {
                 Vector3r worldDir = (centerA - centerB);

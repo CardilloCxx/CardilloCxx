@@ -21,6 +21,7 @@
 #include <memory>
 #include <optional>
 #include "tangent_frame.hpp"
+#include "beam_hull_shape.hpp"
 
 namespace cardillo::collision {
 
@@ -32,8 +33,8 @@ CollisionCoal::~CollisionCoal() = default;
 
 namespace {
 // TODO: We should align real_t and coal::CoalScalar in CMake and remove these conversations?
-inline coal::Quatf toCoalQuat(const Quaternion4r& q) {
-    return coal::Quatf(q);
+inline coal::Quats toCoalQuat(const Quaternion4r& q) {
+    return coal::Quats(q);
     // return q.template cast<coal::CoalScalar>();
 }
 inline coal::Vec3s toCoalVec3(const Vector3r& v) {
@@ -47,8 +48,8 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
     Quaternion4r q = Quaternion4r::Identity();
     if (reg.any_of<C_Position3>(e)) x = reg.get<C_Position3>(e).value;
     if (reg.any_of<C_Orientation>(e)) q = reg.get<C_Orientation>(e).value;
-    if (reg.any_of<C_RB_Cube>(e)) {
-        const auto& cb = reg.get<C_RB_Cube>(e);
+    if (reg.any_of<C_Collider_Cube>(e)) {
+        const auto& cb = reg.get<C_Collider_Cube>(e);
         // Apply local cube orientation on top of body orientation
         q = q * cb.q;
         x += q * cb.center;  // center expressed in cube-local frame
@@ -62,6 +63,17 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
     X.setTranslation(toCoalVec3(x));
     X.setQuatRotation(toCoalQuat(q));
     return X;
+}
+
+inline std::vector<coal::Vec3s> ringFromEntityPose(const entt::registry& reg, entt::entity e, const std::vector<Vector2r>& polygon) {
+    const Vector3r origin = reg.any_of<C_Position3>(e) ? reg.get<C_Position3>(e).value : Vector3r::Zero();
+    const Quaternion4r q = reg.any_of<C_Orientation>(e) ? reg.get<C_Orientation>(e).value : Quaternion4r::Identity();
+    std::vector<coal::Vec3s> ring;
+    ring.reserve(polygon.size());
+    for (const Vector2r& p2 : polygon) {
+        ring.push_back(coal::Vec3s(origin + q * Vector3r((real_t)0, p2.x(), p2.y())));
+    }
+    return ring;
 }
 
 // Deduplicate contacts within a pair by proximity.
@@ -271,13 +283,14 @@ void CollisionCoal::ensureBroadphaseFromConfig_() {
 
 CollisionCoal::ColliderKind CollisionCoal::inferKind_(entt::entity e) const {
     const auto& reg = m_world->ecs();
-    if (reg.any_of<C_RB_Cube>(e)) return ColliderKind::Box;
-    if (reg.any_of<C_RB_Capsule>(e)) return ColliderKind::Capsule;
-    if (reg.any_of<C_RB_Cylinder>(e)) return ColliderKind::Cylinder;
-    if (reg.any_of<C_RB_Cone>(e)) return ColliderKind::Cone;
-    if (reg.any_of<C_RB_Plane>(e)) return ColliderKind::Halfspace;
-    if ((reg.any_of<C_PointMassTag>(e) || reg.any_of<C_RB_Sphere>(e)) && reg.any_of<C_Radius>(e)) return ColliderKind::Sphere;
-    if (reg.any_of<C_RB_Mesh>(e) && reg.any_of<C_Mesh>(e)) return ColliderKind::Mesh;
+    if (reg.any_of<C_Collider_Cube>(e)) return ColliderKind::Box;
+    if (reg.any_of<C_Collider_BeamHull>(e)) return ColliderKind::BeamHull;
+    if (reg.any_of<C_Collider_Capsule>(e)) return ColliderKind::Capsule;
+    if (reg.any_of<C_Collider_Cylinder>(e)) return ColliderKind::Cylinder;
+    if (reg.any_of<C_Collider_Cone>(e)) return ColliderKind::Cone;
+    if (reg.any_of<C_Collider_Plane>(e)) return ColliderKind::Halfspace;
+    if ((reg.any_of<C_PointMassTag>(e) || reg.any_of<C_Collider_Sphere>(e)) && reg.any_of<C_Radius>(e)) return ColliderKind::Sphere;
+    if (reg.any_of<C_Collider_Mesh>(e) && reg.any_of<C_Mesh>(e)) return ColliderKind::Mesh;
 
     throw std::runtime_error("CollisionCoal: unsupported collider entity; add appropriate tag/geometry.");
 }
@@ -286,11 +299,11 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
     const auto& reg = m_world->ecs();
     switch (kind) {
         case ColliderKind::Box: {
-            const auto& he = reg.get<C_RB_Cube>(e).halfExtents;
+            const auto& he = reg.get<C_Collider_Cube>(e).halfExtents;
             return std::make_shared<coal::Box>(he.x() * 2.0, he.y() * 2.0, he.z() * 2.0);
         }
         case ColliderKind::Halfspace: {
-            const auto& plane = reg.get<C_RB_Plane>(e);
+            const auto& plane = reg.get<C_Collider_Plane>(e);
             Vector3r n = plane.normal.normalized();
             const auto& x = reg.get<C_Position3>(e).value;
             real_t d = n.dot(x);
@@ -301,21 +314,26 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
             return std::make_shared<coal::Sphere>((coal::CoalScalar)r);
         }
         case ColliderKind::Capsule: {
-            const auto& cap = reg.get<C_RB_Capsule>(e);
+            const auto& cap = reg.get<C_Collider_Capsule>(e);
             return std::make_shared<coal::Capsule>((coal::CoalScalar)cap.radius, (coal::CoalScalar)(cap.halfLength * 2));
         }
         case ColliderKind::Cylinder: {
-            const auto& cyl = reg.get<C_RB_Cylinder>(e);
+            const auto& cyl = reg.get<C_Collider_Cylinder>(e);
             return std::make_shared<coal::Cylinder>((coal::CoalScalar)cyl.radius, (coal::CoalScalar)(cyl.halfLength * 2));
         }
         case ColliderKind::Cone: {
-            const auto& cone = reg.get<C_RB_Cone>(e);
+            const auto& cone = reg.get<C_Collider_Cone>(e);
             return std::make_shared<coal::Cone>((coal::CoalScalar)cone.radius, (coal::CoalScalar)cone.height);
         }
         case ColliderKind::Mesh: {
             const auto& asset = m_world->getMeshAsset(e);
             if (!asset.bvh) throw std::runtime_error("COAL MeshLoader failed to load BVH for mesh entity");
             return asset.bvh;
+        }
+       case ColliderKind::BeamHull: {
+            const auto& reg2 = m_world->ecs();
+            const auto& link = reg2.get<C_Collider_BeamHull>(e);
+            return std::make_shared<BeamHullShape>(ringFromEntityPose(reg2, link.endA, link.polygon), ringFromEntityPose(reg2, link.endB, link.polygon));
         }
     }
     throw std::runtime_error("CollisionCoal: unknown collider kind");
@@ -393,7 +411,16 @@ void CollisionCoal::applyTransforms() {
             coal::Transform3s X;
             X.setIdentity();
             obj->setTransform(X);
-        } else {
+        } else if (m_kinds[i] == ColliderKind::BeamHull) {
+            const auto& reg2 = m_world->ecs();
+            const auto& link = reg2.get<C_Collider_BeamHull>(e);
+            auto* shape = static_cast<BeamHullShape*>(obj->collisionGeometry().get());
+            shape->updateRings(ringFromEntityPose(reg2, link.endA, link.polygon), ringFromEntityPose(reg2, link.endB, link.polygon));
+            coal::Transform3s X;
+            X.setIdentity();
+            obj->setTransform(X);
+        }
+        else {
             obj->setTransform(makeTfFromEcs(m_world->ecs(), e));
         }
         obj->computeAABB();

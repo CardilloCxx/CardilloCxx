@@ -66,14 +66,14 @@ class CARDILLO_API PhysicsEngine {
 
     /// Sample a spline into a beam chain and return the root and tip entities.
     inline std::pair<entt::entity, entt::entity> createBeam(const misc::SplinePattern& spline, const BeamCrossSection& section, const BeamSpringParams& springs,
-                                                            const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments) {
-        return BodyFactory::createBeam(*m_world, spline, section, springs, stateDefaults, propsDefaults, segments, m_collision_mgr.get());
+                                                            const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments, BeamColliderMode colliderMode = BeamColliderMode::RigidBodyPrimitive) {
+        return BodyFactory::createBeam(*m_world, spline, section, springs, stateDefaults, propsDefaults, segments, m_collision_mgr.get(), colliderMode);
     }
 
     /// Create several beams from a list of spline patterns.
     inline std::pair<entt::entity, entt::entity> createBeams(const std::vector<const misc::SplinePattern*>& splines, const BeamCrossSection& section, const BeamSpringParams& springs,
-                                                             const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments) {
-        return BodyFactory::createBeams(*m_world, splines, section, springs, stateDefaults, propsDefaults, segments, m_collision_mgr.get());
+                                                             const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments, BeamColliderMode colliderMode = BeamColliderMode::RigidBodyPrimitive) {
+        return BodyFactory::createBeams(*m_world, splines, section, springs, stateDefaults, propsDefaults, segments, m_collision_mgr.get(), colliderMode);
     }
 
     /// Advance the simulation by the engine's configured time step.

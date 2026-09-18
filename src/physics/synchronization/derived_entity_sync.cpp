@@ -107,24 +107,24 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
                 shapeChanged = true;
             }
         }
-        if (reg.any_of<C_RB_Cube>(e)) {
-            auto& cb = reg.get<C_RB_Cube>(e);
+        if (reg.any_of<C_Collider_Cube>(e)) {
+            auto& cb = reg.get<C_Collider_Cube>(e);
             const real_t newHalfX = be.l * (real_t)0.5;
             if (std::abs(cb.halfExtents.x() - newHalfX) > eps) {
                 cb.halfExtents.x() = newHalfX;
                 shapeChanged = true;
             }
         }
-        if (reg.any_of<C_RB_Capsule>(e)) {
-            auto& cap = reg.get<C_RB_Capsule>(e);
+        if (reg.any_of<C_Collider_Capsule>(e)) {
+            auto& cap = reg.get<C_Collider_Capsule>(e);
             const real_t newHalf = be.l * (real_t)0.5;
             if (std::abs(cap.halfLength - newHalf) > eps) {
                 cap.halfLength = newHalf;
                 shapeChanged = true;
             }
         }
-        if (reg.any_of<C_RB_Cylinder>(e)) {
-            auto& cyl = reg.get<C_RB_Cylinder>(e);
+        if (reg.any_of<C_Collider_Cylinder>(e)) {
+            auto& cyl = reg.get<C_Collider_Cylinder>(e);
             const real_t newHalf = be.l * (real_t)0.5;
             if (std::abs(cyl.halfLength - newHalf) > eps) {
                 cyl.halfLength = newHalf;

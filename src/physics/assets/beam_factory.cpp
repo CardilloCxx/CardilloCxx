@@ -151,17 +151,21 @@ Matrix33r makeStableFrameFromSample(const BeamSample& s, const Matrix33r* prevFr
     return M;
 }
 
-std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std::vector<BeamSample>& samples, bool loop, const BeamCrossSection& section, const BeamSpringParams& springs,
-                                                           const RigidState& stateDefaults, const RigidProps& propsDefaults, const Vector3r& splineCOMWorld,
-                                                           collision::CollisionCoal* collision_mgr) {
+std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std::vector<BeamSample>& samples, bool loop, const BeamCrossSection& section,
+                                                            const BeamSpringParams& springs, const RigidState& stateDefaults, const RigidProps& propsDefaults,
+                                                            const Vector3r& splineCOMWorld, collision::CollisionCoal* collision_mgr,
+                                                            BeamColliderMode colliderMode) {
+
     if (samples.empty()) return {entt::null, entt::null};
+
+    const auto& cfg = sys.config();
 
     real_t totalLen = (real_t)0;
     for (const auto& s : samples) totalLen += s.segLen;
     if (totalLen <= (real_t)0) totalLen = (real_t)1;
 
     Matrix33r Rshape = Matrix33r::Identity();
-    if (section.type == BeamBodyType::Capsule || section.type == BeamBodyType::Cylinder) {
+    if (section.type == BeamCrossSectionType::Round && colliderMode == BeamColliderMode::RigidBodyPrimitive) {
         Rshape = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), Vector3r::UnitX()).toRotationMatrix();
     }
 
@@ -178,15 +182,22 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         const real_t segLen = s.segLen;
 
         RigidShape shape;
-        if (section.type == BeamBodyType::Cube) {
-            shape = CubeShape(Vector3r(segLen * (real_t)0.5, section.width * (real_t)0.5, section.height * (real_t)0.5));
-        } else if (section.type == BeamBodyType::Cylinder) {
-            const real_t r = std::min(section.width, section.height) * (real_t)0.5;
-            shape = CylinderShape(r, segLen * (real_t)0.5);
-        } else {
-            const real_t r = std::min(section.width, section.height) * (real_t)0.5;
-            shape = CapsuleShape(r, segLen * (real_t)0.5);
+        if (colliderMode == BeamColliderMode::RigidBodyPrimitive) {
+            if (section.type == BeamCrossSectionType::Square) {
+                shape = CubeShape(Vector3r(segLen * (real_t)0.5, section.width * (real_t)0.5, section.height * (real_t)0.5));
+            } else if (section.type == BeamCrossSectionType::Round) {
+                const real_t r = std::min(section.width, section.height) * (real_t)0.5;
+                shape = CapsuleShape(r, segLen * (real_t)0.5);
+            } else 
+                throw(std::runtime_error("BeamFactory: BeamCrossSectionType Triangle or Polygon under RigidBodyPrimitive mode isn't meaningful"));
+        } else 
+        {
+            shape = BeamHullShape(section, segLen);
         }
+
+        // TODO:
+        // More accurate approximation of segment length left / right
+        // Use non streched seg-length for  density calculation
 
         RigidProps segProps = propsDefaults;
         real_t massPerSegment = (real_t)0;
@@ -233,6 +244,13 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         if (prev != entt::null) {
             ConstraintFactory::addBeamConstraint(sys, prev, cur, springs, section);
             if (collision_mgr) collision_mgr->disablePair(prev, cur);
+
+            if (sys.ecs().any_of<C_Collider_BeamHull>(prev)) {
+                auto& collider = sys.ecs().get<C_Collider_BeamHull>(prev);
+                collider.endB = prev;
+                collider.endA = cur;
+                collider.polygon = section.polygon;
+            }
         }
 
         if (root == entt::null) root = cur;
@@ -243,6 +261,14 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
     if (loop && root != entt::null && end != entt::null && end != root) {
         ConstraintFactory::addBeamConstraint(sys, end, root, springs, section);
         if (collision_mgr) collision_mgr->disablePair(end, root);
+
+        if (sys.ecs().any_of<C_Collider_BeamHull>(root)) {
+            auto& collider = sys.ecs().get<C_Collider_BeamHull>(root);
+            collider.endB = end;
+            collider.endA = root;
+            collider.polygon = section.polygon;
+        }
+
         if (sys.ecs().any_of<C_BeamElement>(end)) {
             sys.ecs().get<C_BeamElement>(end).next = root;
         }
@@ -251,24 +277,31 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         }
     }
 
+    if (end != entt::null && sys.ecs().any_of<C_Collider_BeamHull>(end)) {
+        sys.ecs().remove<C_Collider_BeamHull>(end);
+        sys.ecs().remove<C_Collidable>(end);
+    }
+
     return {root, end};
 }
 
 }  // namespace
 
 std::pair<entt::entity, entt::entity> BeamFactory::createBeam(World& system, const misc::SplinePattern& spline, const BeamCrossSection& section, const BeamSpringParams& springs,
-                                                              const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments, collision::CollisionCoal* collision_mgr) {
+                                                              const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments, collision::CollisionCoal* collision_mgr,
+                                                            BeamColliderMode colliderMode = BeamColliderMode::RigidBodyPrimitive) {
     std::vector<BeamSample> samples;
     samples.reserve(segments);
 
     appendSplineSamples(spline, segments, samples);
 
     const Vector3r splineCOMWorld = spline.centerOfMass();
-    return buildBeamFromSamples(system, samples, spline.isLoop(), section, springs, stateDefaults, propsDefaults, splineCOMWorld, collision_mgr);
+    return buildBeamFromSamples(system, samples, spline.isLoop(), section, springs, stateDefaults, propsDefaults, splineCOMWorld, collision_mgr, colliderMode);
 }
 
 std::pair<entt::entity, entt::entity> BeamFactory::createBeams(World& system, const std::vector<const misc::SplinePattern*>& splines, const BeamCrossSection& section, const BeamSpringParams& springs,
-                                                               const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments, collision::CollisionCoal* collision_mgr) {
+                                                               const RigidState& stateDefaults, const RigidProps& propsDefaults, size_t segments, collision::CollisionCoal* collision_mgr,
+                                                            BeamColliderMode colliderMode = BeamColliderMode::RigidBodyPrimitive) {
     real_t totalLen = (real_t)0;
     for (const auto* sp : splines) {
         if (sp) totalLen += sp->totalLength();
@@ -299,7 +332,7 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(World& system, co
     // Preserve previous loop behavior for the single-spline case.
     const bool loop = (splines.size() == 1 && splines[0] != nullptr && splines[0]->isLoop());
     const Vector3r splineCOMWorld = allSamples.front().position;
-    return buildBeamFromSamples(system, allSamples, loop, section, springs, stateDefaults, propsDefaults, splineCOMWorld, collision_mgr);
+    return buildBeamFromSamples(system, allSamples, loop, section, springs, stateDefaults, propsDefaults, splineCOMWorld, collision_mgr, colliderMode);
 }
 
 }  // namespace cardillo::physics

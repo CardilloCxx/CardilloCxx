@@ -108,12 +108,24 @@ struct C_Mesh {
 };
 struct C_MeshVisualTag {};
 
-struct C_RB_Cube {
+struct C_Collider_Cube {
     Vector3r center{Vector3r::Zero()};
     Vector3r halfExtents;
     Quaternion4r q{Quaternion4r::Identity()};
 };
-struct C_RB_Plane {
+
+struct C_BeamHull {};
+
+struct C_Collider_BeamHull {
+    entt::entity endA{entt::null};
+    entt::entity endB{entt::null};
+    std::vector<Vector2r> polygon;
+
+    C_Collider_BeamHull() = default;
+    C_Collider_BeamHull(entt::entity a, entt::entity b, const std::vector<Vector2r>& poly) : endA(a), endB(b), polygon(poly) {};
+};
+
+struct C_Collider_Plane {
     Vector3r normal;
     Vector3r up;
     real_t sizeX;
@@ -131,17 +143,17 @@ struct C_StaticTrajectory {
     std::optional<TrajectoryPose> previousPosition;
 };
 
-struct C_RB_Mesh {};
-struct C_RB_Sphere {};
-struct C_RB_Capsule {
+struct C_Collider_Mesh {};
+struct C_Collider_Sphere {};
+struct C_Collider_Capsule {
     real_t radius;
     real_t halfLength;
 };
-struct C_RB_Cylinder {
+struct C_Collider_Cylinder {
     real_t radius;
     real_t halfLength;
 };
-struct C_RB_Cone {
+struct C_Collider_Cone {
     real_t radius;
     real_t height;
 };

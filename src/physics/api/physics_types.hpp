@@ -123,8 +123,6 @@ struct MeshShape {
     MeshShape(const std::string& p, const Vector3r& s, bool bbox = false, bool showCol = false) : path(p), scale(s), use_bbox_collider(bbox), show_collider(showCol) {}
 };
 
-using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape>;
-
 /// Physical properties and pipeline flags for a rigid body.
 struct RigidProps {
     /// Body mass (kg). Takes priority over @p density when both are set.
@@ -154,58 +152,204 @@ struct RigidProps {
     }
 };
 
-enum class BeamBodyType { Cube, Capsule, Cylinder };
+enum class BeamColliderMode { RigidBodyPrimitive, InterSegmentHull };
+enum class BeamCrossSectionType { Square, Triangle, Round, Polygon };
 
-/// Cross-section geometry of a beam segment.
-/// Provides derived section properties (area, moments of inertia) used to compute beam stiffness.
 struct BeamCrossSection {
-    /// Cross-section width (metres). For Capsule/Cylinder types, treated as diameter.
-    real_t width{0};
-    /// Cross-section height (metres). For Capsule/Cylinder types, treated as diameter.
-    real_t height{0};
-    /// Shape type used for each beam segment's collision/visual geometry.
-    BeamBodyType type{BeamBodyType::Cube};
+    real_t width{0};   // for rectangular cross-section
+    real_t height{0};  // for rectangular cross-section
+    real_t radius{0};  // for round cross-section
+    std::vector<Vector2r> polygon;  // for polygon cross-section, always centered on its own centroid
+    BeamCrossSectionType type{BeamCrossSectionType::Square};
 
-    BeamCrossSection() = default;
-    BeamCrossSection(real_t w, real_t h, BeamBodyType t = BeamBodyType::Cube) : width(w), height(h), type(t) {}
+    // Computes the centroid of a simple polygon (convex or concave) via Green's theorem / shoelace formula.
+    static Vector2r centroidOf(const std::vector<Vector2r>& poly) {
+        real_t A = 0, Cx = 0, Cy = 0;
+        size_t n = poly.size();
+        for (size_t i = 0; i < n; ++i) {
+            const Vector2r& p1 = poly[i];
+            const Vector2r& p2 = poly[(i + 1) % n];
+            real_t cross = p1.x() * p2.y() - p2.x() * p1.y();
+            A += cross;
+            Cx += (p1.x() + p2.x()) * cross;
+            Cy += (p1.y() + p2.y()) * cross;
+        }
+        A *= (real_t)0.5;
+        if (std::abs(A) < (real_t)1e-12) {
+            // Degenerate polygon (zero area) — fall back to vertex average to avoid div-by-zero.
+            Vector2r avg(0, 0);
+            for (const auto& p : poly) avg += p;
+            return n > 0 ? avg / (real_t)n : avg;
+        }
+        return Vector2r(Cx / ((real_t)6.0 * A), Cy / ((real_t)6.0 * A));
+    }
+
+    // Shifts every vertex so the polygon's centroid sits at the origin.
+    static std::vector<Vector2r> recenter(const std::vector<Vector2r>& poly) {
+        Vector2r c = centroidOf(poly);
+        std::vector<Vector2r> out;
+        out.reserve(poly.size());
+        for (const auto& p : poly) out.push_back(p - c);
+        return out;
+    }
+
+    static BeamCrossSection square(real_t w, real_t h) {
+        BeamCrossSection sec;
+        sec.width = w;
+        sec.height = h;
+        sec.type = BeamCrossSectionType::Square;
+        sec.polygon = recenter({Vector2r(-w / 2, -h / 2), Vector2r(w / 2, -h / 2),
+                                 Vector2r(w / 2, h / 2), Vector2r(-w / 2, h / 2)});
+        return sec;
+    }
+
+    static BeamCrossSection triangle(real_t w, real_t h) {
+        BeamCrossSection sec;
+        sec.width = w;
+        sec.height = h;
+        sec.type = BeamCrossSectionType::Triangle;
+        // NOTE: recentered on centroid, so this is no longer the same local frame as the
+        // old vertex layout (base at y=-h/2, apex at y=+h/2) — the *shape* is identical,
+        // just shifted so the centroid (not the base) sits at the origin.
+        sec.polygon = recenter({Vector2r(-w / 2, -h / 2), Vector2r(w / 2, -h / 2), Vector2r(0, h / 2)});
+        return sec;
+    }
+
+    static BeamCrossSection round(real_t radius, size_t numSegments = 8) {
+        BeamCrossSection sec;
+        sec.radius = radius;
+        sec.type = BeamCrossSectionType::Round;
+        sec.polygon.reserve(numSegments);
+        for (size_t i = 0; i < numSegments; ++i) {
+            real_t angle = (real_t)i / (real_t)numSegments * (real_t)2.0 * (real_t)M_PI;
+            sec.polygon.push_back(Vector2r(radius * std::cos(angle), radius * std::sin(angle)));
+        }
+        // Already centered by symmetry, but recenter anyway for consistency/robustness
+        // (e.g. low numSegments or future changes to vertex generation).
+        sec.polygon = recenter(sec.polygon);
+        return sec;
+    }
+
+    static BeamCrossSection custom(const std::vector<Vector2r>& poly) {
+        BeamCrossSection sec;
+        sec.polygon = recenter(poly);
+        sec.type = BeamCrossSectionType::Polygon;
+        return sec;
+    }
 
     real_t area() const {
-        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-            real_t r = (std::min(width, height)) * (real_t)0.5;
-            return (real_t)M_PI * r * r;
+        switch (type) {
+            case BeamCrossSectionType::Round:
+                return (real_t)M_PI * radius * radius;
+            case BeamCrossSectionType::Triangle:
+                return (real_t)0.5 * width * height;
+            case BeamCrossSectionType::Polygon: {
+                real_t a = (real_t)0;
+                size_t n = polygon.size();
+                for (size_t i = 0; i < n; ++i) {
+                    const Vector2r& p1 = polygon[i];
+                    const Vector2r& p2 = polygon[(i + 1) % n];
+                    a += p1.x() * p2.y() - p2.x() * p1.y();
+                }
+                return std::abs(a) * (real_t)0.5;
+            }
+            default:
+                return width * height;
         }
-        return width * height;
     }
 
+    // Exact second moment of area about the (centroid-aligned) y-axis, for any simple polygon.
     real_t Iy() const {
-        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-            real_t r = (std::min(width, height)) * (real_t)0.5;
-            return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0;
+        switch (type) {
+            case BeamCrossSectionType::Round:
+                return (real_t)M_PI * std::pow(radius, 4) / (real_t)4.0;
+            case BeamCrossSectionType::Triangle:
+                return width * std::pow(height, (real_t)3) / (real_t)36.0;
+            case BeamCrossSectionType::Polygon: {
+                real_t Iy = (real_t)0;
+                size_t n = polygon.size();
+                for (size_t i = 0; i < n; ++i) {
+                    const Vector2r& p1 = polygon[i];
+                    const Vector2r& p2 = polygon[(i + 1) % n];
+                    Iy += (p1.x() * p2.y() - p2.x() * p1.y()) * (p1.y() * p1.y() + p1.y() * p2.y() + p2.y() * p2.y());
+                }
+                return std::abs(Iy) / (real_t)12.0;
+            }
+            default:
+                return width * std::pow(height, (real_t)3) / (real_t)12.0;
         }
-        return width * std::pow(height, (real_t)3) / (real_t)12.0;
     }
 
+    // Exact second moment of area about the (centroid-aligned) z-axis, for any simple polygon.
     real_t Iz() const {
-        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-            real_t r = (std::min(width, height)) * (real_t)0.5;
-            return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0;
+        switch (type) {
+            case BeamCrossSectionType::Round:
+                return (real_t)M_PI * std::pow(radius, 4) / (real_t)4.0;
+            case BeamCrossSectionType::Triangle:
+                return std::pow(width, (real_t)3) * height / (real_t)36.0;
+            case BeamCrossSectionType::Polygon: {
+                real_t Iz = (real_t)0;
+                size_t n = polygon.size();
+                for (size_t i = 0; i < n; ++i) {
+                    const Vector2r& p1 = polygon[i];
+                    const Vector2r& p2 = polygon[(i + 1) % n];
+                    Iz += (p1.x() * p2.y() - p2.x() * p1.y()) * (p1.x() * p1.x() + p1.x() * p2.x() + p2.x() * p2.x());
+                }
+                return std::abs(Iz) / (real_t)12.0;
+            }
+            default:
+                return std::pow(width, (real_t)3) * height / (real_t)12.0;
         }
-        return std::pow(width, (real_t)3) * height / (real_t)12.0;
     }
 
     real_t Jp() const { return Iy() + Iz(); }
 
+    // Max |y| / |x| among vertices — the governing extreme-fiber distance from the
+    // centroid, used for a single (conservative) section modulus value.
+    real_t maxAbsY() const {
+        real_t m = (real_t)0;
+        for (const auto& p : polygon) m = std::max(m, std::abs(p.y()));
+        return m;
+    }
+
+    real_t maxAbsX() const {
+        real_t m = (real_t)0;
+        for (const auto& p : polygon) m = std::max(m, std::abs(p.x()));
+        return m;
+    }
+
     real_t sectionModulus() const {
-        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-            real_t r = (std::min(width, height)) * (real_t)0.5;
-            if (r == (real_t)0.0) return (real_t)0.0;
-            return (real_t)M_PI * std::pow(r, 3) / (real_t)4.0;
+        switch (type) {
+            case BeamCrossSectionType::Round:
+                return (real_t)M_PI * std::pow(radius, 3) / (real_t)4.0;
+            case BeamCrossSectionType::Triangle: {
+                real_t S_horizontal = width * height * height / (real_t)24.0;   // apex-side, governs vertical bending
+                real_t S_vertical   = width * width * height / (real_t)18.0;    // symmetric, horizontal bending
+                return std::min(S_horizontal, S_vertical);
+            }
+            case BeamCrossSectionType::Polygon: {
+                real_t cy = maxAbsY();
+                real_t cz = maxAbsX();
+                real_t Wy = (cy > (real_t)0) ? Iy() / cy : (real_t)0;
+                real_t Wz = (cz > (real_t)0) ? Iz() / cz : (real_t)0;
+                return std::min(Wy, Wz);
+            }
+            default:
+                return std::max(width, height) * std::min(width, height) * std::min(width, height) / (real_t)6.0;
         }
-        real_t Wy = Iy() / ((real_t)0.5 * height);
-        real_t Wz = Iz() / ((real_t)0.5 * width);
-        return std::min(Wy, Wz);
     }
 };
+
+/// A beam hull shape, used for collision detection between beam segments.
+struct BeamHullShape {
+    BeamCrossSection cross_section;
+    float length{0};
+
+    BeamHullShape() = default;
+    explicit BeamHullShape(const BeamCrossSection& cs, float len) : cross_section(cs),length(len) {}
+};
+
+using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape, BeamHullShape>;
 
 /// Elastic and damping parameters for a Cosserat-rod beam constraint.
 /// Stiffness can be derived from material constants (E, nu) or set directly via Ke_direct/Kf_direct.

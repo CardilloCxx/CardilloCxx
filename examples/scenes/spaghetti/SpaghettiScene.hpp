@@ -59,7 +59,7 @@ public:
         const real_t rho = (real_t)1050.0; // kg/m^3 (water-ish density)
 
         // Capsule-shaped beam bodies.
-        physics::BeamCrossSection section(d, d, physics::BeamBodyType::Capsule);
+        const auto section = physics::BeamCrossSection::round(r);
         auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
         springs.setDampingFromFactor(1.0);
 

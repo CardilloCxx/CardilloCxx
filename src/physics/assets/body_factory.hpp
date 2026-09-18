@@ -26,14 +26,14 @@ class BodyFactory {
 
     static std::pair<entt::entity, entt::entity> createBeam(World& sys, const misc::SplinePattern& spline, const physics::BeamCrossSection& section, const physics::BeamSpringParams& springs,
                                                             const physics::RigidState& stateDefaults, const physics::RigidProps& propsDefaults, size_t segments,
-                                                            collision::CollisionCoal* collision_mgr = nullptr) {
-        return BeamFactory::createBeam(sys, spline, section, springs, stateDefaults, propsDefaults, segments, collision_mgr);
+                                                            collision::CollisionCoal* collision_mgr, BeamColliderMode colliderMode) {
+        return BeamFactory::createBeam(sys, spline, section, springs, stateDefaults, propsDefaults, segments, collision_mgr, colliderMode);
     }
 
     static std::pair<entt::entity, entt::entity> createBeams(World& sys, const std::vector<const misc::SplinePattern*>& splines, const physics::BeamCrossSection& section,
                                                              const physics::BeamSpringParams& springs, const physics::RigidState& stateDefaults, const physics::RigidProps& propsDefaults,
-                                                             size_t segments, collision::CollisionCoal* collision_mgr = nullptr) {
-        return BeamFactory::createBeams(sys, splines, section, springs, stateDefaults, propsDefaults, segments, collision_mgr);
+                                                             size_t segments, collision::CollisionCoal* collision_mgr, BeamColliderMode colliderMode) {
+        return BeamFactory::createBeams(sys, splines, section, springs, stateDefaults, propsDefaults, segments, collision_mgr, colliderMode);
     }
 
     static entt::entity addPointMass(World& sys, real_t mass, const Vector3r& x0, const Vector3r& v0, real_t radius = (real_t)0.05);

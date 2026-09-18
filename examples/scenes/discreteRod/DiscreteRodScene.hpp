@@ -27,7 +27,7 @@ public:
         const real_t density = (real_t)600;
         const real_t E = (real_t)5e7;
         const real_t nu = (real_t)0.3;
-        physics::BeamCrossSection section((real_t)0.01, (real_t)0.01, physics::BeamBodyType::Capsule);
+        const auto section = physics::BeamCrossSection::round((real_t)0.01);
         auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
 
         // Center height and layout

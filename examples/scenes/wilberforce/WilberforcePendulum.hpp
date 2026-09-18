@@ -41,7 +41,7 @@ public:
         engine.setGravity(Vector3r(0, 0, -9.81)); // no gravity
 
         // Beam cross-section (capsule) used by createBeam
-        physics::BeamCrossSection sec(wireDiameter, wireDiameter, physics::BeamBodyType::Capsule);
+        const auto section = physics::BeamCrossSection::round(wireDiameter * 0.5);
         auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
         // springs.setDampingFromFactor(0.001); // set damping factor
 
@@ -52,7 +52,7 @@ public:
 
         // Build sequence of splines; create beams per spline and connect with rigid constraints.
         std::vector<const misc::SplinePattern*> parts{&helix};
-        auto endpoints = engine.createBeams(parts, sec, springs, physics::RigidState{}, physics::RigidProps::withDensity(density), segments);
+        auto endpoints = engine.createBeams(parts, section, springs, physics::RigidState{}, physics::RigidProps::withDensity(density), segments);
         m_top = endpoints.first;
         // cube_constraint = engine.addRigidConstraint(m_top);
         // TODO: I think `getPosition` should be named `getPose`
