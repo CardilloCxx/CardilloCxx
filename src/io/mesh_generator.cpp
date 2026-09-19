@@ -409,7 +409,8 @@ bool buildCapsuleMeshTriangles(const entt::registry& reg, entt::entity e, io::Me
     });
     out.triangles = cached.triangles;
     out.vertices.resize(cached.vertices.size());
-    for (std::size_t i = 0; i < cached.vertices.size(); ++i) out.vertices[i] = out.R * cached.vertices[i] + out.center;
+    const Matrix33r localRotation = reg.get<C_Capsule>(e).localRotation;
+    for (std::size_t i = 0; i < cached.vertices.size(); ++i) out.vertices[i] = out.R * localRotation * cached.vertices[i] + out.center;
     return !out.vertices.empty();
 }
 

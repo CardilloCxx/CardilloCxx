@@ -53,6 +53,8 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
         // Apply local cube orientation on top of body orientation
         q = q * cb.q;
         x += q * cb.center;  // center expressed in cube-local frame
+    } else if (reg.any_of<C_Collider_Capsule>(e)) {
+        q = q * Quaternion4r(reg.get<C_Collider_Capsule>(e).localRotation);
     } else if (reg.any_of<C_Cube>(e)) {
         // If only visual cube exists, still honor its center/q
         const auto& cb = reg.get<C_Cube>(e);

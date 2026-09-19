@@ -82,7 +82,8 @@ inline Vector3r computeUnitInertia(const RigidShape& shape, const World* system)
             } else if constexpr (std::is_same_v<T, CapsuleShape>) {
                 coal::Capsule capsule((coal::CoalScalar)s.radius, (coal::CoalScalar)(2.0 * s.halfLength));
                 auto Iunit = capsule.computeMomentofInertia();  // convert to unit inertia
-                return Vector3r(Iunit(0, 0), Iunit(1, 1), Iunit(2, 2)) / ((real_t)computeVolume(s, system));
+                const Matrix33r I_shape = Vector3r((real_t)Iunit(0, 0), (real_t)Iunit(1, 1), (real_t)Iunit(2, 2)).asDiagonal();
+                return (s.localRotation * I_shape * s.localRotation.transpose()).diagonal() / ((real_t)computeVolume(s, system));
             } else if constexpr (std::is_same_v<T, ConeShape>) {
                 coal::Cone cone((coal::CoalScalar)s.radius, (coal::CoalScalar)s.height);
                 auto Iunit = cone.computeMomentofInertia();  // convert to unit inertia
@@ -204,8 +205,8 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<C_CapsuleVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_Capsule>(e, s.radius, s.halfLength);
-            reg.emplace<C_Capsule>(e, s.radius, s.halfLength);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_Capsule>(e, s.radius, s.halfLength, s.localRotation);
+            reg.emplace<C_Capsule>(e, s.radius, s.halfLength, s.localRotation);
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
         }

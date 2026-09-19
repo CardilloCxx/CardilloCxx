@@ -99,7 +99,7 @@ class CableBunchScene : public SceneBase {
         // Belt cross section for the zip-ties
         const real_t w_tie = 0.001;  // Radial thickness
         const real_t h_tie = 0.010;  // Logitudinal width
-        const auto tieSection = physics::BeamCrossSection::square(w_tie, h_tie);
+        const auto tieSection = physics::BeamCrossSection::rectangular(w_tie, h_tie);
         physics::RigidProps tieProps = physics::RigidProps::withDensity(1000.0);
 
         auto tieSprings = physics::BeamSpringParams::fromMaterial(1e9, 0.4);
@@ -135,7 +135,7 @@ class CableBunchScene : public SceneBase {
         std::vector<Vector3r> trajPoints = {wallPos, Vector3r(1.5, 0.0, 0.05), Vector3r(2.0, -0.15, 0.05), Vector3r(2.5, 0.15, 0.05), Vector3r(3.0, 0.0, 0.05)};
         CatmullRomSpline trajSpline(trajPoints, false);
 
-        const auto visSection = physics::BeamCrossSection::square((real_t)0.01, (real_t)0.01);
+        const auto visSection = physics::BeamCrossSection::rectangular((real_t)0.01, (real_t)0.01);
         auto visSprings = physics::BeamSpringParams::fromMaterial((real_t)1e8, (real_t)0.3);
         physics::RigidProps visBeamProps;  // default: no mass/density -> static
         visBeamProps.collidable = false;   // purely visual

@@ -97,8 +97,9 @@ struct CapsuleShape {
     real_t radius{0};
     /// Half-length of the cylindrical shaft between the two caps (metres).
     real_t halfLength{0};
+    Matrix33r localRotation{Matrix33r::Identity()};
     CapsuleShape() = default;
-    CapsuleShape(real_t r, real_t h) : radius(r), halfLength(h) {}
+    CapsuleShape(real_t r, real_t h, const Matrix33r& localR = Matrix33r::Identity()) : radius(r), halfLength(h), localRotation(localR) {}
 };
 
 /// Flat-ended cylinder. Long axis runs along the body's local z-axis.
@@ -187,7 +188,7 @@ struct BeamCrossSection {
     static Vector2r centroidOf(const std::vector<Vector2r>& poly);
     static std::vector<Vector2r> recenter(const std::vector<Vector2r>& poly);
 
-    static BeamCrossSection square(real_t w, real_t h);
+    static BeamCrossSection rectangular(real_t w, real_t h);
     static BeamCrossSection triangle(real_t w, real_t h);
     static BeamCrossSection round(real_t radius, size_t numSegments = 8);
     static BeamCrossSection custom(const std::vector<Vector2r>& poly);

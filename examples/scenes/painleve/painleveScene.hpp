@@ -34,7 +34,7 @@ public:
         // const Quaternion4r capsuleOrientation(Eigen::AngleAxis<real_t>(M_PI_2 -phi, Vector3r::UnitY()));
         // const real_t v0 = (real_t)30.0;
         // const Vector3r linearVelocity(v0, 0.0, 0.0);
-        // physics::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
+        // physics::RigidState state; state.position = position; state.setOrientation(capsuleOrientation); state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
         // physics::RigidProps props; props.mass = mass; props.friction = friction;
         // auto rod = engine.addRigidBody(rodShape, state, props);
         // engine.ecs().get<World::C_InertiaDiag>(rod).I = Vector3r(J, J, J);

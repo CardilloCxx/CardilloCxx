@@ -291,7 +291,7 @@ class ThreeDPrinterScene : public SceneBase {
             addArc(cMidLB, (real_t)M_PI_2, (real_t)M_PI_2, true);
             addAxisAligned(midLBottom, gantryLeftAnchor, false);
 
-            const auto beltSection = physics::BeamCrossSection::square((real_t)0.0005, (real_t)0.01);
+            const auto beltSection = physics::BeamCrossSection::rectangular((real_t)0.0005, (real_t)0.01);
             physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, 1e6, (real_t)4000, (real_t)0.4, (real_t)0.4, (real_t)0.5);
             beltSprings.gamma0 = Vector3r::Zero();
             beltSprings.gamma0->x() = (real_t)-1.0e-4;

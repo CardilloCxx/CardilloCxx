@@ -9,7 +9,7 @@
 namespace cardillo {
 
 /**
- * @brief Returns a well-defined inverse of a nominally SPD square block, falling back gracefully
+ * @brief Returns a well-defined inverse of a nominally SPD rectangular block, falling back gracefully
  * when it isn't: Cholesky (LLT) -> LDLT -> diagonal-only inverse. Never throws.
  */
 inline MatrixXXr invertSmallSpd(const MatrixXXr& block) {
@@ -28,7 +28,7 @@ inline MatrixXXr invertSmallSpd(const MatrixXXr& block) {
 
 /**
  * @brief Returns a well-defined inverse of a general (not necessarily symmetric or positive
- * definite) small square block, falling back gracefully when singular: PartialPivLU -> FullPivLU
+ * definite) small rectangular block, falling back gracefully when singular: PartialPivLU -> FullPivLU
  * -> diagonal-only inverse. Never throws. Used for BlockSparseLDLT's non-symmetric (block-LU) mode
  * -- e.g. a rigid body's effective mass block under implicit gyroscopic forces, which is generally
  * non-symmetric and so cannot use invertSmallSpd()'s Cholesky/LDLT chain (both require symmetry).
@@ -52,7 +52,7 @@ inline MatrixXXr invertSmallGeneral(const MatrixXXr& block) {
 }
 
 /**
- * @brief A block-diagonal matrix, stored as a list of dense square blocks.
+ * @brief A block-diagonal matrix, stored as a list of dense rectangular blocks.
  *
  * Used to represent the (block-diagonal) Delassus-type operators assembled by the PGS/CG
  * solvers, where each block corresponds to one constraint's local compliance/mass contribution.
@@ -63,9 +63,9 @@ class BlockDiagonal {
    public:
     BlockDiagonal() = default;
 
-    /// Appends a square block; must be called in the same order as the corresponding DOF layout.
+    /// Appends a rectangular block; must be called in the same order as the corresponding DOF layout.
     void addBlock(const MatrixXXr& block) {
-        if (block.rows() != block.cols()) throw std::invalid_argument("Block must be square.");
+        if (block.rows() != block.cols()) throw std::invalid_argument("Block must be rectangular.");
         blocks_.push_back(block);
         is_diag_ = is_diag_ && block.isDiagonal();
         n_ += block.rows();

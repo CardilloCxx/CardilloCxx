@@ -101,7 +101,8 @@ public:
         physics::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());
 
         const size_t cableSegments = 320;
-        auto cableEnds = engine.createBeam(cableSpline, cableSection, cableSprings, stateDefaults, cableProps, cableSegments);
+        auto cableEnds = engine.createBeam(cableSpline, cableSection, cableSprings, stateDefaults, cableProps, cableSegments,
+            physics::BeamColliderMode::InterSegmentHull);
         
         // First end attached to the loose dynamic port
         engine.addRigidConstraint(cableEnds.first, loosePort);

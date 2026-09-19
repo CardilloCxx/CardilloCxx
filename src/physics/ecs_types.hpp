@@ -61,6 +61,7 @@ struct C_Cube {
 struct C_Capsule {
     real_t radius;
     real_t halfLength;
+    Matrix33r localRotation{Matrix33r::Identity()};
 };
 struct C_Cylinder {
     real_t radius;
@@ -150,6 +151,7 @@ struct C_Collider_Sphere {};
 struct C_Collider_Capsule {
     real_t radius;
     real_t halfLength;
+    Matrix33r localRotation{Matrix33r::Identity()};
 };
 struct C_Collider_Cylinder {
     real_t radius;

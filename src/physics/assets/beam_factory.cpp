@@ -163,7 +163,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
     real_t totalLen = (real_t)0;
     for (const auto& s : samples) totalLen += s.segLen;
     if (totalLen <= (real_t)0) totalLen = (real_t)1;
-
+// 
     Matrix33r Rshape = Matrix33r::Identity();
     if (section.type == BeamCrossSectionType::Round && colliderMode == BeamColliderMode::RigidBodyPrimitive) {
         Rshape = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), Vector3r::UnitX()).toRotationMatrix();
@@ -186,8 +186,8 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
             if (section.type == BeamCrossSectionType::Square) {
                 shape = CubeShape(Vector3r(segLen * (real_t)0.5, section.width * (real_t)0.5, section.height * (real_t)0.5));
             } else if (section.type == BeamCrossSectionType::Round) {
-                const real_t r = std::min(section.width, section.height) * (real_t)0.5;
-                shape = CapsuleShape(r, segLen * (real_t)0.5);
+                const real_t r = section.radius;
+                shape = CapsuleShape(r, segLen * (real_t)0.5, Rshape);
             } else 
                 throw(std::runtime_error("BeamFactory: BeamCrossSectionType Triangle or Polygon under RigidBodyPrimitive mode isn't meaningful"));
         } else 
@@ -212,7 +212,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         prevFrame = Rlocal;
         hasPrevFrame = true;
 
-        Quaternion4r qlocal(Rlocal * Rshape);
+        Quaternion4r qlocal(Rlocal);
         qlocal.normalize();
 
         RigidBody::RigidState segLocal;

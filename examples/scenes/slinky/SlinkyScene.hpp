@@ -44,7 +44,7 @@ public:
         const real_t density = (real_t)700;   // plastic density kg/m^3
         const real_t E = (real_t)1e9;         // lower Young's modulus for plastic 1e9, 5e9 for metal
         const real_t nu = (real_t)0.35;
-        const auto section = physics::BeamCrossSection::square(pitch*2, pitch*0.99);
+        const auto section = physics::BeamCrossSection::rectangular(pitch*2, pitch*0.99);
         
         auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
         springs.setDampingFromFactor(0.00);

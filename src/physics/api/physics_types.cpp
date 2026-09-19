@@ -46,7 +46,7 @@ std::vector<Vector2r> BeamCrossSection::recenter(const std::vector<Vector2r>& po
     return out;
 }
 
-BeamCrossSection BeamCrossSection::square(real_t w, real_t h) {
+BeamCrossSection BeamCrossSection::rectangular(real_t w, real_t h) {
     BeamCrossSection sec;
     sec.width = w;
     sec.height = h;

@@ -41,8 +41,12 @@ public:
         engine.setGravity(Vector3r(0, 0, -9.81)); // no gravity
 
         // Beam cross-section (capsule) used by createBeam
-        const auto section = physics::BeamCrossSection::round(wireDiameter * 0.5);
-        auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
+        const auto section = physics::BeamCrossSection::round(wireDiameter * 0.49);
+        // const auto section = physics::BeamCrossSection::rectangular(wireDiameter * 0.99, wireDiameter * 0.99);
+
+        const real_t axialScale = std::sqrt(G / E) * 1.0;
+        const real_t torsionScale = std::sqrt(E / (2.0 * G));
+        auto springs = physics::BeamSpringParams::fromMaterial(E, nu, axialScale, (real_t)1.0, torsionScale);
         // springs.setDampingFromFactor(0.001); // set damping factor
 
         const real_t pitch = wireDiameter;
@@ -52,7 +56,9 @@ public:
 
         // Build sequence of splines; create beams per spline and connect with rigid constraints.
         std::vector<const misc::SplinePattern*> parts{&helix};
-        auto endpoints = engine.createBeams(parts, section, springs, physics::RigidState{}, physics::RigidProps::withDensity(density), segments, physics::BeamColliderMode::InterSegmentHull);
+        auto endpoints = engine.createBeams(parts, section, springs, physics::RigidState{}, 
+                physics::RigidProps::withDensity(density), segments, physics::BeamColliderMode::InterSegmentHull);
+                
         m_top = endpoints.first;
         // cube_constraint = engine.addRigidConstraint(m_top);
         // TODO: I think `getPosition` should be named `getPose`
@@ -60,18 +66,18 @@ public:
         Vector3r position0 = pose0.head<3>();
         Quaternion4r orientation0 = Quaternion4r(pose0.tail<4>().data());
         engine.makeStatic(m_top);
-        engine.addTrajectory(m_top,
-                            [position0, orientation0](real_t t) {
-                                TrajectoryPose pose;
-                                pose.first = position0 + Vector3r(0.0, 0.05 * std::sin(t), 0.0);
-                                pose.second = (
-                                    Quaternion4r(Eigen::AngleAxis<real_t>(0.25 * M_PI * std::sin(t), Vector3r::UnitX()))
-                                    * orientation0
-                                ).normalized();
-                                return pose;
-                            },
-                            std::nullopt
-                            );
+        // engine.addTrajectory(m_top,
+        //                     [position0, orientation0](real_t t) {
+        //                         TrajectoryPose pose;
+        //                         pose.first = position0 + Vector3r(0.0, 0.05 * std::sin(t), 0.0);
+        //                         pose.second = (
+        //                             Quaternion4r(Eigen::AngleAxis<real_t>(0.25 * M_PI * std::sin(t), Vector3r::UnitX()))
+        //                             * orientation0
+        //                         ).normalized();
+        //                         return pose;
+        //                     },
+        //                     std::nullopt
+        //                     );
                             //  std::nullopt, 
                             //  [](real_t t) {
                             //      TrajectoryTwist twist;
@@ -115,7 +121,7 @@ public:
         //     Vector3r(inf, inf, 0), Vector3r::Zero());
 
         // Pin bottom endpoint to bob using a rigid constraint
-        engine.addRigidConstraint(m_bottom, m_bob);
+        engine.addRigidConstraint(m_bob, m_bottom);
     }
 
     void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override 

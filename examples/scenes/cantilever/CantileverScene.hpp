@@ -45,7 +45,8 @@ public:
         physics::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());
         physics::RigidProps props = physics::RigidProps::withDensity(rho);
 
-        const auto section = physics::BeamCrossSection::triangle(d,d);
+        // const auto section = physics::BeamCrossSection::triangle(d,d);
+        const auto section = physics::BeamCrossSection::round(d);
         auto beam_ends = engine.createBeam(spline, section, springs, stateDefaults, props, segments, physics::BeamColliderMode::InterSegmentHull);
         m_beamRightEnd1 = beam_ends.second;
         engine.makeStatic(beam_ends.first);
@@ -53,7 +54,7 @@ public:
 
 
         // Create a second beam
-        const auto section2 = physics::BeamCrossSection::square(0.75* d, 0.1 * d);
+        const auto section2 = physics::BeamCrossSection::rectangular(0.75* d, 0.1 * d);
         stateDefaults.setOrientation(Quaternion4r(Eigen::AngleAxis<real_t>(M_PI_2 / 2.0, Vector3r::UnitZ())));
 
         stateDefaults.angularVelocity = Vector3r(0, 0, 10.0);
