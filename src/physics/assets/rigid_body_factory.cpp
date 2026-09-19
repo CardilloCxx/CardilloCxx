@@ -268,7 +268,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
             if (props.visual) reg.emplace<C_VisualObject>(e);
             // Add the empty collider to mark it as potentially active in the collision system. 
             if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_BeamHull>(e);
-            reg.emplace<C_BeamHull>(e);
+            reg.emplace<C_BeamHull>(e, s.cross_section.polygon, (float)s.cross_section.radius);
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
         }

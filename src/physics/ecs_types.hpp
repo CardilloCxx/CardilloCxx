@@ -115,7 +115,15 @@ struct C_Collider_Cube {
     Quaternion4r q{Quaternion4r::Identity()};
 };
 
-struct C_BeamHull {};
+struct C_BeamHull {
+    entt::entity endA{entt::null};
+    entt::entity endB{entt::null};
+    std::vector<Vector2r> polygon;
+    float radius{0.0f};
+
+    C_BeamHull() = default;
+    C_BeamHull(const std::vector<Vector2r>& poly, float r) : polygon(poly), radius(r) {}
+};
 
 struct C_Collider_BeamHull {
     entt::entity endA{entt::null};

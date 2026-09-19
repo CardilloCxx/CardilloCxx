@@ -279,7 +279,7 @@ MeshKind detectMeshKind(const entt::registry& reg, entt::entity e) {
     if (reg.any_of<C_Cylinder>(e)) return MeshKind::Cylinder;
     if (reg.any_of<C_Cone>(e)) return MeshKind::Cone;
     if (reg.any_of<C_Mesh>(e)) return MeshKind::MeshAsset;
-    if (reg.any_of<C_Collider_BeamHull>(e)) return MeshKind::ConvexHull;
+    if (reg.any_of<C_BeamHull>(e)) return MeshKind::ConvexHull;
     if (reg.any_of<C_Collider_Sphere, C_Radius>(e)) return MeshKind::Sphere;
     return MeshKind::Unsupported;
 }
@@ -486,7 +486,7 @@ bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, io::Mes
 }
 
 bool buildConvexHullMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
-    const auto hull = reg.get<C_Collider_BeamHull>(e);
+    const auto hull = reg.get<C_BeamHull>(e);
     const auto crosssection = hull.polygon;
 
     std::vector<Vector3r> vertices, velocities;

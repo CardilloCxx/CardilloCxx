@@ -244,13 +244,14 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
             ConstraintFactory::addBeamConstraint(sys, prev, cur, springs, section);
             if (collision_mgr) collision_mgr->disablePair(prev, cur);
 
-            if (sys.ecs().any_of<C_Collider_BeamHull>(prev)) {
-                auto& collider = sys.ecs().get<C_Collider_BeamHull>(prev);
-                collider.endB = prev;
-                collider.endA = cur;
-                collider.polygon = section.polygon;
-                collider.radius = section.radius;
-            }
+            auto updateHull = [&](auto& hull) {
+                hull.endB = prev;
+                hull.endA = cur;
+                hull.polygon = section.polygon;
+                hull.radius = section.radius;
+            };
+            if (sys.ecs().any_of<C_Collider_BeamHull>(prev)) updateHull(sys.ecs().get<C_Collider_BeamHull>(prev));
+            if (sys.ecs().any_of<C_BeamHull>(prev)) updateHull(sys.ecs().get<C_BeamHull>(prev));
         }
 
         if (root == entt::null) root = cur;
@@ -262,13 +263,14 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         ConstraintFactory::addBeamConstraint(sys, end, root, springs, section);
         if (collision_mgr) collision_mgr->disablePair(end, root);
 
-        if (sys.ecs().any_of<C_Collider_BeamHull>(root)) {
-            auto& collider = sys.ecs().get<C_Collider_BeamHull>(root);
-            collider.endB = end;
-            collider.endA = root;
-            collider.polygon = section.polygon;
-            collider.radius = section.radius;
-        }
+        auto updateHull = [&](auto& hull) {
+            hull.endB = end;
+            hull.endA = root;
+            hull.polygon = section.polygon;
+            hull.radius = section.radius;
+        };
+        if (sys.ecs().any_of<C_Collider_BeamHull>(end)) updateHull(sys.ecs().get<C_Collider_BeamHull>(end));
+        if (sys.ecs().any_of<C_BeamHull>(end)) updateHull(sys.ecs().get<C_BeamHull>(end));
 
         if (sys.ecs().any_of<C_BeamElement>(end)) {
             sys.ecs().get<C_BeamElement>(end).next = root;
@@ -278,7 +280,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         }
     }
 
-    if (end != entt::null && sys.ecs().any_of<C_Collider_BeamHull>(end)) {
+    if (!loop && end != entt::null && sys.ecs().any_of<C_Collider_BeamHull>(end)) {
         sys.ecs().remove<C_Collider_BeamHull>(end);
         sys.ecs().remove<C_Collidable>(end);
     }
