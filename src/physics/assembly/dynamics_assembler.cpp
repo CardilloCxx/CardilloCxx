@@ -356,6 +356,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
     std::vector<real_t> C_vel;
     std::vector<real_t> A_vel;
     std::vector<real_t> g_error_vec;
+    std::vector<real_t> bias_factor_vec;
 
     m_constraintResults.clear();
 
@@ -418,6 +419,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
                 Crows.push_back(Ci);
                 C_vel.push_back(velSpring[i]);
                 g_error_vec.push_back(posError[i]);
+                bias_factor_vec.push_back(constraint.biasFactor.size() == constraint.Crows.size() ? constraint.biasFactor[i] : (real_t)1);
                 const int row = springRowCounter++;
                 constraint.c_used[i] = true;
                 if (addA && i < constraint.WgA.cols()) emitColRef(tripsWg, row, constraint.a, constraint.WgA.col(i));
@@ -461,8 +463,10 @@ void DynamicsAssembler::rebuildInteractionW_() {
     }
 
     m_g_error_vec = VectorXr::Zero((index_t)nSprings);
+    m_bias_factor_vec = VectorXr::Ones((index_t)nSprings);
     for (int i = 0; i < nSprings; ++i) {
         m_g_error_vec[i] = g_error_vec[(size_t)i];
+        m_bias_factor_vec[i] = bias_factor_vec[(size_t)i];
     }
 }
 

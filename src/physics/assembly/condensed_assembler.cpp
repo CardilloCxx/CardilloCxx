@@ -438,7 +438,8 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
 
             if (beta > 0) {
                 const VectorXr gerr = m_dyn->g_error_vec().segment(blk.offset, blk.dim);
-                seg.noalias() += (-Crow.cwiseProduct(Lg) / dt + gerr) * (beta / (dt * theta));
+                const VectorXr bias = (-Crow.cwiseProduct(Lg) / dt + gerr).cwiseProduct(m_dyn->bias_factor_vec().segment(blk.offset, blk.dim));
+                seg.noalias() += bias * (beta / (dt * theta));
             }
             seg.noalias() += WMinvRhsVel;
         } else if (blk.kind == RowBlock::Kind::Damper) {

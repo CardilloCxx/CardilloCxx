@@ -27,6 +27,7 @@ struct ConstraintResult {
     MatrixXXr WgammaB;
     VectorXr Crows;  // size N (compliances per spring row)
     VectorXr Arows;  // size N (compliances per damper row)
+    VectorXr biasFactor;  // size N; multiplier for position-bias stabilization
 
     VectorXr positionError;
 
@@ -217,7 +218,7 @@ class TranslationRotationConstraint : public ConstraintPattern {
     Vector3r m_translational_velocity{Vector3r::Zero()};
     Vector3r m_angular_velocity{Vector3r::Zero()};
 
-    VectorXr getPositionError(const Vector3r& g, const ConstraintResult& res) const;
+    VectorXr getPositionError(const Vector3r& g) const;
     VectorXr m_g0{VectorXr::Zero(6)};
 
     // Build full 6x6 Jacobians for a rigid joint using world attachments.
