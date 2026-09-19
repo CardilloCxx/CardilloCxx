@@ -98,12 +98,12 @@ class ThreeDPrinterScene : public SceneBase {
             const Quaternion4r qx(Eigen::AngleAxis<real_t>(degToRad(o.rxDeg), Vector3r::UnitX()));
             const Quaternion4r qy(Eigen::AngleAxis<real_t>(degToRad(o.ryDeg), Vector3r::UnitY()));
             const Quaternion4r qz(Eigen::AngleAxis<real_t>(degToRad(o.rzDeg), Vector3r::UnitZ()));
-            rs.orientation = qz * qy * qx;
+            rs.setOrientation(qz * qy * qx);
 
             if (applyX180) {
                 const Quaternion4r qRotX180(Eigen::AngleAxis<real_t>((real_t)M_PI, Vector3r::UnitX()));
+                rs.setOrientation(qRotX180 * rs.orientation());
                 rs.position = rotX180Pos(rs.position);
-                rs.orientation = qRotX180 * rs.orientation;
             }
 
             if (o.isPin) {
@@ -291,7 +291,7 @@ class ThreeDPrinterScene : public SceneBase {
             addArc(cMidLB, (real_t)M_PI_2, (real_t)M_PI_2, true);
             addAxisAligned(midLBottom, gantryLeftAnchor, false);
 
-            const auto beltSection = physics::BeamCrossSection::square((real_t)0.002, (real_t)0.002);
+            const auto beltSection = physics::BeamCrossSection::square((real_t)0.0005, (real_t)0.01);
             physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, 1e6, (real_t)4000, (real_t)0.4, (real_t)0.4, (real_t)0.5);
             beltSprings.gamma0 = Vector3r::Zero();
             beltSprings.gamma0->x() = (real_t)-1.0e-4;
@@ -299,7 +299,7 @@ class ThreeDPrinterScene : public SceneBase {
             const physics::RigidProps beltProps = physics::RigidProps::withDensity((real_t)1100.0);
             const physics::RigidState beltStateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero());
 
-            auto beltEnds = engine.createBeams(beltSegs, beltSection, beltSprings, beltStateDefaults, beltProps, (size_t)1040);
+            auto beltEnds = engine.createBeams(beltSegs, beltSection, beltSprings, beltStateDefaults, beltProps, (size_t)1040, physics::BeamColliderMode::InterSegmentHull);
             if (beltEnds.first != entt::null) {
                 engine.addRigidConstraint(beltEnds.first, getE("Gantry"));
                 engine.disableCollisionBetween(beltEnds.first, getE("Gantry"));

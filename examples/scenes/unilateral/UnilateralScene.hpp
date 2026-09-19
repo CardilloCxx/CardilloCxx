@@ -82,7 +82,7 @@ public:
 
             physics::RigidState rodState;
             rodState.position = xcm0 + offset;
-            rodState.orientation = qRod;
+            rodState.setOrientation(qRod);
             rodState.linearVelocity = Vector3r::Zero();
             rodState.angularVelocity = Vector3r::Zero();
 

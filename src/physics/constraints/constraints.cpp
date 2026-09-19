@@ -19,10 +19,10 @@ ConstraintPattern::WorldAttachments ConstraintPattern::computeAttachments_() con
         const auto stateA = RigidBody::getState(*m_reg, m_a);
         const auto stateB = RigidBody::getState(*m_reg, m_b);
 
-        wa.qA = stateA.orientation;
-        wa.qB = MathHelper::alignQuaternionTo(stateB.orientation, wa.qA);
-        wa.RA = stateA.rotation;
-        wa.RB = stateB.rotation;
+        wa.qA = stateA.orientation();
+        wa.qB = MathHelper::alignQuaternionTo(stateB.orientation(), wa.qA);
+        wa.RA = stateA.rotation();
+        wa.RB = stateB.rotation();
         wa.rA_world = wa.RA * m_rA_local;
         wa.rB_world = wa.RB * m_rB_local;
         wa.pA = stateA.position;

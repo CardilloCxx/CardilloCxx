@@ -313,7 +313,7 @@ void fillCommonEntityData(const entt::registry& reg, entt::entity e, io::MeshGen
     }
 
     out.center = state.position;
-    out.R = state.rotation;
+    out.R = state.rotation();
 }
 
 bool buildSoftBodyMesh(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
@@ -488,25 +488,30 @@ bool buildConvexHullMeshTriangles(const entt::registry& reg, entt::entity e, io:
     const auto hull = reg.get<C_Collider_BeamHull>(e);
     const auto crosssection = hull.polygon;
 
-    std::vector<Vector3r> vertices;
+    std::vector<Vector3r> vertices, velocities;
     vertices.reserve(crosssection.size() * 2);
+    velocities.reserve(crosssection.size() * 2);
 
     auto stateA = RigidBody::getState(reg, hull.endA);
     auto stateB = RigidBody::getState(reg, hull.endB);
     auto inertial = RigidBody::RigidState::inertial();
 
-    for (const auto& p : crosssection)
-        vertices.emplace_back(transform::point(Vector3r(0, p.x(), p.y()), stateA, inertial));
-    
-    for (const auto& p : crosssection)
-        vertices.emplace_back(transform::point(Vector3r(0, p.x(), p.y()), stateB, inertial));
-    
-    
+    auto addRing = [&](const RigidBody::RigidState& node) {
+        for (const auto& p : crosssection) {
+            const Vector3r local(0, p.x(), p.y());
+            vertices.emplace_back(transform::point(local, node, inertial));
+            velocities.emplace_back(transform::linearVelocity(Vector3r::Zero(), local, node, inertial));
+        }
+    };
+
+    addRing(stateA);
+    addRing(stateB);
+
     out.triangles = misc::ConvexHull3D::compute(vertices);
     out.vertices = std::move(vertices);
+    out.perVertexVelocity = std::move(velocities);
 
     return !out.triangles.empty();
-
 }
 
 }  // namespace

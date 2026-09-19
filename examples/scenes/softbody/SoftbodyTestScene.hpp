@@ -15,7 +15,7 @@ public:
         using namespace cardillo;
 
     physics::PlaneShape groundShape{Vector3r(0,0,1), Vector3r(0,1,0), (real_t)15.0, (real_t)15.0};
-    physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,0.0); groundState.orientation = Quaternion4r::Identity();
+    physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,0.0); groundState.setOrientation(Quaternion4r::Identity());
     (void)engine.addStaticBody(groundShape, groundState);
 
         // Load soft body from OBJ and place it 0.7 m above the floor (floor top at z = 0)
@@ -31,7 +31,7 @@ public:
 
         // Add a cube to crush the soft body
         {
-            physics::CubeShape shape{Vector3r(0.2,0.2,0.2)}; physics::RigidState st; st.position = Vector3r(0.0,0.0,2.5); st.orientation = Quaternion4r::Identity(); physics::RigidProps pr; pr.mass = (real_t)100.0; engine.addRigidBody(shape, st, pr);
+            physics::CubeShape shape{Vector3r(0.2,0.2,0.2)}; physics::RigidState st; st.position = Vector3r(0.0,0.0,2.5); st.setOrientation(Quaternion4r::Identity()); physics::RigidProps pr; pr.mass = (real_t)100.0; engine.addRigidBody(shape, st, pr);
         }
     }
 };

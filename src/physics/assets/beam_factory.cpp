@@ -217,8 +217,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
 
         RigidBody::RigidState segLocal;
         segLocal.position = s.position - splineCOMWorld;
-        segLocal.orientation = qlocal;
-        segLocal.rotation = qlocal.toRotationMatrix();
+        segLocal.setOrientation(qlocal);
 
         RigidState segState = transform::rigidState(segLocal, stateDefaults, inertial);
         segState.position += splineCOMWorld;
@@ -250,6 +249,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
                 collider.endB = prev;
                 collider.endA = cur;
                 collider.polygon = section.polygon;
+                collider.radius = section.radius;
             }
         }
 
@@ -267,6 +267,7 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
             collider.endB = end;
             collider.endA = root;
             collider.polygon = section.polygon;
+            collider.radius = section.radius;
         }
 
         if (sys.ecs().any_of<C_BeamElement>(end)) {

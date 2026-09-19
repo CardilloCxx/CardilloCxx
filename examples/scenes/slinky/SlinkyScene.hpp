@@ -61,7 +61,7 @@ public:
         std::cout << "Creating slinky with " << segments << " segments, " << turns << " turns, pitch " << pitch << ", radius " << radius << "\n";
         physics::RigidState stateDefaults(Vector3r(0.0,0.0,thickness * 0.5 + pitch * 0.5), Vector3r::Zero(),  Quaternion4r::Identity(), Vector3r(0.0,0.0,0.0), top_step, engine.ecs());
         physics::RigidProps props = physics::RigidProps::withDensity(density);
-        auto ends = engine.createBeam(helix, section, springs, stateDefaults, props, segments);
+        auto ends = engine.createBeam(helix, section, springs, stateDefaults, props, segments, physics::BeamColliderMode::RigidBodyPrimitive);
         m_slinky_end_entity = ends.second;
     
         // m_guide_entity = engine.addRigidBody(physics::SphereShape(radius * (real_t)0.001), 

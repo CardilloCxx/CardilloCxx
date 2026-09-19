@@ -17,7 +17,7 @@ public:
         const real_t groundHalfThickness = (real_t)0.01;
         const real_t groundHalfSize = (real_t)6000.0;
         physics::CubeShape groundShape{Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness)};
-        physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-groundHalfThickness); groundState.orientation = Quaternion4r::Identity();
+        physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-groundHalfThickness); groundState.setOrientation(Quaternion4r::Identity());
         engine.addStaticBody(groundShape, groundState);
 
         const real_t phi = (real_t)(-31.0 * M_PI / 180.0);
@@ -64,7 +64,7 @@ public:
                 const Quaternion4r capsuleOrientation(Eigen::AngleAxis<real_t>(M_PI_2 -curr_phi, Vector3r::UnitY()));
                 const real_t v0 = (real_t)30.0;
                 const Vector3r linearVelocity(-v0, 0.0, 0.0);
-                physics::RigidState state; state.position = position; state.orientation = capsuleOrientation; state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
+                physics::RigidState state; state.position = position; state.setOrientation(capsuleOrientation); state.linearVelocity = linearVelocity; state.angularVelocity = Vector3r::Zero();
                 physics::RigidProps props; props.mass = mass; props.friction = curr_friction;
                 auto rod = engine.addRigidBody(rodShape, state, props);
                 engine.ecs().get<C_InertiaDiag>(rod).I = Vector3r(J, J, J);

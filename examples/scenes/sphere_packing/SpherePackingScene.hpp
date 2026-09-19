@@ -43,19 +43,19 @@ public:
         {
             physics::CubeShape wall1Shape{Vector3r((rows * dia) / 2.0 + r, wall_thickness / 2.0, (dia * std::sqrt(6.0)) / 3.0)};
             physics::RigidState wall1State; wall1State.position = Vector3r((rows * dia) / 2.0 - r, -wall_thickness / 2.0 - r, (dia * std::sqrt(6.0)) / 6.0);
-            wall1State.orientation = Quaternion4r(Eigen::AngleAxis<real_t>(0.0, Vector3r::UnitZ()));
+            wall1State.setOrientation(Quaternion4r(Eigen::AngleAxis<real_t>(0.0, Vector3r::UnitZ())));
             physics::RigidProps wall1Props; engine.addRigidBody(wall1Shape, wall1State, wall1Props);
 
             physics::CubeShape wall2Shape{Vector3r((rows * dia) / 2.0 + r, wall_thickness / 2.0, (dia * std::sqrt(6.0)) / 3.0)};
             Vector3r wall2Center = Vector3r((rows * dia) / 4.0 - r, (rows * dia * std::sqrt(3.0)) / 4.0 + wall_thickness / 2.0 + r, (dia * std::sqrt(6.0)) / 6.0);
             wall2Center -= Vector3r(std::cos(M_PI / 3.0) * 1.25 * r, std::sin(M_PI / 3.0) * 1.25 * r, 0.0);
-            physics::RigidState wall2State; wall2State.position = wall2Center; wall2State.orientation = Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 3.0, Vector3r::UnitZ()));
+            physics::RigidState wall2State; wall2State.position = wall2Center; wall2State.setOrientation(Quaternion4r(Eigen::AngleAxis<real_t>(M_PI / 3.0, Vector3r::UnitZ())));
             physics::RigidProps wall2Props; engine.addRigidBody(wall2Shape, wall2State, wall2Props);
 
             physics::CubeShape wall3Shape{Vector3r((rows * dia) / 2.0 + r, wall_thickness / 2.0, (dia * std::sqrt(6.0)) / 3.0)};
             Vector3r wall3Center = Vector3r((rows * dia) * 3.0 / 4.0 - r / 2.0, (rows * dia * std::sqrt(3.0)) / 4.0 - wall_thickness / 2.0 - r, (dia * std::sqrt(6.0)) / 6.0);
             wall3Center += Vector3r(std::cos(M_PI / 3.0) * r * 1.25, std::sin(M_PI / 3.0) * r * 1.25, 0.0);
-            physics::RigidState wall3State; wall3State.position = wall3Center; wall3State.orientation = Quaternion4r(Eigen::AngleAxis<real_t>(-M_PI / 3.0, Vector3r::UnitZ()));
+            physics::RigidState wall3State; wall3State.position = wall3Center; wall3State.setOrientation(Quaternion4r(Eigen::AngleAxis<real_t>(-M_PI / 3.0, Vector3r::UnitZ())));
             physics::RigidProps wall3Props; engine.addRigidBody(wall3Shape, wall3State, wall3Props);
         }
 

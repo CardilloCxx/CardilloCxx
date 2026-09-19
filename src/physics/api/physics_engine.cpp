@@ -60,10 +60,10 @@ void PhysicsEngine::applyForceAt(entt::entity e, const Vector3r& f, const Vector
     
     const RigidState& state = RigidBody::getState(m_world->ecs(), e);
 
-    Vector3r r_world = state.rotation * r_local; 
+    Vector3r r_world = transform::direction(r_local, state, physics::RigidState::inertial());
     Vector3r induced_tau = r_world.cross(f);
     Vector3r tauEff = tau + induced_tau; 
-    Vector3r tauEff_body = state.rotation.transpose() * tauEff;
+    Vector3r tauEff_body = state.rotation().transpose() * tauEff;
 
     m_world->applyForce(e, f, tauEff_body);
 }

@@ -121,8 +121,10 @@ struct C_Collider_BeamHull {
     entt::entity endB{entt::null};
     std::vector<Vector2r> polygon;
 
+    float radius{0.0f};  // optional radius for a rounded beam hull
+
     C_Collider_BeamHull() = default;
-    C_Collider_BeamHull(entt::entity a, entt::entity b, const std::vector<Vector2r>& poly) : endA(a), endB(b), polygon(poly) {};
+    C_Collider_BeamHull(entt::entity a, entt::entity b, const std::vector<Vector2r>& poly, float r) : endA(a), endB(b), polygon(poly), radius(r) {};
 };
 
 struct C_Collider_Plane {

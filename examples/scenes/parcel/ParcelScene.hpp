@@ -23,7 +23,7 @@ public:
         Vector3r angularVeloctiy = Vector3r::Zero();
     const real_t belt_halfLength = 5.0;
     physics::CubeShape beltShape{Vector3r(belt_halfLength, 0.5, 0.1)};
-    physics::RigidState beltState; beltState.position = m_position; beltState.orientation = orientation; beltState.linearVelocity = linearVelocity; beltState.angularVelocity = angularVeloctiy;
+    physics::RigidState beltState; beltState.position = m_position; beltState.setOrientation(orientation); beltState.linearVelocity = linearVelocity; beltState.angularVelocity = angularVeloctiy;
     physics::RigidProps beltProps; beltProps.mass = mass;
     m_treatmill_entity = engine.addRigidBody(beltShape, beltState, beltProps);
 
@@ -89,7 +89,7 @@ public:
             Vector3r linearVelocity = Vector3r::Zero();
             Vector3r angularVelocity = Vector3r::Zero();
             physics::CubeShape parcelShape{0.1 * (Vector3r::Random() + Vector3r::Constant(1.2)) / 2.2};
-            physics::RigidState st; st.position = position; st.orientation = orientation; st.linearVelocity = linearVelocity; st.angularVelocity = angularVelocity; physics::RigidProps pr; pr.mass = mass; engine.addRigidBody(parcelShape, st, pr);
+            physics::RigidState st; st.position = position; st.setOrientation(orientation); st.linearVelocity = linearVelocity; st.angularVelocity = angularVelocity; physics::RigidProps pr; pr.mass = mass; engine.addRigidBody(parcelShape, st, pr);
         }
     }
 

@@ -15,32 +15,33 @@ public:
     void populate(physics::PhysicsEngine& engine) override {
         using namespace cardillo;
 
-    // ground (static obstacle cube via unified API)
-    physics::CubeShape groundShape{Vector3r(5.0, 5.0, 0.5)};
-    physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-0.5); groundState.orientation = Quaternion4r::Identity();
-    entt::entity eGround = engine.addStaticBody(groundShape, groundState);
+        // ground (static obstacle cube via unified API)
+        physics::CubeShape groundShape{Vector3r(5.0, 5.0, 0.5)};
+        physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-0.5); groundState.setOrientation(Quaternion4r::Identity());
+        entt::entity eGround = engine.addStaticBody(groundShape, groundState);
 
         // Flat cube that acts as a "foot" (dynamic)
-    physics::CubeShape footShape{Vector3r(0.2, 0.2, 0.02)}; // wide and flat
-    real_t footMass = (real_t)0.5;
-    physics::RigidState footState; footState.position = Vector3r(0.0,0.0,0.3); footState.orientation = Quaternion4r::Identity();
-    physics::RigidProps footProps; footProps.mass = footMass;
-    entt::entity eFoot = engine.addRigidBody(footShape, footState, footProps);
+        physics::CubeShape footShape{Vector3r(0.2, 0.2, 0.02)}; // wide and flat
+        real_t footMass = (real_t)0.5;
+        physics::RigidState footState; footState.position = Vector3r(0.0,0.0,0.3); footState.setOrientation(Quaternion4r::Identity());
+        physics::RigidProps footProps; footProps.mass = footMass;
+        entt::entity eFoot = engine.addRigidBody(footShape, footState, footProps);
 
         // Rigid sphere above the foot that will be connected by four corner springs
         real_t sphereRadius = (real_t)0.06;
         Vector3r spherePos = Vector3r(0.0, 0.0, 0.7); // dropped from above
         real_t sphereMass = (real_t)1.0;
         physics::SphereShape sphereShape{sphereRadius};
-        physics::RigidState sphereState; sphereState.position = spherePos; sphereState.orientation = Quaternion4r::Identity();
+        physics::RigidState sphereState; sphereState.position = spherePos; sphereState.setOrientation(Quaternion4r::Identity());
         physics::RigidProps sphereProps; sphereProps.mass = sphereMass;
         entt::entity eSphere = engine.addRigidBody(sphereShape, sphereState, sphereProps);
 
         // Create four springs from the top corners of the foot to the sphere center
         const real_t k_corner = (real_t)5e2;
         const real_t d_corner = (real_t)0.0;
+
         // compute local corner offsets on foot (top face)
-    Vector3r he = footShape.halfExtents;
+        Vector3r he = footShape.halfExtents;
         std::vector<Vector3r> corners = {
             Vector3r( he.x(),  he.y(),  he.z()),
             Vector3r(-he.x(),  he.y(),  he.z()),
@@ -55,39 +56,39 @@ public:
         // Double pendulum: One obstacle sphere in the air, two dynamic spheres besides it with infinite stiffness springs
         Vector3r obstaclePos = Vector3r(0.5, 0.0, 1.5);
         real_t obstacleRadius = (real_t)0.05;
-    physics::CubeShape cubeShape{Vector3r(obstacleRadius, obstacleRadius, obstacleRadius)};
-    physics::RigidState cubeState; cubeState.position = obstaclePos; cubeState.orientation = Quaternion4r::Identity();
-    physics::RigidProps cubeProps; // static
-    entt::entity eObs = engine.addRigidBody(cubeShape, cubeState, cubeProps);
+        physics::CubeShape cubeShape{Vector3r(obstacleRadius, obstacleRadius, obstacleRadius)};
+        physics::RigidState cubeState; cubeState.position = obstaclePos; cubeState.setOrientation(Quaternion4r::Identity());
+        physics::RigidProps cubeProps; // static
+        entt::entity eObs = engine.addRigidBody(cubeShape, cubeState, cubeProps);
 
         // First dynamic sphere
         Vector3r dyn1Pos = obstaclePos + Vector3r(0.0, -0.4, 0.0);
         real_t dyn1Mass = (real_t)0.3;
         physics::SphereShape dyn1Shape{obstacleRadius * (real_t)0.8};
-        physics::RigidState dyn1State; dyn1State.position = dyn1Pos; dyn1State.orientation = Quaternion4r::Identity(); dyn1State.linearVelocity = Vector3r(0.0,0.0,0.1);
+        physics::RigidState dyn1State; dyn1State.position = dyn1Pos; dyn1State.setOrientation(Quaternion4r::Identity()); dyn1State.linearVelocity = Vector3r(0.0,0.0,0.1);
         physics::RigidProps dyn1Props; dyn1Props.mass = dyn1Mass; entt::entity eDyn1 = engine.addRigidBody(dyn1Shape, dyn1State, dyn1Props);
 
         // Second dynamic sphere
         Vector3r dyn2Pos = dyn1Pos + Vector3r(0.0, -0.4, 0.0);
         real_t dyn2Mass = (real_t)0.3;
         physics::SphereShape dyn2Shape{obstacleRadius * (real_t)0.8};
-        physics::RigidState dyn2State; dyn2State.position = dyn2Pos; dyn2State.orientation = Quaternion4r::Identity(); dyn2State.linearVelocity = Vector3r(0.0,0.0,1.0);
+        physics::RigidState dyn2State; dyn2State.position = dyn2Pos; dyn2State.setOrientation(Quaternion4r::Identity()); dyn2State.linearVelocity = Vector3r(0.0,0.0,1.0);
         physics::RigidProps dyn2Props; dyn2Props.mass = dyn2Mass; entt::entity eDyn2 = engine.addRigidBody(dyn2Shape, dyn2State, dyn2Props);
 
-    // Create very stiff springs to connect them (use large finite value to avoid zero-compliance drop)
-    const real_t k_inf = (real_t)1e9;
-        // obs to dyn1
-    engine.addLinearDistanceConstraint(eObs, eDyn1, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
-        // dyn1 to dyn2
-    engine.addLinearDistanceConstraint(eDyn1, eDyn2, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
+        // Create very stiff springs to connect them (use large finite value to avoid zero-compliance drop)
+        const real_t k_inf = (real_t)1e9;
+            // obs to dyn1
+        engine.addLinearDistanceConstraint(eObs, eDyn1, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
+            // dyn1 to dyn2
+        engine.addLinearDistanceConstraint(eDyn1, eDyn2, Vector3r::Zero(), Vector3r::Zero(), k_inf, 0);
 
-        // rope between second anker point and lower dynamic sphere
-        // anker point
-    Vector3r ankerPos = obstaclePos + Vector3r(0.0, -1.2, 0.0);
-    physics::CubeShape ankerShape{Vector3r(0.001, 0.001, 0.001)};
-    physics::RigidState ankerState; ankerState.position = ankerPos; ankerState.orientation = Quaternion4r::Identity();
-    physics::RigidProps ankerProps; // static
-    entt::entity eAnker = engine.addRigidBody(ankerShape, ankerState, ankerProps);
+            // rope between second anker point and lower dynamic sphere
+            // anker point
+        Vector3r ankerPos = obstaclePos + Vector3r(0.0, -1.2, 0.0);
+        physics::CubeShape ankerShape{Vector3r(0.001, 0.001, 0.001)};
+        physics::RigidState ankerState; ankerState.position = ankerPos; ankerState.setOrientation(Quaternion4r::Identity());
+        physics::RigidProps ankerProps; // static
+        entt::entity eAnker = engine.addRigidBody(ankerShape, ankerState, ankerProps);
         // create rope
         createRope(engine, eAnker, eDyn2, 50, (real_t)8.0, (real_t)0.001, Vector3r::Zero(), Vector3r( 0.0, 0.0, -obstacleRadius * 0.8));
     }

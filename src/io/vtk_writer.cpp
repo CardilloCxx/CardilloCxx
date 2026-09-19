@@ -360,7 +360,7 @@ vtkSmartPointer<vtkPolyData> VtkWriter::springsToPolyData(const World& sys) cons
             const entt::entity a = tr->entityA();
             if (a == entt::null || !reg.all_of<C_Orientation>(a)) continue;
             const auto stateA = RigidBody::getState(reg, a);
-            const Matrix33r A_IK1 = stateA.rotation;
+            const Matrix33r A_IK1 = stateA.rotation();
 
             const physics::JointProperties& jp = tr->jointProperties();
             const Matrix33r A_IJ = A_IK1 * jp.A_K1J;

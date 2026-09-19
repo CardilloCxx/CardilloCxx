@@ -52,7 +52,7 @@ public:
 
         // Build sequence of splines; create beams per spline and connect with rigid constraints.
         std::vector<const misc::SplinePattern*> parts{&helix};
-        auto endpoints = engine.createBeams(parts, section, springs, physics::RigidState{}, physics::RigidProps::withDensity(density), segments);
+        auto endpoints = engine.createBeams(parts, section, springs, physics::RigidState{}, physics::RigidProps::withDensity(density), segments, physics::BeamColliderMode::InterSegmentHull);
         m_top = endpoints.first;
         // cube_constraint = engine.addRigidConstraint(m_top);
         // TODO: I think `getPosition` should be named `getPose`

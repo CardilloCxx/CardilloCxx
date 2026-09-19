@@ -126,7 +126,7 @@ private:
                 vel = Vector3r(4.0, 0.0, -1.0) * 2;
             }
 
-            physics::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = vel; state.angularVelocity = Vector3r::Zero();
+            physics::RigidState state; state.position = c; state.setOrientation(q); state.linearVelocity = vel; state.angularVelocity = Vector3r::Zero();
             physics::RigidProps props; props.mass = m;
             engine.addRigidBody(shape, state, props);
 

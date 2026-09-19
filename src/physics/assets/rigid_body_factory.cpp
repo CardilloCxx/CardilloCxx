@@ -6,6 +6,8 @@
 #include <optional>
 #include <type_traits>
 
+#include "../../rigid_body/transformations.hpp"
+
 namespace cardillo::physics {
 namespace {
 
@@ -132,7 +134,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
 
     // --- Base components ---
     reg.emplace<C_Position3>(e, state.position);
-    reg.emplace<C_Orientation>(e, C_Orientation::fromQuaternion(Quaternion4r(state.orientation).normalized()));
+    reg.emplace<C_Orientation>(e, C_Orientation::fromQuaternion(Quaternion4r(state.orientation()).normalized()));
     reg.emplace<C_LinearVelocity3>(e, state.linearVelocity);
     reg.emplace<C_AngularVelocity3>(e, state.angularVelocity);
     reg.emplace<C_LinearAcceleration3>(e, Vector3r::Zero());
@@ -250,9 +252,9 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
             }
 
             if (dynamic) {
-                const Quaternion4r q_new = state.orientation * Quaternion4r(asset.Rpa);
-                const Vector3r pos_new = state.position + (state.orientation * asset.com);
-                reg.get<C_Position3>(e).value = pos_new;
+                const Quaternion4r q_new = state.orientation() * Quaternion4r(asset.Rpa);
+                const Vector3r pos_new = state.position + (state.orientation() * asset.com);
+                reg.get<C_Position3>(e).value = transform::point(asset.com, state, physics::RigidState::inertial());
                 reg.get<C_Orientation>(e).setValue(q_new.normalized());
 
                 if (asset.volume > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));

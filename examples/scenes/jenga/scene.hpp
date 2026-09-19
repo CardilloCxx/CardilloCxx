@@ -16,7 +16,7 @@ public:
 
     // Ground (static cube via unified API)
     physics::CubeShape groundShape{Vector3r(15.0, 15.0, 0.5)};
-    physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5); groundState.orientation = Quaternion4r::Identity();
+    physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -0.5);
     engine.addStaticBody(groundShape, groundState);
 
         // Build a Jenga tower
@@ -48,7 +48,7 @@ public:
                 if (alongX) c = Vector3r(baseCenter.x(), baseCenter.y() + offset, z);
                 else c = Vector3r(baseCenter.x() + offset, baseCenter.y(), z);
                 physics::CubeShape blkShape{blockHalf};
-                physics::RigidState blkState; blkState.position = c; blkState.orientation = q;
+                physics::RigidState blkState; blkState.position = c; blkState.setOrientation(q);
                 physics::RigidProps blkProps; blkProps.mass = std::max((real_t)0.05, density * (real_t)8.0 * blockHalf.x() * blockHalf.y() * blockHalf.z());
                 engine.addRigidBody(blkShape, blkState, blkProps);
             }

@@ -65,17 +65,6 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
     return X;
 }
 
-inline std::vector<coal::Vec3s> ringFromEntityPose(const entt::registry& reg, entt::entity e, const std::vector<Vector2r>& polygon) {
-    const Vector3r origin = reg.any_of<C_Position3>(e) ? reg.get<C_Position3>(e).value : Vector3r::Zero();
-    const Quaternion4r q = reg.any_of<C_Orientation>(e) ? reg.get<C_Orientation>(e).value : Quaternion4r::Identity();
-    std::vector<coal::Vec3s> ring;
-    ring.reserve(polygon.size());
-    for (const Vector2r& p2 : polygon) {
-        ring.push_back(coal::Vec3s(origin + q * Vector3r((real_t)0, p2.x(), p2.y())));
-    }
-    return ring;
-}
-
 // Deduplicate contacts within a pair by proximity.
 // Keeps the deepest-penetrating contacts and drops others closer than minDist to any kept one.
 static inline void dedupeContactsForPair(ContactList& list, real_t minDist) {
@@ -331,9 +320,8 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
             return asset.bvh;
         }
        case ColliderKind::BeamHull: {
-            const auto& reg2 = m_world->ecs();
-            const auto& link = reg2.get<C_Collider_BeamHull>(e);
-            return std::make_shared<BeamHullShape>(ringFromEntityPose(reg2, link.endA, link.polygon), ringFromEntityPose(reg2, link.endB, link.polygon));
+            const auto& link = reg.get<C_Collider_BeamHull>(e);
+            return std::make_shared<BeamHullShape>(link, reg);
         }
     }
     throw std::runtime_error("CollisionCoal: unknown collider kind");
@@ -389,7 +377,10 @@ void CollisionCoal::rebuild() {
 
 void CollisionCoal::applyTransforms() {
     if (!m_world) return;
+
     auto sc = m_timings->scope(misc::TimingManager::TimerId::CollisionBroadphase);
+    const auto& reg = m_world->ecs();
+
     // Lazily build scene on first use or after clear
     if (!m_broadphase || m_objects.empty()) {
         rebuild();
@@ -412,10 +403,10 @@ void CollisionCoal::applyTransforms() {
             X.setIdentity();
             obj->setTransform(X);
         } else if (m_kinds[i] == ColliderKind::BeamHull) {
-            const auto& reg2 = m_world->ecs();
-            const auto& link = reg2.get<C_Collider_BeamHull>(e);
+            const auto& link = reg.get<C_Collider_BeamHull>(e);
             auto* shape = static_cast<BeamHullShape*>(obj->collisionGeometry().get());
-            shape->updateRings(ringFromEntityPose(reg2, link.endA, link.polygon), ringFromEntityPose(reg2, link.endB, link.polygon));
+            shape->updateRings(link, reg);
+            
             coal::Transform3s X;
             X.setIdentity();
             obj->setTransform(X);

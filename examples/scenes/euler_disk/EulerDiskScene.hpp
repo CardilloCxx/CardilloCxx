@@ -20,7 +20,7 @@ public:
 
         // Ground plane
         physics::CubeShape groundShape(Vector3r(1, 1, 0.1));
-        physics::RigidState groundState; groundState.position = Vector3r(0,0,-0.1); groundState.orientation = Quaternion4r::Identity();
+        physics::RigidState groundState; groundState.position = Vector3r(0,0,-0.1); groundState.setOrientation(Quaternion4r::Identity());
         engine.addStaticBody(groundShape, groundState);
 
         // Cylinder approximation
@@ -34,7 +34,7 @@ public:
 
         physics::RigidState state; 
         state.position = Vector3r(0.0, 0.0, radius + (real_t)0.001);
-        state.orientation = q;
+        state.setOrientation(q);
         state.angularVelocity = q.toRotationMatrix().transpose() * Vector3r((real_t)0.00, (real_t)0.0, (real_t)50.0);
         physics::RigidProps props(mass);
         entt::entity e = engine.addRigidBody(physics::CylinderShape(radius, halfLength), state, props);
