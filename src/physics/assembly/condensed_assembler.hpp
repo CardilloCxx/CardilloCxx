@@ -11,6 +11,13 @@
 
 namespace cardillo::physics::assembly {
 
+struct BodyJacobianContribution {
+    int bodyIndex{-1};
+    int offset{0};
+    int dof{0};
+    MatrixXXr J;
+};
+
 // One row-block of the condensed system: a spring, a damper, a frictionless contact (dim==1), or
 // a frictional contact (dim==3, normal+2 tangential). Everything here is a small dense
 // per-body/per-block quantity -- no global sparse matrix is ever built or referenced.
@@ -27,6 +34,7 @@ struct RowBlock {
 
     MatrixXXr Ja;  // dim x aDof (empty if aDof==0)
     MatrixXXr Jb;  // dim x bDof (empty if bDof==0)
+    std::vector<BodyJacobianContribution> bodyContributions;  // contact-only weighted body rows
 
     // dim x dim mass-only Delassus block: Ja*MinvA*Ja^T + Jb*MinvB*Jb^T. MinvA/MinvB are normally
     // diag(MinvDiag) -- except for a body with an active implicit-gyroscopic override

@@ -210,126 +210,135 @@ void DynamicsAssembler::assignDofs() {
 
 void DynamicsAssembler::rebuildW_() {
     auto sc = m_timings->scope(misc::TimingManager::TimerId::RebuildContactJacobians);
-
-    const int C_all = (int)m_contacts_ptr->size();
-    const int Nb = m_world.numBodies();
-    // m_contact_index_orig removed; contact row mapping is stored per-contact
-
+ 
+    auto& contacts = *m_contacts_ptr;
+    const int C_all = (int)contacts.size();
     const auto& reg = m_world.ecs();
     const bool frictionEnabled = m_world.config().friction_enable;
-
-    // Prepare sparse triplets for W. Worst case per contact is 2 dynamic 6-dof bodies: 3 rows
-    // (normal + 2 tangential) when friction is enabled, 1 row (normal only) otherwise.
+    const auto inertial = RigidBody::RigidState::inertial();
+ 
+    const auto sideIsDynamic = [&](const collision::ContactSide& side) {
+        for (int k = 0; k < side.count; ++k) {
+            if (!RigidBody::isStatic(reg, side.attachments[(size_t)k].entity)) return true;
+        }
+        return false;
+    };
+ 
+    // Most dissipative restitution over all attachments of a side (missing component -> defaults).
+    struct Restitution {
+        real_t normal, tangential;
+    };
+    const auto sideRestitution = [&](const collision::ContactSide& side) {
+        Restitution out{std::numeric_limits<real_t>::infinity(), std::numeric_limits<real_t>::infinity()};
+        for (int k = 0; k < side.count; ++k) {
+            const auto* r = reg.try_get<C_Restitution>(side.attachments[(size_t)k].entity);
+            const real_t n = r ? r->normal : m_cfg.restitution_default_normal;
+            const real_t t = r ? r->tangential : m_cfg.restitution_default_tangential;
+            out.normal = std::min(out.normal, std::max<real_t>((real_t)0, n));
+            out.tangential = std::min(out.tangential, std::max<real_t>((real_t)0, t));
+        }
+        return out;
+    };
+ 
+    
+    std::size_t attachmentCount = 0;
+    for (const auto& c : contacts) attachmentCount += (std::size_t)(c.sideA.count + c.sideB.count);
     std::vector<Eigen::Triplet<real_t>> trips;
-    trips.reserve((size_t)C_all * (frictionEnabled ? 36 : 12));
-
-    int dynContactId = 0;  // index into dynamic contacts (rows in W)
-    m_numFrictionalContacts = 0;
-    m_numFrictionlessContacts = 0;
-
-    // Per-contact-row velocity contribution from static entities, using the same local Jacobian
-    // convention as W row assembly.
-    m_contact_v_vec = VectorXr::Zero((index_t)C_all * 3);
+    trips.reserve(attachmentCount * (frictionEnabled ? 18 : 6));
+ 
+    // Upper bound of 3 rows per contact; shrunk to the real row count at the end.
+    m_contact_v_vec = VectorXr::Zero((index_t)C_all * 3);  // velocity contribution of static attachments
     m_mu_vec = VectorXr::Zero((index_t)C_all * 3);
     m_restitution_vec = VectorXr::Zero((index_t)C_all * 3);
-
+ 
+    int dynContactId = 0;  // next free row of W
+    m_numFrictionalContacts = 0;
+    m_numFrictionlessContacts = 0;
+ 
+    // ---------------------------------------------------------------------------------------------
+    // Row assembly. Row layout: all frictionless contacts (1 row) first, then frictional ones
+    // (normal + 2 tangential rows).
+    // ---------------------------------------------------------------------------------------------
     for (bool frictionPass : {false, true}) {
         if (frictionPass && !frictionEnabled) break;
-        for (int i = 0; i < C_all; ++i) {
-            auto& c = (*m_contacts_ptr)[i];
-
-            if (frictionEnabled) {
-                if (frictionPass && c.friction_mu <= 0) continue;
-                if (!frictionPass && c.friction_mu > 0) continue;
+ 
+        for (auto& c : contacts) {
+            const bool frictional = frictionEnabled && c.friction_mu > (real_t)0;
+            if (frictional != frictionPass) continue;
+ 
+            if (!sideIsDynamic(c.sideA) && !sideIsDynamic(c.sideB)) {
+                c.impulse_base_index = -1;  // static-static: no rows, don't leave stale indices behind
+                c.impulse_size = 0;
+                continue;
             }
-
-            const bool aDyn = !RigidBody::isStatic(reg, c.a);
-            const bool bDyn = !RigidBody::isStatic(reg, c.b);
-
-            auto getRestitution = [&](entt::entity e, bool tangential) -> real_t {
-                if (!reg.valid(e)) return (real_t)0;
-                if (reg.any_of<C_Restitution>(e)) {
-                    const auto& r = reg.get<C_Restitution>(e);
-                    return tangential ? std::max<real_t>((real_t)0, r.tangential) : std::max<real_t>((real_t)0, r.normal);
-                }
-                return tangential ? std::max<real_t>((real_t)0, m_cfg.restitution_default_tangential) : std::max<real_t>((real_t)0, m_cfg.restitution_default_normal);
-            };
-            const real_t restN = std::min<real_t>(getRestitution(c.a, false), getRestitution(c.b, false));
-            const real_t restT = std::min<real_t>(getRestitution(c.a, true), getRestitution(c.b, true));
-            // Skip static-static contacts
-            if (!aDyn && !bDyn) continue;
-
-            auto accumulateDirForSide = [&](const Vector3r& dir_world, const Vector3r& r_body, const Vector3r& dir_body, entt::entity ent, bool dyn, real_t s, int rowId) {
-                if (!reg.valid(ent)) return;
-
-                if (dyn) {
-                    if (!reg.any_of<C_BodyIndex>(ent)) return;
-                    const int b = reg.get<C_BodyIndex>(ent).b;
-                    if (b < 0 || b >= Nb) return;
-                    const int col0 = m_body_vel_offsets[(size_t)b];
-                    const int dof = m_body_vel_offsets[(size_t)b + 1] - col0;
-                    if (dof <= 0) return;
-
-                    const Vector6r row = buildContactRowByDof(dof, dir_world, r_body, dir_body, s);
-                    for (int j = 0; j < dof; ++j) {
-                        const real_t val = row[j];
-                        if (val != (real_t)0) trips.emplace_back(rowId, col0 + j, val);
+ 
+            const int nRows = frictional ? 3 : 1;
+            const int rowBase = dynContactId;
+            dynContactId += nRows;
+            c.impulse_base_index = rowBase;
+            c.impulse_size = nRows;
+            (frictional ? m_numFrictionalContacts : m_numFrictionlessContacts)++;
+ 
+            const Restitution ra = sideRestitution(c.sideA);
+            const Restitution rb = sideRestitution(c.sideB);
+            const std::array<Vector3r, 3> dirs = {c.normal, c.tangent1, c.tangent2};
+            for (int r = 0; r < nRows; ++r) {
+                m_restitution_vec[rowBase + r] = r == 0 ? std::min(ra.normal, rb.normal) : std::min(ra.tangential, rb.tangential);
+                if (frictional) m_mu_vec[rowBase + r] = c.friction_mu;
+            }
+ 
+            // Adds `sign * weight * J_k` of every attachment k of `side` to the rows of this contact.
+            const auto accumulateSide = [&](const collision::ContactSide& side, real_t sign) {
+                for (int k = 0; k < side.count; ++k) {
+                    const auto& att = side.attachments[(size_t)k];
+                    const bool dyn = !RigidBody::isStatic(reg, att.entity);
+                    const auto state = RigidBody::getState(reg, att.entity);
+                    const real_t w = sign * att.weight;
+ 
+                    int col0 = 0, dof = 0;
+                    VectorXr veStatic;
+                    if (dyn) {
+                        assert(reg.all_of<C_BodyIndex>(att.entity));
+                        const int b = reg.get<C_BodyIndex>(att.entity).b;
+                        assert(b >= 0 && (size_t)b + 1 < m_body_vel_offsets.size());
+                        col0 = m_body_vel_offsets[(size_t)b];
+                        dof = m_body_vel_offsets[(size_t)b + 1] - col0;
+                    } else {
+                        veStatic = m_world.getVelocity(att.entity);
+                        dof = (int)veStatic.size();
                     }
-                    return;
+                    assert(dof >= 0 && dof <= 6);  // buildContactRowByDof returns a Vector6r
+                    if (dof == 0) continue;
+ 
+                    for (int r = 0; r < nRows; ++r) {
+                        const Vector3r dirBody = transform::direction(dirs[(size_t)r], inertial, state);
+                        const Vector6r row = buildContactRowByDof(dof, dirs[(size_t)r], att.point_body, dirBody, w);
+                        if (dyn) {
+                            for (int j = 0; j < dof; ++j) {
+                                if (row[j] != (real_t)0) trips.emplace_back(rowBase + r, col0 + j, row[j]);
+                            }
+                        } else {
+                            m_contact_v_vec[rowBase + r] += row.head(dof).dot(veStatic);
+                        }
+                    }
                 }
-
-                const VectorXr ve = m_world.getVelocity(ent);
-                const int dof = (int)ve.size();
-                if (dof <= 0) return;
-                const Vector6r row = buildContactRowByDof(dof, dir_world, r_body, dir_body, s);
-                m_contact_v_vec[rowId] += row.head(dof).dot(ve);
             };
-
-            // Row 0 for this contact: normal
-            const int rowN = dynContactId;
-            // record base index and default size for this contact
-            c.impulse_base_index = rowN;
-            c.impulse_size = 1;
-
-            m_restitution_vec[rowN] = restN;
-            accumulateDirForSide(c.normal, c.pointA_body, c.normalA_body, c.a, aDyn, (real_t)-1, rowN);
-            accumulateDirForSide(c.normal, c.pointB_body, c.normalB_body, c.b, bDyn, (real_t) + 1, rowN);
-            ++dynContactId;
-
-            // Optional rows: two tangential directions if friction enabled and mu > 0
-            if (frictionEnabled && c.friction_mu > (real_t)0) {
-                m_mu_vec[rowN] = c.friction_mu;
-
-                const int rowT1 = dynContactId;
-                m_mu_vec[rowT1] = c.friction_mu;
-                m_restitution_vec[rowT1] = restT;
-                accumulateDirForSide(c.tangent1, c.pointA_body, c.tangent1A_body, c.a, aDyn, (real_t)-1, rowT1);
-                accumulateDirForSide(c.tangent1, c.pointB_body, c.tangent1B_body, c.b, bDyn, (real_t) + 1, rowT1);
-                ++dynContactId;
-
-                const int rowT2 = dynContactId;
-                m_mu_vec[rowT2] = c.friction_mu;
-                m_restitution_vec[rowT2] = restT;
-                accumulateDirForSide(c.tangent2, c.pointA_body, c.tangent2A_body, c.a, aDyn, (real_t)-1, rowT2);
-                accumulateDirForSide(c.tangent2, c.pointB_body, c.tangent2B_body, c.b, bDyn, (real_t) + 1, rowT2);
-                ++dynContactId;
-                // update impulse_size to include tangential rows
-                c.impulse_size = 3;
-
-                ++m_numFrictionalContacts;
-            } else {
-                ++m_numFrictionlessContacts;
-            }
+            accumulateSide(c.sideA, (real_t)-1);
+            accumulateSide(c.sideB, (real_t)+1);
         }
     }
-
+ 
+    // ---------------------------------------------------------------------------------------------
     // Build W as C_dyn x totalV
+    // ---------------------------------------------------------------------------------------------
     const int C_dyn = dynContactId;
-    const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
+    const int totalV = m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back();
     m_W = TripletMatrix(C_dyn, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(trips)));
     m_contact_v_vec.conservativeResize((index_t)C_dyn);
     m_mu_vec.conservativeResize((index_t)C_dyn);
+    m_restitution_vec.conservativeResize((index_t)C_dyn);
 }
+
 
 void DynamicsAssembler::setContactLastImpulse(int global_out_index, const Vector3r& imp) {
     if (!m_contacts_ptr) return;

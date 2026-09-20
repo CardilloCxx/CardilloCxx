@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
@@ -120,9 +121,8 @@ inline Contact makeContact(entt::entity ea, entt::entity eb, const RigidBody::Ri
 
     // Same class of bug as the normal below, hitting the nearest/patch points instead: COAL can
     // return a non-finite point for one (or both) sides of an exactly-touching/coincident pair.
-    // Sanitize before anything derives from them (c.point, and from there pointA_body/pointB_body
-    // -- which feed the angular row of buildContactRowByDof() for any 6-DOF body, so a NaN point
-    // silently poisons that body's Jacobian even when the normal itself is fine).
+    // Sanitize before anything derives from them, including the attachment points that feed the
+    // angular rows of the contact Jacobian for 6-DOF bodies.
     if (!p1W.allFinite()) p1W = p2W.allFinite() ? p2W : stateA.position;
     if (!p2W.allFinite()) p2W = p1W.allFinite() ? p1W : stateB.position;
 
@@ -152,17 +152,40 @@ inline Contact makeContact(entt::entity ea, entt::entity eb, const RigidBody::Ri
     c.point = (p1W + p2W) * (real_t)0.5;
     c.penetration = std::max<real_t>(0.0, depth);
     const RigidBody::RigidState inertial{}; // default ctro => identity
-    c.pointA_body = transform::point(c.point, inertial, stateA);
-    c.normalA_body = transform::direction(c.normal, inertial, stateA);
-    c.pointB_body = transform::point(c.point, inertial, stateB);
-    c.normalB_body = transform::direction(c.normal, inertial, stateB);
-    // Tangents in body frames
-    c.tangent1A_body = transform::direction(c.tangent1, inertial, stateA);
-    c.tangent2A_body = transform::direction(c.tangent2, inertial, stateA);
-    c.tangent1B_body = transform::direction(c.tangent1, inertial, stateB);
-    c.tangent2B_body = transform::direction(c.tangent2, inertial, stateB);
+    const Vector3r pointA_body = transform::point(c.point, inertial, stateA);
+    const Vector3r pointB_body = transform::point(c.point, inertial, stateB);
+    c.sideA.count = 1;
+    c.sideA.attachments[0] = ContactAttachment{ea, (real_t)1, pointA_body};
+    c.sideB.count = 1;
+    c.sideB.attachments[0] = ContactAttachment{eb, (real_t)1, pointB_body};
     c.friction_mu = friction_mu;
     return c;
+}
+
+inline void populateBeamHullSide(Contact& c, ContactSide& side, entt::entity beamEntity,
+                                 const std::optional<std::reference_wrapper<const BeamHullShape>>& hullRef,
+                                 const entt::registry& reg, bool sideA) {
+    if (!hullRef.has_value() || !reg.any_of<C_Collider_BeamHull>(beamEntity)) return;
+    const BeamHullShape& hull = hullRef->get();
+    const auto& collider = reg.get<C_Collider_BeamHull>(beamEntity);
+    if (collider.endA == entt::null || collider.endB == entt::null) return;
+
+    const coal::Vec3s dir = toCoalVec3(sideA ? c.normal : -c.normal);
+    const coal::Vec3s witnessA = hull.endpointSupport(dir, 0);
+    const coal::Vec3s witnessB = hull.endpointSupport(dir, 1);
+    const coal::Vec3s witnessDelta = witnessB - witnessA;
+    const coal::CoalScalar witnessDelta2 = witnessDelta.squaredNorm();
+    if (!(witnessDelta2 > std::numeric_limits<coal::CoalScalar>::epsilon())) return;
+
+    // Interpolate along the support-witness segment
+    const coal::Vec3s contactPoint(c.point);
+    const real_t s = std::clamp((real_t)((contactPoint - witnessA).dot(witnessDelta) / witnessDelta2), (real_t)0, (real_t)1);
+    const auto stateA = RigidBody::getState(reg, collider.endA);
+    const auto stateB = RigidBody::getState(reg, collider.endB);
+    const RigidBody::RigidState inertial = RigidBody::RigidState::inertial();
+    side.count = 2;
+    side.attachments[0] = ContactAttachment{collider.endA, (real_t)1 - s, transform::point(Vector3r(witnessA), inertial, stateA)};
+    side.attachments[1] = ContactAttachment{collider.endB, s, transform::point(Vector3r(witnessB), inertial, stateB)};
 }
 
 // Insert a contact into a ContactMap bucketed by (a,b)
@@ -184,7 +207,10 @@ inline void addContactToMap(ContactMap& cmap, const Contact& c) {
 // Prefers patch expansion; falls back to the raw narrowphase contact(s) when patch computation
 // yielded nothing for this pair (e.g. a too-degenerate vertex-vertex contact) -- manifolds use
 // the same fallback so this stream is never less complete than the flattened contact list.
-inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res,
+inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity ea, entt::entity eb,
+                                              const std::optional<std::reference_wrapper<const BeamHullShape>>& hullA,
+                                              const std::optional<std::reference_wrapper<const BeamHullShape>>& hullB,
+                                              const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res,
                                               ContactMap& outMap, std::vector<ContactManifold>& manifolds, const std::string& frictionCombine, bool usePatchVertices) {
     const RigidBody::RigidState stateA = RigidBody::getState(reg, ea);
     const RigidBody::RigidState stateB = RigidBody::getState(reg, eb);
@@ -207,6 +233,8 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
                 const auto p1Wc = patch.getPointShape1(iv);
                 const auto p2Wc = patch.getPointShape2(iv);
                 Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1Wc, p2Wc, nW, depth);
+                populateBeamHullSide(c, c.sideA, ea, hullA, reg, true);
+                populateBeamHullSide(c, c.sideB, eb, hullB, reg, false);
                 if (iv == 0) {
                     cm.normal = c.normal;
                     cm.tangent1 = c.tangent1;
@@ -228,6 +256,8 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
     for (int k = 0; k < cres.numContacts(); ++k) {
         const coal::Contact c0 = cres.getContact(k);
         Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, c0.nearest_points[0], c0.nearest_points[1], c0.normal, (real_t)c0.penetration_depth);
+        populateBeamHullSide(c, c.sideA, ea, hullA, reg, true);
+        populateBeamHullSide(c, c.sideB, eb, hullB, reg, false);
 
         ContactManifold cm;
         cm.a = ea;
@@ -525,7 +555,13 @@ std::vector<Contact>& CollisionCoal::detectAll() {
         // doc comment above.
         {
             auto sc_p = m_timings->scope(misc::TimingManager::TimerId::CollisionMakeContact);
-            appendContactsAndManifoldsForPair(reg, ea, eb, cres, patch_res, mapCurr, m_contactManifolds, frictionCombine, usePatchVertices);
+            std::optional<std::reference_wrapper<const BeamHullShape>> hullA;
+            std::optional<std::reference_wrapper<const BeamHullShape>> hullB;
+            const std::size_t iA = m_index_from_entity.at(entt::to_integral(ea));
+            const std::size_t iB = m_index_from_entity.at(entt::to_integral(eb));
+            if (m_kinds[iA] == ColliderKind::BeamHull) hullA = std::cref(static_cast<const BeamHullShape&>(*m_geoms[iA]));
+            if (m_kinds[iB] == ColliderKind::BeamHull) hullB = std::cref(static_cast<const BeamHullShape&>(*m_geoms[iB]));
+            appendContactsAndManifoldsForPair(reg, ea, eb, hullA, hullB, cres, patch_res, mapCurr, m_contactManifolds, frictionCombine, usePatchVertices);
         }
     }
 

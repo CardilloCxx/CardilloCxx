@@ -1,12 +1,24 @@
 #pragma once
 
 #include <entt/entt.hpp>
+#include <array>
 #include <unordered_map>
 #include <vector>
 #include "../physics/world.hpp"
 #include "misc/types.hpp"
 
 namespace cardillo::collision {
+
+struct ContactAttachment {
+    entt::entity entity{entt::null};
+    real_t weight{1};
+    Vector3r point_body{Vector3r::Zero()};
+};
+
+struct ContactSide {
+    std::array<ContactAttachment, 2> attachments{};
+    int count{0};
+};
 
 // Contact information for a pairwise collision
 struct Contact {
@@ -18,17 +30,6 @@ struct Contact {
     // The pair (tangent1, tangent2, normal) forms a right-handed ONB.
     Vector3r tangent1;  // first tangent (world)
     Vector3r tangent2;  // second tangent (world)
-    // Body-space contact info (expressed in each body's local frame)
-    // For rigid bodies: normal_body = R^T * normal_world, point_body = R^T * (point_world -
-    // center_world) For point masses: identical to world (R = I, center at origin)
-    Vector3r pointA_body;
-    Vector3r pointB_body;
-    Vector3r normalA_body;
-    Vector3r normalB_body;
-    Vector3r tangent1A_body;  // first tangent in body A frame
-    Vector3r tangent2A_body;  // second tangent in body A frame
-    Vector3r tangent1B_body;  // first tangent in body B frame
-    Vector3r tangent2B_body;  // second tangent in body B frame
     real_t penetration;       // overlap distance (> 0 means interpenetration)
     real_t friction_mu{0};    // combined friction coefficient for the pair at this contact
     // Last solved impulse for this contact (pn, pt1, pt2) stored in contact for warmstarting
@@ -43,6 +44,10 @@ struct Contact {
     int prev_global_out_index{-1};
     // Index of this contact in the current generation's flattened output (set during flatten)
     int global_out_index{-1};
+    // Ordinary contacts use one attachment per side. Beam hulls use two weighted endpoint
+    // attachments so the solver can distribute the contact Jacobian over the segment.
+    ContactSide sideA;
+    ContactSide sideB;
 };
 
 // Stable key for a contact pair (canonical entity order: a.id <= b.id)

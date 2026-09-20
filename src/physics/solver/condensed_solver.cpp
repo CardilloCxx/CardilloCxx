@@ -62,8 +62,13 @@ void projectBlock(RowBlock::Kind kind, real_t mu, Eigen::MatrixBase<Derived>& la
 void blockResidual(const RowBlock& blk, const VectorXr& rhs, const VectorXr& u_corr, const VectorXr& lambda, Buf6& out) {
     auto o = out.head(blk.dim);
     o = rhs.segment(blk.offset, blk.dim);
-    if (blk.aDof > 0) o.noalias() -= blk.Ja * u_corr.segment(blk.aOff, blk.aDof);
-    if (blk.bDof > 0) o.noalias() -= blk.Jb * u_corr.segment(blk.bOff, blk.bDof);
+    if (!blk.bodyContributions.empty()) {
+        for (const auto& contribution : blk.bodyContributions)
+            o.noalias() -= contribution.J * u_corr.segment(contribution.offset, contribution.dof);
+    } else {
+        if (blk.aDof > 0) o.noalias() -= blk.Ja * u_corr.segment(blk.aOff, blk.aDof);
+        if (blk.bDof > 0) o.noalias() -= blk.Jb * u_corr.segment(blk.bOff, blk.bDof);
+    }
     o.noalias() -= blk.complianceDiag.cwiseProduct(lambda.segment(blk.offset, blk.dim));
 }
 
@@ -82,6 +87,16 @@ const Matrix66r* gyroBlockFor(int bodyIndex, const std::unordered_map<int, Matri
 // active implicit-gyroscopic body, in which case every branch below reduces to exactly the original
 // expression (see gyroBlockFor()).
 void scatterDelta(const RowBlock& blk, const VectorXr& MinvDiag, const std::unordered_map<int, Matrix66r>& gyroBlocks, const Buf6& dlambda, VectorXr& u_corr, Buf6& tmp) {
+    if (!blk.bodyContributions.empty()) {
+        for (const auto& contribution : blk.bodyContributions) {
+            tmp.head(contribution.dof).noalias() = contribution.J.transpose() * dlambda.head(blk.dim);
+            if (const auto* gyro = gyroBlockFor(contribution.bodyIndex, gyroBlocks))
+                u_corr.segment(contribution.offset, contribution.dof).noalias() += gyro->topLeftCorner(contribution.dof, contribution.dof) * tmp.head(contribution.dof);
+            else
+                u_corr.segment(contribution.offset, contribution.dof).noalias() += MinvDiag.segment(contribution.offset, contribution.dof).cwiseProduct(tmp.head(contribution.dof));
+        }
+        return;
+    }
     if (blk.aDof > 0) {
         tmp.head(blk.aDof).noalias() = blk.Ja.transpose() * dlambda.head(blk.dim);
         if (const auto* gA = gyroBlockFor(blk.bodyIndexA, gyroBlocks))

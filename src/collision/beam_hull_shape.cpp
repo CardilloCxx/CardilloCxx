@@ -36,44 +36,35 @@ void BeamHullShape::updateRings(const C_Collider_BeamHull& collider, const entt:
     recomputeLocalAABB_();
 }
 
-void BeamHullShape::computeShapeSupport(const coal::Vec3s& dir, coal::Vec3s& support, int& hint, coal::details::ShapeSupportData& /*data*/) const {
-    coal::CoalScalar bestDot = -std::numeric_limits<coal::CoalScalar>::infinity();
-    support = coal::Vec3s::Zero();
-
+coal::Vec3s BeamHullShape::endpointSupport(const coal::Vec3s& dir, int endpoint) const {
     if (circular_) {
-        auto discSupport = [&](const Disc& D, int discTag) {
-            const coal::Vec3s perp = dir - dir.dot(D.n) * D.n;
-            const coal::CoalScalar len = perp.norm();
-            coal::Vec3s p;
-            if (len > std::numeric_limits<coal::CoalScalar>::epsilon() * dir.norm()) {
-                p = D.c + (D.r / len) * perp;
-            } else {
-                // dir parallel to the disc normal: every rim point is valid, so pick any perpendicular to n
-                const coal::Vec3s axis = (std::abs(D.n.x()) < 0.9) ? coal::Vec3s::UnitX() : coal::Vec3s::UnitY();
-                p = D.c + D.r * D.n.cross(axis).normalized();
-            }
-            const coal::CoalScalar s = dir.dot(D.c) + D.r * len;
-            if (s > bestDot) {
-                bestDot = s;
-                support = p;
-            }
-        };
-
-        discSupport(discA_, 0);
-        discSupport(discB_, 1);
-    } else {
-        auto scanRing = [&](const std::vector<coal::Vec3s>& ring, int ringTag) {
-            for (std::size_t i = 0; i < ring.size(); ++i) {
-                const coal::CoalScalar d = dir.dot(ring[i]);
-                if (d > bestDot) {
-                    bestDot = d;
-                    support = ring[i];
-                }
-            }
-        };
-        scanRing(ringA_, 0);
-        scanRing(ringB_, 1);
+        const Disc& disc = endpoint == 0 ? discA_ : discB_;
+        const coal::Vec3s perp = dir - dir.dot(disc.n) * disc.n;
+        const coal::CoalScalar len = perp.norm();
+        if (len > std::numeric_limits<coal::CoalScalar>::epsilon() * dir.norm()) {
+            return disc.c + (disc.r / len) * perp;
+        }
+        const coal::Vec3s axis = (std::abs(disc.n.x()) < 0.9) ? coal::Vec3s::UnitX() : coal::Vec3s::UnitY();
+        return disc.c + disc.r * disc.n.cross(axis).normalized();
     }
+
+    const auto& ring = endpoint == 0 ? ringA_ : ringB_;
+    coal::Vec3s support = coal::Vec3s::Zero();
+    coal::CoalScalar bestDot = -std::numeric_limits<coal::CoalScalar>::infinity();
+    for (const auto& point : ring) {
+        const coal::CoalScalar dot = dir.dot(point);
+        if (dot > bestDot) {
+            bestDot = dot;
+            support = point;
+        }
+    }
+    return support;
+}
+
+void BeamHullShape::computeShapeSupport(const coal::Vec3s& dir, coal::Vec3s& support, int& hint, coal::details::ShapeSupportData& /*data*/) const {
+    const coal::Vec3s supportA = endpointSupport(dir, 0);
+    const coal::Vec3s supportB = endpointSupport(dir, 1);
+    support = (dir.dot(supportA) >= dir.dot(supportB)) ? supportA : supportB;
     hint = 0;
 }
 
