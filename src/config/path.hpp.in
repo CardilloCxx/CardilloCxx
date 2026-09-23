@@ -1,4 +1,4 @@
 #pragma once
 
-#define PROJECT_SOURCE_DIR "@CMAKE_SOURCE_DIR@"
-#define PROJECT_BINARY_DIR "@CMAKE_BINARY_DIR@"
+#define PROJECT_SOURCE_DIR "@cardillo_project_SOURCE_DIR@"
+#define PROJECT_BINARY_DIR "@cardillo_project_BINARY_DIR@"

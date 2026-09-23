@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
 project(cardillo LANGUAGES CXX)
-set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path prefix" FORCE)
+if(cardillo_project_IS_TOP_LEVEL)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path prefix" FORCE)
+endif()
 include(FetchContent)
 include(ExternalProject)
 find_package(OpenMP QUIET)
@@ -81,6 +83,8 @@ FetchContent_MakeAvailable(Eigen3)
 add_library(eigen3 INTERFACE IMPORTED GLOBAL)
 target_link_libraries(eigen3 INTERFACE eigen)
 FetchContent_MakeAvailable(entt clarabel qoco coal)
+# Clarabel.cpp adds its examples unconditionally; exclude them from the default build
+set_property(DIRECTORY "${clarabel_SOURCE_DIR}/examples" PROPERTY EXCLUDE_FROM_ALL TRUE)
 
 
 # QOCO vendors its own copy of QDLDL under lib/qdldl (plain add_subdirectory,
@@ -134,6 +138,7 @@ FetchContent_MakeAvailable(conicxx)
 # --- 2. Engine Targets ---
 file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_library(cardillo SHARED ${CARDILLO_SOURCES})
+add_library(cardillo::cardillo ALIAS cardillo)
 
 
 # Python version of Coal:

@@ -50,6 +50,10 @@ if(CARDILLO_ENABLE_NATIVE_ARCH)
     endif()
 endif()
 
+option(CARDILLO_BUILD_EXAMPLES "Build the example scenes" ${PROJECT_IS_TOP_LEVEL})
+
 add_subdirectory(src)
-add_subdirectory(examples)
+if(CARDILLO_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
 # add_subdirectory(frontend)
