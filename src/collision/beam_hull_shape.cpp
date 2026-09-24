@@ -1,9 +1,22 @@
 // beam_hull_shape.cpp
 #include "beam_hull_shape.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <limits>
 
+#include <coal/narrowphase/support_functions.h>  // details::computeSupportSetConvexHull
+
 namespace cardillo::collision {
+
+namespace {
+// Orthonormal basis (u, v) of the plane orthogonal to the unit vector n.
+inline void orthonormalBasis(const coal::Vec3s& n, coal::Vec3s& u, coal::Vec3s& v) {
+    const coal::Vec3s axis = (std::abs(n.x()) < 0.9) ? coal::Vec3s::UnitX() : coal::Vec3s::UnitY();
+    u = n.cross(axis).normalized();
+    v = n.cross(u);
+}
+}  // namespace
 
 inline std::vector<coal::Vec3s> ringFromEntityPose(const entt::registry& reg, entt::entity e, const std::vector<Vector2r>& polygon) {
     const Vector3r origin = reg.any_of<C_Position3>(e) ? reg.get<C_Position3>(e).value : Vector3r::Zero();
@@ -66,6 +79,53 @@ void BeamHullShape::computeShapeSupport(const coal::Vec3s& dir, coal::Vec3s& sup
     const coal::Vec3s supportB = endpointSupport(dir, 1);
     support = (dir.dot(supportA) >= dir.dot(supportB)) ? supportA : supportB;
     hint = 0;
+}
+
+void BeamHullShape::computeShapeSupportSet(coal::SupportSet& supportSet, int& /*hint*/, coal::details::ShapeSupportData& data,
+                                           std::size_t numSamples, coal::CoalScalar tol) const {
+    // Support direction in this shape's local frame; already flipped when the hull is the 2nd shape.
+    const coal::Vec3s n = supportSet.getNormal();
+
+    // Visits every candidate point of the support set. The slab test needs two passes (extreme value
+    // first, then collect), so candidates are generated on the fly instead of being stored.
+    auto forEachCandidate = [&](auto&& f) {
+        if (circular_) {
+            for (int e = 0; e < 2; ++e) {
+                const Disc& d = e == 0 ? discA_ : discB_;
+                // Extent of the rim along n is 2*r*s. If the whole rim lies within tol of the extreme
+                // plane, the disc itself is the contact face (end cap): return a fixed-frame polygon of
+                // rim samples so the patch does not rotate from frame to frame. Otherwise only the exact
+                // extreme rim point can touch (beam lying on its side): together, the two discs give
+                // the contact segment.
+                const coal::CoalScalar s = std::sqrt(std::max<coal::CoalScalar>(0, 1 - n.dot(d.n) * n.dot(d.n)));
+                if (2 * d.r * s <= tol) {
+                    coal::Vec3s u, v;
+                    orthonormalBasis(d.n, u, v);
+                    for (std::size_t k = 0; k < numSamples; ++k) {
+                        const coal::CoalScalar a = 2 * M_PI * coal::CoalScalar(k) / coal::CoalScalar(numSamples);
+                        f(coal::Vec3s(d.c + d.r * (std::cos(a) * u + std::sin(a) * v)));
+                    }
+                } else {
+                    f(endpointSupport(n, e));
+                }
+            }
+        } else {
+            for (const auto& p : ringA_) f(p);
+            for (const auto& p : ringB_) f(p);
+        }
+    };
+
+    coal::CoalScalar best = -std::numeric_limits<coal::CoalScalar>::infinity();
+    forEachCandidate([&](const coal::Vec3s& p) { best = std::max(best, n.dot(p)); });
+
+    // Keep the points within tol of the extreme plane, as Coal does for Box and ConvexBase, and
+    // hand their 2D convex hull (in the patch frame) to the contact patch solver.
+    auto& poly = data.polygon;
+    poly.clear();
+    forEachCandidate([&](const coal::Vec3s& p) {
+        if (best - n.dot(p) <= tol) poly.push_back(supportSet.tf.inverseTransform(p).head<2>());
+    });
+    coal::details::computeSupportSetConvexHull(poly, supportSet.points());
 }
 
 void BeamHullShape::computeLocalAABB() { recomputeLocalAABB_(); }

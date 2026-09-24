@@ -5,6 +5,7 @@
 #include <coal/shape/geometric_shapes.h>
 
 
+#include <cstddef>
 #include <vector>
 #include "../misc/types.hpp"
 #include "../physics/world.hpp"
@@ -29,6 +30,13 @@ public:
     coal::NODE_TYPE getNodeType() const override { return coal::GEOM_CUSTOM; }
 
     void computeShapeSupport(const coal::Vec3s& dir, coal::Vec3s& support, int& hint, coal::details::ShapeSupportData& data) const override;
+
+    // Support set (contact face) in the direction of supportSet.getNormal(), used by Coal's contact
+    // patch solver. Without this, Coal only sees a single support point and every pair collapses to
+    // one contact. Requires the ShapeBase::computeShapeSupportSet hook of the patched Coal branch.
+    void computeShapeSupportSet(coal::SupportSet& supportSet, int& hint,
+                                coal::details::ShapeSupportData& data,
+                                std::size_t numSamples, coal::CoalScalar tol) const override;
 
     void computeLocalAABB() override;
     CollisionGeometry* clone() const override;

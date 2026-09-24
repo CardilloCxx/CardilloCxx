@@ -74,7 +74,7 @@ FetchContent_Declare(Eigen3 GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
 FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.2)
 FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG v0.11.1)
 # FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.4)
-FetchContent_Declare(coal GIT_REPOSITORY git@github.com:41pha1/coal.git GIT_TAG df26d47c8d5ba22b49ed42cfc3de29e8d292a68e)
+FetchContent_Declare(coal GIT_REPOSITORY git@github.com:41pha1/coal.git GIT_TAG a54e687017c1f21c09550aa5b40ffb049df84eea)
 FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
 FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG cddaa5d5454fc0eb82e7b5851a09fd07cf6777f3)
 FetchContent_MakeAvailable(Eigen3)

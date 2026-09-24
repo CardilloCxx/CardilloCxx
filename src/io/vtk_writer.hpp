@@ -69,8 +69,6 @@ class VtkWriter {
     std::string m_springsBase{"springs"};
     bool m_writeContactManifolds{false};
     std::string m_contactManifoldsBase{"contact_manifolds"};
-    bool m_staticGeoWritten{false};
-
     using EntityMesh = MeshGenerator::EntityMesh;
 
     // Helpers (run synchronously on the calling/sim thread)

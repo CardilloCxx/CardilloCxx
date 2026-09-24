@@ -113,27 +113,9 @@ void VtkWriter::write(int step, real_t time, const World& sys, collision::Collis
 
     enrichPressure(meshes, sys, contacts);
 
-    if (!m_staticGeoWritten || sys.isStructureDirty()) {
-        std::vector<EntityMesh> onlyStatic;
-        onlyStatic.reserve(meshes.size());
-        for (const auto& m : meshes) {
-            if (!m.isDynamic) onlyStatic.push_back(m);
-        }
-        const std::string filename = m_baseName + std::string("_static_geo.vtp");
-        const std::string path = m_outputDir.empty() ? filename : (fs::path(m_outputDir) / filename).string();
-        writeVtp(meshesToPolyData(onlyStatic), path);
-        m_staticGeoWritten = true;
-    }
 
-    {
-        std::vector<EntityMesh> onlyDynamic;
-        onlyDynamic.reserve(meshes.size());
-        for (const auto& m : meshes) {
-            if (m.isDynamic) onlyDynamic.push_back(m);
-        }
-        const std::string path = buildPath(m_baseName + "_geo", step);
-        enqueueFrame(meshesToPolyData(onlyDynamic), m_pvdGeo, pvdPath(m_baseName + "_geo"), path, fs::path(path).filename().string(), step, time);
-    }
+    const std::string path = buildPath(m_baseName + "_geo", step);
+    enqueueFrame(meshesToPolyData(meshes), m_pvdGeo, pvdPath(m_baseName + "_geo"), path, fs::path(path).filename().string(), step, time);
 
     if (m_writeContactManifolds && collision_mgr) {
         std::vector<collision::ContactManifold> manifolds = collision_mgr->m_contactManifolds;
@@ -168,7 +150,6 @@ void VtkWriter::enrichPressure(std::vector<EntityMesh>& meshes, const World& sys
 
     for (auto& m : meshes) {
         m.entityPressure = (real_t)0;
-        if (!m.isDynamic) continue;
         if (m.vertices.empty()) continue;
         if (!reg.valid(m.entity)) continue;
 
