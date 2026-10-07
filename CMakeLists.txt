@@ -50,6 +50,16 @@ if(CARDILLO_ENABLE_NATIVE_ARCH)
     endif()
 endif()
 
+# Optional MOSEK backend (solver.type = mosek). Off by default; MOSEK itself and its license are not
+# part of this repository -- see cmake/FindMOSEK.cmake for how the installation is located.
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+option(CARDILLO_WITH_MOSEK "Enable the MOSEK solver backend (requires a MOSEK installation and license)" OFF)
+option(CARDILLO_BUILD_TESTS "Build the unit tests and solver benchmarks under tests/" OFF)
+
 add_subdirectory(src)
 add_subdirectory(examples)
+if(CARDILLO_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 # add_subdirectory(frontend)

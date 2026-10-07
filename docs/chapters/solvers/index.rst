@@ -70,6 +70,11 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
      - Interior-point, exact cone projection. ``conicxx`` additionally reuses
        its KKT factorization and warm-starts across steps when the active
        contact set is unchanged.
+   * - ``mosek``
+     - :doc:`interior_point` (:cpp:class:`MosekSolver <cardillo::solver::MosekSolver>`)
+     - Interior-point via the commercial MOSEK conic optimizer; same problem
+       as ``clarabel``. Optional, needs ``-DCARDILLO_WITH_MOSEK=ON`` and a
+       MOSEK license.
 
 .. toctree::
    :hidden:

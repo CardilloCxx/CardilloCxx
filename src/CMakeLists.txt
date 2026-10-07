@@ -133,6 +133,11 @@ FetchContent_MakeAvailable(conicxx)
 
 # --- 2. Engine Targets ---
 file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+# MOSEK backend sources are only compiled when the optional dependency is enabled, so no MOSEK
+# header or symbol is referenced otherwise.
+if(NOT CARDILLO_WITH_MOSEK)
+    list(FILTER CARDILLO_SOURCES EXCLUDE REGEX "/physics/solver/mosek_[^/]*\\.cpp$")
+endif()
 add_library(cardillo SHARED ${CARDILLO_SOURCES})
 
 
@@ -180,6 +185,14 @@ else()
 endif()
 
 target_include_directories(cardillo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# --- MOSEK (optional) ---
+if(CARDILLO_WITH_MOSEK)
+    find_package(MOSEK REQUIRED)
+    message(STATUS "Using MOSEK ${MOSEK_VERSION} (${MOSEK_LIBRARY}) for the mosek solver backend")
+    target_link_libraries(cardillo PUBLIC MOSEK::MOSEK)
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_MOSEK=1)
+endif()
 
 # --- 4. QOCO-Specific Integration ---
 # Since QOCO requires specific path definitions, we derive them from the FetchContent locations

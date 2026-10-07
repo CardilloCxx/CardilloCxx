@@ -102,6 +102,24 @@ Runtime backend selection is controlled by config key `qoco.backend`:
 - `cpu`
 - `cuda`
 
+## Optional MOSEK backend
+
+`solver.type = mosek` uses the commercial [MOSEK](https://www.mosek.com) conic optimizer. It is off by
+default and MOSEK is not shipped with this repository; install it and its license yourself:
+
+```bash
+# MOSEK 11 (Optimizer API) into ~/mosek/<version>
+curl -LO https://download.mosek.com/stable/11.2.5/mosektoolslinux64x86.tar.bz2
+tar -xjf mosektoolslinux64x86.tar.bz2 -C ~
+cp /path/to/mosek.lic ~/mosek/mosek.lic        # or set MOSEKLM_LICENSE_FILE
+
+cmake -S . -B build -DCARDILLO_WITH_MOSEK=ON   # add -DMOSEK_ROOT=<dir> for non-default locations
+```
+
+`~/mosek/<version>` is found automatically; otherwise pass `-DMOSEK_ROOT` (or set `MOSEK_HOME`) to the
+installation or its `tools/platform/<platform>` directory. Tests and the solver benchmark are built
+with `-DCARDILLO_BUILD_TESTS=ON` (`ctest --test-dir build`, `./build/tests/mosek_benchmark`).
+
 ## Running examples
 
 ```bash

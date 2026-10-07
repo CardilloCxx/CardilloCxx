@@ -7,7 +7,7 @@
 namespace cardillo::config {
 
 enum class IntegratorType { Moreau };
-enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel, Conicxx, Condensed };
+enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel, Conicxx, Condensed, Mosek };
 
 struct Config {
     // Simulation settings
@@ -193,6 +193,17 @@ struct Config {
     real_t ip_kkt_static_reg{(real_t)1e-8};   // solver.kkt_static_reg
     real_t ip_kkt_dynamic_reg{(real_t)1e-8};  // solver.kkt_dynamic_reg
     int ip_iter_ref_iters{2};                 // solver.iter_ref_iters
+
+    // MOSEK-only (solver.type = mosek, requires -DCARDILLO_WITH_MOSEK=ON). Negative values and
+    // "default" keep MOSEK's own defaults; nothing is tuned unless set here.
+    int mosek_num_threads{0};            // mosek.num_threads (0 = let MOSEK decide)
+    real_t mosek_tol_rel_gap{(real_t)-1};  // mosek.tol_rel_gap  (MSK_DPAR_INTPNT_CO_TOL_REL_GAP)
+    real_t mosek_tol_pfeas{(real_t)-1};    // mosek.tol_pfeas    (MSK_DPAR_INTPNT_CO_TOL_PFEAS)
+    real_t mosek_tol_dfeas{(real_t)-1};    // mosek.tol_dfeas    (MSK_DPAR_INTPNT_CO_TOL_DFEAS)
+    int mosek_max_iterations{-1};        // mosek.max_iterations (MSK_IPAR_INTPNT_MAX_ITERATIONS)
+    real_t mosek_max_time{(real_t)-1};     // mosek.max_time [s] (MSK_DPAR_OPTIMIZER_MAX_TIME)
+    std::string mosek_presolve{"default"};  // mosek.presolve [default, on, off, free]
+    bool mosek_scaling{true};            // mosek.scaling -- diagonal pre-scaling of the problem (see mosek::ConicSolver)
 
     // ConicXX-only: unlike QOCO/Clarabel it can reuse its KKT factorization and
     // warm-start its iterate across steps when the active contact set hasn't

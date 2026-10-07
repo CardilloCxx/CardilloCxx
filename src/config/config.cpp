@@ -142,6 +142,8 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.solver = SolverType::Clarabel;
             else if (v == "conicxx" || v == "conic_xx" || v == "conicxx_solver")
                 cfg.solver = SolverType::Conicxx;
+            else if (v == "mosek" || v == "mosek_solver")
+                cfg.solver = SolverType::Mosek;
             else if (v == "conjugate_gradient" || v == "conjugategradient" || v == "cg")
                 cfg.solver = SolverType::ConjugateGradient;
             else if (v == "condensed" || v == "condensed_solver")
@@ -274,6 +276,47 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.conicxx_validate_inputs = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "mosek.num_threads") {
+            try {
+                cfg.mosek_num_threads = std::max(0, std::stoi(val));
+            } catch (...) {
+            }
+        } else if (key == "mosek.tol_rel_gap") {
+            try {
+                cfg.mosek_tol_rel_gap = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "mosek.tol_pfeas") {
+            try {
+                cfg.mosek_tol_pfeas = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "mosek.tol_dfeas") {
+            try {
+                cfg.mosek_tol_dfeas = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "mosek.max_iterations") {
+            try {
+                cfg.mosek_max_iterations = std::stoi(val);
+            } catch (...) {
+            }
+        } else if (key == "mosek.max_time") {
+            try {
+                cfg.mosek_max_time = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "mosek.scaling") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.mosek_scaling = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "mosek.presolve") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            if (v == "default" || v == "on" || v == "off" || v == "free")
+                cfg.mosek_presolve = v;
+            else
+                std::cerr << "Warning: unrecognized mosek.presolve '" << val << "'. Using MOSEK's default." << std::endl;
         } else if (key == "qoco.backend") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });

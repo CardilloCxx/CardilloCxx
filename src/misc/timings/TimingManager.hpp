@@ -46,6 +46,11 @@ class TimingManager {
         ClarabelSetup,
         ConicxxAssembly,
         ConicxxSetup,
+        MosekAssembly,
+        MosekSetup,
+        MosekUpdate,
+        MosekSolve,
+        MosekExtract,
         OutputWrite,
         DynamicsAssembler_RefreshState,
         CondensedSetup,
@@ -291,6 +296,16 @@ class TimingManager {
                 return "ConicXX Assembly";
             case TimerId::ConicxxSetup:
                 return "ConicXX Setup";
+            case TimerId::MosekAssembly:
+                return "MOSEK Assembly";
+            case TimerId::MosekSetup:
+                return "MOSEK Setup";
+            case TimerId::MosekUpdate:
+                return "MOSEK Update";
+            case TimerId::MosekSolve:
+                return "MOSEK Solve";
+            case TimerId::MosekExtract:
+                return "MOSEK Extract";
             case TimerId::DisableCollisionPairs:
                 return "Disable Collision Pairs";
             case TimerId::DynamicsAssembler_RefreshState:
