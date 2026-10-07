@@ -20,6 +20,9 @@
 #ifdef CARDILLO_HAVE_MOSEK
 #include "../solver/mosek_solver.hpp"
 #endif
+#ifdef CARDILLO_HAVE_SCS
+#include "../solver/scs/scs_solver.hpp"
+#endif
 
 namespace cardillo {
 namespace physics {
@@ -52,6 +55,12 @@ PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::C
         m_solver = std::make_unique<MosekSolver>(*m_dyn, m_cfg);
 #else
         throw std::runtime_error("solver.type = mosek requested, but CardilloCxx was built without MOSEK (configure with -DCARDILLO_WITH_MOSEK=ON)");
+#endif
+    } else if (cfg.solver == config::SolverType::Scs) {
+#ifdef CARDILLO_HAVE_SCS
+        m_solver = std::make_unique<ScsSolver>(*m_dyn, m_cfg);
+#else
+        throw std::runtime_error("solver.type = scs requested, but CardilloCxx was built without SCS (configure with -DCARDILLO_WITH_SCS=ON)");
 #endif
     } else if (cfg.solver == config::SolverType::Condensed) {
         m_solver = std::make_unique<CondensedSolver>(*m_dyn, m_cfg);

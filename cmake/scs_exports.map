@@ -1,0 +1,14 @@
+/* Linker version script for SCS's libscsdir: export only the public SCS API (include/scs.h) and
+   keep SCS's vendored AMD/QDLDL and internal _scs_* symbols local (see src/CMakeLists.txt). */
+{
+  global:
+    scs;
+    scs_init;
+    scs_update;
+    scs_solve;
+    scs_finish;
+    scs_set_default_settings;
+    scs_version;
+  local:
+    *;
+};

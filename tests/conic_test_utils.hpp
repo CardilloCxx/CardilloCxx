@@ -2,8 +2,8 @@
 
 // Shared helpers for the conic-solver tests/benchmarks: a solver-independent problem description in
 // the stacked form used by ClarabelAssembler (min 1/2 x'Px + q'x, A x + s = b, s in
-// {0}^p x R+^l x Q^q1 x ...), reference solves with Clarabel and QOCO on exactly the same data,
-// and KKT residuals.
+// {0}^p x R+^l x Q^q1 x ...), reference solves with Clarabel, QOCO, ConicXX and (when built) MOSEK
+// and SCS on exactly the same data, and KKT residuals.
 
 #include <qoco.h>
 #include <Eigen/SparseCore>
@@ -11,17 +11,32 @@
 #include <chrono>
 #include <clarabel.hpp>
 #include <cmath>
+#include <conicxx/solver.h>
 #include <limits>
 #include <random>
 #include <vector>
 
+#ifdef CARDILLO_HAVE_MOSEK
 #include "physics/solver/mosek_backend.hpp"
+#endif
+#ifdef CARDILLO_HAVE_SCS
+#include "physics/solver/scs/scs_backend.hpp"
+#endif
 
 namespace conic_test {
 
 using SpMat = Eigen::SparseMatrix<double, Eigen::ColMajor, int>;
 using Vec = Eigen::VectorXd;
-using cardillo::solver::mosek::ConeDims;
+
+#ifdef CARDILLO_HAVE_MOSEK
+using cardillo::solver::mosek::ConeDims;  // passed straight into the MOSEK backend by mosek_tests/_benchmark
+#else
+struct ConeDims {
+    int zero{0};
+    int nonneg{0};
+    std::vector<int> soc;
+};
+#endif
 
 struct Problem {
     SpMat P;  // full symmetric
@@ -48,13 +63,13 @@ inline std::vector<clarabel::SupportedConeT<double>> clarabelCones(const ConeDim
     return cones;
 }
 
-inline Result solveClarabel(const Problem& pr) {
+inline Result solveClarabel(const Problem& pr, double tol = 1e-9) {
     const double t0 = now();
     auto settings = clarabel::DefaultSettings<double>::default_settings();
     settings.verbose = false;
-    settings.tol_gap_abs = 1e-9;
-    settings.tol_gap_rel = 1e-9;
-    settings.tol_feas = 1e-9;
+    settings.tol_gap_abs = tol;
+    settings.tol_gap_rel = tol;
+    settings.tol_feas = tol;
     SpMat Pu = pr.P.triangularView<Eigen::Upper>();
     Pu.makeCompressed();
     Vec q = pr.q, b = pr.b;
@@ -71,7 +86,7 @@ inline Result solveClarabel(const Problem& pr) {
 }
 
 // QOCO wants A/b (equalities) and G/h (cones) separately and P as upper triangle.
-inline Result solveQoco(const Problem& pr) {
+inline Result solveQoco(const Problem& pr, double tol = 1e-9) {
     const double t0 = now();
     const int n = static_cast<int>(pr.P.cols());
     const int p = pr.dims.zero;
@@ -93,8 +108,8 @@ inline Result solveQoco(const Problem& pr) {
     QOCOSettings settings;
     set_default_settings(&settings);
     settings.verbose = 0;
-    settings.abstol = 1e-9;
-    settings.reltol = 1e-9;
+    settings.abstol = tol;
+    settings.reltol = tol;
     QOCOSolver* solver = static_cast<QOCOSolver*>(malloc(sizeof(QOCOSolver)));
     Result r;
     if (qoco_setup(solver, n, m, p, Pu.nonZeros() ? &Pq : nullptr, c.data(), p ? &Aq : nullptr, p ? b.data() : nullptr, m ? &Gq : nullptr, m ? h.data() : nullptr, pr.dims.nonneg,
@@ -115,6 +130,31 @@ inline Result solveQoco(const Problem& pr) {
     return r;
 }
 
+inline Result solveConicxx(const Problem& pr, double tol = 1e-9) {
+    const double t0 = now();
+    conicxx::ConeSpec spec;
+    spec.zero_dim = pr.dims.zero;
+    spec.nonneg_dim = pr.dims.nonneg;
+    spec.soc_dims.assign(pr.dims.soc.begin(), pr.dims.soc.end());
+    conicxx::Settings settings;
+    settings.tol_feas = tol;
+    settings.tol_gap_abs = tol;
+    settings.tol_gap_rel = tol;
+    SpMat Pu = pr.P.triangularView<Eigen::Upper>();
+    Pu.makeCompressed();
+    conicxx::Solver solver;
+    Result r;
+    if (!solver.setup(Pu, pr.q, pr.A, pr.b, spec, settings)) return r;
+    const auto& sol = solver.solve();
+    r.ok = sol.ok();
+    r.x = sol.x;
+    r.z = sol.z;
+    r.obj = sol.objective;
+    r.seconds = now() - t0;
+    return r;
+}
+
+#ifdef CARDILLO_HAVE_MOSEK
 inline Result solveMosek(cardillo::solver::mosek::ConicSolver& solver, const Problem& pr) {
     const double t0 = now();
     Result r;
@@ -138,6 +178,41 @@ inline Result solveMosek(const Problem& pr) {
     cardillo::solver::mosek::ConicSolver solver;
     return solveMosek(solver, pr);
 }
+#endif
+
+#ifdef CARDILLO_HAVE_SCS
+inline cardillo::solver::scs::ConeDims scsDims(const ConeDims& d) {
+    cardillo::solver::scs::ConeDims out;
+    out.zero = d.zero;
+    out.nonneg = d.nonneg;
+    out.soc = d.soc;
+    return out;
+}
+
+/// SCS (direct backend) solve; with `warm` the iterate (x, y = z, s) is used as a warm start.
+inline Result solveScs(const Problem& pr, const cardillo::solver::scs::Settings& settings, const Result* warm = nullptr, cardillo::solver::scs::Info* info_out = nullptr) {
+    namespace scs = cardillo::solver::scs;
+    const double t0 = now();
+    scs::Solver solver;
+    Result r;
+    if (!solver.setup(pr.P, pr.q, pr.A, pr.b, scsDims(pr.dims), settings)) return r;
+    if (warm) {
+        solver.x() = warm->x;
+        solver.y() = warm->z;
+        solver.s() = pr.b - pr.A * warm->x;
+        solver.s().head(pr.dims.zero).setZero();
+        scs::projectOntoCones(solver.s(), scsDims(pr.dims));
+    }
+    const auto status = solver.solve(warm != nullptr);
+    r.ok = scs::isAcceptable(status);
+    r.x = solver.x();
+    r.z = solver.y();
+    r.obj = 0.5 * r.x.dot(pr.P * r.x) + pr.q.dot(r.x);
+    r.seconds = now() - t0;
+    if (info_out) *info_out = solver.info();
+    return r;
+}
+#endif
 
 struct Residuals {
     double stationarity{0};  // ||P x + q + A^T z||_inf
@@ -172,6 +247,20 @@ inline Residuals residuals(const Problem& pr, const Vec& x, const Vec& z) {
     r.complementarity = m ? std::abs(s.tail(m).dot(z.tail(m))) : 0.0;
     r.objective = 0.5 * x.dot(pr.P * x) + pr.q.dot(x);
     return r;
+}
+
+/// max(stationarity, equality, primal/dual cone violation, complementarity) / max(1, ||q||, ||b||).
+inline double relKkt(const Problem& pr, const Result& r) {
+    if (!r.ok) return std::numeric_limits<double>::quiet_NaN();
+    const Residuals res = residuals(pr, r.x, r.z);
+    const double scale = std::max({1.0, pr.q.lpNorm<Eigen::Infinity>(), pr.b.lpNorm<Eigen::Infinity>()});
+    return std::max({res.stationarity, res.equality, res.primal_cone, res.dual_cone, res.complementarity}) / scale;
+}
+
+/// ||x - x_ref||_inf / max(1, ||x_ref||_inf).
+inline double relDx(const Result& r, const Result& ref) {
+    if (!r.ok || !ref.ok) return std::numeric_limits<double>::quiet_NaN();
+    return (r.x - ref.x).lpNorm<Eigen::Infinity>() / std::max(1.0, ref.x.lpNorm<Eigen::Infinity>());
 }
 
 /**

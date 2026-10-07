@@ -54,6 +54,10 @@ endif()
 # part of this repository -- see cmake/FindMOSEK.cmake for how the installation is located.
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 option(CARDILLO_WITH_MOSEK "Enable the MOSEK solver backend (requires a MOSEK installation and license)" OFF)
+# Optional SCS backend (solver.type = scs): the ADMM conic solver from github.com/cvxgrp/scs, fetched
+# and built from source; only its direct (AMD + QDLDL) linear-system backend is used.
+option(CARDILLO_WITH_SCS "Enable the SCS solver backend (fetched and built from source)" OFF)
+option(CARDILLO_SCS_OPENMP "Build SCS with its OpenMP-parallel cone projections (off: serial, like the other conic backends)" OFF)
 option(CARDILLO_BUILD_TESTS "Build the unit tests and solver benchmarks under tests/" OFF)
 
 add_subdirectory(src)

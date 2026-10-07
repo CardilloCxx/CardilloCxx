@@ -75,6 +75,10 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
      - Interior-point via the commercial MOSEK conic optimizer; same problem
        as ``clarabel``. Optional, needs ``-DCARDILLO_WITH_MOSEK=ON`` and a
        MOSEK license.
+   * - ``scs``
+     - :doc:`scs` (:cpp:class:`ScsSolver <cardillo::solver::ScsSolver>`)
+     - First-order (ADMM) conic solver on the same problem as ``clarabel``;
+       warm-started across steps. Optional, needs ``-DCARDILLO_WITH_SCS=ON``.
 
 .. toctree::
    :hidden:
@@ -84,3 +88,4 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
    condensed
    conjugate_gradient
    interior_point
+   scs

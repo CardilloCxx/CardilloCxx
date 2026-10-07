@@ -7,7 +7,7 @@
 namespace cardillo::config {
 
 enum class IntegratorType { Moreau };
-enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel, Conicxx, Condensed, Mosek };
+enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel, Conicxx, Condensed, Mosek, Scs };
 
 struct Config {
     // Simulation settings
@@ -204,6 +204,28 @@ struct Config {
     real_t mosek_max_time{(real_t)-1};     // mosek.max_time [s] (MSK_DPAR_OPTIMIZER_MAX_TIME)
     std::string mosek_presolve{"default"};  // mosek.presolve [default, on, off, free]
     bool mosek_scaling{true};            // mosek.scaling -- diagonal pre-scaling of the problem (see mosek::ConicSolver)
+
+    // SCS-only (solver.type = scs, requires -DCARDILLO_WITH_SCS=ON). Negative numeric values keep
+    // SCS's own defaults (scs_set_default_settings). SCS is a first-order (ADMM) solver, so its
+    // tolerances are not comparable one-to-one with the interior-point ones; negative eps values fall
+    // back to pj.tol_abs / pj.tol_rel like the other conic backends.
+    real_t scs_eps_abs{(real_t)-1};              // scs.eps_abs
+    real_t scs_eps_rel{(real_t)-1};              // scs.eps_rel
+    real_t scs_eps_infeas{(real_t)-1};           // scs.eps_infeas
+    int scs_max_iters{-1};                       // scs.max_iters
+    real_t scs_time_limit_secs{(real_t)-1};      // scs.time_limit_secs
+    real_t scs_alpha{(real_t)-1};                // scs.alpha (Douglas-Rachford relaxation)
+    real_t scs_scale{(real_t)-1};                // scs.scale (initial dual scale)
+    real_t scs_rho_x{(real_t)-1};                // scs.rho_x
+    int scs_acceleration_lookback{-1};           // scs.acceleration_lookback (0 disables Anderson acceleration)
+    int scs_acceleration_interval{-1};           // scs.acceleration_interval
+    bool scs_adaptive_scale{true};               // scs.adaptive_scale
+    bool scs_normalize{true};                    // scs.normalize (data equilibration)
+    bool scs_warm_start{true};                   // scs.warm_start -- x from v_old/Lambda, y from the tracked contact impulses
+    bool scs_carry_scale{true};                  // scs.carry_scale -- start from the previous step's final adapted scale
+    std::string scs_stats_csv{""};               // scs.stats_csv -- per-step SCS statistics (empty = off)
+    std::string scs_dump_dir{""};                // scs.dump_dir -- write each step's cone program + warm start (see tests/conic_replay.cpp)
+    int scs_dump_every{1};                       // scs.dump_every -- dump every N-th step
 
     // ConicXX-only: unlike QOCO/Clarabel it can reuse its KKT factorization and
     // warm-start its iterate across steps when the active contact set hasn't

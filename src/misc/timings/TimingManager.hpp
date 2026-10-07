@@ -51,6 +51,10 @@ class TimingManager {
         MosekUpdate,
         MosekSolve,
         MosekExtract,
+        ScsAssembly,
+        ScsSetup,
+        ScsSolve,
+        ScsExtract,
         OutputWrite,
         DynamicsAssembler_RefreshState,
         CondensedSetup,
@@ -306,6 +310,14 @@ class TimingManager {
                 return "MOSEK Solve";
             case TimerId::MosekExtract:
                 return "MOSEK Extract";
+            case TimerId::ScsAssembly:
+                return "SCS Assembly";
+            case TimerId::ScsSetup:
+                return "SCS Setup (init + factorization)";
+            case TimerId::ScsSolve:
+                return "SCS Solve";
+            case TimerId::ScsExtract:
+                return "SCS Extract";
             case TimerId::DisableCollisionPairs:
                 return "Disable Collision Pairs";
             case TimerId::DynamicsAssembler_RefreshState:

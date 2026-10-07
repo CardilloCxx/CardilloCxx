@@ -80,7 +80,17 @@ FetchContent_MakeAvailable(Eigen3)
 
 add_library(eigen3 INTERFACE IMPORTED GLOBAL)
 target_link_libraries(eigen3 INTERFACE eigen)
-FetchContent_MakeAvailable(entt clarabel qoco coal)
+# Clarabel.cpp passes --release to cargo only if CMAKE_BUILD_TYPE matches "Release", so this
+# project's default RelWithDebInfo (and MinSizeRel) silently built Clarabel's Rust core in cargo's
+# unoptimized debug profile (~25-60x slower solves). Present optimized C/C++ build types as Release
+# to its CMake; Debug keeps the debug profile.
+set(CARDILLO_SAVED_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+if(CMAKE_BUILD_TYPE MATCHES "^(RelWithDebInfo|MinSizeRel)$")
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+FetchContent_MakeAvailable(clarabel)
+set(CMAKE_BUILD_TYPE "${CARDILLO_SAVED_BUILD_TYPE}")
+FetchContent_MakeAvailable(entt qoco coal)
 
 
 # QOCO vendors its own copy of QDLDL under lib/qdldl (plain add_subdirectory,
@@ -138,6 +148,9 @@ file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 if(NOT CARDILLO_WITH_MOSEK)
     list(FILTER CARDILLO_SOURCES EXCLUDE REGEX "/physics/solver/mosek_[^/]*\\.cpp$")
 endif()
+if(NOT CARDILLO_WITH_SCS)
+    list(FILTER CARDILLO_SOURCES EXCLUDE REGEX "/physics/solver/scs/[^/]*\\.cpp$")
+endif()
 add_library(cardillo SHARED ${CARDILLO_SOURCES})
 
 
@@ -194,6 +207,62 @@ if(CARDILLO_WITH_MOSEK)
     target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_MOSEK=1)
 endif()
 
+# --- SCS (optional) ---
+# Only the direct backend (scsdir: AMD ordering + QDLDL LDL' of the quasi-definite KKT matrix) is
+# used. SCS vendors its own AMD and QDLDL under their original, unprefixed symbol names, and both
+# already exist in this process: libcardillo exports ConicXX's QDLDL (QDLDL_factor, ...) and libqoco
+# exports QOCO's AMD (amd_order, ...). scsdir is therefore built as its own shared library that
+# exports nothing but the public scs_* API (cmake/scs_exports.map): its internal QDLDL/AMD calls bind
+# to its own copies, and it cannot interpose on ConicXX's or QOCO's. scs_int = int and
+# scs_float = double (DLONG/SFLOAT off) are additionally checked by static_asserts in the adapter.
+if(CARDILLO_WITH_SCS)
+    set(BUILD_SHARED_LIBS ON)
+    # SCS compiles Anderson acceleration only with USE_LAPACK (src/aa.c); without it AA is silently
+    # disabled, which costs ADMM a large factor in iterations. Any BLAS/LAPACK will do (AA only needs
+    # small dense least-squares solves).
+    find_package(LAPACK QUIET)
+    if(LAPACK_FOUND)
+        set(USE_LAPACK ON)
+    else()
+        set(USE_LAPACK OFF)
+        message(WARNING "CARDILLO_WITH_SCS: no BLAS/LAPACK found; SCS is built without Anderson acceleration (expect many more iterations)")
+    endif()
+    set(DLONG OFF)
+    set(SFLOAT OFF)
+    # SCS's cmake/AddUninstallTarget.cmake defines a global `uninstall` target, which coal already
+    # defines; its own include guard skips it.
+    set(__ADD_UNINSTALL_TARGET_INCLUDED TRUE)
+    # SCS links OpenMP::OpenMP_C (and so compiles its `omp parallel for` loops over the cones and in
+    # a sparse mat-vec) whenever OpenMP_C_FOUND is set, independent of its own USE_OPENMP, and our
+    # find_package(OpenMP) above sets it. Fork-joining a full thread team per ADMM iteration over
+    # 3-dimensional cones made small scenes ~7x slower in practice, so SCS is built serial unless
+    # CARDILLO_SCS_OPENMP is on.
+    set(CARDILLO_SAVED_OpenMP_C_FOUND "${OpenMP_C_FOUND}")
+    if(NOT CARDILLO_SCS_OPENMP)
+        set(OpenMP_C_FOUND FALSE)
+    endif()
+    FetchContent_Declare(scs GIT_REPOSITORY https://github.com/cvxgrp/scs.git GIT_TAG 3.3.1 GIT_SHALLOW TRUE)
+    FetchContent_MakeAvailable(scs)
+    unset(BUILD_SHARED_LIBS)
+    unset(USE_LAPACK)
+    unset(DLONG)
+    unset(SFLOAT)
+    unset(__ADD_UNINSTALL_TARGET_INCLUDED)
+    set(OpenMP_C_FOUND "${CARDILLO_SAVED_OpenMP_C_FOUND}")
+    # SCS always defines its indirect (CG) and, with LAPACK, dense libraries; only scsdir is used.
+    foreach(_scs_unused scsindir scsdense)
+        if(TARGET ${_scs_unused})
+            set_target_properties(${_scs_unused} PROPERTIES EXCLUDE_FROM_ALL ON)
+        endif()
+    endforeach()
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_options(scsdir PRIVATE "LINKER:--version-script=${CMAKE_CURRENT_SOURCE_DIR}/../cmake/scs_exports.map")
+    endif()
+    # (macOS: two-level namespaces already bind scsdir's internal references to its own copies.)
+    target_link_libraries(cardillo PUBLIC scs::scsdir)
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_SCS=1)
+endif()
+
 # --- 4. QOCO-Specific Integration ---
 # Since QOCO requires specific path definitions, we derive them from the FetchContent locations
 set(QOCO_CPU_LIB_DIR "${qoco_BINARY_DIR}/lib")
@@ -210,8 +279,9 @@ endif()
 
 target_compile_definitions(cardillo PUBLIC 
     HAVE_QOCO=1
-    QOCO_CPU_LIB_PATH="${QOCO_CPU_LIB_DIR}/libqoco.so"
-    QOCO_CUDA_LIB_PATH="${QOCO_CPU_LIB_DIR}/libqoco.so" 
+    # The shared library's actual build location (it is not under ${QOCO_CPU_LIB_DIR}).
+    QOCO_CPU_LIB_PATH="$<TARGET_FILE:qoco>"
+    QOCO_CUDA_LIB_PATH="$<TARGET_FILE:qoco>" 
 )
 
 # --- 5. Clean Binary Properties ---

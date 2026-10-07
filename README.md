@@ -120,6 +120,21 @@ cmake -S . -B build -DCARDILLO_WITH_MOSEK=ON   # add -DMOSEK_ROOT=<dir> for non-
 installation or its `tools/platform/<platform>` directory. Tests and the solver benchmark are built
 with `-DCARDILLO_BUILD_TESTS=ON` (`ctest --test-dir build`, `./build/tests/mosek_benchmark`).
 
+## Optional SCS backend
+
+`solver.type = scs` uses the ADMM conic solver [SCS](https://github.com/cvxgrp/scs) (direct
+AMD + QDLDL backend) on the same problem as Clarabel. It is off by default and fetched and built
+from source when enabled; install a BLAS/LAPACK (e.g. `liblapack-dev`) so that SCS's Anderson
+acceleration is available:
+
+```bash
+cmake -S . -B build -DCARDILLO_WITH_SCS=ON -DCARDILLO_BUILD_TESTS=ON
+ctest --test-dir build                          # scs_tests
+python3 tools/conic_backend_benchmark.py --out bench_out --scenes chain jenga   # compare conic backends
+```
+
+See `docs/chapters/solvers/scs.rst` for the `scs.*` config keys.
+
 ## Running examples
 
 ```bash
