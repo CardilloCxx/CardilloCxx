@@ -30,6 +30,7 @@ namespace physics {
 namespace pipeline {
 class PhysicsPipeline;
 }
+class DynamicsAssembler;
 }  // namespace physics
 }  // namespace cardillo
 
@@ -210,6 +211,9 @@ class CARDILLO_API PhysicsEngine {
     const World& world() const;
     /// Query whether the pipeline reached the configured simulation end time.
     bool isFinished() const;
+    /// Read-only access to the dynamics assembler of the last step (contacts, Jacobians, impulses);
+    /// intended for diagnostics and tests.
+    const physics::DynamicsAssembler& dynamicsAssembler() const;
 
    private:
     std::unique_ptr<World> m_world;

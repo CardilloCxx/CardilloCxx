@@ -109,6 +109,9 @@ struct Config {
     bool pj_anderson{false};  // pj.anderson
     int pj_anderson_m{2};     // pj.anderson_m (history window size, >= 1; 2 was the best of {1,2,3,5,8,12,20} across all three benchmark scenes -- see the report)
     bool pj_warmstart{true};  // pj.warmstart (enable warmstart & cache)
+    // pj.rdiag_true_delassus: false (default) uses per-row step lengths alpha/D_ii (with a common
+    // value alpha/mean(D_t1t1, D_t2t2) for both tangential rows of a frictional contact); true uses
+    // the "split" step lengths (1/D_NN, 1/lambda_max of the tangential block) per frictional contact.
     bool pj_rdiag_true_delassus{false};                // pj.rdiag_true_delassus
     std::string pj_convergence_csv_dir{""};            // pj.convergence_csv_dir (empty to disable)
 
@@ -129,20 +132,14 @@ struct Config {
     // (fc3d_AlartCurnier_functions.c) respectively -- checked directly against that codebase. See
     // CONDENSED_SOLVER_REPORT.md for a head-to-head comparison before switching a scene to "full".
     std::string condensed_newton_rho_strategy{"split"}; // condensed.newton_rho_strategy: split | full
-    // How GiiInv (the plain, non-Newton per-block preconditioner used by every sweep mode's
-    // fallback/default path) is derived for ContactFrictional (3-row, normal+2-tangential) blocks
-    // only -- "diagonal" (default) is the existing per-DOF-independent inverse
-    // (1/Gii(i,i) each), deliberately ignoring intra-block coupling (matches PgsAssembler::
-    // DinvDiag(); using the FULL block inverse here was tried and found to diverge on
-    // strongly-coupled multi-contact systems like domino -- see condensed_assembler.cpp's
-    // updateCompliance()). "split"/"full" instead scale the diagonal by the SAME closed-form
-    // rho estimate (misc/contact_rho.hpp) already computed for the Newton local solve --
-    // strictly more conservative than the full inverse (1/lambda_max <= 1/any diagonal entry for
-    // a real symmetric matrix), while still capturing tangential-tangential (and, for "full",
-    // normal-tangential) coupling the plain diagonal ignores entirely. Computed once per step in
-    // updateCompliance() (Gii is fixed for the whole step's sweep), not per sweep iteration. See
-    // CONDENSED_SOLVER_REPORT.md for a head-to-head comparison before switching a scene off
-    // "diagonal".
+    // How the step lengths (rhoN, rhoT, rhoT) of the plain projection update (GiiInv, used by every
+    // sweep mode's default/fallback path) are derived from the local Delassus block of
+    // ContactFrictional blocks (misc/contact_rho.hpp): "diagonal" (default) rhoN = 1/Gii(0,0),
+    // rhoT = 2/(Gii(1,1)+Gii(2,2)); "split" rhoT = 1/lambda_max of the tangential 2x2 block; "full" a
+    // single 1/lambda_max of the whole block. In all cases both tangential rows share one step
+    // length and normal and tangential rows are not coupled -- anything else changes the fixed point
+    // of the projection, i.e. the converged impulses violate Coulomb's law (friction not opposite to
+    // the slip velocity). Spring/damper rows always use the per-row diagonal 1/(Gii(i,i)+c_i).
     std::string condensed_projection_rho_strategy{"diagonal"}; // condensed.projection_rho_strategy: diagonal | split | full
     int condensed_chaotic_reshuffle_interval{50};        // condensed.chaotic_reshuffle_interval (sweeps between reshuffles)
     unsigned condensed_chaotic_seed{12345u};             // condensed.chaotic_seed

@@ -24,6 +24,12 @@ Vector3r computeContactRho(const Matrix33r& G, ContactRhoStrategy strategy, real
     if (G(0, 0) <= eps) return Vector3r((real_t)-1, (real_t)-1, (real_t)-1);
     const real_t rhoN = (real_t)1 / G(0, 0);
 
+    if (strategy == ContactRhoStrategy::IsotropicDiagonal) {
+        const real_t meanT = (real_t)0.5 * (G(1, 1) + G(2, 2));
+        const real_t rhoT = (meanT > eps) ? (real_t)1 / meanT : (real_t)-1;
+        return Vector3r(rhoN, rhoT, rhoT);
+    }
+
     // Closed-form (quadratic-formula) largest eigenvalue of the symmetrized 2x2 tangential block
     // -- already exact for a symmetric input, so routing this through a generic
     // SelfAdjointEigenSolver would add setup overhead for no accuracy/robustness gain. `b` is

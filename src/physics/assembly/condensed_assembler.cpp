@@ -315,17 +315,18 @@ void CondensedAssembler::updateCompliance(CondensedTopology& topo, real_t dt, re
         // // TOOD: Use ldlt here if implicit gyroscopic terms are not used or we can ensure that this is symmetric!
         // blk.GiiInv = tmp.partialPivLu().inverse();
 
-        // condensed.projection_rho_strategy (default "diagonal", a no-op here): for
-        // ContactFrictional blocks only (dim==3, contacts carry zero compliance -- see above --
-        // so Gii alone is what matters), replace the per-DOF-independent diagonal above with the
-        // SAME closed-form rho estimate already used by the Newton local solve
-        // (misc/contact_rho.hpp) -- strictly more conservative than the full inverse (never
-        // triggers the divergence noted above) while still capturing tangential-tangential (and,
-        // for "full", normal-tangential) coupling the plain diagonal ignores. Falls back to the
-        // diagonal above if the block's own Gii is (near-)singular for this estimate.
-        if (blk.kind == RowBlock::Kind::ContactFrictional && m_cfg.condensed_projection_rho_strategy != "diagonal") {
-            const auto strategy = (m_cfg.condensed_projection_rho_strategy == "full") ? misc::ContactRhoStrategy::FullSpectral
-                                                                                       : misc::ContactRhoStrategy::Split;
+        // Frictional contacts: the two tangential rows must share one step length, otherwise the
+        // fixed point of the projection satisfies a distorted friction law (friction impulse not
+        // opposite to the slip velocity; see misc/contact_rho.hpp). condensed.projection_rho_strategy
+        // selects how the (rhoN, rhoT, rhoT) step lengths are derived from Gii: "diagonal"
+        // (default) uses rhoT = 2/(Gii(1,1)+Gii(2,2)), "split" rhoT = 1/lambda_max of the tangential
+        // block, "full" a single 1/lambda_max of the whole block. Contacts carry no compliance, so
+        // Gii alone is what matters. Falls back to the per-row diagonal above only if Gii is
+        // (near-)singular for this estimate.
+        if (blk.kind == RowBlock::Kind::ContactFrictional) {
+            misc::ContactRhoStrategy strategy = misc::ContactRhoStrategy::IsotropicDiagonal;
+            if (m_cfg.condensed_projection_rho_strategy == "split") strategy = misc::ContactRhoStrategy::Split;
+            if (m_cfg.condensed_projection_rho_strategy == "full") strategy = misc::ContactRhoStrategy::FullSpectral;
             const Vector3r rho = misc::computeContactRho(blk.Gii, strategy);
             if ((rho.array() > (real_t)0).all()) {
                 blk.GiiInv.setZero();
