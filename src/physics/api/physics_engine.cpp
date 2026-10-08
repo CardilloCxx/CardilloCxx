@@ -45,6 +45,11 @@ bool PhysicsEngine::isFinished() const {
     return m_pipeline ? m_pipeline->isFinished() : true;
 }
 
+const physics::DynamicsAssembler& PhysicsEngine::dynamicsAssembler() const {
+    if (!m_pipeline) throw std::runtime_error("PhysicsEngine::dynamicsAssembler: no pipeline");
+    return m_pipeline->dynamicsAssembler();
+}
+
 World& PhysicsEngine::world() {
     if (m_world) return *m_world;
     throw std::runtime_error("PhysicsEngine::world(): world not initialized");
