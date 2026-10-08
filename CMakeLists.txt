@@ -52,4 +52,10 @@ endif()
 
 add_subdirectory(src)
 add_subdirectory(examples)
+
+option(CARDILLO_BUILD_TESTS "Build unit tests (ctest)" ON)
+if(CARDILLO_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 # add_subdirectory(frontend)
