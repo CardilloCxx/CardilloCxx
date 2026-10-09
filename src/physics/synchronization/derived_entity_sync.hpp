@@ -10,7 +10,8 @@ namespace physics {
 class DerivedEntitySync {
    public:
     static void updateBeamElementEntity(World& world, entt::entity e);
-    static void updateEntities(World& world, real_t dt);
+    // evalOffset: see Trajectory::update().
+    static void updateEntities(World& world, real_t dt, real_t evalOffset = 0);
 };
 
 }  // namespace physics

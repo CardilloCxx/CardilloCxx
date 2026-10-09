@@ -139,8 +139,9 @@ CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
         resolveBodySide(reg, velOffsets, constraint.a, blk.bodyIndexA, blk.aOff, blk.aDof);
         resolveBodySide(reg, velOffsets, constraint.b, blk.bodyIndexB, blk.bOff, blk.bDof);
 
-        if (blk.aDof > 0) blk.Ja = selectActiveCols(constraint.WgA, c_used).transpose();  // dim x aDof
-        if (blk.bDof > 0) blk.Jb = selectActiveCols(constraint.WgB, c_used).transpose();
+        // Constraint Jacobians are stored with 6 rows (v, omega); a point mass only has the first 3.
+        if (blk.aDof > 0) blk.Ja = selectActiveCols(constraint.WgA, c_used).transpose().leftCols(blk.aDof);  // dim x aDof
+        if (blk.bDof > 0) blk.Jb = selectActiveCols(constraint.WgB, c_used).transpose().leftCols(blk.bDof);
 
         blk.Gii = MatrixXXr::Zero(nSp, nSp);
         if (blk.aDof > 0) {
@@ -179,8 +180,8 @@ CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
         resolveBodySide(reg, velOffsets, constraint.a, blk.bodyIndexA, blk.aOff, blk.aDof);
         resolveBodySide(reg, velOffsets, constraint.b, blk.bodyIndexB, blk.bOff, blk.bDof);
 
-        if (blk.aDof > 0) blk.Ja = selectActiveCols(constraint.WgammaA, a_used).transpose();
-        if (blk.bDof > 0) blk.Jb = selectActiveCols(constraint.WgammaB, a_used).transpose();
+        if (blk.aDof > 0) blk.Ja = selectActiveCols(constraint.WgammaA, a_used).transpose().leftCols(blk.aDof);
+        if (blk.bDof > 0) blk.Jb = selectActiveCols(constraint.WgammaB, a_used).transpose().leftCols(blk.bDof);
 
         blk.Gii = MatrixXXr::Zero(nDa, nDa);
         if (blk.aDof > 0) {
@@ -223,21 +224,22 @@ CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
         resolveBodySide(reg, velOffsets, c.b, blk.bodyIndexB, blk.bOff, blk.bDof);
 
         // Row order matches DynamicsAssembler::rebuildW_(): normal, then tangent1, tangent2.
+        // buildContactRowByDof() returns 6 entries; a point mass only has the first 3.
         // Side A uses s=-1, side B uses s=+1 (same convention as buildContactRowByDof callers there).
         if (aDyn) {
             blk.Ja = MatrixXXr::Zero(dim, blk.aDof);
-            blk.Ja.row(0) = buildContactRowByDof(blk.aDof, c.normal, c.pointA_body, c.normalA_body, (real_t)-1).transpose();
+            blk.Ja.row(0) = buildContactRowByDof(blk.aDof, c.normal, c.pointA_body, c.normalA_body, (real_t)-1).head(blk.aDof).transpose();
             if (dim == 3) {
-                blk.Ja.row(1) = buildContactRowByDof(blk.aDof, c.tangent1, c.pointA_body, c.tangent1A_body, (real_t)-1).transpose();
-                blk.Ja.row(2) = buildContactRowByDof(blk.aDof, c.tangent2, c.pointA_body, c.tangent2A_body, (real_t)-1).transpose();
+                blk.Ja.row(1) = buildContactRowByDof(blk.aDof, c.tangent1, c.pointA_body, c.tangent1A_body, (real_t)-1).head(blk.aDof).transpose();
+                blk.Ja.row(2) = buildContactRowByDof(blk.aDof, c.tangent2, c.pointA_body, c.tangent2A_body, (real_t)-1).head(blk.aDof).transpose();
             }
         }
         if (bDyn) {
             blk.Jb = MatrixXXr::Zero(dim, blk.bDof);
-            blk.Jb.row(0) = buildContactRowByDof(blk.bDof, c.normal, c.pointB_body, c.normalB_body, (real_t)+1).transpose();
+            blk.Jb.row(0) = buildContactRowByDof(blk.bDof, c.normal, c.pointB_body, c.normalB_body, (real_t)+1).head(blk.bDof).transpose();
             if (dim == 3) {
-                blk.Jb.row(1) = buildContactRowByDof(blk.bDof, c.tangent1, c.pointB_body, c.tangent1B_body, (real_t)+1).transpose();
-                blk.Jb.row(2) = buildContactRowByDof(blk.bDof, c.tangent2, c.pointB_body, c.tangent2B_body, (real_t)+1).transpose();
+                blk.Jb.row(1) = buildContactRowByDof(blk.bDof, c.tangent1, c.pointB_body, c.tangent1B_body, (real_t)+1).head(blk.bDof).transpose();
+                blk.Jb.row(2) = buildContactRowByDof(blk.bDof, c.tangent2, c.pointB_body, c.tangent2B_body, (real_t)+1).head(blk.bDof).transpose();
             }
         }
 
@@ -287,9 +289,9 @@ void CondensedAssembler::updateCompliance(CondensedTopology& topo, real_t dt, re
 
     for (auto& blk : topo.blocks) {
         if (blk.kind == RowBlock::Kind::Spring) {
-            blk.complianceDiag = Cdiag.segment(blk.offset, blk.dim) * ((real_t)1 / (theta * dt * dt));
+            blk.complianceDiag = Cdiag.segment(blk.offset, blk.dim) * DynamicsAssembler::springComplianceScale(dt, theta);
         } else if (blk.kind == RowBlock::Kind::Damper) {
-            blk.complianceDiag = Adiag.segment(blk.offset - topo.springRows, blk.dim) * ((real_t)1 / (theta * dt));
+            blk.complianceDiag = Adiag.segment(blk.offset - topo.springRows, blk.dim) * DynamicsAssembler::damperComplianceScale(dt, theta);
         } else {
             blk.complianceDiag = VectorXr::Zero(blk.dim);
         }
@@ -369,14 +371,8 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
     const auto& vn = m_dyn->vVec();
     const auto& MinvDiag = m_dyn->MinvDiag();
     const auto& MDiag = m_dyn->MDiag();
-    const int totalV = m_dyn->numV();
     const int nSprings = topo.springRows;
     const int nDampers = topo.damperRows;
-
-    VectorXr Lambda_g = m_dyn->Lambda_g();
-    if ((int)Lambda_g.size() != nSprings) Lambda_g = VectorXr::Zero(nSprings);
-    VectorXr Lambda_gamma = m_dyn->Lambda_gamma();
-    if ((int)Lambda_gamma.size() != nDampers) Lambda_gamma = VectorXr::Zero(nDampers);
 
     // Implicit gyroscopic forces (moreau_implicit_gyroscopy=true) are represented entirely through
     // the effective Minv used below (WMinvRhsVel) and upstream in buildTopology()/ufree() -- not as
@@ -385,37 +381,18 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
     VectorXr rhs_vel = MDiag.cwiseProduct(vn) + dt * m_dyn->fVecExternal();
     if (!m_cfg.moreau_implicit_gyroscopy) rhs_vel += dt * m_dyn->fVecGyroscopic();
 
-    if (m_cfg.moreau_lambda_theta && (nSprings > 0 || nDampers > 0)) {
-        VectorXr corr = VectorXr::Zero(totalV);
-        for (const auto& blk : topo.blocks) {
-            if (blk.kind == RowBlock::Kind::Spring) {
-                const VectorXr Lg = Lambda_g.segment(blk.offset, blk.dim);
-                if (blk.aDof > 0) corr.segment(blk.aOff, blk.aDof).noalias() += blk.Ja.transpose() * Lg;
-                if (blk.bDof > 0) corr.segment(blk.bOff, blk.bDof).noalias() += blk.Jb.transpose() * Lg;
-            } else if (blk.kind == RowBlock::Kind::Damper) {
-                const VectorXr Lgam = Lambda_gamma.segment(blk.offset - nSprings, blk.dim);
-                if (blk.aDof > 0) corr.segment(blk.aOff, blk.aDof).noalias() += blk.Ja.transpose() * Lgam;
-                if (blk.bDof > 0) corr.segment(blk.bOff, blk.bDof).noalias() += blk.Jb.transpose() * Lgam;
-            }
-        }
-        rhs_vel -= (1.0 - theta) * corr;
-    }
-
     VectorXr restitution = m_dyn->restitutionVec();
 
     if ((restitution.array() != 0.0).any()) {
        std::cerr << "Warning: CondensedAssembler::rhs() does not yet support restitution. Ignoring it." << std::endl;
     }
 
-    const real_t beta = m_dyn->system().config().constraint_bias_factor;
+    const VectorXr springBias = m_dyn->springBias(dt, theta);
+    const VectorXr damperBias = m_dyn->damperBias(dt, theta);
     VectorXr rhs = VectorXr::Zero(topo.numLambda);
 
     for (const auto& blk : topo.blocks) {
         VectorXr seg = VectorXr::Zero(blk.dim);
-
-        VectorXr WvnA_B = VectorXr::Zero(blk.dim);
-        if (blk.aDof > 0) WvnA_B.noalias() += blk.Ja * vn.segment(blk.aOff, blk.aDof);
-        if (blk.bDof > 0) WvnA_B.noalias() += blk.Jb * vn.segment(blk.bOff, blk.bDof);
 
         VectorXr WMinvRhsVel = VectorXr::Zero(blk.dim);
         if (blk.aDof > 0) {
@@ -432,20 +409,9 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
         }
 
         if (blk.kind == RowBlock::Kind::Spring) {
-            const VectorXr Crow = m_dyn->Cdiag().segment(blk.offset, blk.dim);
-            const VectorXr Lg = Lambda_g.segment(blk.offset, blk.dim);
-
-            seg = ((real_t)1 / (theta * dt * dt)) * Crow.cwiseProduct(Lg) + ((1.0 - theta) / theta) * WvnA_B + ((real_t)1 / theta) * m_dyn->C_v_vec().segment(blk.offset, blk.dim);
-
-            if (beta > 0) {
-                const VectorXr gerr = m_dyn->g_error_vec().segment(blk.offset, blk.dim);
-                seg.noalias() += (-Crow.cwiseProduct(Lg) / dt + gerr) * (beta / (dt * theta));
-            }
-            seg.noalias() += WMinvRhsVel;
+            seg = springBias.segment(blk.offset, blk.dim) + WMinvRhsVel;
         } else if (blk.kind == RowBlock::Kind::Damper) {
-            const int dOff = blk.offset - nSprings;
-            seg = ((1.0 - theta) / theta) * WvnA_B + ((real_t)1 / theta) * m_dyn->A_v_vec().segment(dOff, blk.dim);
-            seg.noalias() += WMinvRhsVel;
+            seg = damperBias.segment(blk.offset - nSprings, blk.dim) + WMinvRhsVel;
         } else {
             const int cOff = blk.offset - nSprings - nDampers;
             VectorXr ufreeTerm = VectorXr::Zero(blk.dim);

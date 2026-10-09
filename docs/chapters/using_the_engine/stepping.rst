@@ -111,9 +111,9 @@ next ``step()``:
 
 .. warning::
    Teleporting a body that is connected to other bodies by hard constraints
-   can introduce large position errors. Either mark the structure dirty and
-   let the Baumgarte correction handle it, or rebuild constraints after the
-   move.
+   can introduce large position errors. The position-level force law removes
+   them within one step, which converts them into large velocities; rebuild
+   the constraints after the move to avoid this.
 
 Marking the world dirty
 -----------------------

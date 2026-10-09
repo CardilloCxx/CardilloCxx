@@ -9,14 +9,6 @@ namespace {
 
 constexpr real_t kEps = (real_t)1e-12;
 
-TrajectoryTwist buildTwistFromEcs(const entt::registry& reg, entt::entity e) {
-    Vector3r v = Vector3r::Zero();
-    Vector3r w = Vector3r::Zero();
-    if (reg.any_of<C_LinearVelocity3>(e)) v = reg.get<C_LinearVelocity3>(e).value;
-    if (reg.any_of<C_AngularVelocity3>(e)) w = reg.get<C_AngularVelocity3>(e).value;
-    return {v, w};
-}
-
 void applyPose(World& world, entt::entity e, const TrajectoryPose& pose, bool hasOrientation) {
     world.setPosition(e, pose.first);
     if (hasOrientation) {
@@ -66,55 +58,22 @@ TrajectoryTwist differentiatePose(const TrajectoryPose& prev, const TrajectoryPo
 
 }  // namespace
 
-void Trajectory::update(World& world, real_t dt) {
+void Trajectory::update(World& world, real_t dt, real_t evalOffset) {
     auto& reg = world.ecs();
 
     auto view = reg.view<C_StaticTrajectory>();
     for (auto [e, traj] : view.each()) {
-        if (!reg.valid(e)) continue;
-
-        const bool hasPos = traj.positionFunc.has_value();
-        const bool hasVel = traj.velocityFunc.has_value();
-        if (!hasPos && !hasVel) continue;
+        if (!reg.valid(e) || !traj.positionFunc) continue;
 
         const bool hasOrientation = reg.any_of<C_Orientation>(e);
         const bool hasAngularVelocity = reg.any_of<C_AngularVelocity3>(e);
-
         const real_t t = traj.elapsed;
-        const TrajectoryTwist twist_current = buildTwistFromEcs(reg, e);
 
-        std::optional<TrajectoryPose> pose_cmd;
-        std::optional<TrajectoryTwist> twist_cmd;
+        // Pose at the evaluation time t_n + evalOffset; velocity = mean velocity over the step
+        // [t_n, t_n + dt], derived from the same pose function.
+        applyPose(world, e, traj.positionFunc(t + evalOffset), hasOrientation);
+        if (dt > kEps) applyTwist(world, e, differentiatePose(traj.positionFunc(t), traj.positionFunc(t + dt), dt, hasAngularVelocity), hasAngularVelocity);
 
-        if (hasPos) {
-            pose_cmd = (*traj.positionFunc)(t);
-        }
-        if (hasVel) {
-            twist_cmd = (*traj.velocityFunc)(t);
-        }
-
-        if (hasPos && !hasVel) {
-            if (dt > kEps) {
-                const TrajectoryPose pose_next = (*traj.positionFunc)(t + dt);
-                twist_cmd = differentiatePose(*pose_cmd, pose_next, dt, hasAngularVelocity);
-            } else {
-                twist_cmd = twist_current;
-            }
-        }
-
-        if (hasPos && pose_cmd.has_value()) {
-            applyPose(world, e, *pose_cmd, hasOrientation);
-            traj.previousPosition = *pose_cmd;
-        } else {
-            // Velocity-authoritative trajectories should be integrated by the global integrator.
-            traj.previousPosition.reset();
-        }
-
-        if (twist_cmd.has_value()) {
-            applyTwist(world, e, *twist_cmd, hasAngularVelocity);
-        }
-
-        traj.initialized = true;
         traj.elapsed += std::max((real_t)0, dt);
     }
 }

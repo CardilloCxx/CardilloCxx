@@ -102,13 +102,20 @@ Fields
        and ``scaleKf`` are ignored for torsion/bending.
    * - ``gamma0``
      - ``nullopt``
-     - Optional rest-state translational strain ``γ₀``. When unset the
-       factory initialises it from the relative pose of the two connected
-       segments at creation time (natural configuration).
+     - Optional rest-state dilatation/shear strain ``γ₀`` (unnormalized, i.e.
+       a length, see `Rod model`_). When unset, it is taken from the relative
+       pose of the two connected nodes at creation time (stress-free initial
+       configuration). When set, the **axial** component is an *offset* to the
+       geometric element length (``γ₀,x = γ_geom,x + gamma0.x``, e.g. a negative
+       value prestresses the rod), while the two **shear** components are used
+       as absolute values.
    * - ``kappa0``
      - ``nullopt``
-     - Optional rest-state curvature ``κ₀``. When unset the factory
-       initialises it from the initial segment orientation.
+     - Optional rest-state torsion/curvature ``κ₀`` (unnormalized). When unset,
+       it is taken from the initial relative orientation of the two nodes, so
+       that the initial configuration is stress-free. When set, all three
+       components are absolute; ``Vector3r::Zero()`` makes a straight,
+       untwisted rest state, i.e. a rod built along a curve is prestressed.
    * - ``dampingFactor``
      - ``0``
      - Rayleigh-type damping factor ``d`` applied to all stiffness terms.
@@ -168,6 +175,89 @@ length ``L``:
    \odot \text{scaleKf}
 
 where :math:`G = E / (2(1+\nu))`.
+
+Rod model
+---------
+
+The beam factory realizes the discrete Cosserat rod of Dai et al. (2026), which
+follows from the mixed Petrov--Galerkin Cosserat rod finite element
+formulation of Herrmann et al. at linear interpolation order, with the
+internal virtual work integrated by the midpoint rule and the inertial and
+external virtual work by the trapezoidal rule. The result is a chain of rigid
+**nodes** coupled by six-row compliant **elements** between neighbors; the
+full derivation is given in the accompanying paper (``LaTeX/Breuling2026.tex``,
+section *Discrete Cosserat rod elements*).
+
+**Nodes.** Every node is a rigid body with position :math:`\mathbf r_i`,
+quaternion :math:`\mathbf P_i = (p_0, \mathbf p)` and velocities
+:math:`(\mathbf v_i, \boldsymbol\omega_i)` (inertial linear velocity, body-fixed
+angular velocity), with
+
+.. math::
+
+   \mathrm{Exp}(\mathbf P) = \mathbf 1 + \frac{2}{\|\mathbf P\|^2}\big(p_0\tilde{\mathbf p} + \tilde{\mathbf p}^2\big),
+   \qquad
+   \mathrm{dExp}(\mathbf P) = \frac{2}{\|\mathbf P\|^2}\begin{pmatrix} -\mathbf p & p_0\mathbf 1 - \tilde{\mathbf p}\end{pmatrix},
+   \qquad
+   \dot{\mathbf P} = \tfrac12 \begin{pmatrix} -\mathbf p^\top \\ p_0\mathbf 1 + \tilde{\mathbf p}\end{pmatrix}\boldsymbol\omega .
+
+**Strain measures.** With the mean quaternion
+:math:`\mathbf P^{\mathrm{el}} = \tfrac12(\mathbf P_{i-1} + \mathbf P_i)` of the element
+(not normalized), the code uses the unnormalized strains
+
+.. math::
+
+   \boldsymbol\gamma_i = \mathrm{Exp}(\mathbf P^{\mathrm{el}})^\top(\mathbf r_i - \mathbf r_{i-1}),
+   \qquad
+   \boldsymbol\kappa_i = \mathrm{dExp}(\mathbf P^{\mathrm{el}})(\mathbf P_i - \mathbf P_{i-1}),
+
+i.e. the element length times the dilatation/shear and torsion/curvature
+strains of the paper.
+
+**Compliance law.** Each element contributes the force law
+:math:`\mathbf C\boldsymbol\lambda + \mathbf g = \mathbf 0` with
+:math:`\mathbf g = (\boldsymbol\gamma - \boldsymbol\gamma_0, \boldsymbol\kappa - \boldsymbol\kappa_0)` and
+
+.. math::
+
+   \mathbf C = \mathrm{diag}(1/K_e, 1/K_f) = L\,\mathrm{diag}\Big(\frac{1}{EA}, \frac{1}{GA}, \frac{1}{GA}, \frac{1}{GJ_p}, \frac{1}{EI_y}, \frac{1}{EI_z}\Big).
+
+Infinite stiffnesses (e.g. an inextensible rod) are allowed and turn the
+corresponding rows into perfect constraints. Damping is a viscous law with
+the same directions and damping matrix :math:`d\,\mathbf K`.
+
+**Force directions.** The element uses the force directions of
+the Petrov--Galerkin formulation (paper Eq. (20)), which result from the
+internal virtual work with linearly interpolated *virtual rotations*:
+
+.. math::
+
+   \mathbf W_{i-1} = \begin{pmatrix} -\mathbf A^{\mathrm{el}} & \mathbf 0 \\ -\tfrac12\tilde{\boldsymbol\gamma} & -\mathbf 1 - \tfrac12\tilde{\boldsymbol\kappa}\end{pmatrix},
+   \qquad
+   \mathbf W_{i} = \begin{pmatrix} \mathbf A^{\mathrm{el}} & \mathbf 0 \\ -\tfrac12\tilde{\boldsymbol\gamma} & \mathbf 1 - \tfrac12\tilde{\boldsymbol\kappa}\end{pmatrix}
+
+(rows: :math:`(\mathbf v, \boldsymbol\omega)` of the node, columns: the six
+element rows). They are not the exact Jacobian of :math:`\mathbf g`, but agree
+with it to first order in the relative rotation :math:`\varphi` of the two
+nodes (deviation at most :math:`0.23\,\varphi^2` relative, i.e. about 1 % for
+the 0.2 rad per element of a helix with 30 elements per turn), which is
+verified by ``tests/test_beam_jacobian.cpp``.
+
+**Mass lumping.** Every node is a rigid segment of length :math:`L` (capsule,
+cylinder or cube according to ``section.type``) with mass :math:`\rho A L`
+(``RigidProps::withDensity``) and the inertia of that segment, which contains
+the rotary inertia :math:`\tfrac{1}{12} m L^2` about the bending axes. This
+differs from the trapezoidal lumping of the paper (cross-sectional inertia
+:math:`\rho L\,\mathrm{diag}(J_x, I_y, I_z)`, half a segment at the ends); the
+difference vanishes under mesh refinement.
+
+**Time integration.** Rods are compliant force laws and are therefore
+handled by every solver. The position-level force law is well suited for stiff, thin rods (e.g.
+steel wires): it needs no initial multipliers and does not drift, but its
+numerical damping of resolved modes is weaker than that of a velocity-level
+law, so use ``moreau.theta`` of about 0.7 for highly dynamic
+problems (``moreau.theta = 0.6`` was not sufficient for the ``wilberforce``
+example).
 
 Creating beams
 ---------------

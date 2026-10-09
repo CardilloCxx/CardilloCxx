@@ -61,25 +61,23 @@ public:
         engine.disableCollisionBetween(m_rightRod, arcLeftEnds.first);
         engine.addRigidConstraint(m_rightRod, arcLeftEnds.second);
         engine.disableCollisionBetween(m_rightRod, arcLeftEnds.second);
-    }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        (void)t;
-        // Cancel gravity and prescribe motion for the two rods
-        const real_t v_sep = (real_t)0.5;    // move apart along ±X
-        const real_t omega = (real_t)1.0;    // twist around local Y
-
-        if (m_leftRod != entt::null) {
-            engine.applyForce(m_leftRod, -engine.gravity() * engine.getMass(m_leftRod).diagonal(), Vector3r::Zero());
-            engine.setLinearVelocity(m_leftRod, Vector3r(-(v_sep), 0, 0));
-            engine.setAngularVelocity(m_leftRod, Vector3r(omega, 0, 0));
-        }
-        if (m_rightRod != entt::null) {
-            engine.applyForce(m_rightRod, -engine.gravity() * engine.getMass(m_rightRod).diagonal(), Vector3r::Zero());
-            engine.setLinearVelocity(m_rightRod, Vector3r(+(v_sep), 0, 0));
-            engine.setAngularVelocity(m_rightRod, Vector3r(omega, 0, 0));
+        // Kinematically driven rods: they move apart along -x/+x with 0.5 m/s and rotate with 1 rad/s
+        // about their body x-axis.
+        const real_t v_sep = (real_t)0.5;
+        const real_t omega = (real_t)1.0;
+        for (auto [rod, sign] : {std::pair<entt::entity, real_t>{m_leftRod, (real_t)-1}, {m_rightRod, (real_t)1}}) {
+            const VectorXr pose0 = engine.getPosition(rod);
+            const Vector3r p0 = pose0.head<3>();
+            const Quaternion4r q0 = Quaternion4r(pose0.tail<4>().data());
+            engine.makeStatic(rod);
+            engine.addTrajectory(rod, [=](real_t t) -> TrajectoryPose {
+                return TrajectoryPose{p0 + Vector3r(sign * v_sep * t, 0, 0), q0 * Quaternion4r(Eigen::AngleAxis<real_t>(omega * t, Vector3r::UnitX()))};
+            });
         }
     }
+
+    void updateScene(physics::PhysicsEngine& /*engine*/, real_t /*t*/) override {}
 
     private:
         entt::entity m_leftRod{entt::null};

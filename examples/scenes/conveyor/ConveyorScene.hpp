@@ -116,7 +116,7 @@ class ConveyorScene : public SceneBase {
         createRollers(rollerStart, rollerEnd, rollerSpacing, rollerRadius, rollerHalfLength, (real_t)0.000005);
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
         // Spawn new packages at regular intervals with random shape and initial velocity.
         const real_t spawnInterval = (real_t)0.5;
         if (t >= m_nextSpawnTime) {
@@ -261,12 +261,11 @@ class ConveyorScene : public SceneBase {
             const entt::entity e = m_engine->addRigidBody(physics::CubeShape(slatHalfExtents), rs, slatProps);
             elements.push_back(e);
 
-            m_engine->addTrajectory(e, std::make_optional<std::function<TrajectoryPose(real_t)>>([=](real_t t) -> TrajectoryPose {
-                                        const real_t s = wrapS(s0 + signedSpeed * t);
-                                        const auto [pLocal, qLocal] = sampleSlatPose(s);
-                                        return TrajectoryPose{p0 + R0 * pLocal, state.orientation * qLocal};
-                                    }),
-                                    std::nullopt);
+            m_engine->addTrajectory(e, [=](real_t t) -> TrajectoryPose {
+                const real_t s = wrapS(s0 + signedSpeed * t);
+                const auto [pLocal, qLocal] = sampleSlatPose(s);
+                return TrajectoryPose{p0 + R0 * pLocal, state.orientation * qLocal};
+            });
         }
 
         return elements;

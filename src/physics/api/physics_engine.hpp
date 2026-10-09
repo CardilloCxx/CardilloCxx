@@ -79,6 +79,8 @@ class CARDILLO_API PhysicsEngine {
 
     /// Advance the simulation by the engine's configured time step.
     void step();
+    /// Time step size of step() (sim.dt).
+    real_t timeStep() const { return m_cfg.sim_dt; }
 
     /// Add a linear distance constraint between two entities.
     inline size_t addLinearDistanceConstraint(entt::entity a, entt::entity b, const Vector3r& rA_local = Vector3r::Zero(), const Vector3r& rB_local = Vector3r::Zero(),
@@ -167,10 +169,9 @@ class CARDILLO_API PhysicsEngine {
     void setAngularVelocity(entt::entity e, const Vector3r& w) { m_world->setAngularVelocity(e, w); }
     /// Set velocity directly by force-like state input.
     void setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r& w) { m_world->setVelocityByForce(e, v, w); }
-    /// Attach a time-dependent trajectory callback to an entity.
-    void addTrajectory(entt::entity e, std::optional<std::function<TrajectoryPose(real_t)>> positionFunc, std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc) {
-        m_world->setTrajectory(e, std::move(positionFunc), std::move(velocityFunc));
-    }
+    /// Drive an entity kinematically by a prescribed pose (position, orientation) as a function of
+    /// time. The entity is made static; its velocity is derived from the pose function in every step.
+    void addTrajectory(entt::entity e, std::function<TrajectoryPose(real_t)> positionFunc) { m_world->setTrajectory(e, std::move(positionFunc)); }
     /// Attach a periodic spline trajectory to an entity.
     template <class TSpline, std::enable_if_t<std::is_base_of_v<misc::SplinePattern, TSpline>, int> = 0>
     void addTrajectory(entt::entity e, const TSpline& spline, real_t period) {
@@ -182,8 +183,7 @@ class CARDILLO_API PhysicsEngine {
                 const real_t phase = std::fmod(std::max(t, (real_t)0), safePeriod) / safePeriod;
                 const auto sample = splineCopy->sample(phase);
                 return {sample.position, Quaternion4r::Identity()};
-            },
-            std::nullopt);
+            });
     }
     /// Remove an entity trajectory.
     void removeTrajectory(entt::entity e) { m_world->removeTrajectory(e); }

@@ -551,7 +551,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     // hand-tuned pj.alpha. Measures the raw spectral radius at alpha=1 (rho1), then picks alpha so
     // the resulting operator's radius lands near condensed_auto_alpha_target_rho, using the
     // empirically-confirmed linear relationship rho(alpha) ~= alpha*(rho1+1) - 1 for alpha large
-    // enough to be dominated by the largest eigenvalue (see CONDENSED_SOLVER_REPORT.md). Overrides
+    // enough to be dominated by the largest eigenvalue. Overrides
     // `alpha` for every use below, including the Chebyshev estimate itself if also enabled.
     if (m_cfg.condensed_auto_alpha) {
         auto sc_autoalpha = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSetup);
@@ -796,7 +796,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
             // err_k/err_{k-1} -> rho asymptotically. These sweeps are real solve work, not thrown
             // away (lambda/u_corr end the warmup already partway converged), and the estimate
             // reflects THIS step's actual active set, not a linearized approximation of it.
-            // NOTE (see CONDENSED_SOLVER_REPORT.md): tracing this per-iteration on domino found the
+            // NOTE: tracing this per-iteration on domino found the
             // observed ratio does NOT settle to a stable value even over 20 iterations -- it drifts
             // upward from ~0.3 to ~0.9 and transiently EXCEEDS 1 (residual growing) before this
             // warmup budget runs out, for a genuinely nonsmooth reason (the active contact set is

@@ -24,36 +24,20 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) cons
     const int nContacts = m_dyn->numContactRows();
     const int nLambda = nSprings + nDampers + nContacts;
 
-    VectorXr Lambda_g = m_dyn->Lambda_g();
-    if ((int)Lambda_g.size() != nSprings) Lambda_g = VectorXr::Zero(nSprings);
-    VectorXr Lambda_gamma = m_dyn->Lambda_gamma();
-    if ((int)Lambda_gamma.size() != nDampers) Lambda_gamma = VectorXr::Zero(nDampers);
-
     VectorXr rhs_vel = M_diag.cwiseProduct(vn) + dt * m_dyn->fVecExternal();
     if (!m_cfg.moreau_implicit_gyroscopy)
         rhs_vel += dt * m_dyn->fVecGyroscopic();
     else
         std::cerr << "PgsAssembler::rhs: Warning: Gyroscopic forces are treated implicitly, not implemented in PGS assembler rhs\n";
 
-    if (m_cfg.moreau_lambda_theta && (nSprings > 0 || nDampers > 0)) {
-        VectorXr corr = VectorXr::Zero(totalV);
-        if (nSprings > 0) corr.noalias() += Wg.transpose() * Lambda_g;
-        if (nDampers > 0) corr.noalias() += Wgamma.transpose() * Lambda_gamma;
-        rhs_vel -= (1.0 - theta) * corr;
-    }
-
     VectorXr rhs = VectorXr::Zero(nLambda);
     if (nSprings > 0) {
-        rhs.head(nSprings) = +(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) + ((1.0 - theta) / theta) * (Wg * vn) + (1.0 / theta) * m_dyn->C_v_vec();
-
-        auto beta = m_dyn->system().config().constraint_bias_factor;
-        if (beta > 0) rhs.head(nSprings).noalias() += (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()) * (beta / (dt * theta));
-
+        rhs.head(nSprings) = m_dyn->springBias(dt, theta);
         rhs.head(nSprings).noalias() += Wg * M_inv.cwiseProduct(rhs_vel);
     }
 
     if (nDampers > 0) {
-        rhs.segment(nSprings, nDampers) = +((1.0 - theta) / theta) * (Wgamma * vn) + (1.0 / theta) * m_dyn->A_v_vec();
+        rhs.segment(nSprings, nDampers) = m_dyn->damperBias(dt, theta);
 
         rhs.segment(nSprings, nDampers).noalias() += Wgamma * M_inv.cwiseProduct(rhs_vel);
     }
@@ -131,7 +115,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<C_BodyIndex>(constraint.a).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgA_sel = selectCols(constraint.WgA, c_used);
+                const MatrixXXr WgA_sel = selectCols(constraint.WgA, c_used).topRows(nV);  // point masses: 3 of the 6 rows
                 blockSpring.noalias() += WgA_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgA_sel;
             }
 
@@ -139,14 +123,14 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<C_BodyIndex>(constraint.b).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgB_sel = selectCols(constraint.WgB, c_used);
+                const MatrixXXr WgB_sel = selectCols(constraint.WgB, c_used).topRows(nV);  // point masses: 3 of the 6 rows
                 blockSpring.noalias() += WgB_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgB_sel;
             }
 
             for (int i = 0, j = 0; i < (int)c_used.size(); ++i) {
                 if (!c_used[i]) continue;
 
-                blockSpring(j, j) += Crows[(size_t)i] / (theta * dt * dt);
+                blockSpring(j, j) += Crows[(size_t)i] * DynamicsAssembler::springComplianceScale(dt, theta);
                 ++j;
             }
 
@@ -160,7 +144,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<C_BodyIndex>(constraint.a).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgammaA_sel = selectCols(constraint.WgammaA, a_used);
+                const MatrixXXr WgammaA_sel = selectCols(constraint.WgammaA, a_used).topRows(nV);  // point masses: 3 of the 6 rows
                 blockDamper.noalias() += WgammaA_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgammaA_sel;
             }
 
@@ -168,14 +152,14 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<C_BodyIndex>(constraint.b).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgammaB_sel = selectCols(constraint.WgammaB, a_used);
+                const MatrixXXr WgammaB_sel = selectCols(constraint.WgammaB, a_used).topRows(nV);  // point masses: 3 of the 6 rows
                 blockDamper.noalias() += WgammaB_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgammaB_sel;
             }
 
             for (int i = 0, j = 0; i < (int)a_used.size(); ++i) {
                 if (!a_used[i]) continue;
 
-                blockDamper(j, j) += Arows[(size_t)i] / (theta * dt);
+                blockDamper(j, j) += Arows[(size_t)i] * DynamicsAssembler::damperComplianceScale(dt, theta);
                 ++j;
             }
 
@@ -239,10 +223,10 @@ BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
 
     VectorXr D_diag = VectorXr::Zero(nSprings + nDampers + nContacts);
     D_diag.head(nSprings) = diag_sparse(m_dyn->Wg().asSparse(), m_dyn->MinvDiag());
-    D_diag.head(nSprings) += m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
+    D_diag.head(nSprings) += m_dyn->Cdiag() * DynamicsAssembler::springComplianceScale(dt, theta);
 
     D_diag.segment(nSprings, nDampers) = diag_sparse(m_dyn->Wgamma().asSparse(), m_dyn->MinvDiag());
-    D_diag.segment(nSprings, nDampers) += m_dyn->Adiag() * (1.0 / (theta * dt));
+    D_diag.segment(nSprings, nDampers) += m_dyn->Adiag() * DynamicsAssembler::damperComplianceScale(dt, theta);
 
     D_diag.segment(nSprings + nDampers, nContacts) = diag_sparse(m_dyn->W().asSparse(), m_dyn->MinvDiag());
 
@@ -298,8 +282,8 @@ VectorXr PgsAssembler::C(real_t dt, real_t theta) const {
     const int nLambda = nSprings + nDampers + nContacts;
 
     VectorXr C_vec = VectorXr::Zero(nLambda);
-    if (nSprings > 0) C_vec.head(nSprings) = m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
-    if (nDampers > 0) C_vec.segment(nSprings, nDampers) = m_dyn->Adiag() * (1.0 / (theta * dt));
+    if (nSprings > 0) C_vec.head(nSprings) = m_dyn->Cdiag() * DynamicsAssembler::springComplianceScale(dt, theta);
+    if (nDampers > 0) C_vec.segment(nSprings, nDampers) = m_dyn->Adiag() * DynamicsAssembler::damperComplianceScale(dt, theta);
     if (nContacts > 0) C_vec.tail(nContacts) = VectorXr::Zero(nContacts);
 
     return C_vec;

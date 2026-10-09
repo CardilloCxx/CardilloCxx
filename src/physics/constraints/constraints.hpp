@@ -131,6 +131,11 @@ class ConstraintPattern {
     virtual ConstraintResult getConstraint() const = 0;
 
     virtual VectorXr getSource() const { return VectorXr::Zero(m_numRows); }
+    // Integrates a prescribed rate chi = getSource() over one time step into the position-level
+    // reference of the pattern, so that d/dt g = W^T u + chi holds for the position error as well.
+    // Without it, the position-level force law would pull back
+    // against the prescribed motion. Default: no prescribed rate, nothing to do.
+    virtual void advancePrescribedMotion(real_t dt) { (void)dt; }
     virtual void setScalarVelocity(real_t v) { std::cerr << "Warning: setScalarVelocity not implemented for this constraint pattern" << std::endl; }
     virtual void setLinearVelocity(const Vector3r& v) { std::cerr << "Warning: setLinearVelocity not implemented for this constraint pattern" << std::endl; }
     virtual void setAngularVelocity(const Vector3r& w) { std::cerr << "Warning: setAngularVelocity not implemented for this constraint pattern" << std::endl; }
@@ -184,6 +189,8 @@ class LinearDistanceConstraint : public ConstraintPattern {
     ConstraintResult getConstraint() const override;
     VectorXr getSource() const override { return VectorXr::Constant(1, scalarVelocity); }
     void setScalarVelocity(real_t v) override { scalarVelocity = v; }
+    // g = |xB - xA| - L0 and d/dt g = W^T u + scalarVelocity  =>  d/dt L0 = -scalarVelocity
+    void advancePrescribedMotion(real_t dt) override { L0 -= dt * scalarVelocity; }
 
    private:
     real_t L0{(real_t)-1.0};  // rest length
@@ -209,6 +216,7 @@ class TranslationRotationConstraint : public ConstraintPattern {
     }
     void setLinearVelocity(const Vector3r& v) override { m_translational_velocity = v; }
     void setAngularVelocity(const Vector3r& w) override { m_angular_velocity = w; }
+    void advancePrescribedMotion(real_t dt) override;
 
     // Access joint-frame description for visualization/debugging
     const JointProperties& jointProperties() const { return m_joint; }
@@ -225,6 +233,10 @@ class TranslationRotationConstraint : public ConstraintPattern {
 
     VectorXr getPositionError(const Vector3r& g, const WorldAttachments& wa) const;
     VectorXr m_g0{VectorXr::Zero(6)};
+    // Twist angle about the joint x-axis at the last evaluation; the angle measured by
+    // getPositionError() is unwrapped against it, so that a torsional spring about x stays linear
+    // over several revolutions (rotations between two evaluations must stay below pi).
+    mutable real_t m_twist_ref{0};
 
     // Build full 6x6 Jacobians for a rigid joint using world attachments.
     void buildJointJacobian(const WorldAttachments& wa, const Vector3r& g, MatrixXXr& WgA, MatrixXXr& WgB) const;

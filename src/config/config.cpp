@@ -24,7 +24,9 @@ Config ConfigReader::fromFile(const std::string& path) {
     std::ifstream f(path);
     if (!f) return cfg;  // return defaults if file can't be opened
     std::string line;
+    int lineNo = 0;
     while (std::getline(f, line)) {
+        ++lineNo;
         std::string s = trim(line);
         if (s.empty()) continue;
         // Strip inline comments starting with '#'
@@ -42,31 +44,26 @@ Config ConfigReader::fromFile(const std::string& path) {
         if (key == "pj.max_iterations" || key == "solver.max_iterations") {
             try {
                 cfg.pj_max_iterations = std::max(1, std::stoi(val));
-                cfg.has_pj_max_iterations = true;
             } catch (...) {
             }
         } else if (key == "pj.tol_abs" || key == "solver.tol_abs") {
             try {
                 cfg.pj_tol_abs = static_cast<real_t>(std::stod(val));
-                cfg.has_pj_tol_abs = true;
             } catch (...) {
             }
         } else if (key == "pj.tol_rel" || key == "solver.tol_rel") {
             try {
                 cfg.pj_tol_rel = static_cast<real_t>(std::stod(val));
-                cfg.has_pj_tol_rel = true;
             } catch (...) {
             }
         } else if (key == "pj.relaxation" || key == "solver.relaxation") {
             try {
                 cfg.pj_relaxation = static_cast<real_t>(std::stod(val));
-                cfg.has_pj_relaxation = true;
             } catch (...) {
             }
         } else if (key == "pj.alpha" || key == "solver.alpha") {
             try {
                 cfg.pj_alpha = static_cast<real_t>(std::stod(val));
-                cfg.has_pj_alpha = true;
             } catch (...) {
             }
         }
@@ -116,10 +113,6 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.debug_pj = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "debug.mesh") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.debug_mesh = (v == "1" || v == "true" || v == "yes" || v == "on");
         } else if (key == "solver.name" || key == "integrator") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
@@ -167,15 +160,6 @@ Config ConfigReader::fromFile(const std::string& path) {
             else {
                 std::cerr << "Warning: unrecognized condensed.local_solve '" << val << "'. Defaulting to 'projection'." << std::endl;
                 cfg.condensed_local_solve = "projection";
-            }
-        } else if (key == "condensed.ordering") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "natural" || v == "dominant")
-                cfg.condensed_ordering = v;
-            else {
-                std::cerr << "Warning: unrecognized condensed.ordering '" << val << "'. Defaulting to 'natural'." << std::endl;
-                cfg.condensed_ordering = "natural";
             }
         } else if (key == "condensed.num_threads") {
             try {
@@ -296,12 +280,6 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.ip_iter_ref_iters = std::max(0, std::stoi(val));
             } catch (...) {
             }
-        } else if (key == "solver.constraint_bias_factor" || key == "constraint_bias_factor" || key == "baumgarte_bias_factor" || key == "baumgarte_bias" || key == "baumgarte_factor" ||
-                   key == "constraint_bias") {
-            try {
-                cfg.constraint_bias_factor = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
         } else if (key == "moreau.theta" || key == "solver.theta") {
             try {
                 cfg.moreau_theta = static_cast<real_t>(std::stod(val));
@@ -309,8 +287,6 @@ Config ConfigReader::fromFile(const std::string& path) {
             }
         } else if (key == "moreau.implicit_gyroscopy" || key == "solver.implicit_gyroscopy") {
             cfg.moreau_implicit_gyroscopy = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
-        } else if (key == "moreau.lambda_theta" || key == "solver.lambda_theta") {
-            cfg.moreau_lambda_theta = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
         } else if (key == "sim.T") {
             try {
                 const real_t v = static_cast<real_t>(std::stod(val));
@@ -412,6 +388,8 @@ Config ConfigReader::fromFile(const std::string& path) {
             }
         } else if (key == "scene.name") {
             cfg.scene_name = val;
+        } else {
+            std::cerr << "Warning: " << path << ":" << lineNo << ": unrecognized config key '" << key << "' is ignored." << std::endl;
         }
     }
     return cfg;

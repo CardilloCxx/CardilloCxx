@@ -301,7 +301,7 @@ multiple bodies without re-loading.
    For dynamic mesh bodies, ``RigidState::position`` is interpreted as an
    offset from the model's mesh origin, and the actual world position/orientation
    are adjusted by the mesh's computed centre-of-mass offset and principal-axes
-   rotation. Inspect ``debug.mesh = true`` in the config to print these values.
+   rotation.
 
 Dynamic vs. static bodies
 --------------------------

@@ -66,11 +66,10 @@ class StringTestScene : public SceneBase {
 
         m_combCube = engine.addRigidBody(physics::CubeShape(combHalfExtents), physics::RigidState(combStart, Vector3r::Zero(), Quaternion4r::Identity()), physics::RigidProps((real_t)45.0));
 
-        engine.addTrajectory(m_combCube, std::nullopt, [](real_t t) {
-            TrajectoryTwist twist;
-            twist.first = Vector3r(0.5 * std::sin(t), 0, 0);
-            twist.second = Vector3r::Zero();
-            return twist;
+        // Velocity 0.5 sin(t) along x, prescribed through the pose.
+        engine.makeStatic(m_combCube);
+        engine.addTrajectory(m_combCube, [combStart](real_t t) -> TrajectoryPose {
+            return TrajectoryPose{combStart + Vector3r((real_t)0.5 * ((real_t)1 - std::cos(t)), 0, 0), Quaternion4r::Identity()};
         });
     }
 
