@@ -190,7 +190,7 @@ public:
         }
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t) override {
 
         if (t >= m_settlingTime && !m_yeeted && !m_chainEntities.empty()) {
             m_yeeted = true;

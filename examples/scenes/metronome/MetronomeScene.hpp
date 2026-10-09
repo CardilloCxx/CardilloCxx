@@ -109,7 +109,7 @@ public:
         // std::shuffle(m_order.begin(), m_order.end(), m_rng);
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t dt) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t) override {
         const real_t kickStart = (real_t)0.25;
         const real_t kickEnd = (real_t) 0.5;
         const real_t kickInterval = (kickEnd - kickStart) / (real_t)m_levers.size();
@@ -119,7 +119,7 @@ public:
             const int idx = m_order[(size_t)m_nextKick];
             if (idx >= 0 && idx < (int)m_levers.size()) {
                 entt::entity lever = m_levers[(size_t)idx];
-                real_t kickForce = kickVelocity * engine.getMass(lever)(0, 0) / dt;
+                real_t kickForce = kickVelocity * engine.getMass(lever)(0, 0) / engine.timeStep();
                 if (engine.ecs().valid(lever)) {
                     engine.applyForce(lever, Vector3r((real_t)0.0, kickForce, (real_t)0.0), Vector3r::Zero());
                     engine.applyForce(m_sheet, Vector3r((real_t)0.0, -kickForce, (real_t)0.0), Vector3r::Zero()); // reaction on sheet

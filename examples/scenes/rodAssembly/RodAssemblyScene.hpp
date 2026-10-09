@@ -47,7 +47,7 @@ public:
     
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/) override {
         engine.applyForce(m_upperRod, Vector3r(50.0, 0.0, 0), Vector3r::Zero());
     }
 

@@ -37,6 +37,7 @@ cardillo_add_scene_example(constraint_test "scenes/constraintTest/ConstraintTest
 cardillo_add_scene_example(cantilever "scenes/cantilever/CantileverScene.hpp" CantileverScene)
 cardillo_add_scene_example(fabric "scenes/fabric/FabricScene.hpp" FabricScene)
 cardillo_add_scene_example(double_pendulum "scenes/double_pendulum/DoublePendulumScene.hpp" DoublePendulumScene)
+cardillo_add_scene_example(torsional_oscillator "scenes/torsional_oscillator/TorsionalOscillatorScene.hpp" TorsionalOscillatorScene)
 cardillo_add_scene_example(sphere_packing "scenes/sphere_packing/SpherePackingScene.hpp" SpherePackingScene)
 cardillo_add_scene_example(tube "scenes/tube/TubeScene.hpp" TubeScene)
 cardillo_add_scene_example(string_test "scenes/stringTest/StringTestScene.hpp" StringTestScene)

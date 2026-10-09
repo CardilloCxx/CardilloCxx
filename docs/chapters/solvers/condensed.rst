@@ -116,7 +116,7 @@ override (see `Implicit gyroscopic forces (moreau.implicit_gyroscopy)`_) gets a 
 
 **Per-block compliance** (``RowBlock::complianceDiag``, filled by
 ``CondensedAssembler::updateCompliance()``) is that block's own diagonal
-slice of :math:`\hat C`: :math:`C_\mathrm{row}/(\theta\,\Delta t^2)` for
+slice of :math:`\hat C`: :math:`C_\mathrm{row}/(\theta^2\,\Delta t^2)` for
 springs, :math:`A_\mathrm{row}/(\theta\,\Delta t)` for dampers, zero for
 contacts -- read straight off ``DynamicsAssembler::Cdiag()``/``Adiag()``, no
 assembly needed since :math:`\hat C` is block-diagonal by construction.
@@ -125,8 +125,7 @@ assembly needed since :math:`\hat C` is block-diagonal by construction.
 :math:`\tilde b` block by block) differs by kind, matching
 :doc:`../moreau_time_stepping`'s :math:`\mathbf b_n` variable for variable
 (:math:`\mathbf v_g \to` ``C_v_vec``, :math:`\mathbf v_\gamma \to`
-``A_v_vec``, :math:`\mathbf g(t,\mathbf q) \to` ``g_error_vec``,
-:math:`\beta \to` ``constraint_bias_factor``), in this codebase's own
+``A_v_vec``, :math:`\mathbf g(t_{n+\theta},\mathbf q_{n+\theta}) \to` ``g_error_vec``), in this codebase's own
 internal sign convention (identical to ``PgsAssembler::rhs()`` -- not
 independently re-derived here):
 
@@ -134,22 +133,20 @@ independently re-derived here):
 
    \text{rhs}_\mathrm{vel} = M\,\mathbf u_n + \Delta t\,\mathbf f^\mathrm{ext} \;\; [+\, \Delta t\,\mathbf f^\mathrm{gyr} \text{ if gyroscopic forces are NOT treated implicitly}]
 
-For a **spring** row (:math:`\Lambda_{g}` held at its warm-started/previous-step
-value :math:`\Lambda_{g,n}` while solving for the current step's answer --
-this is a fixed constant *within* one ``solve()`` call, not the unknown being
-solved for):
+For a **spring** row (position-level force law;
+the bias is ``DynamicsAssembler::springBias()``, shared by all solvers):
 
 .. math::
 
-   \mathrm{seg}_\mathrm{spring} = \frac{1}{\theta\Delta t^2}\,C_\mathrm{row}\odot\Lambda_{g,n}
-                                 + \frac{1-\theta}{\theta}\bigl(J_a\mathbf u_{n,a}+J_b\mathbf u_{n,b}\bigr)
-                                 + \frac{1}{\theta}\,\mathbf v_{g,\mathrm{row}}
-                                 + \bigl[\beta>0\bigr]\,\gamma_\mathrm{stab}
+   \mathrm{seg}_\mathrm{spring} = \frac{1}{\theta^2\Delta t}\,\mathbf g_\mathrm{row}
+                                 - \Bigl(\frac{1-\theta}{\theta}\Bigr)^2\bigl(J_a\mathbf u_{n,a}+J_b\mathbf u_{n,b}\bigr)
+                                 + \frac{2\theta-1}{\theta^2}\,\mathbf v_{g,\mathrm{row}}
                                  + J_a M_{\mathrm{eff},a}^{-1}\,\text{rhs}_{\mathrm{vel},a} + J_b M_{\mathrm{eff},b}^{-1}\,\text{rhs}_{\mathrm{vel},b}
 
-with :math:`\gamma_\mathrm{stab} = \bigl(-C_\mathrm{row}\odot\Lambda_{g,n}/\Delta t + \mathbf g_\mathrm{row}\bigr)\,\beta/(\Delta t\,\theta)`.
-A **damper** row drops the compliance/bias terms (dampers carry no position
-error to stabilize):
+No multiplier of the previous
+step enters; :math:`\Lambda_{g,n}` is only the warm start of the iteration.
+A **damper** row (``DynamicsAssembler::damperBias()``) has no position-level
+measure:
 
 .. math::
 
@@ -166,18 +163,9 @@ kinematic contact-velocity bias:
    \mathrm{seg}_\mathrm{contact} = J_a\,u_{\mathrm{free},a} + J_b\,u_{\mathrm{free},b} + \mathbf b_{\mathrm{contact},\mathrm{row}}
 
 .. note::
-   Springs/dampers and contacts use two **formally different, not merely
-   differently-named** quantities for the "free velocity" term:
-   :math:`J\,M_\mathrm{eff}^{-1}\,\text{rhs}_\mathrm{vel}` for bilateral rows,
-   :math:`J\,u_\mathrm{free}` for contact rows. They coincide only when
-   ``moreau.lambda_theta=false`` (the default): with it enabled, an extra
-   correction term :math:`-(1-\theta)\,\hat W^\top(\ldots\Lambda_{g,n}\ldots\Lambda_{\gamma,n}\ldots)`
-   is folded into :math:`\text{rhs}_\mathrm{vel}` (an alternate theta-scaling
-   of the constraint-force contribution) but **not** into
-   :math:`u_\mathrm{free}` (built independently by ``CondensedAssembler::ufree()``,
-   which has no knowledge of ``moreau_lambda_theta`` at all) -- so bilateral
-   and contact rows genuinely diverge in that mode, by design, not by
-   oversight.
+   Springs/dampers and contacts use two formally different expressions for the
+   "free velocity" term, :math:`J\,M_\mathrm{eff}^{-1}\,\text{rhs}_\mathrm{vel}` for
+   bilateral rows and :math:`J\,u_\mathrm{free}` for contact rows; both coincide.
 
 Building :math:`\hat S`'s off-diagonal coupling (needed only by
 ``condensed.true_schur``, since every sweep mode above only ever needs each
@@ -501,9 +489,7 @@ with ``condensed.sweep_mode=chaotic`` is silently ignored.
    output, is provably a no-op. Any outer-iteration count above 1-2 you
    observe on a scene with no contacts is overwhelmingly the surrounding
    convergence-check/Nesterov bookkeeping confirming that nothing changed
-   anymore, not the Schur solve itself needing repeated work -- see
-   ``CONDENSED_SOLVER_REPORT.md`` for a worked example (``wilberforce``) with
-   exact iteration-count accounting.
+   anymore, not the Schur solve itself needing repeated work.
 
 How Sbb's off-diagonal blocks are built
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -775,9 +761,9 @@ gyroscopic bodies that never touch the compliant chain keeps the cheaper symmetr
    ``condensed.true_schur=true`` and ``condensed.sweep_mode=colored``, kinetic energy after 1000
    steps agreed with PJ to ~10 significant figures, and the position fingerprint matched exactly to
    every printed digit. Building that PJ reference surfaced an independent, pre-existing bug in
-   ``projected_jacobi`` itself -- its solver never passed ``moreau_implicit_gyroscopy``/
-   ``moreau_lambda_theta`` through to the system-matrix assembly, so PJ's own implicit treatment was
-   also inactive until fixed. See ``CONDENSED_SOLVER_REPORT.md`` for the full validation writeup.
+   ``projected_jacobi`` itself -- its solver never passed ``moreau_implicit_gyroscopy``
+   through to the system-matrix assembly, so PJ's own implicit treatment was
+   also inactive until fixed.
 
 Nesterov acceleration
 ----------------------
@@ -956,8 +942,7 @@ Known performance characteristics
 
 Measured on ``examples/scenes/domino`` (pure rigid, ~13k frictional
 contacts) and ``examples/scenes/slinky`` (compliant chain + friction, sparser
-contact set); see ``CONDENSED_SOLVER_REPORT.md`` for the full numbers,
-methodology, and caveats (short runs, one machine, not an exhaustive sweep).
+contact set); caveats: short runs, one machine, not an exhaustive sweep.
 These are specific, reproducible findings from that comparison, not general
 claims:
 

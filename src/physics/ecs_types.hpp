@@ -123,12 +123,11 @@ struct C_RB_Plane {
 using TrajectoryPose = std::pair<Vector3r, Quaternion4r>;
 using TrajectoryTwist = std::pair<Vector3r, Vector3r>;
 
+// Kinematically driven body: the pose is prescribed as a function of time; the velocity is always
+// derived from it (see Trajectory::update()), so that pose and velocity are consistent.
 struct C_StaticTrajectory {
-    std::optional<std::function<TrajectoryPose(real_t)>> positionFunc;
-    std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc;
+    std::function<TrajectoryPose(real_t)> positionFunc;
     real_t elapsed{(real_t)0};
-    bool initialized{false};
-    std::optional<TrajectoryPose> previousPosition;
 };
 
 struct C_RB_Mesh {};

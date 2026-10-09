@@ -94,7 +94,7 @@ public:
             d_axis2);
     }
 
-    // void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    // void updateScene(physics::PhysicsEngine& engine, real_t t) override {
     //     sys.applyForce(m_gear1, Vector3r(0.0, 0.0, 0.0), Vector3r(0.0, 0.0, 5.0));
     //     sys.applyForce(m_gear4, Vector3r(0.0, 0.0, 0.0), Vector3r(0.0, 0.0, 5.0));
     //     sys.applyForce(m_gear5, Vector3r(0.0, 0.0, 0.0), Vector3r(0.0, 0.0, 5.0));

@@ -339,7 +339,7 @@ void World::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r
     m_forces_dirty = true;
 }
 
-void World::setTrajectory(entt::entity e, std::optional<std::function<TrajectoryPose(real_t)>> positionFunc, std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc) {
+void World::setTrajectory(entt::entity e, std::function<TrajectoryPose(real_t)> positionFunc) {
     if (!m_reg.valid(e)) return;
 
     if (!RigidBody::isStatic(m_reg, e)) {
@@ -347,17 +347,14 @@ void World::setTrajectory(entt::entity e, std::optional<std::function<Trajectory
         makeStatic(e);
     }
 
-    if (!positionFunc.has_value() && !velocityFunc.has_value()) {
+    if (!positionFunc) {
         removeTrajectory(e);
         return;
     }
 
     C_StaticTrajectory traj;
     traj.positionFunc = std::move(positionFunc);
-    traj.velocityFunc = std::move(velocityFunc);
     traj.elapsed = (real_t)0;
-    traj.initialized = false;
-    traj.previousPosition = std::nullopt;
 
     m_reg.emplace_or_replace<C_StaticTrajectory>(e, std::move(traj));
     markStateDirty();

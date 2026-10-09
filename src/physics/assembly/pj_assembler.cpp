@@ -6,7 +6,7 @@
 
 namespace cardillo::physics::assembly {
 PjAssembler::~PjAssembler() = default;
-bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bool lambdaTheta) {
+bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro) {
     auto sc = m_dyn->timings()->scope(misc::TimingManager::TimerId::BuildAndFactorS);
 
     const int totalV = (m_dyn->bodyVelOffsets().empty() ? 0 : m_dyn->bodyVelOffsets().back());
@@ -60,20 +60,18 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro, bo
         }
     }
 
-    const real_t topScale = lambdaTheta ? theta : (real_t)1.0;
-
     const TripletMatrix Mblk(totalV, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(mTrips)));
-    const real_t cScale = -(real_t)1.0 / (theta * dt * dt);
-    const real_t aScale = -(real_t)1.0 / (theta * dt);
+    const real_t cScale = -DynamicsAssembler::springComplianceScale(dt, theta);
+    const real_t aScale = -DynamicsAssembler::damperComplianceScale(dt, theta);
 
-    const TripletMatrix top = Mblk | (m_dyn->Wg() * topScale).T() | (m_dyn->Wgamma() * topScale).T();
+    const TripletMatrix top = Mblk | m_dyn->Wg().T() | m_dyn->Wgamma().T();
     const TripletMatrix mid = m_dyn->Wg() | (TripletMatrix::fromDiag(m_dyn->Cdiag()) * cScale) | TripletMatrix::zero(nSprings, nDampers);
     const TripletMatrix bot = m_dyn->Wgamma() | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_dyn->Adiag()) * aScale);
 
     m_S = top.vConcat(mid).vConcat(bot);
     const auto& S_sparse = m_S.asSparse();
 
-    const bool wantSymmetric = !implicitGyro && !lambdaTheta;
+    const bool wantSymmetric = !implicitGyro;
     // S_sparse is compressed (asSparse() calls makeCompressed()), so outer/inner index arrays fully
     // describe its nonzero pattern -- comparing them is O(nnz), far cheaper than re-running
     // analyzePattern's fill-reducing ordering + symbolic elimination.
@@ -129,42 +127,18 @@ VectorXr PjAssembler::rhs(real_t dt, real_t theta) const {
     const auto& fn_ext = m_dyn->fVecExternal();     // gravity + applied external forces
     const auto& fn_gyro = m_dyn->fVecGyroscopic();  // gyroscopic forces from current state
     const bool implicitGyro = m_cfg.moreau_implicit_gyroscopy;
-    const bool lambdaTheta = m_cfg.moreau_lambda_theta;
-    const auto& Wg = m_dyn->Wg().asSparse();
-    const auto& Wgamma = m_dyn->Wgamma().asSparse();
     const auto& M_diag = m_dyn->MDiag();
     const int totalV = (m_dyn->bodyVelOffsets().empty() ? 0 : m_dyn->bodyVelOffsets().back());
     const int nSprings = (int)m_dyn->Cdiag().size();
     const int nDampers = (int)m_dyn->Adiag().size();
     const int extV = totalV + nSprings + nDampers;
-    const auto& Cdiag = m_dyn->Cdiag();
-    const auto& C_v_vec = m_dyn->C_v_vec();
-    const auto& A_v_vec = m_dyn->A_v_vec();
-
-    // Lambda vectors may be uninitialized on first step; copy locally and ensure correct sizes
-    VectorXr Lambda_g = m_dyn->Lambda_g();
-    if ((int)Lambda_g.size() != nSprings) Lambda_g = VectorXr::Zero(nSprings);
-    VectorXr Lambda_gamma = m_dyn->Lambda_gamma();
-    if ((int)Lambda_gamma.size() != nDampers) Lambda_gamma = VectorXr::Zero(nDampers);
 
     // RHS: M*vn + dt*f_ext (+ dt*f_gyro if treated explicitly)
     VectorXr rhs = VectorXr::Zero((index_t)extV);
     rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * fn_ext;
     if (!implicitGyro) rhs.segment(0, totalV) += dt * fn_gyro;
-    if (lambdaTheta && (nSprings > 0 || nDampers > 0)) {
-        VectorXr corr = VectorXr::Zero(totalV);
-        if (nSprings > 0) corr.noalias() += Wg.transpose() * Lambda_g;
-        if (nDampers > 0) corr.noalias() += Wgamma.transpose() * Lambda_gamma;
-        rhs.segment(0, totalV).noalias() -= (1.0 - theta) * corr;
-    }
-    if (nSprings > 0) rhs.segment(totalV, nSprings) = -(1.0 / (theta * dt * dt)) * Cdiag.cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) * (Wg * vn) - (1.0 / theta) * C_v_vec;
-    if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -((1.0 - theta) / theta) * (Wgamma * vn) - (1.0 / theta) * A_v_vec;
-
-    auto beta = m_dyn->system().config().constraint_bias_factor;
-    if (beta > 0) rhs.segment(totalV, nSprings).noalias() -= (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()) * (beta / (dt * theta));
-
-    // // TODO: Constraint stabilization proposed by Marco; this is not working, but I'm not sure why.
-    // if (nSprings > 0) rhs.segment(totalV, nSprings) = (1.0 / (theta * dt * dt)) * m_dyn->g_error_vec() - ((1.0 - theta) / theta) * (Wg * vn) - (1.0 / theta) * C_v_vec;
+    if (nSprings > 0) rhs.segment(totalV, nSprings) = -m_dyn->springBias(dt, theta);
+    if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -m_dyn->damperBias(dt, theta);
 
     return rhs;
 }

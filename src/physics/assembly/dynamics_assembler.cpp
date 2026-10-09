@@ -2,12 +2,18 @@
 #include "dynamics_assembler.hpp"
 #include <Eigen/Cholesky>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include "../../collision/collision_coal.hpp"
 #include "../constraints/constraints.hpp"
 #include "contact_jacobian.hpp"
 
 namespace cardillo::physics {
+
+namespace {
+// Rows with a compliance (attenuation) above this bound are treated as free and removed.
+constexpr real_t kMaxCompliance = (real_t)1e10;
+}  // namespace
 
 void DynamicsAssembler::updateContactsFromSystem() {
     if (!m_collision_mgr) throw std::runtime_error("DynamicsAssembler::updateContactsFromSystem: no CollisionCoal provided");
@@ -361,8 +367,6 @@ void DynamicsAssembler::rebuildInteractionW_() {
 
     int springRowCounter = 0;
     int damperRowCounter = 0;
-    const real_t EPS_C = (real_t)1e-10;
-    const real_t EPS_A = (real_t)1e-10;
 
     // Emit a single 1xN row into W triplets without temporaries
     auto emitColRef = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const Eigen::Ref<const VectorXr>& col) {
@@ -414,7 +418,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
         // Spring rows
         for (int i = 0; i < nrows; ++i) {
             const real_t Ci = constraint.Crows[i];
-            if (Ci < 1 / EPS_C) {
+            if (Ci < kMaxCompliance) {
                 Crows.push_back(Ci);
                 C_vel.push_back(velSpring[i]);
                 g_error_vec.push_back(posError[i]);
@@ -428,7 +432,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
         const int ndamp = (int)constraint.Arows.size();
         for (int i = 0; i < ndamp; ++i) {
             const real_t Ai = constraint.Arows[i];
-            if (Ai < 1 / EPS_A) {
+            if (Ai < kMaxCompliance) {
                 Arows.push_back(Ai);
                 A_vel.push_back(velDamper[i]);
                 const int row = damperRowCounter++;
@@ -512,10 +516,34 @@ void DynamicsAssembler::refreshState() {
     }
 }
 
+VectorXr DynamicsAssembler::springBias(real_t dt, real_t theta) const {
+    if (m_Cdiag.size() == 0) return VectorXr();
+    const VectorXr Wvn = m_Wg.asSparse() * m_v_vec;
+    // C lambda_theta + g(t_{n+theta}, q_{n+theta}) + h (theta^2 W^T u_{n+1} - (1-theta)^2 W^T u_n)
+    // + (2 theta - 1) h chi = 0, scaled by 1/(theta^2 h); free bodies, kinematic drivers and
+    // prescribed rates are all evaluated at t_{n+theta} = t_n + (1-theta) h.
+    const real_t cv = (1 - theta) / theta;
+    return ((real_t)1 / (theta * theta * dt)) * m_g_error_vec - (cv * cv) * Wvn + ((2 * theta - 1) / (theta * theta)) * m_C_v_vec;
+}
+
+VectorXr DynamicsAssembler::damperBias(real_t dt, real_t theta) const {
+    (void)dt;
+    if (m_Adiag.size() == 0) return VectorXr();
+    // A lambda_{gamma,theta} + W^T u_theta + chi = 0, scaled by 1/theta.
+    return ((1 - theta) / theta) * (m_Wgamma.asSparse() * m_v_vec) + ((real_t)1 / theta) * m_A_v_vec;
+}
+
+void DynamicsAssembler::advancePrescribedMotion(real_t dt) {
+    for (auto& uptr : m_world.constraintPatterns()) {
+        if (uptr) uptr->advancePrescribedMotion(dt);
+    }
+}
+
 void DynamicsAssembler::updateStateDependentTerms(real_t dt) {
     {
         auto sc = m_timings->scope(misc::TimingManager::TimerId::UpdateEntities);
-        DerivedEntitySync::updateEntities(m_world, dt);
+        // Kinematic drivers at the time of the intermediate configuration, t_n + (1 - theta) dt.
+        DerivedEntitySync::updateEntities(m_world, dt, ((real_t)1 - m_cfg.moreau_theta) * dt);
     }
     updateContactsFromSystem();
     rebuildW_();

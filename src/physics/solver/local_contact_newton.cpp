@@ -98,7 +98,7 @@ bool solveContactBlockNewtonAC(const Matrix33r& G, const Vector3r& r, real_t mu,
         // computeInverseWithCheck's invertibility flag falls out of computing the inverse itself
         // (no extra decomposition/cost) and catches the exact/near-exact singular case cleanly;
         // delta.allFinite() below is a second, independent guard against a bad step slipping
-        // through (see CONDENSED_SOLVER_REPORT.md for the measured gap and why it's latent here).
+        // through.
         Jphi.computeInverseWithCheck(JphiInv, invertible);
         if (!invertible) return false;
         delta = JphiInv * (-phi);

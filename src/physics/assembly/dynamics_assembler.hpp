@@ -69,6 +69,9 @@ class DynamicsAssembler {
     // Check system dirty flags and structural updates once per step and rebuild caches as needed
     void refreshState();
     void updateStateDependentTerms(real_t dt);
+    // Integrates the prescribed rates of all constraint patterns over one step (see
+    // ConstraintPattern::advancePrescribedMotion()).
+    void advancePrescribedMotion(real_t dt);
 
     misc::TimingManager* timings() const { return m_timings; }
     collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
@@ -83,6 +86,17 @@ class DynamicsAssembler {
     const VectorXr& C_v_vec() const { return m_C_v_vec; }
     const VectorXr& A_v_vec() const { return m_A_v_vec; }
     const VectorXr& g_error_vec() const { return m_g_error_vec; }
+
+    // Moreau-theta discretization of the spring and damper rows, shared by all solvers. With the
+    // impulses Lambda_g = h lambda_{g,theta} and Lambda_gamma = h lambda_{gamma,theta}, row i reads
+    //   W_i^T u_{n+1} + b_i + c_i Lambda_i = 0,
+    // with the compliance factors c_g = C/(theta^2 h^2), c_gamma = A/(theta h) and the biases below
+    // (position-level force law, see config.hpp). The saddle-point assemblers (projected Jacobi,
+    // cone programs) use the negative of the bias as right-hand side.
+    static real_t springComplianceScale(real_t dt, real_t theta) { return (real_t)1 / (theta * theta * dt * dt); }
+    static real_t damperComplianceScale(real_t dt, real_t theta) { return (real_t)1 / (theta * dt); }
+    VectorXr springBias(real_t dt, real_t theta) const;
+    VectorXr damperBias(real_t dt, real_t theta) const;
 
     // Counts
     // Number of spring rows (rows in m_Wg / length of m_Cdiag)

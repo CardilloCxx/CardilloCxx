@@ -137,10 +137,11 @@ operators the solver needs.
    compliance and are assembled as equality constraints.
 
 **Position error**
-   For compliant constraints the current position error is stored. A small
-   Baumgarte correction term (scaled by ``constraint_bias_factor``) is built from
-   this when forming the solver right-hand side, which gently corrects constraint
-   drift over time without adding energy.
+   For compliant elements and perfect constraints, the current position-level
+   measure :math:`\mathbf{g}(t_{n+\theta}, \mathbf{q}_{n+\theta})` is stored. It enters
+   the right-hand side of the position-level force law with full weight, so
+   constraint violations are removed without a stabilization parameter and
+   without initial multipliers.
 
 .. note::
    :cpp:func:`DynamicsAssembler::rebuildW_ <cardillo::physics::DynamicsAssembler::rebuildW_>` builds the contact Jacobian. :cpp:func:`DynamicsAssembler::rebuildInteractionW_ <cardillo::physics::DynamicsAssembler::rebuildInteractionW_>` builds
@@ -166,8 +167,8 @@ where :math:`v` is the new body velocity, :math:`\lambda_g` are spring/hard
 constraint multipliers, and :math:`\lambda_\gamma` are damper multipliers.
 
 The right-hand side encodes the current velocity, external and gyroscopic forces,
-carry-over constraint multipliers from the previous step, and the Baumgarte
-position correction. See :doc:`moreau_time_stepping` for the detailed
+and the position-level measures of the spring rows; no multipliers of the
+previous step enter. See :doc:`moreau_time_stepping` for the detailed
 derivation of the scaled system, the treatment of impulses, and the
 relationship between multipliers and accumulated impulses.
 

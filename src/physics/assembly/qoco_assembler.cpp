@@ -27,8 +27,8 @@ QOCOFloat* QocoAssembler::toQocoVector(Eigen::VectorX<real_t>& v) {
 
 QOCOCscMatrix* QocoAssembler::P(real_t dt, real_t theta) {
     auto M = m_dyn->MDiag();
-    auto C = m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
-    auto A = m_dyn->Adiag() * (1.0 / (theta * dt));
+    auto C = m_dyn->Cdiag() * DynamicsAssembler::springComplianceScale(dt, theta);
+    auto A = m_dyn->Adiag() * DynamicsAssembler::damperComplianceScale(dt, theta);
 
     Eigen::VectorX<real_t> diag(M.size() + C.size() + A.size());
     diag << M, C, A;
@@ -40,8 +40,8 @@ QOCOCscMatrix* QocoAssembler::P(real_t dt, real_t theta) {
 }
 
 QOCOCscMatrix* QocoAssembler::A(real_t dt, real_t theta) {
-    TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * (1.0 / (theta * dt * dt)));
-    TripletMatrix A = TripletMatrix::fromDiag(m_dyn->Adiag() * (1.0 / (theta * dt)));
+    TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * DynamicsAssembler::springComplianceScale(dt, theta));
+    TripletMatrix A = TripletMatrix::fromDiag(m_dyn->Adiag() * DynamicsAssembler::damperComplianceScale(dt, theta));
 
     A = (m_dyn->Wg() | (C * -1.0) | TripletMatrix::zero(C.nRows(), A.nCols())).vConcat(m_dyn->Wgamma() | TripletMatrix::zero(A.nRows(), C.nCols()) | (A * -1.0));
 
@@ -78,16 +78,8 @@ QOCOFloat* QocoAssembler::c(real_t dt, real_t theta) {
 }
 
 QOCOFloat* QocoAssembler::b(real_t dt, real_t theta) {
-    auto Lambda_g = m_dyn->Lambda_g();
-    if (Lambda_g.size() != m_dyn->Cdiag().size()) {
-        Lambda_g = VectorXr::Zero(m_dyn->Cdiag().size());
-    }
-
-    VectorXr bTop = -(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) - ((1.0 - theta) / theta) * (m_dyn->Wg().asSparse() * m_dyn->vVec()) - (1.0 / theta) * m_dyn->C_v_vec();
-    auto bBot = -((1.0 - theta) / theta) * (m_dyn->Wgamma().asSparse() * m_dyn->vVec()) - (1.0 / theta) * m_dyn->A_v_vec();
-
-    auto beta = m_dyn->system().config().constraint_bias_factor;
-    if (beta > 0) bTop.noalias() -= (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()) * (beta / (dt * theta));
+    VectorXr bTop = -m_dyn->springBias(dt, theta);
+    VectorXr bBot = -m_dyn->damperBias(dt, theta);
 
     m_b_cache.resize(bTop.size() + bBot.size());
     m_b_cache << bTop, bBot;

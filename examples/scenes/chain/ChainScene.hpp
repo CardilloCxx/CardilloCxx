@@ -22,8 +22,14 @@ public:
         // Spool
         auto spool_shape = physics::MeshShape{spoolMeshPath, Vector3r(0.075, 0.075, 0.075)};
         auto spool_state = physics::RigidState{Vector3r(0.0, 0.0, 1.0)};
-        auto spool_props = physics::RigidProps{1e10}; // heavy to stay put
+        auto spool_props = physics::RigidProps{1e10};
         m_spool = engine.addRigidBody(spool_shape, spool_state, spool_props);
+        // Kinematically driven spool: fixed position, rotation with 1.5 rad/s about its x-axis.
+        engine.makeStatic(m_spool);
+        const Vector3r spoolPos = spool_state.position;
+        engine.addTrajectory(m_spool, [spoolPos](real_t t) -> TrajectoryPose {
+            return TrajectoryPose{spoolPos, Quaternion4r(Eigen::AngleAxis<real_t>((real_t)1.5 * t, Vector3r::UnitX()))};
+        });
 
         // Desired physical height of one link (meters)
         const int N = 150;
@@ -56,11 +62,7 @@ public:
         }
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        engine.setAngularVelocity(m_spool, Vector3r(1.5, 0.0, 0.0)); 
-        engine.setLinearVelocity (m_spool, Vector3r::Zero());
-        engine.applyForce        (m_spool, 1e10 * Vector3r(0,0,9.81), Vector3r::Zero());  // counteract gravity
-    }
+    void updateScene(cardillo::physics::PhysicsEngine& /*engine*/, real_t /*t*/) override {}
 
 private:
     entt::entity m_spool{entt::null};
