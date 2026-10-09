@@ -235,10 +235,9 @@ Limitations
   :math:`G`/:math:`A` changes, requiring a full solver re-setup every step.
   ConicXX does not have this limitation in the common case where the contact
   set is momentarily stable (see above).
-- **No implicit gyroscopy** (``moreau.implicit_gyroscopy``) and no
-  lambda-theta integration (``moreau.lambda_theta``). These settings are
-  silently ignored by all three interior-point backends; use PJ or PGS if you
-  need them.
+- **No implicit gyroscopy** (``moreau.implicit_gyroscopy``). This setting is
+  silently ignored by all three interior-point backends; use PJ or the
+  condensed solver if you need it.
 
 Config keys
 -----------

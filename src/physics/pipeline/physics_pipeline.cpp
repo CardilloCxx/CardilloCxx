@@ -1,6 +1,7 @@
 #include "physics_pipeline.hpp"
 
 #include <memory>
+#include <stdexcept>
 
 #include "../../collision/collision_coal.hpp"
 
@@ -28,6 +29,11 @@ PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::C
     // Use engine-owned collision manager (passed-in)
     // Create owned components
     m_dyn = std::make_unique<physics::DynamicsAssembler>(m_world, m_collision_mgr, m_timings, m_cfg);
+
+    if (cfg.moreau_theta <= (real_t)0.5)
+        std::cerr << "Warning: moreau.theta <= 0.5: violations of perfect constraints are not damped by the "
+                     "position-level force law and lead to growing velocity oscillations; use moreau.theta > 0.5."
+                  << std::endl;
 
     // Choose solver based on config
     using namespace solver;

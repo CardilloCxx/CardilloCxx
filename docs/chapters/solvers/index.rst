@@ -6,7 +6,7 @@ produces a set of assembled operators from the collision and constraint pipeline
 (see :doc:`../physics_pipeline`) and the solver's job is to find a new velocity
 that satisfies the discrete Moreau time-stepping equations (see
 :doc:`../moreau_time_stepping` for the derivation of the scaled system and RHS
-terms such as Baumgarte position correction and trajectory source velocities).
+terms such as the position-level force law and trajectory source velocities).
 state that satisfies the equations of motion while respecting all contact and
 constraint conditions simultaneously.
 

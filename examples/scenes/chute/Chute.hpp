@@ -73,8 +73,8 @@ public:
         spawnRandomShapesBatch(engine);
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t dt) override {
-        m_elapsedSinceSpawn += dt;
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
+        m_elapsedSinceSpawn += engine.timeStep();
         if (m_elapsedSinceSpawn < m_spawnInterval) return;
 
         m_elapsedSinceSpawn = 0.0;

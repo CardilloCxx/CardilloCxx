@@ -146,7 +146,7 @@ class CableBunchScene : public SceneBase {
         engine.addTrajectory(anchor, trajSpline, (real_t)6.0);
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override { (void)engine; }
+    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/) override { (void)engine; }
 
    private:
     entt::entity m_anchor;

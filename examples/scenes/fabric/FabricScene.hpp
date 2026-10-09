@@ -285,7 +285,7 @@ public:
         //         // std::cout << "[FabricScene] Created " << beamCount << " beam elements." << std::endl;
     }
 
-    //     void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    //     void updateScene(physics::PhysicsEngine& engine, real_t t) override {
     //         using namespace cardillo;
     //
     //         auto smoothstep = [](real_t x) {

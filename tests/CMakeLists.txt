@@ -5,3 +5,6 @@ function(cardillo_add_test target source)
 endfunction()
 
 cardillo_add_test(test_joint_jacobian test_joint_jacobian.cpp)
+cardillo_add_test(test_position_level test_position_level.cpp)
+cardillo_add_test(test_beam_jacobian test_beam_jacobian.cpp)
+cardillo_add_test(test_torsional_oscillator test_torsional_oscillator.cpp)

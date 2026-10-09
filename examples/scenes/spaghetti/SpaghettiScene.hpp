@@ -98,7 +98,7 @@ public:
         }
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/) override {
         (void)engine;
         // Passive scene: gravity causes the spaghetti to drape over the bowl.
     }

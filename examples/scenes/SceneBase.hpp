@@ -17,7 +17,14 @@ public:
     // Populate the provided physics engine (add obstacles, bodies, etc.).
     virtual void populate(cardillo::physics::PhysicsEngine& engine) { (void)engine; }
 
-    // Optional per-frame scene update. Called once each simulation step with
-    // current time t and timestep dt. Default is no-op.
-    virtual void updateScene(cardillo::physics::PhysicsEngine& engine, real_t /*t*/, real_t /*dt*/) { (void)engine; }
+    // Optional per-step scene update, called once before each simulation step with the time t at
+    // the beginning of the step. Default is no-op. The step size is engine.timeStep().
+    virtual void updateScene(cardillo::physics::PhysicsEngine& engine, real_t /*t*/) { (void)engine; }
+
+    // Deprecated: dt is redundant (engine.timeStep()). Kept so that scenes overriding the old
+    // signature still work; the default forwards to updateScene(engine, t).
+    [[deprecated("override updateScene(engine, t) and use engine.timeStep() if the step size is needed")]] virtual void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t,
+                                                                                                                                   real_t /*dt*/) {
+        updateScene(engine, t);
+    }
 };

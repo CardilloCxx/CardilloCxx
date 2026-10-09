@@ -64,7 +64,7 @@ public:
         std::cout << "Boulder KE: " << engine.getKineticEnergy(boulder) << " J" << std::endl;
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
         (void)engine;
         (void)t;
 //         // Apply a twisting moment at the rod end

@@ -329,7 +329,7 @@ class ThreeDPrinterScene : public SceneBase {
         engine.track(getE("Gantry"), "Gantry");
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
         auto right_motor = m_motor_constraints[0];
         auto left_motor = m_motor_constraints[1];
 
