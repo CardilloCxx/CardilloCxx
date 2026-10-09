@@ -19,7 +19,7 @@ system introduced in the Moreau chapter :doc:`../moreau_time_stepping`:
 
 where :math:`\mathcal{S}` is the scaled system matrix and :math:`\mathbf{b}_n` is the
 assembled right-hand side (see the Moreau chapter for the exact block
-structure, the Baumgarte correction and the trajectory source-velocity
+structure, the position-level force law and the trajectory source-velocity
 contributions). Contact impulses :math:`\Lambda_{NT}` enter the velocity block
 of :math:`\mathbf{b}_n` via the term :math:`\mathbf{W}_{NT}\,\Lambda_{NT}`.
 

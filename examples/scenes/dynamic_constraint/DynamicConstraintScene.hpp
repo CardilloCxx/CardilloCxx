@@ -38,7 +38,7 @@ public:
         m_springD = d;
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
         if (!m_added && t >= m_addAt) {
             engine.addLinearDistanceConstraint(m_b, m_c, Vector3r::Zero(), Vector3r::Zero(), m_springK, m_springD);
             m_added = true;

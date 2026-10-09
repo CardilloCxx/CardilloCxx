@@ -84,7 +84,7 @@ public:
         // engine.disableCollisionBetween(m_base, m_rb2);
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
         (void)engine;
         (void)t;
         // nothing done here

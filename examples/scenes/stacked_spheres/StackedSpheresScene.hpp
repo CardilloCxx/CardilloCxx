@@ -39,10 +39,15 @@ public:
 
         // cube_constraint = engine.addRigidConstraint(bottomCube);
 
-        engine.addTrajectory(bottomCube, std::nullopt, std::make_optional<std::function<TrajectoryTwist(real_t)>>([=, this](real_t t) -> TrajectoryTwist {
-                                 double v = amplitude * std::sin(2 * M_PI * frequency * t);
-                                 return TrajectoryTwist{Vector3r(0, 0, v), Vector3r(5.0, 0, 0)};
-                             }));
+        // Vertical velocity amplitude * sin(2 pi f t) and a constant spin of 5 rad/s about the body
+        // x-axis, prescribed through the pose.
+        const Vector3r p0(0.0, 0.0, bottomCubeHeight / 2.0);
+        const real_t w = 2 * M_PI * frequency;
+        engine.makeStatic(bottomCube);
+        engine.addTrajectory(bottomCube, [=, this](real_t t) -> TrajectoryPose {
+            const real_t z = amplitude / w * (1 - std::cos(w * t));
+            return TrajectoryPose{p0 + Vector3r(0, 0, z), Quaternion4r(Eigen::AngleAxis<real_t>(5.0 * t, Vector3r::UnitX()))};
+        });
 
         // Stack spheres above the bottom cube
         double z = bottomCubeHeight + sphereRadius;
@@ -52,11 +57,7 @@ public:
         }
     }
 
-    void updateScene(PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        double v = amplitude * std::sin(2 * M_PI * frequency * t);
-        // engine.setConstraintLinearVelocity(cube_constraint, Vector3r(0, 0, v));
-        // engine.setConstraintAngularVelocity(cube_constraint, Vector3r(5.0, 0, 0));
-    }
+    void updateScene(PhysicsEngine& /*engine*/, real_t /*t*/) override {}
 
 private:
  double amplitude = 0.01;

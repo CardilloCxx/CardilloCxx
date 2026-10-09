@@ -54,7 +54,7 @@ public:
             pose.first = Vector3r(0.0, 0.0, -0.005 + amplitude * std::sin(2.0 * M_PI * freq * t));
             pose.second = Quaternion4r::Identity();
             return pose;
-        }, std::nullopt);
+        });
         // engine.makeStatic(vibratingPlate);
 
         const real_t arenaRadius = (real_t)0.12; 
@@ -107,6 +107,6 @@ public:
         }
     }
 
-    void updateScene(physics::PhysicsEngine& /*engine*/, real_t /*t*/, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& /*engine*/, real_t /*t*/) override {
     }
 };

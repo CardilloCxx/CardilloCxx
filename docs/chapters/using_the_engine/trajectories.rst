@@ -6,48 +6,44 @@ A trajectory lets you drive an entity from a callback instead of from the contac
 .. important::
 Calling :cpp:func:`PhysicsEngine::addTrajectory <cardillo::physics::PhysicsEngine::addTrajectory>` on a dynamic body first makes that body static by removing its dynamic mass/inertia tags. The body can still remain collidable and visible, but gravity and solver-driven motion no longer act on it.
 
-Trajectory callback types
--------------------------
+Trajectory callback type
+------------------------
 
-The callback aliases are defined in the ECS headers; the public typedefs are
-:cpp:typedef:`TrajectoryPose <cardillo::TrajectoryPose>` and
-:cpp:typedef:`TrajectoryTwist <cardillo::TrajectoryTwist>`.
+A trajectory prescribes the pose of the entity as a function of time,
+:cpp:typedef:`TrajectoryPose <cardillo::TrajectoryPose>`:
 
 .. code-block:: cpp
 
-    using TrajectoryPose  = std::pair<Vector3r, :cpp:type:`Quaternion4r <cardillo::Quaternion4r>`>;
-    using TrajectoryTwist = std::pair<Vector3r, Vector3r>;
+    using TrajectoryPose = std::pair<Vector3r, Quaternion4r>;  // (position, orientation)
 
-``TrajectoryPose`` is ``(position, orientation)``.
-``TrajectoryTwist`` is ``(linearVelocity, angularVelocity)`` where linear
-velocity is in inertial frame and angular velocity follows the engine's usual
-Body Basis convention.
+How the engine uses it
+----------------------
 
-How the engine uses them
-------------------------
+Only the pose is prescribed; the velocity is always derived from it, so that
+pose and velocity are consistent. In every Moreau step
+:math:`t_n \to t_n + \Delta t`, the engine
 
-You can provide a pose callback, a twist callback, or both:
+- sets the pose to its value at the intermediate time
+  :math:`t_{n+\theta} = t_n + (1-\theta)\,\Delta t`, where all position-level
+  measures of the step are evaluated, and
+- sets the velocity to the mean velocity over the step,
+  ``(pose(t_n + dt) - pose(t_n)) / dt`` (angular velocity in the body frame,
+  from the relative rotation of the two orientations).
 
-- **Pose only** -- the engine samples the pose at ``t`` and ``t + dt`` and
-  differentiates it to obtain velocity.
-- **Twist only** -- the engine sets the entity's linear and angular velocity,
-  then the regular position update advances the pose from that velocity.
-- **Pose + twist** -- the engine applies the pose directly and also uses the
-  supplied velocity.
-
-If the entity has no orientation or angular-velocity component, the rotational
-part is ignored.
+The velocity enters the force laws of constraints and contacts with the driven
+body as a known source term. Velocity-only trajectories are not supported:
+prescribe a velocity by its integrated pose, e.g. a velocity
+``v(t) = v0 sin(w t)`` by the position ``x0 + v0 / w (1 - cos(w t))``, and a
+constant angular velocity ``w`` about the body x-axis by the orientation
+``q0 * AngleAxis(w t, UnitX)``. If the entity has no orientation or
+angular-velocity component, the rotational part is ignored.
 
 Callback trajectories
 ---------------------
 
 .. code-block:: cpp
 
-   void engine.addTrajectory(
-       entt::entity e,
-       std::optional<std::function<TrajectoryPose(real_t)>> positionFunc,
-       std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc
-   );
+   void engine.addTrajectory(entt::entity e, std::function<TrajectoryPose(real_t)> positionFunc);
 
 Examples:
 
@@ -55,47 +51,16 @@ Examples:
 
    using namespace cardillo::physics;
 
-   // Position-driven motion
-   engine.addTrajectory(
-       body,
-       std::make_optional<std::function<TrajectoryPose(real_t)>>(
-           [](real_t t) -> TrajectoryPose {
-               return {
-                   Vector3r(0.0, 0.0, 1.0 + 0.1 * std::sin(t)),
-                   Quaternion4r::Identity()
-               };
-           }),
-       std::nullopt);
+   // Vertical oscillation
+   engine.addTrajectory(body, [](real_t t) -> TrajectoryPose {
+       return {Vector3r(0.0, 0.0, 1.0 + 0.1 * std::sin(t)), Quaternion4r::Identity()};
+   });
 
-   // Velocity-driven motion
-   engine.addTrajectory(
-       body,
-       std::nullopt,
-       std::make_optional<std::function<TrajectoryTwist(real_t)>>(
-           [](real_t) -> TrajectoryTwist {
-               return {
-                   Vector3r(0.5, 0.0, 0.0),
-                   Vector3r::Zero()
-               };
-           }));
-
-   // Pose + velocity
-   engine.addTrajectory(
-       body,
-       std::make_optional<std::function<TrajectoryPose(real_t)>>(
-           [](real_t t) -> TrajectoryPose {
-               return {
-                   Vector3r(std::cos(t), std::sin(t), 0.0),
-                   Quaternion4r::Identity()
-               };
-           }),
-       std::make_optional<std::function<TrajectoryTwist(real_t)>>(
-           [](real_t t) -> TrajectoryTwist {
-               return {
-                   Vector3r(-std::sin(t), std::cos(t), 0.0),
-                   Vector3r::Zero()
-               };
-           }));
+   // Circular path with a constant spin of 2 rad/s about the body z-axis
+   engine.addTrajectory(body, [](real_t t) -> TrajectoryPose {
+       return {Vector3r(std::cos(t), std::sin(t), 0.0),
+               Quaternion4r(Eigen::AngleAxis<real_t>(2.0 * t, Vector3r::UnitZ()))};
+   });
 
 Spline trajectories
 -------------------

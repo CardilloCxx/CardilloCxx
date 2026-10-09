@@ -34,6 +34,10 @@ default-constructed engine.
 All config keys
 ---------------
 
+Each line of a config file has the form ``key = value``; ``#`` starts a comment.
+Keys that are not listed below are ignored with a warning that names the file
+and line, so typos do not silently fall back to defaults.
+
 Simulation timing
 ~~~~~~~~~~~~~~~~~
 
@@ -86,18 +90,6 @@ The simulation writes VTK output files that can be opened directly in
      - ``output.interval_steps``
      - ``50``
      - Write one VTK frame every *N* time steps (minimum 1).
-   * - ``output_heightfield_stride``
-     - ``output.heightfield_stride``
-     - ``8``
-     - Decimation factor for height-field VTK triangles (minimum 1; larger reduces file size).
-   * - ``output_write_contacts``
-     - ``output.write_contacts``
-     - ``false``
-     - Also write per-step contact geometry VTK files.
-   * - ``output_contacts_body_vectors``
-     - ``output.contacts_body_vectors``
-     - ``false``
-     - Include per-contact Body Basis normals/tangents/points in contact VTK.
 
 Collision settings
 ~~~~~~~~~~~~~~~~~~
@@ -194,11 +186,6 @@ Debug / diagnostics
      - ``debug.pj``
      - ``false``
      - Enable Projected Jacobi iteration logging. Accepts ``true/1/yes/on``.
-   * - ``debug_mesh``
-     - ``debug.mesh``
-     - ``false``
-     - Print mesh normalization info (volume, COM, inertia) at load time.
-       Accepts ``true/1/yes/on``.
 
 Solver selection and parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -272,18 +259,14 @@ Integrator (Moreau) settings
      - ``moreau.theta``, alias: ``solver.theta``
      - ``1.0``
      - Moreau theta parameter. ``1.0`` is fully implicit (most stable),
-       ``0.5`` is midpoint (second-order accurate).
+       ``0.5`` is midpoint (second-order accurate, but no damping of
+       violations of perfect constraints; use ``theta > 0.5``).
    * - ``moreau_implicit_gyroscopy``
      - ``moreau.implicit_gyroscopy``, alias: ``solver.implicit_gyroscopy``
      - ``false``
      - Treat the gyroscopic torque term implicitly to conserve angular momentum.
        This makes the effective mass matrix non-symmetric. Accepts
        ``true/1/yes/on``.
-   * - ``moreau_lambda_theta``
-     - ``moreau.lambda_theta``, alias: ``solver.lambda_theta``
-     - ``false``
-     - Enable θ method for integrating the Lagrange multipliers in the Moreau
-       integrator. Accepts ``true/1/yes/on``.
 
 Interior-point solver settings (QOCO / Clarabel)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -316,25 +299,6 @@ prefixes as shown:
      - ``solver.iter_ref_iters``
      - ``0``
      - Maximum number of iterative refinement passes for the KKT solve (minimum 0).
-
-Position-error bias
-~~~~~~~~~~~~~~~~~~~
-
-.. list-table::
-   :header-rows: 1
-   :widths: 25 45 18 32
-
-   * - Variable name
-     - cfg.txt key(s)
-     - Default
-     - Meaning
-   * - ``constraint_bias_factor``
-     - ``solver.constraint_bias_factor``; also ``constraint_bias_factor``,
-       ``baumgarte_bias_factor``, ``baumgarte_bias``, ``baumgarte_factor``,
-       ``constraint_bias``
-     - ``0.001``
-     - Baumgarte-style position-error correction gain. Larger values fix drift
-       faster but can introduce artificial energy; 0 disables it entirely.
 
 Scene selection
 ~~~~~~~~~~~~~~~
@@ -377,8 +341,7 @@ comments. Inline comments after ``#`` are supported:
    solver.type        = projected_jacobi   # see table above for all aliases
    integrator         = moreau             # selects the time integrator (alias: solver.name)
 
-   # Baumgarte bias; many cfg.txt names work interchangeably
-   constraint_bias_factor = 0.01          # also works: baumgarte_bias_factor, baumgarte_bias
+   moreau.theta       = 0.6
 
    # Interior-point settings accept multiple prefixes
    solver.kkt_static_reg = 1e-6           # also: ip.kkt_static_reg, qoco.kkt_static_reg
@@ -402,11 +365,10 @@ After populating the engine you drive it with a simple while-loop:
 
    myScene.populate(engine);
 
-   real_t t  = 0.0;
-   real_t dt = cfg.sim_dt;
+   real_t t = 0.0;
 
    while (!engine.isFinished()) {
-       myScene.updateScene(engine, t, dt);
+       myScene.updateScene(engine, t);  // step size: engine.timeStep()
        engine.step();
-       t += dt;
+       t += engine.timeStep();
    }

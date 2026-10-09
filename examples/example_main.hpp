@@ -26,6 +26,10 @@ inline physics::PhysicsEngine* g_engine = nullptr;
 // the current state. Diagnostic for CARDILLO_DUMP_STATE; compliant rows are excluded since their
 // elongation is physical.
 inline real_t maxPerfectConstraintViolation(physics::PhysicsEngine& engine) {
+    // Constraints read the cached RigidState, which still holds the intermediate configuration of
+    // the last step; refresh it so that the violation is evaluated at the current configuration.
+    auto& reg = engine.ecs();
+    for (auto e : reg.view<const C_Position3>()) RigidBody::updateState(reg, e);
     real_t maxViolation = 0;
     for (const auto& pattern : engine.world().constraintPatterns()) {
         if (!pattern) continue;
@@ -66,7 +70,12 @@ int runExample(int argc, char** argv) {
     const bool dumpState = std::getenv("CARDILLO_DUMP_STATE") != nullptr;
     real_t maxViolationOverRun = 0;
     while (!engine.isFinished()) {
-        scene.updateScene(engine, t, dt);
+        // Call through the deprecated overload so that scenes still overriding updateScene(engine,
+        // t, dt) keep working; its default forwards to updateScene(engine, t).
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+        static_cast<SceneBase&>(scene).updateScene(engine, t, dt);
+#pragma GCC diagnostic pop
         engine.step();
         t += dt;
         if (dumpState) maxViolationOverRun = std::max(maxViolationOverRun, detail::maxPerfectConstraintViolation(engine));
