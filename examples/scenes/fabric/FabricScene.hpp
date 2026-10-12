@@ -222,13 +222,11 @@ public:
         //         real_t minX = std::numeric_limits<real_t>::infinity();
         //         real_t maxX = -std::numeric_limits<real_t>::infinity();
         //         for (auto [e, be, pos] : view.each()) {
-        //             (void)e; (void)be;
         //             const real_t x = pos.value.x();
         //             if (x < minX) minX = x;
         //             if (x > maxX) maxX = x;
         //         }
         //         for (auto [e, be, pos] : view.each()) {
-        //             (void)be;
         //             allCandidates.push_back({e, pos.value});
         //         }
         //

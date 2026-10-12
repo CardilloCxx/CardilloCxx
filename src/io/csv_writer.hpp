@@ -54,11 +54,8 @@ class CsvWriter {
 
    private:
     static bool hasTracked(const entt::registry& reg) {
-        for (auto e : reg.view<C_TrackTag>()) {
-            (void)e;
-            return true;
-        }
-        return false;
+        const auto view = reg.view<C_TrackTag>();
+        return view.begin() != view.end();
     }
 
     static std::vector<std::string> trackedHeader() { return std::vector<std::string>{"t", "name", "px", "py", "pz", "vx", "vy", "vz", "wx", "wy", "wz", "euler_x", "euler_y", "euler_z"}; }

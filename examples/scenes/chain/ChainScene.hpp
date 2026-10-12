@@ -73,7 +73,6 @@ public:
         }
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& /*engine*/, real_t /*t*/) override {}
 
 private:
     entt::entity m_spool{entt::null};

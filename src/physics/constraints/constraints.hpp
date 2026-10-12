@@ -135,7 +135,7 @@ class ConstraintPattern {
     // reference of the pattern, so that d/dt g = W^T u + chi holds for the position error as well.
     // Without it, the position-level force law would pull back
     // against the prescribed motion. Default: no prescribed rate, nothing to do.
-    virtual void advancePrescribedMotion(real_t dt) { (void)dt; }
+    virtual void advancePrescribedMotion(real_t /*dt*/) {}
     virtual void setScalarVelocity(real_t v) { std::cerr << "Warning: setScalarVelocity not implemented for this constraint pattern" << std::endl; }
     virtual void setLinearVelocity(const Vector3r& v) { std::cerr << "Warning: setLinearVelocity not implemented for this constraint pattern" << std::endl; }
     virtual void setAngularVelocity(const Vector3r& w) { std::cerr << "Warning: setAngularVelocity not implemented for this constraint pattern" << std::endl; }

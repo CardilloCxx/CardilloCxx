@@ -239,9 +239,7 @@ const MeshAsset& PhysicsAssets::getMesh(const std::string& path, const Vector3r&
     auto it = m_meshCache.find(key);
     if (it != m_meshCache.end()) return it->second;
     MeshAsset asset = buildMeshAsset_(path, scale, normalized);
-    auto [it2, ok] = m_meshCache.emplace(key, std::move(asset));
-    (void)ok;
-    return it2->second;
+    return m_meshCache.emplace(key, std::move(asset)).first->second;
 }
 
 void PhysicsAssets::clear() {

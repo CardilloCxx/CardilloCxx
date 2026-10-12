@@ -526,8 +526,7 @@ VectorXr DynamicsAssembler::springBias(real_t dt, real_t theta) const {
     return ((real_t)1 / (theta * theta * dt)) * m_g_error_vec - (cv * cv) * Wvn + ((2 * theta - 1) / (theta * theta)) * m_C_v_vec;
 }
 
-VectorXr DynamicsAssembler::damperBias(real_t dt, real_t theta) const {
-    (void)dt;
+VectorXr DynamicsAssembler::damperBias(real_t /*dt*/, real_t theta) const {
     if (m_Adiag.size() == 0) return VectorXr();
     // A lambda_{gamma,theta} + W^T u_theta + chi = 0, scaled by 1/theta.
     return ((1 - theta) / theta) * (m_Wgamma.asSparse() * m_v_vec) + ((real_t)1 / theta) * m_A_v_vec;

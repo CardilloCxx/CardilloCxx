@@ -57,7 +57,6 @@ public:
         }
     }
 
-    void updateScene(PhysicsEngine& /*engine*/, real_t /*t*/) override {}
 
 private:
  double amplitude = 0.01;
