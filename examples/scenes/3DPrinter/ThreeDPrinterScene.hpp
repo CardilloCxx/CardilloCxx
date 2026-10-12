@@ -292,9 +292,13 @@ class ThreeDPrinterScene : public SceneBase {
             addAxisAligned(midLBottom, gantryLeftAnchor, false);
 
             const auto beltSection = physics::BeamCrossSection::rectangular((real_t)0.0005, (real_t)0.01);
+            // Small axial pretension only: with the axial stiffness scaled to EA = 5e9 N, a realistic
+            // belt tension (some 10 N) corresponds to a strain of order 1e-9. The former 3.5 % (about
+            // 1.7e8 N; withAxialPretension(0.04) is even more) made the position-level force law
+            // diverge in the first steps; 0.17 % (formerly gamma0.x = -5e-6 m per 3 mm element) runs.
             physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, 1e6, (real_t)4000, (real_t)0.4, (real_t)0.4, (real_t)0.5)
                                                            .relaxedInStraightConfiguration()
-                                                           .withAxialPretension((real_t)0.04);
+                                                           .withAxialPretension((real_t)1.7e-3);
             const physics::RigidProps beltProps = physics::RigidProps::withDensity((real_t)1100.0);
             const physics::RigidState beltStateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero());
 
