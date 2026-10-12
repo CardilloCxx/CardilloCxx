@@ -106,6 +106,10 @@ struct C_BeamElement {
 struct C_Mesh {
     std::string path;
     Vector3r scale{1, 1, 1};
+    // True if the body was created dynamic: its pose then refers to the mesh's center of mass and
+    // principal axes, and the normalized mesh must be used for collision and output, also after
+    // the body is made static (e.g. kinematically driven by a trajectory).
+    bool normalized{false};
 };
 struct C_MeshVisualTag {};
 
