@@ -41,8 +41,7 @@ inline real_t maxPerfectConstraintViolation(physics::PhysicsEngine& engine) {
     return maxViolation;
 }
 
-inline void printTimingsAtExit(int sig) {
-    (void)sig;
+inline void printTimingsAtExit(int /*sig*/) {
     if (g_engine) g_engine->timings().printBreakdown(std::cout);
     std::exit(EXIT_FAILURE);
 }

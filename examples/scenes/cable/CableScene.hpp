@@ -109,9 +109,4 @@ public:
         // Second end attached to the moving, trajectory-driven plug
         engine.addRigidConstraint(cableEnds.second, movingPlug);
     }
-
-    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
-        (void)engine;
-        (void)t;
-    }
 };

@@ -84,12 +84,6 @@ public:
         // engine.disableCollisionBetween(m_base, m_rb2);
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
-        (void)engine;
-        (void)t;
-        // nothing done here
-    }
-
     private:
         entt::entity m_base = {entt::null};
         entt::entity m_rb1 = {entt::null};

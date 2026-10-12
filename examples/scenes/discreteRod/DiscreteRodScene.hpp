@@ -77,7 +77,6 @@ public:
         }
     }
 
-    void updateScene(physics::PhysicsEngine& /*engine*/, real_t /*t*/) override {}
 
     private:
         entt::entity m_leftRod{entt::null};

@@ -148,12 +148,7 @@ void DerivedEntitySync::updateEntities(World& world, real_t dt, real_t evalOffse
         RigidBody::updateState(reg, e);
     }
 
-    auto view = reg.view<C_BeamElement, const C_Position3>();
-    for (auto [e, be, pos] : view.each()) {
-        (void)be;
-        (void)pos;
-        updateBeamElementEntity(world, e);
-    }
+    for (auto e : reg.view<C_BeamElement, const C_Position3>()) updateBeamElementEntity(world, e);
 }
 
 }  // namespace physics

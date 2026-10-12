@@ -14,7 +14,6 @@ public:
     ~PendulumScene() = default;
 
     void populate(physics::PhysicsEngine& engine) override {
-        (void)engine;
         using namespace cardillo;
         using namespace misc;
 
