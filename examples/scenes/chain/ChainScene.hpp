@@ -22,13 +22,17 @@ public:
         // Spool
         auto spool_shape = physics::MeshShape{spoolMeshPath, Vector3r(0.075, 0.075, 0.075)};
         auto spool_state = physics::RigidState{Vector3r(0.0, 0.0, 1.0)};
-        auto spool_props = physics::RigidProps{1e10};
+        auto spool_props = physics::RigidProps{1.0};
         m_spool = engine.addRigidBody(spool_shape, spool_state, spool_props);
-        // Kinematically driven spool: fixed position, rotation with 1.5 rad/s about its x-axis.
+        // Kinematically driven spool: fixed position, rotation with 1.5 rad/s about the drum axis
+        // (world y, the y-axis of the spool mesh). The pose is taken from the created body, since a
+        // dynamic mesh body is shifted to its center of mass and rotated to its principal axes (it
+        // differs from spool_state); the rotation is prescribed relative to it in world axes.
+        const Vector3r spoolPos = engine.ecs().get<C_Position3>(m_spool).value;
+        const Quaternion4r spoolOri = engine.ecs().get<C_Orientation>(m_spool).value;
         engine.makeStatic(m_spool);
-        const Vector3r spoolPos = spool_state.position;
-        engine.addTrajectory(m_spool, [spoolPos](real_t t) -> TrajectoryPose {
-            return TrajectoryPose{spoolPos, Quaternion4r(Eigen::AngleAxis<real_t>((real_t)1.5 * t, Vector3r::UnitX()))};
+        engine.addTrajectory(m_spool, [spoolPos, spoolOri](real_t t) -> TrajectoryPose {
+            return TrajectoryPose{spoolPos, Quaternion4r(Eigen::AngleAxis<real_t>((real_t)1.5 * t, Vector3r::UnitY())) * spoolOri};
         });
 
         // Desired physical height of one link (meters)
@@ -40,7 +44,6 @@ public:
         const Vector3r scale(1.0* linkHeight, 1.0* linkHeight, 1.0 * linkHeight);
 
         // Hanging dynamic links: place N links below the top link
-
         const real_t mass = (real_t)0.5;
         for (int i = 0; i < N; ++i) {
             Vector3r pos(0.0, 0.0, startHeight - spacing * (i + 1)); // Rotate position 90 degrees around Y
@@ -57,7 +60,15 @@ public:
             auto link = engine.addRigidBody(shape, state, props);
 
             if (i == 0) {
-                  engine.addLinearDistanceConstraint(m_spool, link, Vector3r(0.0, 0.0, -spool_radius), Vector3r(linkHeight / 2,  0.0, 0.0));
+                // Hang the first link at the bottom of the spool core. The attachment points are given
+                // in world coordinates and converted to the body frames, which are the principal-axes
+                // frames of the meshes (they differ from the nominal mesh frames).
+                const Vector3r spoolAttach = spoolPos - Vector3r(0.0, 0.0, spool_radius);  // bottom of the core
+                const Vector3r linkPos = engine.ecs().get<C_Position3>(link).value;
+                const Vector3r linkAttach = linkPos + Vector3r(0.0, 0.0, linkHeight / 2);  // top end of the link
+                const Matrix33r R_spool = spoolOri.toRotationMatrix();
+                const Matrix33r R_link = engine.ecs().get<C_Orientation>(link).value.toRotationMatrix();
+                engine.addLinearDistanceConstraint(m_spool, link, R_spool.transpose() * (spoolAttach - spoolPos), R_link.transpose() * (linkAttach - linkPos));
             }
         }
     }

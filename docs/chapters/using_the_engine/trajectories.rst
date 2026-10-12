@@ -38,6 +38,22 @@ constant angular velocity ``w`` about the body x-axis by the orientation
 ``q0 * AngleAxis(w t, UnitX)``. If the entity has no orientation or
 angular-velocity component, the rotational part is ignored.
 
+.. note::
+   The pose function must be continuous with the body's pose at creation. For a
+   dynamic mesh body, the engine shifts the given ``RigidState`` to the mesh's
+   centre of mass and rotates it into the principal axes, so the created pose
+   differs from the requested one. Read the actual pose before attaching the
+   trajectory and prescribe the motion relative to it:
+
+   .. code-block:: cpp
+
+      const Vector3r p0 = engine.ecs().get<C_Position3>(body).value;
+      const Quaternion4r q0 = engine.ecs().get<C_Orientation>(body).value;
+      engine.makeStatic(body);
+      engine.addTrajectory(body, [p0, q0](real_t t) -> TrajectoryPose {
+          return {p0, q0 * Quaternion4r(Eigen::AngleAxis<real_t>(1.5 * t, Vector3r::UnitX()))};
+      });
+
 Callback trajectories
 ---------------------
 
