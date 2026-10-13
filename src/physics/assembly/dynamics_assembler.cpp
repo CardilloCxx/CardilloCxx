@@ -294,6 +294,15 @@ void DynamicsAssembler::rebuildW_() {
                     const bool dyn = !RigidBody::isStatic(reg, att.entity);
                     const auto state = RigidBody::getState(reg, att.entity);
                     const real_t w = sign * att.weight;
+
+                    // Surface velocity of this attachment (conveyor belts): a known velocity of the
+                    // material point at the contact, projected onto the contact tangent plane, so it
+                    // only enters the tangential rows.
+                    if (const auto* sv = reg.try_get<C_SurfaceVelocity>(att.entity)) {
+                        const Vector3r v = reg.all_of<C_Orientation>(att.entity) ? Vector3r(reg.get<C_Orientation>(att.entity).rotation * sv->value) : sv->value;
+                        const Vector3r vTangent = v - v.dot(c.normal) * c.normal;
+                        for (int r = 0; r < nRows; ++r) m_contact_v_vec[rowBase + r] += w * dirs[(size_t)r].dot(vTangent);
+                    }
  
                     int col0 = 0, dof = 0;
                     VectorXr veStatic;

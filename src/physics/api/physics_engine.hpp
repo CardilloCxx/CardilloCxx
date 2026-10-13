@@ -197,6 +197,12 @@ class CARDILLO_API PhysicsEngine {
     void markStructureDirty() { m_world->markStructureDirty(); }
     /// Attach a tracking label to an entity for output.
     void track(entt::entity e, const std::string& name) { m_world->track(e, name); }
+    /// Prescribe the velocity of the material points of a body's surface relative to the body, in
+    /// body coordinates (e.g. a conveyor belt: static geometry, moving belt surface). It enters the
+    /// contact laws only, projected onto the contact tangent plane (friction).
+    void setSurfaceVelocity(entt::entity e, const Vector3r& v_body) { m_world->setSurfaceVelocity(e, v_body); }
+    /// Configuration the engine was initialized with (e.g. scene parameters, see Config::sceneParam()).
+    const config::Config& config() const { return m_cfg; }
 
     /// Advance the simulation pipeline by dt seconds.
     void step(real_t dt);

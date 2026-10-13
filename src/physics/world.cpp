@@ -36,6 +36,14 @@ const PhysicsAssets& World::assets() const {
     return *m_assets;
 }
 
+void World::setSurfaceVelocity(entt::entity e, const Vector3r& v_body) {
+    if (!m_reg.valid(e)) return;
+    if (v_body.isZero())
+        m_reg.remove<C_SurfaceVelocity>(e);
+    else
+        m_reg.emplace_or_replace<C_SurfaceVelocity>(e, C_SurfaceVelocity{v_body});
+}
+
 void World::track(entt::entity e, const std::string& name) {
     if (!m_reg.valid(e)) return;
     if (!m_reg.any_of<C_TrackTag>(e)) {
@@ -101,9 +109,8 @@ VectorXr World::getVelocity(entt::entity e) const {
         return m_reg.get<C_LinearVelocity3>(e).value; // linear velocity in inertial basis
     }
 
-    // throw std::runtime_error("World::getVelocity() called on entity without velocity.");
-
-    // TODO: Where is this required?
+    // This is required for kinematically driven bodies that come into contact.
+    // A call of getVelocity manages the change in relative contact velocities.
     auto state = RigidBody::getState(m_reg, e);
     VectorXr v(6);
     v.head<3>() = state.linearVelocity;

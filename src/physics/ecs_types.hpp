@@ -13,26 +13,26 @@
 namespace cardillo {
 
 struct C_Mass {
-    real_t m;
+    real_t m{(real_t)0};
 };
 struct C_Position3 {
-    Vector3r value;
+    Vector3r value{Vector3r::Zero()};
 };
 struct C_LinearVelocity3 {
-    Vector3r value;
+    Vector3r value{Vector3r::Zero()};
 };
 struct C_AngularVelocity3 {
-    Vector3r value;
+    Vector3r value{Vector3r::Zero()};
 };
 struct C_LinearAcceleration3 {
-    Vector3r value;
+    Vector3r value{Vector3r::Zero()};
 };
 struct C_AngularAcceleration3 {
-    Vector3r value;
+    Vector3r value{Vector3r::Zero()};
 };
 struct C_Orientation {
-    Quaternion4r value;
-    Matrix33r rotation;  // kept in sync with `value`; always update both via setValue()/fromQuaternion()
+    Quaternion4r value{Quaternion4r::Identity()};
+    Matrix33r rotation{Matrix33r::Identity()};  // kept in sync with `value`; always update both via setValue()/fromQuaternion()
 
     static C_Orientation fromQuaternion(const Quaternion4r& q) { return C_Orientation{q, q.toRotationMatrix()}; }
     void setValue(const Quaternion4r& q) {
@@ -41,42 +41,42 @@ struct C_Orientation {
     }
 };
 struct C_DirectorTriad {
-    Matrix33r value;
+    Matrix33r value{Matrix33r::Identity()};
 };
 struct C_PhysicsObject {};
 struct C_PointMassTag {};
 struct C_RigidBodyTag {};
 struct C_RigidBodyDirectorTag {};
 struct C_Plane {
-    Vector3r normal;
-    Vector3r up;
-    real_t sizeX;
-    real_t sizeY;
+    Vector3r normal{Vector3r::UnitZ()};
+    Vector3r up{Vector3r::UnitY()};
+    real_t sizeX{(real_t)0};
+    real_t sizeY{(real_t)0};
 };
 struct C_Cube {
     Vector3r center{Vector3r::Zero()};
-    Vector3r halfExtents;
+    Vector3r halfExtents{Vector3r::Zero()};
     Quaternion4r q{Quaternion4r::Identity()};
 };
 struct C_Capsule {
-    real_t radius;
-    real_t halfLength;
+    real_t radius{(real_t)0};
+    real_t halfLength{(real_t)0};
     Matrix33r localRotation{Matrix33r::Identity()};
 };
 struct C_Cylinder {
-    real_t radius;
-    real_t halfLength;
+    real_t radius{(real_t)0};
+    real_t halfLength{(real_t)0};
 };
 struct C_Cone {
-    real_t radius;
-    real_t height;
+    real_t radius{(real_t)0};
+    real_t height{(real_t)0};
 };
 struct C_Friction {
-    real_t mu;
+    real_t mu{(real_t)0};
 };
 struct C_Restitution {
-    real_t normal;
-    real_t tangential;
+    real_t normal{(real_t)0};
+    real_t tangential{(real_t)0};
 };
 struct C_VisualObject {};
 struct C_PointVisualTag {};
@@ -87,7 +87,7 @@ struct C_CylinderVisualTag {};
 struct C_ConeVisualTag {};
 struct C_Collidable {};
 struct C_Radius {
-    real_t r;
+    real_t r{(real_t)0};
 };
 
 struct C_SoftBodyVisualTag {};
@@ -115,7 +115,7 @@ struct C_MeshVisualTag {};
 
 struct C_Collider_Cube {
     Vector3r center{Vector3r::Zero()};
-    Vector3r halfExtents;
+    Vector3r halfExtents{Vector3r::Zero()};
     Quaternion4r q{Quaternion4r::Identity()};
 };
 
@@ -150,10 +150,10 @@ struct C_Collider_BeamHull {
 };
 
 struct C_Collider_Plane {
-    Vector3r normal;
-    Vector3r up;
-    real_t sizeX;
-    real_t sizeY;
+    Vector3r normal{Vector3r::UnitZ()};
+    Vector3r up{Vector3r::UnitY()};
+    real_t sizeX{(real_t)0};
+    real_t sizeY{(real_t)0};
 };
 
 using TrajectoryPose = std::pair<Vector3r, Quaternion4r>;
@@ -166,39 +166,48 @@ struct C_StaticTrajectory {
     real_t elapsed{(real_t)0};
 };
 
-struct C_Collider_Mesh {};
+struct C_Collider_Mesh {
+    bool convex{false};  // collide as a convex polyhedron (see MeshShape::convex)
+};
 struct C_Collider_Sphere {};
 struct C_Collider_Capsule {
-    real_t radius;
-    real_t halfLength;
+    real_t radius{(real_t)0};
+    real_t halfLength{(real_t)0};
     Matrix33r localRotation{Matrix33r::Identity()};
 };
 struct C_Collider_Cylinder {
-    real_t radius;
-    real_t halfLength;
+    real_t radius{(real_t)0};
+    real_t halfLength{(real_t)0};
 };
 struct C_Collider_Cone {
-    real_t radius;
-    real_t height;
+    real_t radius{(real_t)0};
+    real_t height{(real_t)0};
 };
 
 struct C_ExternalForce {
-    Vector3r f;
+    Vector3r f{Vector3r::Zero()};
 };
 struct C_ExternalTorque {
-    Vector3r tau;
+    Vector3r tau{Vector3r::Zero()};
 };
 
 struct C_TrackTag {
     std::string name;
 };
+// Prescribed velocity of the material points of a body's surface relative to the body, in body
+// coordinates (e.g. a conveyor belt: the geometry is at rest, the belt surface moves). Only the
+// contact laws see it: it is added to the relative contact velocity, projected onto the tangent
+// plane of each contact, so it drives friction but never pushes along the contact normal.
+struct C_SurfaceVelocity {
+    Vector3r value{Vector3r::Zero()};
+};
 struct C_BodyIndex {
-    int b;
+    int b{-1};  // index of the body in the stacked velocity vector; -1: none
 };
 
 // Optional inertia component for rigid bodies (body-frame diagonal inertia)
 struct C_InertiaDiag {
-    Vector3r I;
+    Vector3r I{Vector3r::Zero()};
 };
 
 }  // namespace cardillo

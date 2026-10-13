@@ -155,6 +155,8 @@ class World {
     void removeTrajectory(entt::entity e);
 
     void track(entt::entity e, const std::string& name);
+    // Surface (material) velocity of a body relative to the body, in body coordinates; see C_SurfaceVelocity.
+    void setSurfaceVelocity(entt::entity e, const Vector3r& v_body);
 };
 
 }  // namespace cardillo
