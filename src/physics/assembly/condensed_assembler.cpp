@@ -461,10 +461,12 @@ misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(const Cond
         diagBlocks[(size_t)i].diagonal() += blk.complianceDiag;
     }
 
-    // Accumulate coupling between every pair of bilateral blocks sharing a body -- a pair can in
-    // principle share two bodies at once (e.g. two independent springs between the exact same two
-    // bodies), so accumulate into a map keyed by the unordered pair before handing edges to
-    // BlockSparseLDLT. `couplingFwd[{p,q}]` (p<q, i.e. the pair as first encountered) is always the
+    // Accumulate coupling between every pair of bilateral blocks sharing a body -- a pair can share
+    // two bodies at once (e.g. the spring and the damper block of the same rod element, or two
+    // constraints between the same two bodies). Each body adds exactly its own contribution
+    // J_p,b M_b^-1 J_q,b^T when it is visited, so such a pair receives the sum over both bodies
+    // (each counted once), accumulated into a map keyed by the unordered pair before handing edges
+    // to BlockSparseLDLT. `couplingFwd[{p,q}]` (p<q, i.e. the pair as first encountered) is always the
     // (p,q)-direction contribution; `couplingBwd[{p,q}]` is populated ONLY when the shared body has
     // an implicit-gyroscopic override, in which case (p,q) and (q,p) are no longer transposes of
     // each other and both must be computed independently (see BlockSparseLDLT's symmetric=false
@@ -475,7 +477,8 @@ misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(const Cond
     std::map<std::pair<int, int>, MatrixXXr> couplingFwd;
     std::map<std::pair<int, int>, MatrixXXr> couplingBwd;
     bool anyAsym = false;
-    for (const auto& incident : topo.blocksOfBody) {
+    for (int b = 0; b < (int)topo.blocksOfBody.size(); ++b) {
+        const auto& incident = topo.blocksOfBody[(size_t)b];
         // Restrict to bilateral blocks incident on this body (blocksOfBody may also list contact
         // blocks, which never participate in Sbb).
         std::vector<int> bilateral;
@@ -487,12 +490,9 @@ misc::BlockSparseLDLT CondensedAssembler::buildBilateralFactorization(const Cond
                 const int p = bilateral[ii], q = bilateral[jj];
                 const auto& blkP = topo.blocks[(size_t)p];
                 const auto& blkQ = topo.blocks[(size_t)q];
-                // The shared body: whichever of blkP's bodies also appears on blkQ's side (both
-                // p and q are in this body's incident list, so it's the current `incident` body --
-                // but resolve it explicitly rather than assume, in case a pair shares two bodies).
-                for (int b : {blkP.bodyIndexA, blkP.bodyIndexB}) {
-                    if (b < 0) continue;
-                    if (b != blkQ.bodyIndexA && b != blkQ.bodyIndexB) continue;
+                // Only the current body b: if p and q share a second body, its contribution is
+                // added when that body is visited (adding both here would count it twice).
+                {
                     const MatrixXXr& Jp = jacobianAt(blkP, b);
                     const MatrixXXr& Jq = jacobianAt(blkQ, b);
                     const int off = offAt(blkP, b), dof = dofAt(blkP, b);
