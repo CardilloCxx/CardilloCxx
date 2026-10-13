@@ -141,6 +141,11 @@ struct MeshShape {
     bool use_bbox_collider{false};
     /// When true, also render the bounding box in the VTK output (only meaningful with use_bbox_collider).
     bool show_collider{false};
+    /// When true, collide with the mesh as a convex polyhedron built from its vertices and
+    /// triangles (the mesh must be closed and convex). Unlike a general triangle mesh, which yields
+    /// one contact point per intersecting triangle, a convex collider yields full contact patches
+    /// against primitives (e.g. the corners of a box lying on it).
+    bool convex{false};
     MeshShape() = default;
     explicit MeshShape(const std::string& p, bool bbox = false, bool showCol = false) : path(p), use_bbox_collider(bbox), show_collider(showCol) {}
     MeshShape(const std::string& p, const Vector3r& s, bool bbox = false, bool showCol = false) : path(p), scale(s), use_bbox_collider(bbox), show_collider(showCol) {}

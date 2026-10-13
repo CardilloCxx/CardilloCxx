@@ -247,7 +247,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
                         reg.emplace<C_CubeVisualTag>(e);
                     }
                 } else {
-                    reg.emplace<C_Collider_Mesh>(e);
+                    reg.emplace<C_Collider_Mesh>(e, s.convex);
                 }
             }
 

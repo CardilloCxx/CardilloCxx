@@ -313,6 +313,9 @@ Scene selection
    * - ``scene_name``
      - ``scene.name``
      - Selects which example scene to build. If not set (default ``"none-specified"``), the engine lists available scenes and exits.
+   * - ``scene_params``
+     - ``scene.<name>``, e.g. ``scene.waterfall_height``
+     - Scene-specific parameters, read by a scene via ``engine.config().sceneParam("<name>", fallback)``.
 
 Config file syntax
 ------------------

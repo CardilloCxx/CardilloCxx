@@ -10,6 +10,7 @@
 #include <coal/broadphase/default_broadphase_callbacks.h>
 #include <coal/collision.h>
 #include <coal/collision_data.h>
+#include <coal/shape/convex.h>
 #include <coal/contact_patch.h>
 #include <coal/math/transform.h>
 #include <coal/shape/geometric_shapes.h>
@@ -363,7 +364,12 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
         case ColliderKind::Mesh: {
             const auto& asset = m_world->getMeshAsset(e);
             if (!asset.bvh) throw std::runtime_error("COAL MeshLoader failed to load BVH for mesh entity");
-            return asset.bvh;
+            if (!reg.get<C_Collider_Mesh>(e).convex) return asset.bvh;
+            // Convex polyhedron from the mesh's own vertices and triangles (no hull computation:
+            // the mesh must be closed and convex).
+            auto points = std::make_shared<std::vector<coal::Vec3s>>(*asset.bvh->vertices);
+            auto triangles = std::make_shared<std::vector<coal::Triangle>>(*asset.bvh->tri_indices);
+            return std::make_shared<coal::Convex<coal::Triangle>>(points, (unsigned int)points->size(), triangles, (unsigned int)triangles->size());
         }
        case ColliderKind::BeamHull: {
             const auto& link = reg.get<C_Collider_BeamHull>(e);
@@ -547,6 +553,20 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
             ea = m_entities[iA];
             eb = m_entities[iB];
+
+            // Mesh (BVH) or height field second: Coal 3.0.4 swaps the pair internally, which is
+            // correct for the raw contacts of coal::collide(), but computeContactPatch() then
+            // builds the patches from these already-swapped contacts and swaps them again, so the
+            // patch normals point from o2 to o1. Always pass the mesh first (contact normals are
+            // from A to B, so A/B are swapped along; pair keys are order-independent).
+            const auto isBvhLike = [](const coal::CollisionObject* o) {
+                const auto t = o->collisionGeometry()->getObjectType();
+                return t == coal::OT_BVH || t == coal::OT_HFIELD;
+            };
+            if (!isBvhLike(o1) && isBvhLike(o2)) {
+                std::swap(o1, o2);
+                std::swap(ea, eb);
+            }
 
             if (RigidBody::isStatic(reg, ea) && RigidBody::isStatic(reg, eb)) continue;
             if (isPairDisabled(ea, eb)) continue;

@@ -388,6 +388,8 @@ Config ConfigReader::fromFile(const std::string& path) {
             }
         } else if (key == "scene.name") {
             cfg.scene_name = val;
+        } else if (key.rfind("scene.", 0) == 0) {
+            cfg.scene_params[key.substr(6)] = val;
         } else {
             std::cerr << "Warning: " << path << ":" << lineNo << ": unrecognized config key '" << key << "' is ignored." << std::endl;
         }

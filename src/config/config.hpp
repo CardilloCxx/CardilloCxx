@@ -1,3 +1,4 @@
+#include <map>
 #include <optional>
 #pragma once
 
@@ -227,6 +228,15 @@ struct Config {
     bool moreau_implicit_gyroscopy{false};
 
     std::string scene_name{"none-specified"};
+    // Scene-specific parameters: every key "scene.<name> = value" except scene.name (e.g.
+    // scene.waterfall_height = 0.05), read by the scenes via sceneParam().
+    std::map<std::string, std::string> scene_params;
+
+    // Value of the scene parameter `name` (key "scene.<name>"), or `fallback` if it is not set.
+    real_t sceneParam(const std::string& name, real_t fallback) const {
+        const auto it = scene_params.find(name);
+        return (it == scene_params.end()) ? fallback : static_cast<real_t>(std::stod(it->second));
+    }
 };
 
 class ConfigReader {

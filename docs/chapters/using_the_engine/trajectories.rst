@@ -78,6 +78,24 @@ Examples:
                Quaternion4r(Eigen::AngleAxis<real_t>(2.0 * t, Vector3r::UnitZ()))};
    });
 
+Conveyor belts: surface velocity
+--------------------------------
+
+A belt conveyor does not move its geometry; only the belt surface moves. Model it
+as a static body with a prescribed surface velocity (in body coordinates):
+
+.. code-block:: cpp
+
+   auto belt = engine.addStaticBody(physics::CubeShape(Vector3r(2.0, 0.4, 0.05)),
+                                    physics::RigidState(Vector3r(0, 0, -0.05)));
+   engine.setSurfaceVelocity(belt, Vector3r(-2.2, 0, 0));
+
+The surface velocity only enters the contact laws: it is added to the relative
+velocity of every contact with this body, projected onto the contact's tangent
+plane, so it drives the bodies on the belt by friction and never acts along the
+contact normal. The body itself stays at rest. The example ``conveyor_merge``
+(infeed-merge transfer with waterfall) uses two such belts.
+
 Spline trajectories
 -------------------
 
