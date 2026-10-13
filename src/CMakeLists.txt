@@ -73,8 +73,13 @@ set(CONICXX_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(Eigen3 GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 5.0.1 OVERRIDE_FIND_PACKAGE)
 FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.2)
 FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG v0.11.1)
-# FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.4)
-FetchContent_Declare(coal GIT_REPOSITORY git@github.com:41pha1/coal.git GIT_TAG a54e687017c1f21c09550aa5b40ffb049df84eea)
+# Coal fork 41pha1/coal (branch beam-support-set-hook): custom shapes (GEOM_CUSTOM) for the beam
+# hull colliders. It branches off Coal devel before coal-library/coal#908; until it is rebased,
+# cmake/coal_devel.patch brings its sources to the state of devel 6014b0c (contact patch
+# determinant of the segment-segment case, Box support inflate, patch tolerance serialization).
+FetchContent_Declare(coal GIT_REPOSITORY https://github.com/41pha1/coal.git GIT_TAG a54e687017c1f21c09550aa5b40ffb049df84eea
+    PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/coal_devel.patch"
+    UPDATE_DISCONNECTED TRUE)
 FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
 FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG cddaa5d5454fc0eb82e7b5851a09fd07cf6777f3)
 FetchContent_MakeAvailable(Eigen3)

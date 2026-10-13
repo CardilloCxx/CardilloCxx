@@ -43,11 +43,9 @@ inline coal::Vec3s toCoalVec3(const Vector3r& v) {
     return coal::Vec3s(v);
     // return v.cast<coal::CoalScalar>();
 }
-// Contact patch settings. TODO: promote to config (collision_patch_num_samples / collision_patch_tolerance).
-// The tolerance is an absolute distance: a shape vertex belongs to a contact patch if it lies within this
-// distance of the separating plane. Rim samples are used for curved beam end caps.
+// Number of rim samples of curved shapes (e.g. beam end caps) in contact patches. TODO: promote to
+// config (collision_patch_num_samples). The patch tolerance is collision.patch_tolerance, see below.
 constexpr std::size_t kPatchNumSamples = 12;
-constexpr real_t kPatchTolerance = (real_t)1e-3;
 
 // Beam hull geometry (end-cross-section rings/discs) is stored directly in world coordinates, so its
 // collision object must always carry the identity transform, exactly like halfspaces do.
@@ -523,7 +521,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
     // Contact patch request/result
     const std::size_t max_patch_req = m_world ? m_cfg.collision_max_patches : (std::size_t)4;
-    coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req, /*num_samples_curved_shapes*/ kPatchNumSamples, /*patch_tolerance*/ kPatchTolerance);
+    coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req, /*num_samples_curved_shapes*/ kPatchNumSamples, /*patch_tolerance*/ m_cfg.collision_patch_tolerance);
     coal::ContactPatchResult patch_res(patch_req);
     const bool usePatchVertices = m_world ? m_cfg.collision_use_patch_vertices : true;
 
@@ -576,9 +574,16 @@ std::vector<Contact>& CollisionCoal::detectAll() {
             if (cres.numContacts() == 0) continue;
         }
 
-        // Compute contact patches for this pair
+        // Compute contact patches for this pair. A vertex belongs to the patch if it lies within the
+        // patch tolerance of the separating plane; Coal's fixed default (1 mm) drops vertices that
+        // penetrate the other body less deeply than the deepest one by more than that (e.g. the
+        // fourth corner of a slightly tilted box sunk a few mm into the ground). The tolerance is
+        // therefore at least the penetration depth of the pair: every penetrating vertex counts.
         {
             auto sc_prep = m_timings->scope(misc::TimingManager::TimerId::CollisionMakeContactPatch);
+            real_t depth = 0;
+            for (std::size_t k = 0; k < cres.numContacts(); ++k) depth = std::max(depth, (real_t)-cres.getContact(k).penetration_depth);
+            patch_req.setPatchTolerance(std::max(m_cfg.collision_patch_tolerance, depth));
             patch_res.clear();
             coal::computeContactPatch(o1, o2, cres, patch_req, patch_res);
         }

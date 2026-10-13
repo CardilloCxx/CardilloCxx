@@ -342,6 +342,11 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.collision_max_patches = static_cast<std::size_t>(v);
             } catch (...) {
             }
+        } else if (key == "collision.patch_tolerance") {
+            try {
+                cfg.collision_patch_tolerance = std::max((real_t)1e-9, static_cast<real_t>(std::stod(val)));
+            } catch (...) {
+            }
         } else if (key == "collision.use_patch_vertices") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });

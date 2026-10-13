@@ -43,6 +43,10 @@ struct Config {
     int collision_max_raw_contacts{1024};  // collision.max_raw_contacts
     // Maximum number of contact patches requested per pair
     std::size_t collision_max_patches{4};  // collision.max_patches
+    // collision.patch_tolerance: vertices within this distance of the separating plane belong to a
+    // contact patch (Coal's patch tolerance). Per pair, it is raised to the penetration depth, so
+    // that every penetrating vertex is part of the patch.
+    real_t collision_patch_tolerance{(real_t)1e-3};
     // Prefer using patch vertices over raw contacts when available
     bool collision_use_patch_vertices{true};  // collision.use_patch_vertices
     // Maximum distance (in meters) to consider a current contact matched to a previous one
