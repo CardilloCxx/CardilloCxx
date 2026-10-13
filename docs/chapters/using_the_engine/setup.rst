@@ -125,6 +125,13 @@ Collision settings
      - ``collision.max_patches``
      - ``4``
      - Maximum contact patches extracted per shape pair.
+   * - ``collision_patch_tolerance``
+     - ``collision.patch_tolerance``
+     - ``1e-3``
+     - Vertices within this distance (m) of the separating plane belong to a contact
+       patch. Per pair, it is raised to the penetration depth, so that every
+       penetrating vertex (e.g. all four corners of a box sunk slightly into the
+       ground) is part of the patch.
    * - ``collision_use_patch_vertices``
      - ``collision.use_patch_vertices``
      - ``true``

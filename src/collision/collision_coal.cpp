@@ -571,9 +571,16 @@ std::vector<Contact>& CollisionCoal::detectAll() {
             if (cres.numContacts() == 0) continue;
         }
 
-        // Compute contact patches for this pair
+        // Compute contact patches for this pair. A vertex belongs to the patch if it lies within the
+        // patch tolerance of the separating plane; Coal's fixed default (1 mm) drops vertices that
+        // penetrate the other body less deeply than the deepest one by more than that (e.g. the
+        // fourth corner of a slightly tilted box sunk a few mm into the ground). The tolerance is
+        // therefore at least the penetration depth of the pair: every penetrating vertex counts.
         {
             auto sc_prep = m_timings->scope(misc::TimingManager::TimerId::CollisionMakeContactPatch);
+            real_t depth = 0;
+            for (std::size_t k = 0; k < cres.numContacts(); ++k) depth = std::max(depth, (real_t)-cres.getContact(k).penetration_depth);
+            patch_req.setPatchTolerance(std::max(m_cfg.collision_patch_tolerance, depth));
             patch_res.clear();
             coal::computeContactPatch(o1, o2, cres, patch_req, patch_res);
         }

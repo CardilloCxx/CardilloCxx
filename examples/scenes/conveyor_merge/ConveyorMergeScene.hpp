@@ -11,33 +11,11 @@
 
 using namespace cardillo;
 
-// Infeed-merge conveyor transfer with a waterfall (simplified flat junction geometry): a single
-// parcel moves on the infeed belt, which joins the merge belt at an angle of 30 degrees (top view),
-// leaves the infeed over its edge along the merge belt, falls by the waterfall height onto the
-// merge belt and is carried away. The quantity of interest is the rotation (yaw) of the parcel
-// caused by the transfer and the impact.
-//
-// Coordinates: z up; the merge belt runs along -x with speed v_merge, its surface at z = 0, width
-// 1.3 m centered at y = 0. The infeed lies at y > 0.65 m, its surface at z = h (waterfall height),
-// and moves along d = (-cos(alpha), -sin(alpha), 0) with v_infeed = v_merge / cos(alpha), so that
-// both belts have the same velocity component along the merge direction.
-//
-// Belts are static bodies with a prescribed surface velocity (engine.setSurfaceVelocity()): the
-// geometry is at rest, only the belt surface moves, which enters the contact laws. As in the
-// schematic, the infeed is a strip of width 0.8 m at the angle alpha whose end is cut obliquely
-// along the edge of the merge belt (waterfall edge parallel to x), so the transfer is the same
-// across the whole infeed width. Since this end is not rectangular, the infeed is a static mesh
-// (parallelogram prism, written to the output folder at startup) that collides as a convex
-// polyhedron (MeshShape::convex), which gives full contact patches like a box. No side guides.
-//
-// Parcel (HS008): rigid cuboid 480 x 330 x 300 mm, 10.75 kg, uniform mass (I_zz = 0.304 kg m^2),
-// friction coefficient 0.32 (config friction.default_mu), restitution 0, short side leading, start
-// with the infeed velocity and zero angular velocity.
-//
-// Scene parameters (config keys scene.<name>): waterfall_height [m] (default 0.01),
-// merge_speed [m/s] (2.2), angle_deg (30), start_distance [m] (0.2, distance of the parcel's
-// leading corner from the waterfall edge), infeed_length [m] (2.0, length of the infeed centerline
-// from the waterfall edge), infeed_width [m] (0.8).
+// Infeed-merge conveyor transfer with a waterfall: A single parcel moves on the infeed belt, 
+// which joins the merge belt at an angle of 30 degrees (top view), leaves the infeed over 
+// its edge along the merge belt, falls by the waterfall height onto the merge belt and is 
+// carried away. The quantity of interest is the rotation (yaw) of the parcel caused by the 
+// transfer and the impact.
 class ConveyorMergeScene : public SceneBase {
    public:
     const char* sceneName() const override { return "conveyor_merge"; }
@@ -49,9 +27,9 @@ class ConveyorMergeScene : public SceneBase {
         const real_t alpha = cfg.sceneParam("angle_deg", (real_t)30) * (real_t)M_PI / (real_t)180;
         const real_t startDistance = cfg.sceneParam("start_distance", (real_t)0.2);
         const real_t infeedScale = cfg.sceneParam("infeed_scale", (real_t)1.0);
+        const real_t mass = 10.75;
         const real_t vInfeed = vMerge / std::cos(alpha) * infeedScale;
         const Vector3r d(-std::cos(alpha), -std::sin(alpha), 0);  // infeed direction of motion
-        const real_t mass = 10.75;
 
         const real_t mergeHalfWidth = (real_t)0.65;
         const real_t beltHalfThickness = (real_t)0.05;
