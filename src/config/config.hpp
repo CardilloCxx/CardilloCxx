@@ -1,3 +1,4 @@
+#include <map>
 #include <optional>
 #pragma once
 
@@ -7,7 +8,16 @@
 namespace cardillo::config {
 
 enum class IntegratorType { Moreau };
-enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel, Conicxx, Condensed };
+// Discretization of the compliant force laws C*lambda + g(q) = 0 in the Moreau-theta scheme: the
+// theta-weighted force lambda_theta := theta lambda_{n+1} + (1 - theta) lambda_{n} is the unknown, 
+// and the position-level law is linearized at the intermediate configuration q_{n+theta} where 
+// W is evaluated:
+//   C*lambda_theta + g(t_{n+theta}, q_{n+theta}) + h*(theta^2 W^T u_{n+1} - (1-theta)^2 W^T u_n)
+//     + (2 theta - 1)*h*chi = 0,
+// with free bodies, kinematic drivers and prescribed rates all at t_{n+theta} = t_n + (1 - theta) h.
+// No initial multipliers, no drift, no stabilization parameter; perfect constraints require
+// theta > 1/2.
+enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Condensed, Qoco, Clarabel, Conicxx };
 
 struct Config {
     // Simulation settings
@@ -33,6 +43,10 @@ struct Config {
     int collision_max_raw_contacts{1024};  // collision.max_raw_contacts
     // Maximum number of contact patches requested per pair
     std::size_t collision_max_patches{4};  // collision.max_patches
+    // collision.patch_tolerance: vertices within this distance of the separating plane belong to a
+    // contact patch (Coal's patch tolerance). Per pair, it is raised to the penetration depth, so
+    // that every penetrating vertex is part of the patch.
+    real_t collision_patch_tolerance{(real_t)1e-3};
     // Prefer using patch vertices over raw contacts when available
     bool collision_use_patch_vertices{true};  // collision.use_patch_vertices
     // Maximum distance (in meters) to consider a current contact matched to a previous one
@@ -43,8 +57,8 @@ struct Config {
     // Set via `collision.min_pair_contact_distance`. Set to 0 to disable.
     real_t collision_min_pair_contact_distance{(real_t)0.0};
     // Friction settings
-    bool friction_enable{false};              // friction.enable - extend W with tangents
-    std::string friction_combine{"min"};      // friction.combine - one of [min, arith, geom]
+    bool friction_enable{true};               // friction.enable - extend W with tangents
+    std::string friction_combine{"arith"};    // friction.combine - one of [min, arith, geom]
     real_t friction_default_mu{(real_t)0.3};  // friction.default_mu - default C_Friction when not set on entities
 
     // Restitution settings
@@ -54,7 +68,6 @@ struct Config {
     // Debug/diagnostics
     bool debug_rb{false};    // debug.rb  - enable rigid-body contact/W diagnostics in Moreau
     bool debug_pj{false};    // debug.pj  - enable ProjectedJacobi iteration logging
-    bool debug_mesh{false};  // debug.mesh - print mesh normalization info (volume, COM, inertia)
 
     // Solver selection
     SolverType solver{SolverType::ProjectedJacobi};
@@ -71,9 +84,8 @@ struct Config {
     // buildBlockPreconditioner()/rdiag_sparse() in projected_jacobi.cpp). Mathematically alpha's
     // role there matches Anitescu-Tasora's cone-complementarity framing: a step size bounded by the
     // reciprocal of the contact Delassus operator's Lipschitz constant, not an arbitrary damping
-    // knob -- confirmed empirically for condensed too (see CONDENSED_SOLVER_REPORT.md's alpha/
-    // relaxation review): the power-iteration spectral-radius estimate already built for
-    // pj.chebyshev, run at alpha=1, crosses 1 at almost exactly the alpha domino's own config
+    // knob -- confirmed empirically for condensed too: the power-iteration spectral-radius
+    // estimate already built for pj.chebyshev, run at alpha=1, crosses 1 at almost exactly the alpha domino's own config
     // comments arrived at by hand-tuning for condensed.sweep_mode=jacobi. Neither `alpha` nor
     // `relaxation` is currently derived from that estimate automatically for either solver --
     // hand-tuned per scene today. See the report for the full theory-vs-implementation writeup and
@@ -82,7 +94,7 @@ struct Config {
     // symmetric-positive-definite bilateral sub-system per the Ostrowski-Reich theorem).
     real_t pj_relaxation{(real_t)1.0};                 // pj.relaxation
     real_t pj_alpha{(real_t)0.3};                      // pj.alpha
-    bool pj_nesterov{false};                           // pj.nesterov (enable Nesterov acceleration)
+    bool pj_nesterov{true};                            // pj.nesterov (enable Nesterov acceleration)
     real_t pj_nesterov_beta_threshold{(real_t)1.0};    // pj.nesterov_beta_threshold
     int pj_nesterov_restart_limit{10000};              // pj.nesterov_restart_limit
     // Chebyshev semi-iterative acceleration: an alternative to Nesterov, estimating the iteration
@@ -107,7 +119,7 @@ struct Config {
     // across window sizes before picking one for a new scene; m=1 (which has a closed-form
     // solution, no least-squares solve needed) was found not competitive on its own.
     bool pj_anderson{false};  // pj.anderson
-    int pj_anderson_m{2};     // pj.anderson_m (history window size, >= 1; 2 was the best of {1,2,3,5,8,12,20} across all three benchmark scenes -- see the report)
+    int pj_anderson_m{2};     // pj.anderson_m (history window size, >= 1; 2 was the best of {1,2,3,5,8,12,20} across all three benchmark scenes)
     bool pj_warmstart{true};  // pj.warmstart (enable warmstart & cache)
     // pj.rdiag_true_delassus: false (default) uses per-row step lengths alpha/D_ii (with a common
     // value alpha/mean(D_t1t1, D_t2t2) for both tangential rows of a frictional contact); true uses
@@ -120,7 +132,6 @@ struct Config {
     // pj_tol_rel, pj_relaxation, pj_alpha, pj_warmstart, debug_pj above.
     std::string condensed_sweep_mode{"gauss_seidel"};    // condensed.sweep_mode: jacobi | gauss_seidel | colored | chaotic
     std::string condensed_local_solve{"projection"};     // condensed.local_solve: projection | newton
-    std::string condensed_ordering{"natural"};           // condensed.ordering: natural | dominant
     int condensed_num_threads{0};                        // condensed.num_threads (0 = OpenMP default)
     int condensed_newton_max_iters{8};                   // condensed.newton_max_iters
     real_t condensed_newton_tol{(real_t)1e-10};          // condensed.newton_tol
@@ -129,8 +140,8 @@ struct Config {
     // tangential treated as separate 1- and 2-dof sub-problems) or "full" (a single rho from the
     // FULL 3x3 block's largest eigenvalue, capturing normal-tangential coupling that "split"
     // ignores). Matches Siconos's own compute_rho_split_spectral_norm/compute_rho_spectral_norm
-    // (fc3d_AlartCurnier_functions.c) respectively -- checked directly against that codebase. See
-    // CONDENSED_SOLVER_REPORT.md for a head-to-head comparison before switching a scene to "full".
+    // (fc3d_AlartCurnier_functions.c) respectively -- checked directly against that codebase.
+    // Compare both on the scene before switching it to "full".
     std::string condensed_newton_rho_strategy{"split"}; // condensed.newton_rho_strategy: split | full
     // How the step lengths (rhoN, rhoT, rhoT) of the plain projection update (GiiInv, used by every
     // sweep mode's default/fallback path) are derived from the local Delassus block of
@@ -156,7 +167,7 @@ struct Config {
     // the raw (unclamped) spectral radius at alpha=1, then picks alpha so the resulting operator's
     // estimated radius is approximately condensed_auto_alpha_target_rho (a linear-regime
     // extrapolation: rho(alpha) ~= alpha*(rho(1)+1) - 1 for alpha large enough to be dominated by
-    // the largest eigenvalue, confirmed empirically on domino -- see CONDENSED_SOLVER_REPORT.md).
+    // the largest eigenvalue, confirmed empirically on domino).
     // Recomputed fresh every step, unlike a static hand-tuned alpha -- motivated by the measured
     // finding that the true spectral radius is state-dependent and can swing between stable and
     // divergent within a few steps of the same run. Not yet validated widely enough to change the
@@ -171,7 +182,7 @@ struct Config {
     // stabilizing effect entirely), run a few real (unaccelerated, actually-projected) sweeps
     // first and estimate rho from the OBSERVED residual-decay ratio instead (classical "adaptive
     // SOR/Chebyshev", e.g. Manteuffel 1977/Ashby 1985).
-    // MEASURED RESULT (see CONDENSED_SOLVER_REPORT.md): on domino, this performed WORSE than the
+    // MEASURED RESULT: on domino, this performed WORSE than the
     // upfront linear estimate (1847 vs 1415 total sweeps), not better. Tracing the observed ratio
     // per warmup iteration found why: it does not settle to a stable value even over 20
     // iterations -- drifting from ~0.3 up through ~0.9 and transiently EXCEEDING 1 (residual
@@ -183,10 +194,8 @@ struct Config {
     // this finding; do not enable without re-measuring on your own scene first.
     bool condensed_chebyshev_adaptive_rho{false};        // condensed.chebyshev_adaptive_rho
 
-    real_t constraint_bias_factor{(real_t)0.001};  // constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)
-
     // Interior-point solver settings shared across QOCO, Clarabel and ConicXX
-    std::string qoco_backend{"auto"};         // qoco.backend [auto, cpu, cuda]
+    std::string qoco_backend{"cpu"};          // qoco.backend [auto, cpu, cuda]
     real_t ip_kkt_static_reg{(real_t)1e-8};   // solver.kkt_static_reg
     real_t ip_kkt_dynamic_reg{(real_t)1e-8};  // solver.kkt_dynamic_reg
     int ip_iter_ref_iters{2};                 // solver.iter_ref_iters
@@ -217,20 +226,21 @@ struct Config {
     real_t conicxx_equilibrate_max_scale{(real_t)1e4};   // conicxx.equilibrate_max_scale
     bool conicxx_validate_inputs{true};                 // conicxx.validate_inputs
 
-    // Presence flags for precedence handling (e.g., pj.alpha overrides alpha if both set)
-    bool has_pj_alpha{false};
-    bool has_pj_max_iterations{false};
-    bool has_pj_tol_abs{false};
-    bool has_pj_tol_rel{false};
-    bool has_pj_relaxation{false};
-
     // Integrator selection
     IntegratorType integrator{IntegratorType::Moreau};
     real_t moreau_theta{(real_t)1.0};
     bool moreau_implicit_gyroscopy{false};
-    bool moreau_lambda_theta{false};
 
     std::string scene_name{"none-specified"};
+    // Scene-specific parameters: every key "scene.<name> = value" except scene.name (e.g.
+    // scene.waterfall_height = 0.05), read by the scenes via sceneParam().
+    std::map<std::string, std::string> scene_params;
+
+    // Value of the scene parameter `name` (key "scene.<name>"), or `fallback` if it is not set.
+    real_t sceneParam(const std::string& name, real_t fallback) const {
+        const auto it = scene_params.find(name);
+        return (it == scene_params.end()) ? fallback : static_cast<real_t>(std::stod(it->second));
+    }
 };
 
 class ConfigReader {

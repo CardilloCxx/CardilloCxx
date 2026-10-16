@@ -86,8 +86,7 @@ public:
         engine.addRigidBody(groundShape, groundState, groundProps);
 
         const real_t layerWidth = (real_t)0.12; // spacing between leg pair slices
-            entt::entity middleAxle = buildWalker(engine, params, L, baseAlphaDeg, nLegPairs, p2_world, planeNormal, xAxis, layerWidth);
-        (void)middleAxle; // currently unused in populate
+            buildWalker(engine, params, L, baseAlphaDeg, nLegPairs, p2_world, planeNormal, xAxis, layerWidth);
     }
 
 private:
@@ -438,7 +437,6 @@ private:
                                real_t thickness,
                                real_t density,
                                bool collidable = true) {
-        (void)thickness; (void)density; (void)collidable;
         Vector3r d = b - a;
         real_t len = d.norm();
         if (len < (real_t)1e-6) return entt::null;
@@ -460,7 +458,6 @@ private:
                                      const Vector3r& halfExtents,
                                      const Quaternion4r& orientation,
                                      real_t density) {
-        (void)density;
         physics::CubeShape shape{halfExtents};
         physics::RigidState state; state.position = center; state.setOrientation(orientation);
         physics::RigidProps props;

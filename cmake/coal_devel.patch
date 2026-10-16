@@ -1,0 +1,71 @@
+diff --git a/include/coal/broadphase/detail/sparse_hash_table-inl.h b/include/coal/broadphase/detail/sparse_hash_table-inl.h
+index 299f9871..f1e7b621 100644
+--- a/include/coal/broadphase/detail/sparse_hash_table-inl.h
++++ b/include/coal/broadphase/detail/sparse_hash_table-inl.h
+@@ -80,7 +80,7 @@ std::vector<Data> SparseHashTable<Key, Data, HashFnc, TableT>::query(
+     typename Table::const_iterator p = table_.find(index);
+     if (p != table_.end()) {
+       std::copy((*p).second.begin(), (*p).second.end(),
+-                std ::inserter(result, result.end()));
++                std::inserter(result, result.end()));
+     }
+   }
+ 
+diff --git a/include/coal/contact_patch/contact_patch_solver.hxx b/include/coal/contact_patch/contact_patch_solver.hxx
+index 6f37f2ab..6a448d78 100644
+--- a/include/coal/contact_patch/contact_patch_solver.hxx
++++ b/include/coal/contact_patch/contact_patch_solver.hxx
+@@ -172,7 +172,7 @@ void ContactPatchSolver::computePatch(const ShapeType1& s1,
+     const Vec2s& d = pts2[1];
+ 
+     const Scalar det =
+-        (b(0) - a(0)) * (d(1) - c(1)) >= (b(1) - a(1)) * (d(0) - c(0));
++        (b(0) - a(0)) * (d(1) - c(1)) - (b(1) - a(1)) * (d(0) - c(0));
+     if ((std::abs(det) > eps) || ((c - d).squaredNorm() < eps) ||
+         ((b - a).squaredNorm() < eps)) {
+       contact_patch.addPoint(contact.pos);
+diff --git a/include/coal/serialization/contact_patch.h b/include/coal/serialization/contact_patch.h
+index 6397fa40..40aa5382 100644
+--- a/include/coal/serialization/contact_patch.h
++++ b/include/coal/serialization/contact_patch.h
+@@ -45,7 +45,7 @@ void serialize(Archive& ar, coal::ContactPatchRequest& request,
+   size_t num_samples_curved_shapes = request.getNumSamplesCurvedShapes();
+   Scalar patch_tolerance = request.getPatchTolerance();
+   ar& make_nvp("num_samples_curved_shapes", num_samples_curved_shapes);
+-  ar& make_nvp("patch_tolerance", num_samples_curved_shapes);
++  ar& make_nvp("patch_tolerance", patch_tolerance);
+ 
+   if (Archive::is_loading::value) {
+     request.setNumSamplesCurvedShapes(num_samples_curved_shapes);
+diff --git a/src/narrowphase/support_functions.cpp b/src/narrowphase/support_functions.cpp
+index 072002bb..451d27e0 100644
+--- a/src/narrowphase/support_functions.cpp
++++ b/src/narrowphase/support_functions.cpp
+@@ -141,8 +141,7 @@ void getShapeSupport(const Box* box, const Vec3s& dir, Vec3s& support,
+                      int& /*unused*/, ShapeSupportData& /*unused*/) {
+   // The inflate value is simply to make the specialized functions with box
+   // have a preferred side for edge cases.
+-  static const Scalar inflate =
+-      (dir.array() == 0).any() ? 1 + Scalar(1e-10) : 1;
++  const Scalar inflate = (dir.array() == 0).any() ? 1 + Scalar(1e-10) : 1;
+   static const Scalar dummy_precision =
+       Eigen::NumTraits<Scalar>::dummy_precision();
+   Vec3s support1 = (dir.array() > dummy_precision).select(box->halfSide, 0);
+@@ -223,7 +222,7 @@ void getShapeSupport(const Cone* cone, const Vec3s& dir, Vec3s& support,
+   // The cone radius is, for -h < z < h, (h - z) * r / (2*h)
+   // The inflate value is simply to make the specialized functions with cone
+   // have a preferred side for edge cases.
+-  static const Scalar inflate = 1 + Scalar(1e-10);
++  constexpr Scalar inflate = 1 + Scalar(1e-10);
+   Scalar h = cone->halfLength;
+   Scalar r = cone->radius;
+ 
+@@ -272,7 +271,7 @@ void getShapeSupport(const Cylinder* cylinder, const Vec3s& dir, Vec3s& support,
+ 
+   // The inflate value is simply to make the specialized functions with cylinder
+   // have a preferred side for edge cases.
+-  static const Scalar inflate = 1 + Scalar(1e-10);
++  constexpr Scalar inflate = 1 + Scalar(1e-10);
+   Scalar half_h = cylinder->halfLength;
+   Scalar r = cylinder->radius;
+ 

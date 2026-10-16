@@ -1,4 +1,5 @@
 #include "world.hpp"
+#include <iterator>
 #include <fstream>
 #include <iomanip>
 #include <optional>
@@ -33,6 +34,14 @@ PhysicsAssets& World::assets() {
 const PhysicsAssets& World::assets() const {
     if (!m_assets) const_cast<World*>(this)->m_assets = std::make_shared<PhysicsAssets>();
     return *m_assets;
+}
+
+void World::setSurfaceVelocity(entt::entity e, const Vector3r& v_body) {
+    if (!m_reg.valid(e)) return;
+    if (v_body.isZero())
+        m_reg.remove<C_SurfaceVelocity>(e);
+    else
+        m_reg.emplace_or_replace<C_SurfaceVelocity>(e, C_SurfaceVelocity{v_body});
 }
 
 void World::track(entt::entity e, const std::string& name) {
@@ -100,9 +109,8 @@ VectorXr World::getVelocity(entt::entity e) const {
         return m_reg.get<C_LinearVelocity3>(e).value; // linear velocity in inertial basis
     }
 
-    // throw std::runtime_error("World::getVelocity() called on entity without velocity.");
-
-    // TODO: Where is this required?
+    // This is required for kinematically driven bodies that come into contact.
+    // A call of getVelocity manages the change in relative contact velocities.
     auto state = RigidBody::getState(m_reg, e);
     VectorXr v(6);
     v.head<3>() = state.linearVelocity;
@@ -213,14 +221,13 @@ real_t World::getKineticEnergy(entt::entity e) const {
 
 int World::numBodies() const {
     if (m_num_bodies_dirty) {
-        int count = 0;
         // Prefer assembler-assigned body indices when available
         auto viewIndexed = m_reg.view<C_BodyIndex, C_PhysicsObject>();
-        for (auto e : viewIndexed) (void)e, ++count;
+        int count = (int)std::distance(viewIndexed.begin(), viewIndexed.end());
         if (count == 0) {
             // Fallback: count dynamic physics objects directly before assembler runs
             auto viewDyn = m_reg.view<C_PhysicsObject>();
-            for (auto e : viewDyn) (void)e, ++count;
+            count = (int)std::distance(viewDyn.begin(), viewDyn.end());
         }
         m_num_bodies_cached = count;
         m_num_bodies_dirty = false;
@@ -339,7 +346,7 @@ void World::setVelocityByForce(entt::entity e, const Vector3r& v, const Vector3r
     m_forces_dirty = true;
 }
 
-void World::setTrajectory(entt::entity e, std::optional<std::function<TrajectoryPose(real_t)>> positionFunc, std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc) {
+void World::setTrajectory(entt::entity e, std::function<TrajectoryPose(real_t)> positionFunc) {
     if (!m_reg.valid(e)) return;
 
     if (!RigidBody::isStatic(m_reg, e)) {
@@ -347,17 +354,14 @@ void World::setTrajectory(entt::entity e, std::optional<std::function<Trajectory
         makeStatic(e);
     }
 
-    if (!positionFunc.has_value() && !velocityFunc.has_value()) {
+    if (!positionFunc) {
         removeTrajectory(e);
         return;
     }
 
     C_StaticTrajectory traj;
     traj.positionFunc = std::move(positionFunc);
-    traj.velocityFunc = std::move(velocityFunc);
     traj.elapsed = (real_t)0;
-    traj.initialized = false;
-    traj.previousPosition = std::nullopt;
 
     m_reg.emplace_or_replace<C_StaticTrajectory>(e, std::move(traj));
     markStateDirty();
@@ -376,7 +380,6 @@ void World::removeTrajectory(entt::entity e) {
 const ::cardillo::MeshAsset& World::getMeshAsset(entt::entity e) const {
     if (!m_reg.any_of<C_Mesh>(e)) throw std::runtime_error("getMeshAsset(entity): entity has no C_Mesh");
     const auto& cm = m_reg.get<C_Mesh>(e);
-    const bool isDynamic = m_reg.any_of<C_PhysicsObject>(e);
-    return assets().getMesh(cm.path, cm.scale, /*normalized*/ isDynamic);
+    return assets().getMesh(cm.path, cm.scale, cm.normalized);
 }
 }  // namespace cardillo

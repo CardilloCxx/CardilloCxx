@@ -6,8 +6,8 @@ namespace cardillo::physics::assembly {
 
 const SparseMatrix<Eigen::ColMajor>& ClarabelAssembler::P(real_t dt, real_t theta) {
     auto M = m_dyn->MDiag();
-    auto C = m_dyn->Cdiag() * (1.0 / (theta * dt * dt));
-    auto A = m_dyn->Adiag() * (1.0 / (theta * dt));
+    auto C = m_dyn->Cdiag() * DynamicsAssembler::springComplianceScale(dt, theta);
+    auto A = m_dyn->Adiag() * DynamicsAssembler::damperComplianceScale(dt, theta);
 
     Eigen::VectorX<real_t> diag(M.size() + C.size() + A.size());
     diag << M, C, A;
@@ -17,8 +17,7 @@ const SparseMatrix<Eigen::ColMajor>& ClarabelAssembler::P(real_t dt, real_t thet
     return m_P_cache;
 }
 
-VectorXr& ClarabelAssembler::q(real_t dt, real_t theta) {
-    (void)theta;
+VectorXr& ClarabelAssembler::q(real_t dt, real_t /*theta*/) {
 
     auto q_top = -(m_dyn->MDiag().cwiseProduct(m_dyn->vVec()) + dt * (m_dyn->fVecGyroscopic() + m_dyn->fVecExternal()));
     auto q_bot = VectorXr::Zero(m_dyn->numSprings() + m_dyn->numDampers());
@@ -30,8 +29,8 @@ VectorXr& ClarabelAssembler::q(real_t dt, real_t theta) {
 }
 
 const SparseMatrix<Eigen::ColMajor>& ClarabelAssembler::A(real_t dt, real_t theta) {
-    TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * (1.0 / (theta * dt * dt)));
-    TripletMatrix A_diag = TripletMatrix::fromDiag(m_dyn->Adiag() * (1.0 / (theta * dt)));
+    TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * DynamicsAssembler::springComplianceScale(dt, theta));
+    TripletMatrix A_diag = TripletMatrix::fromDiag(m_dyn->Adiag() * DynamicsAssembler::damperComplianceScale(dt, theta));
 
     const int n_contact = m_dyn->numContactRows();
     VectorXr Smu = computeSmu();
@@ -45,9 +44,6 @@ const SparseMatrix<Eigen::ColMajor>& ClarabelAssembler::A(real_t dt, real_t thet
 }
 
 VectorXr& ClarabelAssembler::b(real_t dt, real_t theta) {
-    auto lambda_g = m_dyn->Lambda_g();
-    if (lambda_g.size() != m_dyn->Cdiag().size()) lambda_g = VectorXr::Zero(m_dyn->Cdiag().size());
-
     const auto& Wcontact = m_dyn->W().asSparse();
     VectorXr Smu = computeSmu();
     VectorXr restitution = m_dyn->restitutionVec();
@@ -58,20 +54,14 @@ VectorXr& ClarabelAssembler::b(real_t dt, real_t theta) {
     if ((restitution.array() != 0.0).any())
         biasImpulse += restitution.cwiseProduct(gamma_old);
 
-    VectorXr b_top = -(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(lambda_g) - ((1.0 - theta) / theta) * (m_dyn->Wg().asSparse() * m_dyn->vVec()) - (1.0 / theta) * m_dyn->C_v_vec();
-    VectorXr b_mid = -((1.0 - theta) / theta) * (m_dyn->Wgamma().asSparse() * m_dyn->vVec()) - (1.0 / theta) * m_dyn->A_v_vec();
+    VectorXr b_top = -m_dyn->springBias(dt, theta);
+    VectorXr b_mid = -m_dyn->damperBias(dt, theta);
     VectorXr b_contact = Smu.cwiseProduct(biasImpulse);
 
     for (int i = m_dyn->numFrictionlessContacts(); i < m_dyn->numContactRows(); i += 3) {
         const real_t y_1 = gamma_old[i + 1];
         const real_t y_2 = gamma_old[i + 2];
         b_contact[i] += std::sqrt(y_1 * y_1 + y_2 * y_2);
-    }
-
-    auto beta = m_dyn->system().config().constraint_bias_factor;
-    if (beta > 0) {
-        const VectorXr bias = (-m_dyn->Cdiag().cwiseProduct(lambda_g) / dt + m_dyn->g_error_vec()).cwiseProduct(m_dyn->bias_factor_vec());
-        b_top.noalias() -= bias * (beta / (dt * theta));
     }
 
     m_b_cache.resize(b_top.size() + b_mid.size() + b_contact.size());
@@ -94,7 +84,6 @@ const std::vector<clarabel::SupportedConeT<double>>& ClarabelAssembler::cones() 
         m_cones_cache.push_back(clarabel::NonnegativeConeT<double>(l));
     }
     for (uintptr_t i = 0; i < nsoc; ++i) {
-        (void)i;
         m_cones_cache.push_back(clarabel::SecondOrderConeT<double>((uintptr_t)3));
     }
 

@@ -4,12 +4,14 @@
 #include "../misc/timings/TimingManager.hpp"
 #include "../physics/world.hpp"
 #include "../rigid_body/transformations.hpp"
+#include "coal_types.hpp"
 #include "types.hpp"
 
 #include <coal/broadphase/broadphase.h>
 #include <coal/broadphase/default_broadphase_callbacks.h>
 #include <coal/collision.h>
 #include <coal/collision_data.h>
+#include <coal/shape/convex.h>
 #include <coal/contact_patch.h>
 #include <coal/math/transform.h>
 #include <coal/shape/geometric_shapes.h>
@@ -33,20 +35,9 @@ CollisionCoal::CollisionCoal(World& world, misc::TimingManager* timings, config:
 CollisionCoal::~CollisionCoal() = default;
 
 namespace {
-// TODO: We should align real_t and coal::CoalScalar in CMake and remove these conversations?
-inline coal::Quats toCoalQuat(const Quaternion4r& q) {
-    return coal::Quats(q);
-    // return q.template cast<coal::CoalScalar>();
-}
-inline coal::Vec3s toCoalVec3(const Vector3r& v) {
-    return coal::Vec3s(v);
-    // return v.cast<coal::CoalScalar>();
-}
-// Contact patch settings. TODO: promote to config (collision_patch_num_samples / collision_patch_tolerance).
-// The tolerance is an absolute distance: a shape vertex belongs to a contact patch if it lies within this
-// distance of the separating plane. Rim samples are used for curved beam end caps.
+// Number of rim samples of curved shapes (e.g. beam end caps) in contact patches. TODO: promote to
+// config (collision_patch_num_samples). The patch tolerance is collision.patch_tolerance, see below.
 constexpr std::size_t kPatchNumSamples = 12;
-constexpr real_t kPatchTolerance = (real_t)1e-3;
 
 // Beam hull geometry (end-cross-section rings/discs) is stored directly in world coordinates, so its
 // collision object must always carry the identity transform, exactly like halfspaces do.
@@ -77,8 +68,8 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
         x += q * cb.center;
     }
     q.normalize();
-    X.setTranslation(toCoalVec3(x));
-    X.setQuatRotation(toCoalQuat(q));
+    X.setTranslation(x);
+    X.setQuatRotation(q);
     return X;
 }
 
@@ -342,28 +333,33 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
             Vector3r n = plane.normal.normalized();
             const auto& x = reg.get<C_Position3>(e).value;
             real_t d = n.dot(x);
-            return std::make_shared<coal::Halfspace>(toCoalVec3(n), (coal::CoalScalar)d);
+            return std::make_shared<coal::Halfspace>(n, d);
         }
         case ColliderKind::Sphere: {
             const auto r = reg.get<C_Radius>(e).r;
-            return std::make_shared<coal::Sphere>((coal::CoalScalar)r);
+            return std::make_shared<coal::Sphere>(r);
         }
         case ColliderKind::Capsule: {
             const auto& cap = reg.get<C_Collider_Capsule>(e);
-            return std::make_shared<coal::Capsule>((coal::CoalScalar)cap.radius, (coal::CoalScalar)(cap.halfLength * 2));
+            return std::make_shared<coal::Capsule>(cap.radius, cap.halfLength * 2);
         }
         case ColliderKind::Cylinder: {
             const auto& cyl = reg.get<C_Collider_Cylinder>(e);
-            return std::make_shared<coal::Cylinder>((coal::CoalScalar)cyl.radius, (coal::CoalScalar)(cyl.halfLength * 2));
+            return std::make_shared<coal::Cylinder>(cyl.radius, cyl.halfLength * 2);
         }
         case ColliderKind::Cone: {
             const auto& cone = reg.get<C_Collider_Cone>(e);
-            return std::make_shared<coal::Cone>((coal::CoalScalar)cone.radius, (coal::CoalScalar)cone.height);
+            return std::make_shared<coal::Cone>(cone.radius, cone.height);
         }
         case ColliderKind::Mesh: {
             const auto& asset = m_world->getMeshAsset(e);
             if (!asset.bvh) throw std::runtime_error("COAL MeshLoader failed to load BVH for mesh entity");
-            return asset.bvh;
+            if (!reg.get<C_Collider_Mesh>(e).convex) return asset.bvh;
+            // Convex polyhedron from the mesh's own vertices and triangles (no hull computation:
+            // the mesh must be closed and convex).
+            auto points = std::make_shared<std::vector<coal::Vec3s>>(*asset.bvh->vertices);
+            auto triangles = std::make_shared<std::vector<CoalTriangle>>(*asset.bvh->tri_indices);
+            return std::make_shared<coal::Convex<CoalTriangle>>(points, (unsigned int)points->size(), triangles, (unsigned int)triangles->size());
         }
        case ColliderKind::BeamHull: {
             const auto& link = reg.get<C_Collider_BeamHull>(e);
@@ -517,7 +513,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
     // Contact patch request/result
     const std::size_t max_patch_req = m_world ? m_cfg.collision_max_patches : (std::size_t)4;
-    coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req, /*num_samples_curved_shapes*/ kPatchNumSamples, /*patch_tolerance*/ kPatchTolerance);
+    coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req, /*num_samples_curved_shapes*/ kPatchNumSamples, /*patch_tolerance*/ m_cfg.collision_patch_tolerance);
     coal::ContactPatchResult patch_res(patch_req);
     const bool usePatchVertices = m_world ? m_cfg.collision_use_patch_vertices : true;
 
@@ -556,9 +552,16 @@ std::vector<Contact>& CollisionCoal::detectAll() {
             if (cres.numContacts() == 0) continue;
         }
 
-        // Compute contact patches for this pair
+        // Compute contact patches for this pair. A vertex belongs to the patch if it lies within the
+        // patch tolerance of the separating plane; Coal's fixed default (1 mm) drops vertices that
+        // penetrate the other body less deeply than the deepest one by more than that (e.g. the
+        // fourth corner of a slightly tilted box sunk a few mm into the ground). The tolerance is
+        // therefore at least the penetration depth of the pair: every penetrating vertex counts.
         {
             auto sc_prep = m_timings->scope(misc::TimingManager::TimerId::CollisionMakeContactPatch);
+            real_t depth = 0;
+            for (std::size_t k = 0; k < cres.numContacts(); ++k) depth = std::max(depth, (real_t)-cres.getContact(k).penetration_depth);
+            patch_req.setPatchTolerance(std::max(m_cfg.collision_patch_tolerance, depth));
             patch_res.clear();
             coal::computeContactPatch(o1, o2, cres, patch_req, patch_res);
         }

@@ -293,8 +293,12 @@ class ThreeDPrinterScene : public SceneBase {
 
             const auto beltSection = physics::BeamCrossSection::rectangular((real_t)0.0005, (real_t)0.01);
             physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, 1e6, (real_t)4000, (real_t)0.4, (real_t)0.4, (real_t)0.5);
+            // No axial pretension: gamma0 is an unnormalized length, and with the axial stiffness
+            // scaled to EA = 5e9 N, a realistic belt tension (some 10 N) corresponds to a strain of
+            // order 1e-9. The former offset gamma0.x = -1e-4 m per 3 mm element (3.5 % strain, about
+            // 1.7e8 N) made the position-level force law diverge in the first steps.
             beltSprings.gamma0 = Vector3r::Zero();
-            beltSprings.gamma0->x() = (real_t)-1.0e-4;
+            beltSprings.gamma0->x() = (real_t)-5.0e-6;
             beltSprings.kappa0 = Vector3r::Zero();
             const physics::RigidProps beltProps = physics::RigidProps::withDensity((real_t)1100.0);
             const physics::RigidState beltStateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero());
@@ -329,7 +333,7 @@ class ThreeDPrinterScene : public SceneBase {
         engine.track(getE("Gantry"), "Gantry");
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
         auto right_motor = m_motor_constraints[0];
         auto left_motor = m_motor_constraints[1];
 
