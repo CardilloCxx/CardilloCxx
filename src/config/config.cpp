@@ -412,6 +412,8 @@ Config ConfigReader::fromFile(const std::string& path) {
             }
         } else if (key == "scene.name") {
             cfg.scene_name = val;
+        } else {
+            std::cerr << "Warning: unrecognized config key '" << key << "' in file '" << path << "'." << std::endl;
         }
     }
     return cfg;

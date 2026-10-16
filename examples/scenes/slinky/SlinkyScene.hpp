@@ -44,7 +44,8 @@ public:
         const real_t density = (real_t)700;   // plastic density kg/m^3
         const real_t E = (real_t)1e9;         // lower Young's modulus for plastic 1e9, 5e9 for metal
         const real_t nu = (real_t)0.35;
-        physics::BeamCrossSection section(pitch*2, pitch*0.99, physics::BeamBodyType::Cube); // (pitch*0.99, pitch*0.99, physics::BeamBodyType::Capsule); for metal pitch*2, pitch*0.99, physics::BeamBodyType::Cube for plastic-like
+        const auto section = physics::BeamCrossSection::rectangular(pitch*2, pitch*0.99);
+        
         auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
         springs.setDampingFromFactor(0.00);
 
@@ -60,7 +61,7 @@ public:
         std::cout << "Creating slinky with " << segments << " segments, " << turns << " turns, pitch " << pitch << ", radius " << radius << "\n";
         physics::RigidState stateDefaults(Vector3r(0.0,0.0,thickness * 0.5 + pitch * 0.5), Vector3r::Zero(),  Quaternion4r::Identity(), Vector3r(0.0,0.0,0.0), top_step, engine.ecs());
         physics::RigidProps props = physics::RigidProps::withDensity(density);
-        auto ends = engine.createBeam(helix, section, springs, stateDefaults, props, segments);
+        auto ends = engine.createBeam(helix, section, springs, stateDefaults, props, segments, physics::BeamColliderMode::InterSegmentHull);
         m_slinky_end_entity = ends.second;
     
         // m_guide_entity = engine.addRigidBody(physics::SphereShape(radius * (real_t)0.001), 

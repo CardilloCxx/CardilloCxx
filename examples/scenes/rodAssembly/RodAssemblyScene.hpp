@@ -33,16 +33,16 @@ public:
         const Quaternion4r frameOri = Quaternion4r::Identity();
         const Vector3r frameScale = Vector3r::Ones();
         {
-            physics::MeshShape shape{framePath, frameScale}; physics::RigidState st; st.position = framePos; st.orientation = frameOri; physics::RigidProps pr; m_frame = engine.addRigidBody(shape, st, pr);
+            physics::MeshShape shape{framePath, frameScale}; physics::RigidState st; st.position = framePos; st.setOrientation(frameOri); physics::RigidProps pr; m_frame = engine.addRigidBody(shape, st, pr);
         }
 
         // Add lower and upper rods as dynamic rigid bodies
         const real_t rodMass = (real_t)1.0;
         {
-            physics::MeshShape shape{lowerPath, Vector3r::Ones()}; physics::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(0.0,1.0,0.0); physics::RigidProps pr; pr.mass = rodMass; m_lowerRod = engine.addRigidBody(shape, st, pr);
+            physics::MeshShape shape{lowerPath, Vector3r::Ones()}; physics::RigidState st; st.position = Vector3r::Zero(); st.setOrientation(Quaternion4r::Identity()); st.linearVelocity = Vector3r(0.0,1.0,0.0); physics::RigidProps pr; pr.mass = rodMass; m_lowerRod = engine.addRigidBody(shape, st, pr);
         }
         {
-            physics::MeshShape shape{upperPath, Vector3r::Ones()}; physics::RigidState st; st.position = Vector3r::Zero(); st.orientation = Quaternion4r::Identity(); st.linearVelocity = Vector3r(1.0,0.0,0.0); physics::RigidProps pr; pr.mass = rodMass; m_upperRod = engine.addRigidBody(shape, st, pr);
+            physics::MeshShape shape{upperPath, Vector3r::Ones()}; physics::RigidState st; st.position = Vector3r::Zero(); st.setOrientation(Quaternion4r::Identity()); st.linearVelocity = Vector3r(1.0,0.0,0.0); physics::RigidProps pr; pr.mass = rodMass; m_upperRod = engine.addRigidBody(shape, st, pr);
         }
     
     }

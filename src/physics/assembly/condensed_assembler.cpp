@@ -49,6 +49,30 @@ void resolveBodySide(const entt::registry& reg, const std::vector<int>& velOffse
     dof = velOffsets[(size_t)bodyIndex + 1] - off;
 }
 
+void appendContactSideContributions(const entt::registry& reg, const std::vector<int>& velOffsets, const collision::ContactSide& side,
+                                    const std::array<Vector3r, 3>& directions, real_t sign, int dim, std::vector<BodyJacobianContribution>& out) {
+    const auto inertial = RigidBody::RigidState::inertial();
+    for (int i = 0; i < side.count; ++i) {
+        const auto& attachment = side.attachments[(size_t)i];
+        if (!reg.valid(attachment.entity) || RigidBody::isStatic(reg, attachment.entity)) continue;
+
+        const int bodyIndex = reg.get<C_BodyIndex>(attachment.entity).b;
+        const int off = velOffsets[(size_t)bodyIndex];
+        const int dof = velOffsets[(size_t)bodyIndex + 1] - off;
+        BodyJacobianContribution contribution;
+        contribution.bodyIndex = bodyIndex;
+        contribution.offset = off;
+        contribution.dof = dof;
+        contribution.J = MatrixXXr::Zero(dim, dof);
+        const auto state = RigidBody::getState(reg, attachment.entity);
+        for (int row = 0; row < dim; ++row) {
+            const Vector3r dirBody = transform::direction(directions[(size_t)row], inertial, state);
+            contribution.J.row(row) = buildContactRowByDof(dof, directions[(size_t)row], attachment.point_body, dirBody, sign * attachment.weight).transpose();
+        }
+        out.push_back(std::move(contribution));
+    }
+}
+
 // Mirrors PjAssembler::buildAndFactorS()'s implicit-gyroscopic correction (pj_assembler.cpp:26-53)
 // exactly -- same formula (Grot = 0.5*([I*omega]_x - [omega]_x*I), M_eff_rot = I - dt*Grot), same
 // per-body filter (rigid body, nV>=6, has C_AngularVelocity3) -- but produces the *inverse*
@@ -217,42 +241,17 @@ CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
         blk.mu = c.friction_mu;
         blk.contactIndex = ci;
 
-        const bool aDyn = !RigidBody::isStatic(reg, c.a);
-        const bool bDyn = !RigidBody::isStatic(reg, c.b);
-        resolveBodySide(reg, velOffsets, c.a, blk.bodyIndexA, blk.aOff, blk.aDof);
-        resolveBodySide(reg, velOffsets, c.b, blk.bodyIndexB, blk.bOff, blk.bDof);
-
         // Row order matches DynamicsAssembler::rebuildW_(): normal, then tangent1, tangent2.
-        // Side A uses s=-1, side B uses s=+1 (same convention as buildContactRowByDof callers there).
-        if (aDyn) {
-            blk.Ja = MatrixXXr::Zero(dim, blk.aDof);
-            blk.Ja.row(0) = buildContactRowByDof(blk.aDof, c.normal, c.pointA_body, c.normalA_body, (real_t)-1).transpose();
-            if (dim == 3) {
-                blk.Ja.row(1) = buildContactRowByDof(blk.aDof, c.tangent1, c.pointA_body, c.tangent1A_body, (real_t)-1).transpose();
-                blk.Ja.row(2) = buildContactRowByDof(blk.aDof, c.tangent2, c.pointA_body, c.tangent2A_body, (real_t)-1).transpose();
-            }
-        }
-        if (bDyn) {
-            blk.Jb = MatrixXXr::Zero(dim, blk.bDof);
-            blk.Jb.row(0) = buildContactRowByDof(blk.bDof, c.normal, c.pointB_body, c.normalB_body, (real_t)+1).transpose();
-            if (dim == 3) {
-                blk.Jb.row(1) = buildContactRowByDof(blk.bDof, c.tangent1, c.pointB_body, c.tangent1B_body, (real_t)+1).transpose();
-                blk.Jb.row(2) = buildContactRowByDof(blk.bDof, c.tangent2, c.pointB_body, c.tangent2B_body, (real_t)+1).transpose();
-            }
-        }
+        const std::array<Vector3r, 3> directions{c.normal, c.tangent1, c.tangent2};
+        appendContactSideContributions(reg, velOffsets, c.sideA, directions, (real_t)-1, dim, blk.bodyContributions);
+        appendContactSideContributions(reg, velOffsets, c.sideB, directions, (real_t)+1, dim, blk.bodyContributions);
 
         blk.Gii = MatrixXXr::Zero(dim, dim);
-        if (aDyn) {
-            if (const auto* gA = gyroBlockFor(blk.bodyIndexA, gyroBlocks))
-                blk.Gii.noalias() += blk.Ja * gA->topLeftCorner(blk.aDof, blk.aDof) * blk.Ja.transpose();
+        for (const auto& contribution : blk.bodyContributions) {
+            if (const auto* gyro = gyroBlockFor(contribution.bodyIndex, gyroBlocks))
+                blk.Gii.noalias() += contribution.J * gyro->topLeftCorner(contribution.dof, contribution.dof) * contribution.J.transpose();
             else
-                blk.Gii.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).asDiagonal() * blk.Ja.transpose();
-        }
-        if (bDyn) {
-            if (const auto* gB = gyroBlockFor(blk.bodyIndexB, gyroBlocks))
-                blk.Gii.noalias() += blk.Jb * gB->topLeftCorner(blk.bDof, blk.bDof) * blk.Jb.transpose();
-            else
-                blk.Gii.noalias() += blk.Jb * MinvDiag.segment(blk.bOff, blk.bDof).asDiagonal() * blk.Jb.transpose();
+                blk.Gii.noalias() += contribution.J * MinvDiag.segment(contribution.offset, contribution.dof).asDiagonal() * contribution.J.transpose();
         }
         blk.complianceDiag = VectorXr::Zero(dim);  // contact rows carry no compliance
 
@@ -274,8 +273,13 @@ CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
     topo.blocksOfBody.assign(std::max(numBodies, 0), {});
     for (int i = 0; i < (int)topo.blocks.size(); ++i) {
         const auto& blk = topo.blocks[i];
-        if (blk.bodyIndexA >= 0) topo.blocksOfBody[(size_t)blk.bodyIndexA].push_back(i);
-        if (blk.bodyIndexB >= 0) topo.blocksOfBody[(size_t)blk.bodyIndexB].push_back(i);
+        if (!blk.bodyContributions.empty()) {
+            for (const auto& contribution : blk.bodyContributions)
+                topo.blocksOfBody[(size_t)contribution.bodyIndex].push_back(i);
+        } else {
+            if (blk.bodyIndexA >= 0) topo.blocksOfBody[(size_t)blk.bodyIndexA].push_back(i);
+            if (blk.bodyIndexB >= 0) topo.blocksOfBody[(size_t)blk.bodyIndexB].push_back(i);
+        }
     }
 
     return topo;
@@ -315,17 +319,18 @@ void CondensedAssembler::updateCompliance(CondensedTopology& topo, real_t dt, re
         // // TOOD: Use ldlt here if implicit gyroscopic terms are not used or we can ensure that this is symmetric!
         // blk.GiiInv = tmp.partialPivLu().inverse();
 
-        // condensed.projection_rho_strategy (default "diagonal", a no-op here): for
-        // ContactFrictional blocks only (dim==3, contacts carry zero compliance -- see above --
-        // so Gii alone is what matters), replace the per-DOF-independent diagonal above with the
-        // SAME closed-form rho estimate already used by the Newton local solve
-        // (misc/contact_rho.hpp) -- strictly more conservative than the full inverse (never
-        // triggers the divergence noted above) while still capturing tangential-tangential (and,
-        // for "full", normal-tangential) coupling the plain diagonal ignores. Falls back to the
-        // diagonal above if the block's own Gii is (near-)singular for this estimate.
-        if (blk.kind == RowBlock::Kind::ContactFrictional && m_cfg.condensed_projection_rho_strategy != "diagonal") {
-            const auto strategy = (m_cfg.condensed_projection_rho_strategy == "full") ? misc::ContactRhoStrategy::FullSpectral
-                                                                                       : misc::ContactRhoStrategy::Split;
+        // Frictional contacts: the two tangential rows must share one step length, otherwise the
+        // fixed point of the projection satisfies a distorted friction law (friction impulse not
+        // opposite to the slip velocity; see misc/contact_rho.hpp). condensed.projection_rho_strategy
+        // selects how the (rhoN, rhoT, rhoT) step lengths are derived from Gii: "diagonal"
+        // (default) uses rhoT = 2/(Gii(1,1)+Gii(2,2)), "split" rhoT = 1/lambda_max of the tangential
+        // block, "full" a single 1/lambda_max of the whole block. Contacts carry no compliance, so
+        // Gii alone is what matters. Falls back to the per-row diagonal above only if Gii is
+        // (near-)singular for this estimate.
+        if (blk.kind == RowBlock::Kind::ContactFrictional) {
+            misc::ContactRhoStrategy strategy = misc::ContactRhoStrategy::IsotropicDiagonal;
+            if (m_cfg.condensed_projection_rho_strategy == "split") strategy = misc::ContactRhoStrategy::Split;
+            if (m_cfg.condensed_projection_rho_strategy == "full") strategy = misc::ContactRhoStrategy::FullSpectral;
             const Vector3r rho = misc::computeContactRho(blk.Gii, strategy);
             if ((rho.array() > (real_t)0).all()) {
                 blk.GiiInv.setZero();
@@ -413,17 +418,29 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
         VectorXr seg = VectorXr::Zero(blk.dim);
 
         VectorXr WvnA_B = VectorXr::Zero(blk.dim);
-        if (blk.aDof > 0) WvnA_B.noalias() += blk.Ja * vn.segment(blk.aOff, blk.aDof);
-        if (blk.bDof > 0) WvnA_B.noalias() += blk.Jb * vn.segment(blk.bOff, blk.bDof);
+        if (!blk.bodyContributions.empty()) {
+            for (const auto& contribution : blk.bodyContributions)
+                WvnA_B.noalias() += contribution.J * vn.segment(contribution.offset, contribution.dof);
+        } else {
+            if (blk.aDof > 0) WvnA_B.noalias() += blk.Ja * vn.segment(blk.aOff, blk.aDof);
+            if (blk.bDof > 0) WvnA_B.noalias() += blk.Jb * vn.segment(blk.bOff, blk.bDof);
+        }
 
         VectorXr WMinvRhsVel = VectorXr::Zero(blk.dim);
-        if (blk.aDof > 0) {
+        if (!blk.bodyContributions.empty()) {
+            for (const auto& contribution : blk.bodyContributions) {
+                if (const auto* gyro = gyroBlockFor(contribution.bodyIndex, topo.gyroMinvBlocks))
+                    WMinvRhsVel.noalias() += contribution.J * (gyro->topLeftCorner(contribution.dof, contribution.dof) * rhs_vel.segment(contribution.offset, contribution.dof));
+                else
+                    WMinvRhsVel.noalias() += contribution.J * MinvDiag.segment(contribution.offset, contribution.dof).cwiseProduct(rhs_vel.segment(contribution.offset, contribution.dof));
+            }
+        } else if (blk.aDof > 0) {
             if (const auto* gA = gyroBlockFor(blk.bodyIndexA, topo.gyroMinvBlocks))
                 WMinvRhsVel.noalias() += blk.Ja * (gA->topLeftCorner(blk.aDof, blk.aDof) * rhs_vel.segment(blk.aOff, blk.aDof));
             else
                 WMinvRhsVel.noalias() += blk.Ja * MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(rhs_vel.segment(blk.aOff, blk.aDof));
         }
-        if (blk.bDof > 0) {
+        if (blk.bodyContributions.empty() && blk.bDof > 0) {
             if (const auto* gB = gyroBlockFor(blk.bodyIndexB, topo.gyroMinvBlocks))
                 WMinvRhsVel.noalias() += blk.Jb * (gB->topLeftCorner(blk.bDof, blk.bDof) * rhs_vel.segment(blk.bOff, blk.bDof));
             else
@@ -438,7 +455,8 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
 
             if (beta > 0) {
                 const VectorXr gerr = m_dyn->g_error_vec().segment(blk.offset, blk.dim);
-                seg.noalias() += (-Crow.cwiseProduct(Lg) / dt + gerr) * (beta / (dt * theta));
+                const VectorXr bias = (-Crow.cwiseProduct(Lg) / dt + gerr).cwiseProduct(m_dyn->bias_factor_vec().segment(blk.offset, blk.dim));
+                seg.noalias() += bias * (beta / (dt * theta));
             }
             seg.noalias() += WMinvRhsVel;
         } else if (blk.kind == RowBlock::Kind::Damper) {
@@ -448,8 +466,13 @@ VectorXr CondensedAssembler::rhs(const CondensedTopology& topo, real_t dt, real_
         } else {
             const int cOff = blk.offset - nSprings - nDampers;
             VectorXr ufreeTerm = VectorXr::Zero(blk.dim);
-            if (blk.aDof > 0) ufreeTerm.noalias() += blk.Ja * u_free.segment(blk.aOff, blk.aDof);
-            if (blk.bDof > 0) ufreeTerm.noalias() += blk.Jb * u_free.segment(blk.bOff, blk.bDof);
+            if (!blk.bodyContributions.empty()) {
+                for (const auto& contribution : blk.bodyContributions)
+                    ufreeTerm.noalias() += contribution.J * u_free.segment(contribution.offset, contribution.dof);
+            } else {
+                if (blk.aDof > 0) ufreeTerm.noalias() += blk.Ja * u_free.segment(blk.aOff, blk.aDof);
+                if (blk.bDof > 0) ufreeTerm.noalias() += blk.Jb * u_free.segment(blk.bOff, blk.bDof);
+            }
             seg = ufreeTerm + m_dyn->contactVVec().segment(cOff, blk.dim);
         }
 

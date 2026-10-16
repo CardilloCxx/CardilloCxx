@@ -19,11 +19,6 @@ namespace cardillo::physics {
 struct RigidState {
     /// World-frame centre-of-mass position (metres).
     Vector3r position = Vector3r::Zero();
-    /// World-frame orientation as a unit quaternion.
-    Quaternion4r orientation = Quaternion4r::Identity();
-    /// Rotation matrix derived from @p orientation. The named constructors keep this in sync;
-    /// if you set @p orientation directly you must update @p rotation as well.
-    Matrix33r rotation = Matrix33r::Identity();
     /// World-frame linear velocity (m/s).
     Vector3r linearVelocity = Vector3r::Zero();
     /// Body-frame angular velocity (rad/s).
@@ -34,16 +29,43 @@ struct RigidState {
     RigidState() = default;
     explicit RigidState(const Vector3r& p) : position(p) {}
     RigidState(const Vector3r& p, const Vector3r& v) : position(p), linearVelocity(v) {}
-    RigidState(const Vector3r& p, const Quaternion4r& q) : position(p), orientation(q), rotation(q.toRotationMatrix()) {}
-    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q) : position(p), orientation(q), rotation(q.toRotationMatrix()), linearVelocity(v) {}
-    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q, const Vector3r& w) : position(p), orientation(q), rotation(q.toRotationMatrix()), linearVelocity(v), angularVelocity(w) {}
-    RigidState(const Vector3r& p, const Vector3r& v, const Vector3r& w) : position(p), linearVelocity(v), angularVelocity(w) {}
+    RigidState(const Vector3r& p, const Vector3r& v, const Vector3r& w)
+        : position(p), linearVelocity(v), angularVelocity(w) {}
+    RigidState(const Vector3r& p, const Quaternion4r& q) : position(p) { setOrientation(q); }
+    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q)
+        : position(p), linearVelocity(v) { setOrientation(q); }
+    RigidState(const Vector3r& p, const Vector3r& v, const Quaternion4r& q, const Vector3r& w)
+        : position(p), linearVelocity(v), angularVelocity(w) { setOrientation(q); }
 
-    RigidState(const Vector3r& p_local, const Vector3r& v_local, const Quaternion4r& q_local, const Vector3r& w_local, entt::entity refEntity, entt::registry& reg);
+    RigidState(const Vector3r& p_local, const Vector3r& v_local, const Quaternion4r& q_local,
+               const Vector3r& w_local, entt::entity refEntity, entt::registry& reg);
+    RigidState(const Vector3r& p_local, entt::entity refEntity, entt::registry& reg)
+        : RigidState(p_local, Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
+    RigidState(entt::entity refEntity, entt::registry& reg)
+        : RigidState(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
 
-    RigidState(const Vector3r& p_local, entt::entity refEntity, entt::registry& reg) : RigidState(p_local, Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
+    /// World-frame orientation (always unit-length).
+    const Quaternion4r& orientation() const { return orientation_; }
+    /// Rotation matrix, always consistent with orientation().
+    const Matrix33r& rotation() const { return rotation_; }
 
-    RigidState(entt::entity refEntity, entt::registry& reg) : RigidState(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero(), refEntity, reg) {}
+    void setOrientation(const Quaternion4r& q) {
+        Quaternion4r qn = q;
+        if (!qn.coeffs().allFinite() ||
+            qn.coeffs().squaredNorm() <= std::numeric_limits<real_t>::epsilon()) {
+            qn = Quaternion4r::Identity();
+        } else {
+            qn.normalize();
+        }
+        orientation_ = qn;
+        rotation_ = qn.toRotationMatrix();
+    }
+
+    void setRotation(const Matrix33r& R) { setOrientation(Quaternion4r(R)); }
+
+private:
+    Quaternion4r orientation_ = Quaternion4r::Identity();
+    Matrix33r rotation_ = Matrix33r::Identity();
 };
 
 /// Axis-aligned box shape. Half-extents are in the body's local frame.
@@ -75,8 +97,9 @@ struct CapsuleShape {
     real_t radius{0};
     /// Half-length of the cylindrical shaft between the two caps (metres).
     real_t halfLength{0};
+    Matrix33r localRotation{Matrix33r::Identity()};
     CapsuleShape() = default;
-    CapsuleShape(real_t r, real_t h) : radius(r), halfLength(h) {}
+    CapsuleShape(real_t r, real_t h, const Matrix33r& localR = Matrix33r::Identity()) : radius(r), halfLength(h), localRotation(localR) {}
 };
 
 /// Flat-ended cylinder. Long axis runs along the body's local z-axis.
@@ -123,8 +146,6 @@ struct MeshShape {
     MeshShape(const std::string& p, const Vector3r& s, bool bbox = false, bool showCol = false) : path(p), scale(s), use_bbox_collider(bbox), show_collider(showCol) {}
 };
 
-using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape>;
-
 /// Physical properties and pipeline flags for a rigid body.
 struct RigidProps {
     /// Body mass (kg). Takes priority over @p density when both are set.
@@ -154,114 +175,76 @@ struct RigidProps {
     }
 };
 
-enum class BeamBodyType { Cube, Capsule, Cylinder };
+enum class BeamColliderMode { RigidBodyPrimitive, InterSegmentHull };
+enum class BeamCrossSectionType { Square, Triangle, Round, Polygon };
 
-/// Cross-section geometry of a beam segment.
-/// Provides derived section properties (area, moments of inertia) used to compute beam stiffness.
+struct BeamCrossSection; // Forward declaration for recursive type usage in BeamHullShape
+using CrossSectionEvaluator = std::function<BeamCrossSection(real_t s)>;
+
 struct BeamCrossSection {
-    /// Cross-section width (metres). For Capsule/Cylinder types, treated as diameter.
-    real_t width{0};
-    /// Cross-section height (metres). For Capsule/Cylinder types, treated as diameter.
-    real_t height{0};
-    /// Shape type used for each beam segment's collision/visual geometry.
-    BeamBodyType type{BeamBodyType::Cube};
+    real_t width{0};   
+    real_t height{0};  
+    real_t radius{0};  
+    std::vector<Vector2r> polygon;  
+    BeamCrossSectionType type{BeamCrossSectionType::Square};
+    std::optional<CrossSectionEvaluator> evaluator;
 
-    BeamCrossSection() = default;
-    BeamCrossSection(real_t w, real_t h, BeamBodyType t = BeamBodyType::Cube) : width(w), height(h), type(t) {}
+    static Vector2r centroidOf(const std::vector<Vector2r>& poly);
+    static std::vector<Vector2r> recenter(const std::vector<Vector2r>& poly);
 
-    real_t area() const {
-        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-            real_t r = (std::min(width, height)) * (real_t)0.5;
-            return (real_t)M_PI * r * r;
-        }
-        return width * height;
+    static BeamCrossSection rectangular(real_t w, real_t h);
+    static BeamCrossSection triangle(real_t w, real_t h);
+    static BeamCrossSection round(real_t radius, size_t numSegments = 8);
+    static BeamCrossSection custom(const std::vector<Vector2r>& poly);
+
+    static BeamCrossSection procedural(CrossSectionEvaluator eval) {
+        BeamCrossSection sec;
+        sec.evaluator = std::move(eval);
+        return sec;
     }
 
-    real_t Iy() const {
-        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-            real_t r = (std::min(width, height)) * (real_t)0.5;
-            return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0;
-        }
-        return width * std::pow(height, (real_t)3) / (real_t)12.0;
-    }
-
-    real_t Iz() const {
-        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-            real_t r = (std::min(width, height)) * (real_t)0.5;
-            return (real_t)M_PI * std::pow(r, 4) / (real_t)4.0;
-        }
-        return std::pow(width, (real_t)3) * height / (real_t)12.0;
-    }
-
-    real_t Jp() const { return Iy() + Iz(); }
-
-    real_t sectionModulus() const {
-        if (type == BeamBodyType::Capsule || type == BeamBodyType::Cylinder) {
-            real_t r = (std::min(width, height)) * (real_t)0.5;
-            if (r == (real_t)0.0) return (real_t)0.0;
-            return (real_t)M_PI * std::pow(r, 3) / (real_t)4.0;
-        }
-        real_t Wy = Iy() / ((real_t)0.5 * height);
-        real_t Wz = Iz() / ((real_t)0.5 * width);
-        return std::min(Wy, Wz);
-    }
+    real_t area() const;
+    real_t Iy() const;
+    real_t Iz() const;
+    real_t Jp() const;
+    real_t maxAbsY() const;
+    real_t maxAbsX() const;
+    real_t sectionModulus() const;
+    BeamCrossSection evaluate(real_t s) const { return evaluator ? (*evaluator)(s) : *this; }
 };
 
-/// Elastic and damping parameters for a Cosserat-rod beam constraint.
-/// Stiffness can be derived from material constants (E, nu) or set directly via Ke_direct/Kf_direct.
+struct BeamHullShape {
+    BeamCrossSection cross_section;
+    float length{0};
+
+    BeamHullShape() = default;
+    explicit BeamHullShape(const BeamCrossSection& cs, float len);
+};
+
+using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape, BeamHullShape>;
+
 struct BeamSpringParams {
-    /// Young's modulus (Pa). Used with @p nu to compute Ke/Kf from cross-section geometry.
     real_t E{0};
-    /// Poisson's ratio. Used to compute shear modulus G = E / (2*(1+nu)).
     real_t nu{0};
-    /// Per-component scale factors for the extensional/shear stiffness Ke = (E*A/L, G*A/L, G*A/L).
-    /// Components: [axial, shear-y, shear-z].
     Vector3r scaleKe{Vector3r::Ones()};
-    /// Per-component scale factors for the torsion/bending stiffness Kf = (G*Jp/L, E*Iy/L, E*Iz/L).
-    /// Components: [torsion, bend-y, bend-z].
     Vector3r scaleKf{Vector3r::Ones()};
-    /// Direct override for Ke (N/m). When set, E, nu, and scaleKe are ignored for stretch/shear.
     std::optional<Vector3r> Ke_direct;
-    /// Direct override for Kf (Nm/rad). When set, E, nu, and scaleKf are ignored for torsion/bending.
     std::optional<Vector3r> Kf_direct;
-    /// Optional rest-state translational strain γ₀. Initialized from the initial pose when unset.
     std::optional<Vector3r> gamma0;
-    /// Optional rest-state curvature κ₀. Initialized from the initial relative orientation when unset.
     std::optional<Vector3r> kappa0;
-    /// Rayleigh-type damping factor d. Effective damping stiffness = K * d (units: s).
     real_t dampingFactor = 0.0;
 
     BeamSpringParams() = default;
+    BeamSpringParams(const Vector3r& Ke_in, const Vector3r& Kf_in, real_t dampingFactor_in = 0.0);
 
-    BeamSpringParams(const Vector3r& Ke_in, const Vector3r& Kf_in, real_t dampingFactor_in = 0.0) : Ke_direct(Ke_in), Kf_direct(Kf_in), dampingFactor(dampingFactor_in) {}
+    Vector3r Ke(real_t segLen, const BeamCrossSection& sec) const;
+    Vector3r Kf(real_t segLen, const BeamCrossSection& sec) const;
+    void setDampingFromFactor(real_t d);
 
-    Vector3r Ke(real_t segLen, const BeamCrossSection& sec) const {
-        if (Ke_direct.has_value()) return *Ke_direct;
-        const real_t G = E / ((real_t)2.0 * ((real_t)1.0 + nu));
-        const real_t A = sec.area();
-        Vector3r base(E * A / segLen, G * A / segLen, G * A / segLen);
-        return base.cwiseProduct(scaleKe);
-    }
-
-    Vector3r Kf(real_t segLen, const BeamCrossSection& sec) const {
-        if (Kf_direct.has_value()) return *Kf_direct;
-        const real_t G = E / ((real_t)2.0 * ((real_t)1.0 + nu));
-        Vector3r base(G * sec.Jp() / segLen, E * sec.Iy() / segLen, E * sec.Iz() / segLen);
-        return base.cwiseProduct(scaleKf);
-    }
-
-    void setDampingFromFactor(real_t d) { dampingFactor = d; }
-
-    static BeamSpringParams fromMaterial(real_t E_in, real_t nu_in, real_t axialScale = (real_t)1, real_t shearScale = (real_t)1, real_t torsionScale = (real_t)1, real_t bendYScale = (real_t)1,
-                                         real_t bendZScale = (real_t)1, real_t dampingFactor_in = (real_t)0) {
-        BeamSpringParams p;
-        p.E = E_in;
-        p.nu = nu_in;
-        p.scaleKe = Vector3r(axialScale, shearScale, shearScale);
-        p.scaleKf = Vector3r(torsionScale, bendYScale, bendZScale);
-        p.dampingFactor = dampingFactor_in;
-        return p;
-    }
+    static BeamSpringParams fromMaterial(real_t E_in, real_t nu_in, real_t axialScale = (real_t)1, 
+                                          real_t shearScale = (real_t)1, real_t torsionScale = (real_t)1, 
+                                          real_t bendYScale = (real_t)1, real_t bendZScale = (real_t)1, 
+                                          real_t dampingFactor_in = (real_t)0);
 };
 
 }  // namespace cardillo::physics

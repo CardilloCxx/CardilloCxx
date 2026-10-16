@@ -92,7 +92,7 @@ class TennisScene : public SceneBase {
         std::vector<real_t> crossZ(totalCrosses);
         for (int row = 0; row < totalCrosses; ++row) crossZ[row] = lerp(zMin, zMax, (real_t)row / (real_t)(totalCrosses - 1));
 
-        const physics::BeamCrossSection stringSection(stringRadius, stringRadius, physics::BeamBodyType::Capsule);
+        const auto stringSection = physics::BeamCrossSection::round(stringRadius);
         physics::BeamSpringParams stringSprings =
             physics::BeamSpringParams::fromMaterial((real_t)5.0e10, (real_t)0.35, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)0.0005);
         stringSprings.gamma0 = Vector3r::Zero();

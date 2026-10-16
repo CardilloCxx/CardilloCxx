@@ -26,7 +26,7 @@ class ConveyorScene : public SceneBase {
             s.position = p;
             const Quaternion4r qYaw(Eigen::AngleAxis<real_t>(yaw, Vector3r::UnitZ()));
             const Quaternion4r qPitch(Eigen::AngleAxis<real_t>(pitch, Vector3r::UnitY()));
-            s.orientation = qYaw * qPitch;
+            s.setOrientation(qYaw * qPitch);
             return s;
         };
 
@@ -56,13 +56,13 @@ class ConveyorScene : public SceneBase {
         const real_t rightYaw = (real_t)0.0;
 
         physics::RigidState leftRampState = makeState(Vector3r((real_t)-0.30, yRampCenter, topRunZ - (real_t)0.11), leftYaw, -rampAngle);
-        const Matrix33r RL = leftRampState.orientation.toRotationMatrix();
+        const Matrix33r RL = leftRampState.orientation().toRotationMatrix();
         leftRampState.position =
             leftJoin - RL * Vector3r((real_t)0.5 * rampLen, (real_t)0.0, rampRadius) + Vector3r(-0.015, 0.0, 0.0);  // small extra forward offset to prevent initial interpenetration with top conveyor
         createConveyor(leftRampState, rampLen, w, h, n, speed, +1);
 
         physics::RigidState rightRampState = makeState(Vector3r((real_t)0.30, yRampCenter, topRunZ - (real_t)0.11), rightYaw, +rampAngle);
-        const Matrix33r RR = rightRampState.orientation.toRotationMatrix();
+        const Matrix33r RR = rightRampState.orientation().toRotationMatrix();
         rightRampState.position = rightJoin - RR * Vector3r((real_t)-0.5 * rampLen, (real_t)0.0, rampRadius) +
                                   Vector3r(+0.015, 0.0, 0.0);  // small extra forward offset to prevent initial interpenetration with top conveyor
         createConveyor(rightRampState, rampLen, w, h, n, speed, -1);
@@ -103,7 +103,7 @@ class ConveyorScene : public SceneBase {
         const real_t rollerRadius = (real_t)0.012;
         const real_t rollerSpacing = (real_t)2.2 * rollerRadius;
         const real_t rollerRunLen = (real_t)4.0 * outLen;
-        const Matrix33r ROut = outState.orientation.toRotationMatrix();
+        const Matrix33r ROut = outState.orientation().toRotationMatrix();
         const Vector3r outX = ROut.col(0);
         const Vector3r outZ = ROut.col(2);
         const Vector3r outTopFront = outState.position + outX * ((real_t)0.5 * outLen) + outZ * ((real_t)0.5 * h);
@@ -154,7 +154,7 @@ class ConveyorScene : public SceneBase {
 
             physics::RigidState rs;
             rs.position = pWorld;
-            rs.orientation = qCylAxis;
+            rs.setOrientation(qCylAxis);
 
             physics::RigidProps props((real_t)0.05);
             props.friction = (real_t)1.2;
@@ -183,7 +183,7 @@ class ConveyorScene : public SceneBase {
         const real_t slatThickness = std::max((real_t)0.001, (real_t)0.18 * radius);
         const Vector3r slatHalfExtents((real_t)0.5 * slatPitch, (real_t)0.5 * width, (real_t)0.5 * slatThickness);
 
-        const Matrix33r R0 = state.orientation.toRotationMatrix();
+        const Matrix33r R0 = state.orientation().toRotationMatrix();
         const Vector3r p0 = state.position;
 
         auto wrapS = [=](real_t s) {
@@ -256,7 +256,7 @@ class ConveyorScene : public SceneBase {
 
             physics::RigidState rs;
             rs.position = p0 + R0 * pLocal0;
-            rs.orientation = state.orientation * qLocal0;
+            rs.setOrientation(state.orientation() * qLocal0);
 
             const entt::entity e = m_engine->addRigidBody(physics::CubeShape(slatHalfExtents), rs, slatProps);
             elements.push_back(e);
@@ -264,7 +264,7 @@ class ConveyorScene : public SceneBase {
             m_engine->addTrajectory(e, std::make_optional<std::function<TrajectoryPose(real_t)>>([=](real_t t) -> TrajectoryPose {
                                         const real_t s = wrapS(s0 + signedSpeed * t);
                                         const auto [pLocal, qLocal] = sampleSlatPose(s);
-                                        return TrajectoryPose{p0 + R0 * pLocal, state.orientation * qLocal};
+                                        return TrajectoryPose{p0 + R0 * pLocal, state.orientation() * qLocal};
                                     }),
                                     std::nullopt);
         }

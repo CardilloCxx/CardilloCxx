@@ -2,6 +2,8 @@
 #include <cmath>
 #include <unordered_map>
 #include "../rigid_body/rigid_body.hpp"
+#include "../rigid_body/transformations.hpp"
+#include "../misc/convex_hull.hpp"
 
 namespace cardillo::io {
 
@@ -267,7 +269,7 @@ const LocalMeshCache& getOrBuildLocalMesh(entt::entity e, BuildFn&& build) {
     return it->second;
 }
 
-enum class MeshKind { Unsupported, SoftBody, Plane, Cube, Capsule, Cylinder, Cone, MeshAsset, Sphere };
+enum class MeshKind { Unsupported, SoftBody, Plane, Cube, Capsule, Cylinder, Cone, MeshAsset, Sphere, ConvexHull };
 
 MeshKind detectMeshKind(const entt::registry& reg, entt::entity e) {
     if (reg.any_of<C_SoftBodySurface>(e)) return MeshKind::SoftBody;
@@ -277,7 +279,8 @@ MeshKind detectMeshKind(const entt::registry& reg, entt::entity e) {
     if (reg.any_of<C_Cylinder>(e)) return MeshKind::Cylinder;
     if (reg.any_of<C_Cone>(e)) return MeshKind::Cone;
     if (reg.any_of<C_Mesh>(e)) return MeshKind::MeshAsset;
-    if (reg.any_of<C_RB_Sphere, C_Radius>(e)) return MeshKind::Sphere;
+    if (reg.any_of<C_BeamHull>(e)) return MeshKind::ConvexHull;
+    if (reg.any_of<C_Collider_Sphere, C_Radius>(e)) return MeshKind::Sphere;
     return MeshKind::Unsupported;
 }
 
@@ -310,7 +313,7 @@ void fillCommonEntityData(const entt::registry& reg, entt::entity e, io::MeshGen
     }
 
     out.center = state.position;
-    out.R = state.rotation;
+    out.R = state.rotation();
 }
 
 bool buildSoftBodyMesh(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
@@ -406,7 +409,8 @@ bool buildCapsuleMeshTriangles(const entt::registry& reg, entt::entity e, io::Me
     });
     out.triangles = cached.triangles;
     out.vertices.resize(cached.vertices.size());
-    for (std::size_t i = 0; i < cached.vertices.size(); ++i) out.vertices[i] = out.R * cached.vertices[i] + out.center;
+    const Matrix33r localRotation = reg.get<C_Capsule>(e).localRotation;
+    for (std::size_t i = 0; i < cached.vertices.size(); ++i) out.vertices[i] = out.R * localRotation * cached.vertices[i] + out.center;
     return !out.vertices.empty();
 }
 
@@ -463,7 +467,6 @@ bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, io::Mes
     const auto& cached = getOrBuildLocalMesh(e, [&](std::vector<Vector3r>& v, std::vector<Eigen::Vector3i>& t, std::vector<Eigen::Vector2f>& uvs) {
         const real_t radius = reg.get<C_Radius>(e).r;
         std::vector<Vector3r> unitVerts;
-        cardillo::io::MeshGenerator::generateUVSphere(6, 10, unitVerts, t);
         io::MeshGenerator::generateUVSphere(6, 10, unitVerts, t);
         v.reserve(unitVerts.size());
         uvs.reserve(unitVerts.size());
@@ -480,6 +483,36 @@ bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, io::Mes
     out.hasUV = true;
     out.triangles = cached.triangles;
     return true;
+}
+
+bool buildConvexHullMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
+    const auto hull = reg.get<C_BeamHull>(e);
+    const auto crosssection = hull.polygon;
+
+    std::vector<Vector3r> vertices, velocities;
+    vertices.reserve(crosssection.size() * 2);
+    velocities.reserve(crosssection.size() * 2);
+
+    auto stateA = RigidBody::getState(reg, hull.endA);
+    auto stateB = RigidBody::getState(reg, hull.endB);
+    auto inertial = RigidBody::RigidState::inertial();
+
+    auto addRing = [&](const RigidBody::RigidState& node) {
+        for (const auto& p : crosssection) {
+            const Vector3r local(0, p.x(), p.y());
+            vertices.emplace_back(transform::point(local, node, inertial));
+            velocities.emplace_back(transform::linearVelocity(Vector3r::Zero(), local, node, inertial));
+        }
+    };
+
+    addRing(stateA);
+    addRing(stateB);
+
+    out.triangles = misc::ConvexHull3D::compute(vertices);
+    out.vertices = std::move(vertices);
+    out.perVertexVelocity = std::move(velocities);
+
+    return !out.triangles.empty();
 }
 
 }  // namespace
@@ -509,6 +542,8 @@ bool MeshGenerator::buildEntityMesh(const World& sys, entt::entity e, EntityMesh
             return buildMeshAssetTriangles(sys, e, out);
         case MeshKind::Sphere:
             return buildSphereMeshTriangles(reg, e, out);
+        case MeshKind::ConvexHull:
+            return buildConvexHullMeshTriangles(reg, e, out);
         case MeshKind::Unsupported:
         default:
             return false;

@@ -5,6 +5,7 @@
 #include <limits>
 #include <optional>
 #include "../../misc/block_diagonal.hpp"
+#include "../../misc/contact_rho.hpp"
 
 namespace cardillo::solver {
 
@@ -54,17 +55,28 @@ struct workspace {
           assembler(assembler) {}
 };
 
-static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, real_t alpha) {
+// Per-row scalar step lengths R = alpha / D_ii (D = W*Minv*W^T). For frictional contacts (3 rows
+// per contact, after the Nnfc frictionless rows) both tangential rows get the same step length
+// alpha / mean(D_t1t1, D_t2t2): with different tangential step lengths the fixed point of the
+// projection would satisfy a distorted friction law (see misc/contact_rho.hpp).
+static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, real_t alpha, int Nnfc) {
     const int C = (int)W.rows();
-    VectorXr R = VectorXr::Zero(C);
+    VectorXr D = VectorXr::Zero(C);
     for (int cid = 0; cid < C; ++cid) {
         real_t Dii = 0;
         for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
             const real_t w = it.value();
             Dii += w * w * MinvDiag[it.col()];
         }
-        R[cid] = (Dii > (real_t)0) ? (alpha / Dii) : (real_t)0;
+        D[cid] = Dii;
     }
+    for (int cid = Nnfc; cid + 2 < C; cid += 3) {
+        const real_t meanT = (real_t)0.5 * (D[cid + 1] + D[cid + 2]);
+        D[cid + 1] = meanT;
+        D[cid + 2] = meanT;
+    }
+    VectorXr R = VectorXr::Zero(C);
+    for (int cid = 0; cid < C; ++cid) R[cid] = (D[cid] > (real_t)0) ? (alpha / D[cid]) : (real_t)0;
     return R;
 }
 
@@ -88,10 +100,19 @@ static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<r
         D_scaled.addBlockDiag(VectorXr::Constant(1, Dii * invAlpha));
     }
 
+    // Frictional contacts: not the full 3x3 inverse -- coupling normal and tangential rows (or
+    // scaling the two tangential rows differently) changes the fixed point of the projection, i.e.
+    // the converged impulses no longer satisfy Signorini's and Coulomb's law (see
+    // misc/contact_rho.hpp). Instead, the block's diagonal is replaced by (1/rhoN, 1/rhoT, 1/rhoT)
+    // with rhoT = 1/lambda_max of the tangential 2x2 block ("split" strategy), which still accounts
+    // for the tangential-tangential coupling of the block.
     for (int cid = Nnfc; cid < Nnfc + Nfc; cid += 3) {
         const auto W_sel = W.middleRows(cid, 3);
-        const MatrixXXr block = (W_sel * MinvDiag.asDiagonal() * W_sel.transpose()) * invAlpha;
-        D_scaled.addBlock(block);
+        const Matrix33r G = W_sel * MinvDiag.asDiagonal() * W_sel.transpose();
+        Vector3r rho = misc::computeContactRho(G, misc::ContactRhoStrategy::Split);
+        if (!(rho.array() > (real_t)0).all()) rho = misc::computeContactRho(G, misc::ContactRhoStrategy::IsotropicDiagonal);
+        const Vector3r diagD = (rho.array() > (real_t)0).select(rho.cwiseInverse(), Vector3r::Zero());
+        D_scaled.addBlockDiag(diagD * invAlpha);
     }
 
     return D_scaled.calculateInverse();
@@ -342,7 +363,7 @@ static inline std::unique_ptr<workspace> build_workspace(physics::DynamicsAssemb
         RW = W;
         R_block = buildBlockPreconditioner(W, Minv, Nnfc, Nfc, cfg.pj_alpha);
     } else {
-        VectorXr Rdiag = rdiag_sparse(W, Minv, cfg.pj_alpha);
+        VectorXr Rdiag = rdiag_sparse(W, Minv, cfg.pj_alpha, Nnfc);
         RW = Rdiag.asDiagonal() * W;
         biasImpulse = Rdiag.asDiagonal() * biasImpulse;
     }

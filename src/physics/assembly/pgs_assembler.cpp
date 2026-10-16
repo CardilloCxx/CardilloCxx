@@ -47,7 +47,10 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) cons
         rhs.head(nSprings) = +(1.0 / (theta * dt * dt)) * m_dyn->Cdiag().cwiseProduct(Lambda_g) + ((1.0 - theta) / theta) * (Wg * vn) + (1.0 / theta) * m_dyn->C_v_vec();
 
         auto beta = m_dyn->system().config().constraint_bias_factor;
-        if (beta > 0) rhs.head(nSprings).noalias() += (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()) * (beta / (dt * theta));
+        if (beta > 0) {
+            const VectorXr bias = (-m_dyn->Cdiag().cwiseProduct(Lambda_g) / dt + m_dyn->g_error_vec()).cwiseProduct(m_dyn->bias_factor_vec());
+            rhs.head(nSprings).noalias() += bias * (beta / (dt * theta));
+        }
 
         rhs.head(nSprings).noalias() += Wg * M_inv.cwiseProduct(rhs_vel);
     }

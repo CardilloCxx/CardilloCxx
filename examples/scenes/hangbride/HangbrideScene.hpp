@@ -33,10 +33,10 @@ public:
 
         // Create cliff blocks as static obstacle cubes
         physics::CubeShape leftCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
-        physics::RigidState leftCliffState; leftCliffState.position = Vector3r(leftX, 0.0, cliffCenterZ); leftCliffState.orientation = Quaternion4r::Identity();
+        physics::RigidState leftCliffState; leftCliffState.position = Vector3r(leftX, 0.0, cliffCenterZ); leftCliffState.setOrientation(Quaternion4r::Identity());
         physics::RigidProps leftCliffProps; entt::entity eLeft = engine.addRigidBody(leftCliffShape, leftCliffState, leftCliffProps);
         physics::CubeShape rightCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
-        physics::RigidState rightCliffState; rightCliffState.position = Vector3r(rightX, 0.0, cliffCenterZ); rightCliffState.orientation = Quaternion4r::Identity();
+        physics::RigidState rightCliffState; rightCliffState.position = Vector3r(rightX, 0.0, cliffCenterZ); rightCliffState.setOrientation(Quaternion4r::Identity());
         physics::RigidProps rightCliffProps; entt::entity eRight = engine.addRigidBody(rightCliffShape, rightCliffState, rightCliffProps);
         (void)eLeft; (void)eRight; // not needed further
 
@@ -246,7 +246,7 @@ public:
 
             // Create plank as a rigid body cube (identity orientation)
             physics::CubeShape plankShape{plankHalf};
-            physics::RigidState plankState; plankState.position = center; plankState.orientation = Quaternion4r::Identity();
+            physics::RigidState plankState; plankState.position = center; plankState.setOrientation(Quaternion4r::Identity());
             physics::RigidProps plankProps; plankProps.mass = plankMass; entt::entity plank = engine.addRigidBody(plankShape, plankState, plankProps);
             planks.push_back(plank);
 

@@ -16,11 +16,13 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
 #include <optional>
 #include "tangent_frame.hpp"
+#include "beam_hull_shape.hpp"
 
 namespace cardillo::collision {
 
@@ -32,14 +34,28 @@ CollisionCoal::~CollisionCoal() = default;
 
 namespace {
 // TODO: We should align real_t and coal::CoalScalar in CMake and remove these conversations?
-inline coal::Quatf toCoalQuat(const Quaternion4r& q) {
-    return coal::Quatf(q);
+inline coal::Quats toCoalQuat(const Quaternion4r& q) {
+    return coal::Quats(q);
     // return q.template cast<coal::CoalScalar>();
 }
 inline coal::Vec3s toCoalVec3(const Vector3r& v) {
     return coal::Vec3s(v);
     // return v.cast<coal::CoalScalar>();
 }
+// Contact patch settings. TODO: promote to config (collision_patch_num_samples / collision_patch_tolerance).
+// The tolerance is an absolute distance: a shape vertex belongs to a contact patch if it lies within this
+// distance of the separating plane. Rim samples are used for curved beam end caps.
+constexpr std::size_t kPatchNumSamples = 12;
+constexpr real_t kPatchTolerance = (real_t)1e-3;
+
+// Beam hull geometry (end-cross-section rings/discs) is stored directly in world coordinates, so its
+// collision object must always carry the identity transform, exactly like halfspaces do.
+inline coal::Transform3s identityTf() {
+    coal::Transform3s X;
+    X.setIdentity();
+    return X;
+}
+
 inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e) {
     coal::Transform3s X{}; // sets identity in ctor
     // X.setIdentity(); // TODO: This is already done?
@@ -47,11 +63,13 @@ inline coal::Transform3s makeTfFromEcs(const entt::registry& reg, entt::entity e
     Quaternion4r q = Quaternion4r::Identity();
     if (reg.any_of<C_Position3>(e)) x = reg.get<C_Position3>(e).value;
     if (reg.any_of<C_Orientation>(e)) q = reg.get<C_Orientation>(e).value;
-    if (reg.any_of<C_RB_Cube>(e)) {
-        const auto& cb = reg.get<C_RB_Cube>(e);
+    if (reg.any_of<C_Collider_Cube>(e)) {
+        const auto& cb = reg.get<C_Collider_Cube>(e);
         // Apply local cube orientation on top of body orientation
         q = q * cb.q;
         x += q * cb.center;  // center expressed in cube-local frame
+    } else if (reg.any_of<C_Collider_Capsule>(e)) {
+        q = q * Quaternion4r(reg.get<C_Collider_Capsule>(e).localRotation);
     } else if (reg.any_of<C_Cube>(e)) {
         // If only visual cube exists, still honor its center/q
         const auto& cb = reg.get<C_Cube>(e);
@@ -117,9 +135,8 @@ inline Contact makeContact(entt::entity ea, entt::entity eb, const RigidBody::Ri
 
     // Same class of bug as the normal below, hitting the nearest/patch points instead: COAL can
     // return a non-finite point for one (or both) sides of an exactly-touching/coincident pair.
-    // Sanitize before anything derives from them (c.point, and from there pointA_body/pointB_body
-    // -- which feed the angular row of buildContactRowByDof() for any 6-DOF body, so a NaN point
-    // silently poisons that body's Jacobian even when the normal itself is fine).
+    // Sanitize before anything derives from them, including the attachment points that feed the
+    // angular rows of the contact Jacobian for 6-DOF bodies.
     if (!p1W.allFinite()) p1W = p2W.allFinite() ? p2W : stateA.position;
     if (!p2W.allFinite()) p2W = p1W.allFinite() ? p1W : stateB.position;
 
@@ -149,17 +166,42 @@ inline Contact makeContact(entt::entity ea, entt::entity eb, const RigidBody::Ri
     c.point = (p1W + p2W) * (real_t)0.5;
     c.penetration = std::max<real_t>(0.0, depth);
     const RigidBody::RigidState inertial{}; // default ctro => identity
-    c.pointA_body = transform::point(c.point, inertial, stateA);
-    c.normalA_body = transform::direction(c.normal, inertial, stateA);
-    c.pointB_body = transform::point(c.point, inertial, stateB);
-    c.normalB_body = transform::direction(c.normal, inertial, stateB);
-    // Tangents in body frames
-    c.tangent1A_body = transform::direction(c.tangent1, inertial, stateA);
-    c.tangent2A_body = transform::direction(c.tangent2, inertial, stateA);
-    c.tangent1B_body = transform::direction(c.tangent1, inertial, stateB);
-    c.tangent2B_body = transform::direction(c.tangent2, inertial, stateB);
+    const Vector3r pointA_body = transform::point(c.point, inertial, stateA);
+    const Vector3r pointB_body = transform::point(c.point, inertial, stateB);
+    c.sideA.count = 1;
+    c.sideA.attachments[0] = ContactAttachment{ea, (real_t)1, pointA_body};
+    c.sideB.count = 1;
+    c.sideB.attachments[0] = ContactAttachment{eb, (real_t)1, pointB_body};
     c.friction_mu = friction_mu;
     return c;
+}
+
+// Attach a beam-hull contact to the beam's two end entities. The contact point is expressed as a material
+// point of the beam: axial parameter s (interpolation weight between the end nodes) plus a lateral offset
+// d from the beam axis. Attaching xA + d to end A and xB + d to end B reproduces the contact point exactly
+// in the current configuration. Each patch point gets its own s and d, so multi-point patches (e.g. the
+// four corners of a cube resting on a flat beam face) are attached at their actual positions.
+inline void populateBeamHullSide(Contact& c, ContactSide& side, entt::entity beamEntity, const entt::registry& reg) {
+    if (!reg.any_of<C_Collider_BeamHull>(beamEntity)) return;
+    const auto& collider = reg.get<C_Collider_BeamHull>(beamEntity);
+    if (collider.endA == entt::null || collider.endB == entt::null) return;
+
+    const auto stateA = RigidBody::getState(reg, collider.endA);
+    const auto stateB = RigidBody::getState(reg, collider.endB);
+    const RigidBody::RigidState inertial = RigidBody::RigidState::inertial();
+
+    const Vector3r xA = stateA.position;
+    const Vector3r xB = stateB.position;
+    const Vector3r axis = xB - xA;
+    const real_t L2 = axis.squaredNorm();
+    const real_t s = L2 > std::numeric_limits<real_t>::epsilon() ? std::clamp((real_t)((c.point - xA).dot(axis) / L2), (real_t)0, (real_t)1) : (real_t)0.5;
+
+    // Lateral offset of the contact point from the beam axis at parameter s (world frame).
+    const Vector3r d = c.point - ((real_t)1 - s) * xA - s * xB;
+
+    side.count = 2;
+    side.attachments[0] = ContactAttachment{collider.endA, (real_t)1 - s, transform::point(Vector3r(xA + d), inertial, stateA)};
+    side.attachments[1] = ContactAttachment{collider.endB, s, transform::point(Vector3r(xB + d), inertial, stateB)};
 }
 
 // Insert a contact into a ContactMap bucketed by (a,b)
@@ -181,7 +223,8 @@ inline void addContactToMap(ContactMap& cmap, const Contact& c) {
 // Prefers patch expansion; falls back to the raw narrowphase contact(s) when patch computation
 // yielded nothing for this pair (e.g. a too-degenerate vertex-vertex contact) -- manifolds use
 // the same fallback so this stream is never less complete than the flattened contact list.
-inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity ea, entt::entity eb, const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res,
+inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity ea, entt::entity eb,
+                                              const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res,
                                               ContactMap& outMap, std::vector<ContactManifold>& manifolds, const std::string& frictionCombine, bool usePatchVertices) {
     const RigidBody::RigidState stateA = RigidBody::getState(reg, ea);
     const RigidBody::RigidState stateB = RigidBody::getState(reg, eb);
@@ -204,6 +247,8 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
                 const auto p1Wc = patch.getPointShape1(iv);
                 const auto p2Wc = patch.getPointShape2(iv);
                 Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1Wc, p2Wc, nW, depth);
+                populateBeamHullSide(c, c.sideA, ea, reg);
+                populateBeamHullSide(c, c.sideB, eb, reg);
                 if (iv == 0) {
                     cm.normal = c.normal;
                     cm.tangent1 = c.tangent1;
@@ -225,6 +270,8 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
     for (int k = 0; k < cres.numContacts(); ++k) {
         const coal::Contact c0 = cres.getContact(k);
         Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, c0.nearest_points[0], c0.nearest_points[1], c0.normal, (real_t)c0.penetration_depth);
+        populateBeamHullSide(c, c.sideA, ea, reg);
+        populateBeamHullSide(c, c.sideB, eb, reg);
 
         ContactManifold cm;
         cm.a = ea;
@@ -271,13 +318,14 @@ void CollisionCoal::ensureBroadphaseFromConfig_() {
 
 CollisionCoal::ColliderKind CollisionCoal::inferKind_(entt::entity e) const {
     const auto& reg = m_world->ecs();
-    if (reg.any_of<C_RB_Cube>(e)) return ColliderKind::Box;
-    if (reg.any_of<C_RB_Capsule>(e)) return ColliderKind::Capsule;
-    if (reg.any_of<C_RB_Cylinder>(e)) return ColliderKind::Cylinder;
-    if (reg.any_of<C_RB_Cone>(e)) return ColliderKind::Cone;
-    if (reg.any_of<C_RB_Plane>(e)) return ColliderKind::Halfspace;
-    if ((reg.any_of<C_PointMassTag>(e) || reg.any_of<C_RB_Sphere>(e)) && reg.any_of<C_Radius>(e)) return ColliderKind::Sphere;
-    if (reg.any_of<C_RB_Mesh>(e) && reg.any_of<C_Mesh>(e)) return ColliderKind::Mesh;
+    if (reg.any_of<C_Collider_Cube>(e)) return ColliderKind::Box;
+    if (reg.any_of<C_Collider_BeamHull>(e)) return ColliderKind::BeamHull;
+    if (reg.any_of<C_Collider_Capsule>(e)) return ColliderKind::Capsule;
+    if (reg.any_of<C_Collider_Cylinder>(e)) return ColliderKind::Cylinder;
+    if (reg.any_of<C_Collider_Cone>(e)) return ColliderKind::Cone;
+    if (reg.any_of<C_Collider_Plane>(e)) return ColliderKind::Halfspace;
+    if ((reg.any_of<C_PointMassTag>(e) || reg.any_of<C_Collider_Sphere>(e)) && reg.any_of<C_Radius>(e)) return ColliderKind::Sphere;
+    if (reg.any_of<C_Collider_Mesh>(e) && reg.any_of<C_Mesh>(e)) return ColliderKind::Mesh;
 
     throw std::runtime_error("CollisionCoal: unsupported collider entity; add appropriate tag/geometry.");
 }
@@ -286,11 +334,11 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
     const auto& reg = m_world->ecs();
     switch (kind) {
         case ColliderKind::Box: {
-            const auto& he = reg.get<C_RB_Cube>(e).halfExtents;
+            const auto& he = reg.get<C_Collider_Cube>(e).halfExtents;
             return std::make_shared<coal::Box>(he.x() * 2.0, he.y() * 2.0, he.z() * 2.0);
         }
         case ColliderKind::Halfspace: {
-            const auto& plane = reg.get<C_RB_Plane>(e);
+            const auto& plane = reg.get<C_Collider_Plane>(e);
             Vector3r n = plane.normal.normalized();
             const auto& x = reg.get<C_Position3>(e).value;
             real_t d = n.dot(x);
@@ -301,21 +349,25 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
             return std::make_shared<coal::Sphere>((coal::CoalScalar)r);
         }
         case ColliderKind::Capsule: {
-            const auto& cap = reg.get<C_RB_Capsule>(e);
+            const auto& cap = reg.get<C_Collider_Capsule>(e);
             return std::make_shared<coal::Capsule>((coal::CoalScalar)cap.radius, (coal::CoalScalar)(cap.halfLength * 2));
         }
         case ColliderKind::Cylinder: {
-            const auto& cyl = reg.get<C_RB_Cylinder>(e);
+            const auto& cyl = reg.get<C_Collider_Cylinder>(e);
             return std::make_shared<coal::Cylinder>((coal::CoalScalar)cyl.radius, (coal::CoalScalar)(cyl.halfLength * 2));
         }
         case ColliderKind::Cone: {
-            const auto& cone = reg.get<C_RB_Cone>(e);
+            const auto& cone = reg.get<C_Collider_Cone>(e);
             return std::make_shared<coal::Cone>((coal::CoalScalar)cone.radius, (coal::CoalScalar)cone.height);
         }
         case ColliderKind::Mesh: {
             const auto& asset = m_world->getMeshAsset(e);
             if (!asset.bvh) throw std::runtime_error("COAL MeshLoader failed to load BVH for mesh entity");
             return asset.bvh;
+        }
+       case ColliderKind::BeamHull: {
+            const auto& link = reg.get<C_Collider_BeamHull>(e);
+            return std::make_shared<BeamHullShape>(link, reg);
         }
     }
     throw std::runtime_error("CollisionCoal: unknown collider kind");
@@ -352,7 +404,8 @@ void CollisionCoal::rebuild() {
         auto geom = makeGeometryFor_(kind, e);
         m_geoms.push_back(geom);
         auto obj = std::make_unique<coal::CollisionObject>(geom, /*compute_local_aabb*/ true);
-        obj->setTransform(makeTfFromEcs(reg, e));
+        // Beam hull geometry lives in world coordinates (see applyTransforms): never apply the entity pose.
+        obj->setTransform(kind == ColliderKind::BeamHull ? identityTf() : makeTfFromEcs(reg, e));
         obj->computeAABB();
 
         // set stable indices as user data for fast reverse mapping
@@ -371,7 +424,10 @@ void CollisionCoal::rebuild() {
 
 void CollisionCoal::applyTransforms() {
     if (!m_world) return;
+
     auto sc = m_timings->scope(misc::TimingManager::TimerId::CollisionBroadphase);
+    const auto& reg = m_world->ecs();
+
     // Lazily build scene on first use or after clear
     if (!m_broadphase || m_objects.empty()) {
         rebuild();
@@ -382,7 +438,9 @@ void CollisionCoal::applyTransforms() {
     for (std::size_t i = 0; i < m_objects.size(); ++i) {
         entt::entity e = m_entities[i];
         auto* obj = m_objects[i].get();
-        const bool isDynamic = m_world->ecs().any_of<C_PhysicsObject, C_StaticTrajectory>(e);
+        // A beam hull's geometry is derived from the poses of its two end entities, which can move even when
+        // the beam entity itself carries no C_PhysicsObject / C_StaticTrajectory, so it is always refreshed.
+        const bool isDynamic = m_kinds[i] == ColliderKind::BeamHull || m_world->ecs().any_of<C_PhysicsObject, C_StaticTrajectory>(e);
         if (!isDynamic) {
             // Static objects: transform was set at rebuild; no need to recompute each step
             continue;
@@ -393,6 +451,11 @@ void CollisionCoal::applyTransforms() {
             coal::Transform3s X;
             X.setIdentity();
             obj->setTransform(X);
+        } else if (m_kinds[i] == ColliderKind::BeamHull) {
+            const auto& link = reg.get<C_Collider_BeamHull>(e);
+            auto* shape = static_cast<BeamHullShape*>(obj->collisionGeometry().get());
+            shape->updateRings(link, reg);
+            obj->setTransform(identityTf());
         } else {
             obj->setTransform(makeTfFromEcs(m_world->ecs(), e));
         }
@@ -454,7 +517,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
     // Contact patch request/result
     const std::size_t max_patch_req = m_world ? m_cfg.collision_max_patches : (std::size_t)4;
-    coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req);
+    coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req, /*num_samples_curved_shapes*/ kPatchNumSamples, /*patch_tolerance*/ kPatchTolerance);
     coal::ContactPatchResult patch_res(patch_req);
     const bool usePatchVertices = m_world ? m_cfg.collision_use_patch_vertices : true;
 

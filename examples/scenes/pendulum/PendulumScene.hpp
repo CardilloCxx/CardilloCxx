@@ -32,7 +32,7 @@ public:
         
         physics::RigidState state1; 
         state1.position = Vector3r(l1, 0.0, 0.0);
-        state1.orientation = Quaternion4r(AngleAxis3r(phi1, Vector3r::UnitY()));
+        state1.setOrientation(Quaternion4r(AngleAxis3r(phi1, Vector3r::UnitY())));
         state1.linearVelocity = Vector3r::Zero(); 
         state1.angularVelocity = Vector3r::Zero();
 
@@ -50,7 +50,7 @@ public:
         
         physics::RigidState state2; 
         state2.position = Vector3r(2 * l1 + l2, 0.0, 0.0);
-        state2.orientation = Quaternion4r(AngleAxis3r(phi2, Vector3r::UnitY()));
+        state2.setOrientation(Quaternion4r(AngleAxis3r(phi2, Vector3r::UnitY())));
         state2.linearVelocity = Vector3r::Zero(); 
         state2.angularVelocity = Vector3r::Zero();
 

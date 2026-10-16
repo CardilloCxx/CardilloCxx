@@ -17,7 +17,7 @@ public:
 
         // Ground plane for visual + collision
     physics::PlaneShape groundShape{Vector3r(0,0,1), Vector3r(0,1,0), (real_t)5.0, (real_t)5.0};
-    physics::RigidState groundState; groundState.position = Vector3r::Zero(); groundState.orientation = Quaternion4r::Identity();
+    physics::RigidState groundState;
     engine.addStaticBody(groundShape, groundState);
 
         const real_t mass = (real_t)1.0;

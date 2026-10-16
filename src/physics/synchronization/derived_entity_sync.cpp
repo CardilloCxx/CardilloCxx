@@ -36,8 +36,8 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
             auto r_AB = pb - pa;
             // Reuse the RigidState.rotation already cached by RigidBody::updateState() earlier this
             // step (see updateEntities()) instead of recomputing toRotationMatrix() here.
-            const auto R_A = RigidBody::getState(reg, a).rotation;
-            const auto R_B = RigidBody::getState(reg, b).rotation;
+            const auto R_A = RigidBody::getState(reg, a).rotation();
+            const auto R_B = RigidBody::getState(reg, b).rotation();
 
             index_t x_col_A = (reg.any_of<C_Capsule>(a) || reg.any_of<C_Cylinder>(a)) ? 2 : 0;
             index_t x_col_B = (reg.any_of<C_Capsule>(b) || reg.any_of<C_Cylinder>(b)) ? 2 : 0;
@@ -107,24 +107,24 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
                 shapeChanged = true;
             }
         }
-        if (reg.any_of<C_RB_Cube>(e)) {
-            auto& cb = reg.get<C_RB_Cube>(e);
+        if (reg.any_of<C_Collider_Cube>(e)) {
+            auto& cb = reg.get<C_Collider_Cube>(e);
             const real_t newHalfX = be.l * (real_t)0.5;
             if (std::abs(cb.halfExtents.x() - newHalfX) > eps) {
                 cb.halfExtents.x() = newHalfX;
                 shapeChanged = true;
             }
         }
-        if (reg.any_of<C_RB_Capsule>(e)) {
-            auto& cap = reg.get<C_RB_Capsule>(e);
+        if (reg.any_of<C_Collider_Capsule>(e)) {
+            auto& cap = reg.get<C_Collider_Capsule>(e);
             const real_t newHalf = be.l * (real_t)0.5;
             if (std::abs(cap.halfLength - newHalf) > eps) {
                 cap.halfLength = newHalf;
                 shapeChanged = true;
             }
         }
-        if (reg.any_of<C_RB_Cylinder>(e)) {
-            auto& cyl = reg.get<C_RB_Cylinder>(e);
+        if (reg.any_of<C_Collider_Cylinder>(e)) {
+            auto& cyl = reg.get<C_Collider_Cylinder>(e);
             const real_t newHalf = be.l * (real_t)0.5;
             if (std::abs(cyl.halfLength - newHalf) > eps) {
                 cyl.halfLength = newHalf;

@@ -6,6 +6,8 @@
 
 #include <Eigen/Geometry>
 
+#include <algorithm>
+#include <cmath>
 #include <csignal>
 #include <cstdlib>
 #include <iomanip>
@@ -19,6 +21,21 @@ namespace cardillo::examples {
 
 namespace detail {
 inline physics::PhysicsEngine* g_engine = nullptr;
+
+// Largest violation |g| over all perfect constraint rows (rows with zero compliance), evaluated at
+// the current state. Diagnostic for CARDILLO_DUMP_STATE; compliant rows are excluded since their
+// elongation is physical.
+inline real_t maxPerfectConstraintViolation(physics::PhysicsEngine& engine) {
+    real_t maxViolation = 0;
+    for (const auto& pattern : engine.world().constraintPatterns()) {
+        if (!pattern) continue;
+        const auto res = pattern->getConstraint();
+        for (int i = 0; i < (int)res.Crows.size() && i < (int)res.positionError.size(); ++i) {
+            if (res.Crows[i] == (real_t)0) maxViolation = std::max(maxViolation, std::abs(res.positionError[i]));
+        }
+    }
+    return maxViolation;
+}
 
 inline void printTimingsAtExit(int sig) {
     (void)sig;
@@ -46,10 +63,13 @@ int runExample(int argc, char** argv) {
 
     real_t t = 0.0;
     const real_t dt = cfg.sim_dt;
+    const bool dumpState = std::getenv("CARDILLO_DUMP_STATE") != nullptr;
+    real_t maxViolationOverRun = 0;
     while (!engine.isFinished()) {
         scene.updateScene(engine, t, dt);
         engine.step();
         t += dt;
+        if (dumpState) maxViolationOverRun = std::max(maxViolationOverRun, detail::maxPerfectConstraintViolation(engine));
     }
     engine.timings().printBreakdown(std::cout);
 
@@ -65,7 +85,8 @@ int runExample(int argc, char** argv) {
             totalKE += engine.getKineticEnergy(e);
             posNormSum += engine.getPosition(e).norm();
         }
-        std::cerr << std::setprecision(15) << "[STATE-DUMP] t=" << t << " numBodies=" << numBodies << " totalKE=" << totalKE << " posNormSum=" << posNormSum << std::endl;
+        std::cerr << std::setprecision(15) << "[STATE-DUMP] t=" << t << " numBodies=" << numBodies << " totalKE=" << totalKE << " posNormSum=" << posNormSum << " maxConstraintViolation=" << maxViolationOverRun
+                  << " finalConstraintViolation=" << detail::maxPerfectConstraintViolation(engine) << std::endl;
     }
 
     return 0;
