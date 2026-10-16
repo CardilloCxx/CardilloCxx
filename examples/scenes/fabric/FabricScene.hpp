@@ -107,7 +107,7 @@ public:
         const real_t E = (real_t)5e5;          // Pa
         const real_t nu       = (real_t)0.40;
 
-        physics::BeamCrossSection section(diameter, diameter, physics::BeamBodyType::Capsule);
+        const auto section = physics::BeamCrossSection::round(diameter * (real_t)0.5);
         auto springs = physics::BeamSpringParams::fromMaterial(E, nu, (real_t)1, (real_t)1, (real_t)0.05, (real_t)0.05, (real_t)0.05);
         // springs.setDampingFromFactor((real_t)0.02);
 

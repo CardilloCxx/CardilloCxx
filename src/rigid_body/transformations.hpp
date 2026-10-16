@@ -5,6 +5,7 @@
 #include "../misc/math_helper.hpp"
 #include "../misc/types.hpp"
 #include "rigid_body.hpp"
+#include <iostream>
 
 /**
  * @brief Frame-transformation helpers between two rigid-body reference frames.
@@ -29,22 +30,22 @@ inline Quaternion4r sanitizeQuaternion(const Quaternion4r& q_in) {
 }
 
 inline Vector3r bodyToInertialPoint(const RigidBody::RigidState& s, const Vector3r& r_body) {
-    return s.position + s.rotation * r_body;
+    return s.position + s.rotation() * r_body;
 }
 inline Vector3r inertialToBodyPoint(const RigidBody::RigidState& s, const Vector3r& r_inertial) {
-    return s.rotation.transpose() * (r_inertial - s.position);
+    return s.rotation().transpose() * (r_inertial - s.position);
 }
 
 inline Vector3r bodyToInertialVector(const RigidBody::RigidState& s, const Vector3r& x_body) {
-    return s.rotation * x_body;
+    return s.rotation() * x_body;
 }
 inline Vector3r inertialToBodyVector(const RigidBody::RigidState& s, const Vector3r& x_inertial) {
-    return s.rotation.transpose() * x_inertial;
+    return s.rotation().transpose() * x_inertial;
 }
 
 inline Quaternion4r orientation(const Quaternion4r& q, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
     const Quaternion4r q_in = sanitizeQuaternion(q);
-    const Quaternion4r q_to_from = to.orientation.conjugate() * from.orientation;
+    const Quaternion4r q_to_from = to.orientation().conjugate() * from.orientation();
     const Quaternion4r q_out = sanitizeQuaternion(q_to_from * q_in);
     return MathHelper::alignQuaternionTo(q_out, Quaternion4r::Identity());
 }
@@ -68,7 +69,7 @@ inline Vector3r direction(const Vector3r& dir, const RigidBody::RigidState& from
 
 /// Re-expresses a rotation matrix defined relative to `from`'s axes as one relative to `to`'s axes.
 inline Matrix33r rotation(const Matrix33r& R, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
-    return to.rotation.transpose() * from.rotation * R;
+    return to.rotation().transpose() * from.rotation() * R;
 }
 
 /// Re-expresses an orientation quaternion defined relative to `from`'s axes as one relative to `to`'s axes.
@@ -111,13 +112,12 @@ inline Vector3r angularVelocity(const Vector3r& omega, const RigidBody::RigidSta
 inline RigidBody::RigidState rigidState(const RigidBody::RigidState& state, const RigidBody::RigidState& from, const RigidBody::RigidState& to) {
     RigidBody::RigidState out;
     out.position = point(state.position, from, to);
-    out.orientation = orientation(state.orientation, from, to);
-    out.rotation = out.orientation.toRotationMatrix();
+    out.setOrientation(orientation(state.orientation(), from, to));
     out.linearVelocity = linearVelocity(state.linearVelocity, state.position, from, to);
 
-    const Vector3r omega_in_from = state.rotation * state.angularVelocity;
+    const Vector3r omega_in_from = state.rotation() * state.angularVelocity;
     const Vector3r omega_in_to = angularVelocity(omega_in_from, from, to);
-    out.angularVelocity = out.rotation.transpose() * omega_in_to;
+    out.angularVelocity = out.rotation().transpose() * omega_in_to;
     return out;
 }
 

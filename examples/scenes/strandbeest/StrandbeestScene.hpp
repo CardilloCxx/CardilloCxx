@@ -447,7 +447,7 @@ private:
         real_t radius = thickness * (real_t)0.5;
         real_t halfLen = len * (real_t)0.5; // extend beyond nodes so the capsule envelopes them
         physics::CapsuleShape shape{radius, halfLen};
-        physics::RigidState state; state.position = mid; state.orientation = q;
+        physics::RigidState state; state.position = mid; state.setOrientation(q);
         physics::RigidProps props;
         props.visual = true;
         props.collidable = collidable;
@@ -462,7 +462,7 @@ private:
                                      real_t density) {
         (void)density;
         physics::CubeShape shape{halfExtents};
-        physics::RigidState state; state.position = center; state.orientation = orientation;
+        physics::RigidState state; state.position = center; state.setOrientation(orientation);
         physics::RigidProps props;
         props.visual = true;
         props.collidable = false;

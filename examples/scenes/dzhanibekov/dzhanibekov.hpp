@@ -27,7 +27,7 @@ public:
         // const Vector3r angularVelocity(Omega, eps, eps);
         const Vector3r angularVelocity(eps, Omega, eps);
         // const Vector3r angularVelocity(eps, eps, Omega);
-    physics::RigidState state; state.position = position; state.orientation = orientation; state.linearVelocity = linearVelocity; state.angularVelocity = angularVelocity; physics::RigidProps props; props.mass = mass; engine.addRigidBody(shape, state, props);
+    physics::RigidState state; state.position = position; state.setOrientation(orientation); state.linearVelocity = linearVelocity; state.angularVelocity = angularVelocity; physics::RigidProps props; props.mass = mass; engine.addRigidBody(shape, state, props);
 
         const auto& reg = engine.ecs();
         entt::entity rodEntity = entt::null;

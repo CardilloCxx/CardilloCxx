@@ -19,7 +19,7 @@ public:
     const real_t groundHalfThickness = (real_t)0.01;
     const real_t groundHalfSize = (real_t)50.0;
     physics::CubeShape groundShape{Vector3r(groundHalfSize, groundHalfSize, groundHalfThickness)};
-    physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -groundHalfThickness); groundState.orientation = Quaternion4r::Identity();
+    physics::RigidState groundState; groundState.position = Vector3r(0.0, 0.0, -groundHalfThickness); groundState.setOrientation(Quaternion4r::Identity());
     engine.addStaticBody(groundShape, groundState);
 
         // Rail mesh as a static obstacle (long rail)

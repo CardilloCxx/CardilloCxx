@@ -19,10 +19,10 @@ ConstraintPattern::WorldAttachments ConstraintPattern::computeAttachments_() con
         const auto stateA = RigidBody::getState(*m_reg, m_a);
         const auto stateB = RigidBody::getState(*m_reg, m_b);
 
-        wa.qA = stateA.orientation;
-        wa.qB = MathHelper::alignQuaternionTo(stateB.orientation, wa.qA);
-        wa.RA = stateA.rotation;
-        wa.RB = stateB.rotation;
+        wa.qA = stateA.orientation();
+        wa.qB = MathHelper::alignQuaternionTo(stateB.orientation(), wa.qA);
+        wa.RA = stateA.rotation();
+        wa.RB = stateB.rotation();
         wa.rA_world = wa.RA * m_rA_local;
         wa.rB_world = wa.RB * m_rB_local;
         wa.pA = stateA.position;
@@ -83,6 +83,7 @@ ConstraintResult LinearDistanceConstraint::getConstraint() const {
 
     out.Crows = VectorXr::Zero(1);
     out.Arows = VectorXr::Zero(1);
+    out.biasFactor = VectorXr::Ones(1);
     setCompliance1(out.Crows, 0, m_k);
     setCompliance1(out.Arows, 0, m_d);
 
@@ -149,7 +150,7 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
     const Vector3r& g = m_joint.compute_g(wa.pA, wa.pB, wa.RA, wa.RB);
     buildJointJacobian(wa, g, out.WgA, out.WgB);
 
-    out.positionError = getPositionError(g, wa);
+    out.positionError = getPositionError(g);
 
     // For now, gamma rows mirror g rows
     out.WgammaA = out.WgA;
@@ -158,6 +159,8 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
     // 6 scalar rows: 3 translational (0..2), 3 rotational (3..5)
     out.Crows = VectorXr::Zero(6);
     out.Arows = VectorXr::Zero(6);
+    out.biasFactor = VectorXr::Ones(6);
+    out.biasFactor.tail<3>().setZero();
 
     // Translational compliances
     fillCompliance3(out.Crows, 0, m_K_trans);
@@ -170,21 +173,12 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
     return out;
 }
 
-VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g, const WorldAttachments& wa) const {
+VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g) const {
     VectorXr posErr(6);
     posErr.head<3>() = g;
-    // Rotational rows: products of the axes of the joint triad attached to A (A_IJ1) and the one
-    // attached to B (A_IJ2). They vanish in the reference configuration (A_IJ1 == A_IJ2) and approximate the
-    // negative relative rotation of B with respect to A about the joint x, y and z axes, with time
-    // derivatives given by the rotational rows of buildJointJacobian(). The y and z rows are both
-    // measured against the primary (hinge) axis e1_x: they stay exactly zero under an arbitrary
-    // rotation about that axis, and their directions remain linearly independent for every hinge
-    // angle (a cyclic choice such as e1_z . e2_x for the y row loses rank at 90 degrees).
-    const Matrix33r A_IJ1 = wa.RA * m_joint.A_K1J;
-    const Matrix33r A_IJ2 = wa.RB * m_joint.A_K2J;
-    posErr(3) = A_IJ1.col(1).dot(A_IJ2.col(2));   // y1 . z2 -> rotation about x
-    posErr(4) = -A_IJ1.col(0).dot(A_IJ2.col(2));  // -x1 . z2 -> rotation about y
-    posErr(5) = A_IJ1.col(0).dot(A_IJ2.col(1));   // x1 . y2 -> rotation about z
+    posErr.tail<3>().setZero();
+    // TODO: Replace the zero rotational bias error with a proper finite-rotation
+    // residual whose Jacobian and frame convention match the rotational rows.
     return posErr - m_g0;
 }
 
@@ -232,6 +226,7 @@ ConstraintResult BeamConstraint::getConstraint() const {
     out.positionError = VectorXr::Zero(6);
     out.positionError.head<3>() = gamma - m_gamma0;
     out.positionError.tail<3>() = kappa - m_kappa0;
+    out.biasFactor = VectorXr::Ones(6);
 
     const Matrix33r gamma_skew = SkewSymmetricMatrix3r(gamma);
     const Matrix33r kappa_skew = SkewSymmetricMatrix3r(kappa);

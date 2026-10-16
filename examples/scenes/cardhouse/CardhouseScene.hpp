@@ -62,7 +62,7 @@ public:
             const real_t vertHalf = std::abs(cosA) * halfExtents.z() + std::abs(sinA) * halfExtents.x();
             Vector3r c(xOffset + xCenter + footX, (real_t)0.0, baseZ + vertHalf);
             Quaternion4r q = Quaternion4r(Eigen::AngleAxis<real_t>(yaw, Vector3r::UnitY()));
-            physics::RigidState state; state.position = c; state.orientation = q; state.linearVelocity = Vector3r::Zero(); state.angularVelocity = Vector3r::Zero();
+            physics::RigidState state; state.position = c; state.setOrientation(q); state.linearVelocity = Vector3r::Zero(); state.angularVelocity = Vector3r::Zero();
             physics::RigidProps props = physics::RigidProps::withDensity(density);
             engine.addRigidBody(cardShape, state, props);
             return baseZ + (real_t)2.0 * vertHalf;
@@ -77,7 +77,7 @@ public:
         auto placeRoof = [&](real_t x, real_t supportZ) {
             physics::RigidState state;
             state.position = Vector3r(xOffset + x, (real_t)0.0, supportZ + halfExtents.z() + roofGap);
-            state.orientation = Quaternion4r(Eigen::AngleAxis<real_t>(roofTilt, Vector3r::UnitY()));
+            state.setOrientation(Quaternion4r(Eigen::AngleAxis<real_t>(roofTilt, Vector3r::UnitY())));
             state.linearVelocity = Vector3r::Zero();
             state.angularVelocity = Vector3r::Zero();
             physics::RigidProps props = physics::RigidProps::withDensity(density);
@@ -115,7 +115,7 @@ public:
         physics::SphereShape ballShape{ballRadius};
         physics::RigidState ballState;
         ballState.position = Vector3r(0.0, -1.0, ballRadius + 0.01);
-        ballState.orientation = Quaternion4r::Identity();
+        ballState.setOrientation(Quaternion4r::Identity());
         ballState.linearVelocity = Vector3r(0.0, 4.0, 0.0);
         ballState.angularVelocity = Vector3r::Zero();
         physics::RigidProps ballProps = physics::RigidProps::withDensity((real_t)1000.0);

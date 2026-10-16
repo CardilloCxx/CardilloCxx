@@ -46,7 +46,7 @@ public:
             Vector3r omega = Vector3r::Zero();
 
             physics::MeshShape shape{meshPath, scale};
-            physics::RigidState state; state.position = pos; state.orientation = ori; state.linearVelocity = vlin; state.angularVelocity = omega;
+            physics::RigidState state; state.position = pos; state.setOrientation(ori); state.linearVelocity = vlin; state.angularVelocity = omega;
             physics::RigidProps props; props.mass = mass;
             auto link = engine.addRigidBody(shape, state, props);
 

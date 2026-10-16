@@ -92,9 +92,7 @@ public:
         entt::entity loosePort = engine.addRigidBody(plugShape, physics::RigidState(loosePortPos, looseRot), loosePortProps);
 
         const real_t r_cable = (real_t)0.003;
-        const real_t d = (real_t)(2 * r_cable);
-        
-        physics::BeamCrossSection cableSection(d, d, physics::BeamBodyType::Capsule);
+        const auto cableSection = physics::BeamCrossSection::round(r_cable);
         auto cableSprings = physics::BeamSpringParams::fromMaterial((real_t)5e7, (real_t)0.4);
         cableSprings.setDampingFromFactor((real_t)1.0);
         cableSprings.kappa0 = Vector3r::Zero();   // Set relaxed curvature to zero for a straight cable
@@ -103,7 +101,8 @@ public:
         physics::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());
 
         const size_t cableSegments = 320;
-        auto cableEnds = engine.createBeam(cableSpline, cableSection, cableSprings, stateDefaults, cableProps, cableSegments);
+        auto cableEnds = engine.createBeam(cableSpline, cableSection, cableSprings, stateDefaults, cableProps, cableSegments,
+            physics::BeamColliderMode::InterSegmentHull);
         
         // First end attached to the loose dynamic port
         engine.addRigidConstraint(cableEnds.first, loosePort);

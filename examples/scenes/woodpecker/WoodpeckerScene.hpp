@@ -90,13 +90,13 @@ public:
             std::vector<const misc::SplinePattern*> parts{&helix};
 
         
-            physics::BeamCrossSection sec(wireDiameter, wireDiameter, physics::BeamBodyType::Capsule);
+            const auto section = physics::BeamCrossSection::round(wireDiameter * 0.5);
             auto springs = physics::BeamSpringParams::fromMaterial(E, nu);
             springs.setDampingFromFactor((real_t)0.001);
             auto props = physics::RigidProps::withDensity(density);
             props.collidable = false; 
 
-            auto endpoints = engine.createBeams(parts, sec, springs,
+            auto endpoints = engine.createBeams(parts, section, springs,
                                              physics::RigidState{},
                                              props,
                                              segments);

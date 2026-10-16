@@ -47,7 +47,7 @@ class StringTestScene : public SceneBase {
                 const real_t nu = (real_t)0.35;
                 const real_t damping = (real_t)0.04 + (real_t)0.26 * ((u + v) * (real_t)0.5);
 
-                physics::BeamCrossSection section(d, d, physics::BeamBodyType::Capsule);
+                const auto section = physics::BeamCrossSection::round(d * (real_t)0.5);
                 auto springs = physics::BeamSpringParams::fromMaterial(E, nu, (real_t)50, (real_t)1, (real_t)1, (real_t)1, (real_t)1, damping);
 
                 LinearSpline spline(Vector3r(x, y, zTop), Vector3r(x, y, zBottom));

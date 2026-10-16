@@ -26,7 +26,7 @@ public:
         const real_t nu = 0.3;
 
         misc::CircleSpline ring(Vector3r::Zero(), radius, Vector3r::UnitX(), Vector3r::UnitZ());
-        physics::BeamCrossSection sec_ring(thickness, thickness, physics::BeamBodyType::Capsule); 
+        const auto sec_ring = physics::BeamCrossSection::round(thickness * (real_t)0.5);
         auto springs_ring = physics::BeamSpringParams::fromMaterial(E, nu);
 
         const int n = 12;

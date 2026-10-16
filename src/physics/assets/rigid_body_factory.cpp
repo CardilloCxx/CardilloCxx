@@ -6,6 +6,8 @@
 #include <optional>
 #include <type_traits>
 
+#include "../../rigid_body/transformations.hpp"
+
 namespace cardillo::physics {
 namespace {
 
@@ -51,6 +53,10 @@ inline real_t computeVolume(const RigidShape& shape, const World* system = nullp
             } else if constexpr (std::is_same_v<T, MeshShape>) {
                 if (!system) return 0.0;
                 return system->assets().getMesh(s.path, s.scale, true).volume;
+            } else if constexpr (std::is_same_v<T, BeamHullShape>) {
+                return s.cross_section.area() * s.length;
+            } else {
+                throw std::runtime_error("computeVolume: Unsupported shape type");
             }
         },
         shape);
@@ -76,7 +82,8 @@ inline Vector3r computeUnitInertia(const RigidShape& shape, const World* system)
             } else if constexpr (std::is_same_v<T, CapsuleShape>) {
                 coal::Capsule capsule((coal::CoalScalar)s.radius, (coal::CoalScalar)(2.0 * s.halfLength));
                 auto Iunit = capsule.computeMomentofInertia();  // convert to unit inertia
-                return Vector3r(Iunit(0, 0), Iunit(1, 1), Iunit(2, 2)) / ((real_t)computeVolume(s, system));
+                const Matrix33r I_shape = Vector3r((real_t)Iunit(0, 0), (real_t)Iunit(1, 1), (real_t)Iunit(2, 2)).asDiagonal();
+                return (s.localRotation * I_shape * s.localRotation.transpose()).diagonal() / ((real_t)computeVolume(s, system));
             } else if constexpr (std::is_same_v<T, ConeShape>) {
                 coal::Cone cone((coal::CoalScalar)s.radius, (coal::CoalScalar)s.height);
                 auto Iunit = cone.computeMomentofInertia();  // convert to unit inertia
@@ -85,6 +92,17 @@ inline Vector3r computeUnitInertia(const RigidShape& shape, const World* system)
                 return Vector3r::Zero();
             } else if constexpr (std::is_same_v<T, MeshShape>) {
                 return system->assets().getMesh(s.path, s.scale, true).inertia_diag_unit / ((real_t)computeVolume(s, system));
+            } else if constexpr (std::is_same_v<T, BeamHullShape>) {
+                const real_t area = s.cross_section.area();
+                const real_t Iy = s.cross_section.Iy();
+                const real_t Iz = s.cross_section.Iz();
+                const real_t Jp = s.cross_section.Jp();
+                const real_t Iyy = Iy / area + (1.0 / 12.0) * s.length * s.length;
+                const real_t Izz = Iz / area + (1.0 / 12.0) * s.length * s.length;
+                const real_t Ixx = Jp / area;
+                return Vector3r(Ixx, Iyy, Izz);
+            } else {
+                throw std::runtime_error("computeUnitInertia: Unsupported shape type");
             }
         },
         shape);
@@ -117,7 +135,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
 
     // --- Base components ---
     reg.emplace<C_Position3>(e, state.position);
-    reg.emplace<C_Orientation>(e, C_Orientation::fromQuaternion(Quaternion4r(state.orientation).normalized()));
+    reg.emplace<C_Orientation>(e, C_Orientation::fromQuaternion(Quaternion4r(state.orientation()).normalized()));
     reg.emplace<C_LinearVelocity3>(e, state.linearVelocity);
     reg.emplace<C_AngularVelocity3>(e, state.angularVelocity);
     reg.emplace<C_LinearAcceleration3>(e, Vector3r::Zero());
@@ -157,7 +175,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<C_CubeVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_RB_Cube>(e, Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity());
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_Cube>(e, Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity());
             reg.emplace<C_Cube>(e, Vector3r::Zero(), s.halfExtents, Quaternion4r::Identity());
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
@@ -167,7 +185,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<C_PointVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_RB_Sphere>(e);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_Sphere>(e);
             reg.emplace<C_Radius>(e, s.radius);
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
@@ -177,7 +195,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<C_CylinderVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_RB_Cylinder>(e, s.radius, s.halfLength);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_Cylinder>(e, s.radius, s.halfLength);
             reg.emplace<C_Cylinder>(e, s.radius, s.halfLength);
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
@@ -187,8 +205,8 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<C_CapsuleVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_RB_Capsule>(e, s.radius, s.halfLength);
-            reg.emplace<C_Capsule>(e, s.radius, s.halfLength);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_Capsule>(e, s.radius, s.halfLength, s.localRotation);
+            reg.emplace<C_Capsule>(e, s.radius, s.halfLength, s.localRotation);
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
         }
@@ -197,7 +215,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
             const real_t mass = getMass(s, props, &system);
 
             if (props.visual) reg.emplace<C_ConeVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_RB_Cone>(e, s.radius, s.height);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_Cone>(e, s.radius, s.height);
             reg.emplace<C_Cone>(e, s.radius, s.height);
 
             if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
@@ -205,7 +223,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
 
         void operator()(const PlaneShape& s) const {
             if (props.visual) reg.emplace<C_PlaneVisualTag>(e);
-            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_RB_Plane>(e, s.normal, s.up, s.sizeX, s.sizeY);
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_Plane>(e, s.normal, s.up, s.sizeX, s.sizeY);
             reg.emplace<C_Plane>(e, s.normal, s.up, s.sizeX, s.sizeY);
         }
 
@@ -223,25 +241,36 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
                     Vector3r he((real_t)0.05, (real_t)0.05, (real_t)0.05);
                     meshAabbFromAsset(asset, center, he);
                     Quaternion4r q_local(asset.Rpa.transpose());
-                    reg.emplace<C_RB_Cube>(e, center, he, q_local);
+                    reg.emplace<C_Collider_Cube>(e, center, he, q_local);
 
                     if (s.show_collider) {
                         reg.emplace<C_Cube>(e, center, he, q_local);
                         reg.emplace<C_CubeVisualTag>(e);
                     }
                 } else {
-                    reg.emplace<C_RB_Mesh>(e);
+                    reg.emplace<C_Collider_Mesh>(e);
                 }
             }
 
             if (dynamic) {
-                const Quaternion4r q_new = state.orientation * Quaternion4r(asset.Rpa);
-                const Vector3r pos_new = state.position + (state.orientation * asset.com);
-                reg.get<C_Position3>(e).value = pos_new;
+                const Quaternion4r q_new = state.orientation() * Quaternion4r(asset.Rpa);
+                const Vector3r pos_new = state.position + (state.orientation() * asset.com);
+                reg.get<C_Position3>(e).value = transform::point(asset.com, state, physics::RigidState::inertial());
                 reg.get<C_Orientation>(e).setValue(q_new.normalized());
 
                 if (asset.volume > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
             }
+        }
+
+        void operator()(const BeamHullShape& s) const {
+            const real_t mass = getMass(s, props, &system);
+
+            if (props.visual) reg.emplace<C_VisualObject>(e);
+            // Add the empty collider to mark it as potentially active in the collision system. 
+            if (props.collidable && !cfgRef.collision_disable_all) reg.emplace<C_Collider_BeamHull>(e);
+            reg.emplace<C_BeamHull>(e, s.cross_section.polygon, (float)s.cross_section.radius);
+
+            if (mass > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
         }
     };
 
