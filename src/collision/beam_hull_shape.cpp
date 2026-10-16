@@ -26,7 +26,7 @@ BeamHullShape::BeamHullShape(const C_Collider_BeamHull& collider, const entt::re
  }
 
 void BeamHullShape::updateRings(const C_Collider_BeamHull& collider, const entt::registry& reg) {
-    if (collider.radius > 0.0f) {
+    if (collider.radiusA > 0.0f && collider.radiusB > 0.0f) {
         circular_ = true;
         ringA_.clear();
         ringB_.clear();
@@ -34,14 +34,14 @@ void BeamHullShape::updateRings(const C_Collider_BeamHull& collider, const entt:
         discB_.c = reg.get<C_Position3>(collider.endB).value;
         discA_.n = reg.get<C_Orientation>(collider.endA).rotation.col(0);
         discB_.n = reg.get<C_Orientation>(collider.endB).rotation.col(0);
-        discA_.r = collider.radius;
-        discB_.r = collider.radius;
+        discA_.r = collider.radiusA;
+        discB_.r = collider.radiusB;
     } else {
         circular_ = false;
         discA_ = Disc{};
         discB_ = Disc{};
-        ringA_ = ringFromEntityPose(reg, collider.endA, collider.polygon);
-        ringB_ = ringFromEntityPose(reg, collider.endB, collider.polygon);
+        ringA_ = ringFromEntityPose(reg, collider.endA, collider.polygonA);
+        ringB_ = ringFromEntityPose(reg, collider.endB, collider.polygonB);
     }
     recomputeLocalAABB_();
 }

@@ -487,17 +487,16 @@ bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, io::Mes
 
 bool buildConvexHullMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
     const auto hull = reg.get<C_BeamHull>(e);
-    const auto crosssection = hull.polygon;
 
     std::vector<Vector3r> vertices, velocities;
-    vertices.reserve(crosssection.size() * 2);
-    velocities.reserve(crosssection.size() * 2);
+    vertices.reserve(hull.polygonA.size() + hull.polygonB.size());
+    velocities.reserve(hull.polygonA.size() + hull.polygonB.size());
 
     auto stateA = RigidBody::getState(reg, hull.endA);
     auto stateB = RigidBody::getState(reg, hull.endB);
     auto inertial = RigidBody::RigidState::inertial();
 
-    auto addRing = [&](const RigidBody::RigidState& node) {
+    auto addRing = [&](const RigidBody::RigidState& node, const std::vector<Vector2r>& crosssection) {
         for (const auto& p : crosssection) {
             const Vector3r local(0, p.x(), p.y());
             vertices.emplace_back(transform::point(local, node, inertial));
@@ -505,8 +504,8 @@ bool buildConvexHullMeshTriangles(const entt::registry& reg, entt::entity e, io:
         }
     };
 
-    addRing(stateA);
-    addRing(stateB);
+    addRing(stateA, hull.polygonA);
+    addRing(stateB, hull.polygonB);
 
     out.triangles = misc::ConvexHull3D::compute(vertices);
     out.vertices = std::move(vertices);
