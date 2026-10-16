@@ -224,7 +224,6 @@ void DynamicsAssembler::rebuildW_() {
         return false;
     };
  
-    // Most dissipative restitution over all attachments of a side (missing component -> defaults).
     struct Restitution {
         real_t normal, tangential;
     };
@@ -246,19 +245,15 @@ void DynamicsAssembler::rebuildW_() {
     std::vector<Eigen::Triplet<real_t>> trips;
     trips.reserve(attachmentCount * (frictionEnabled ? 18 : 6));
  
-    // Upper bound of 3 rows per contact; shrunk to the real row count at the end.
     m_contact_v_vec = VectorXr::Zero((index_t)C_all * 3);  // velocity contribution of static attachments
     m_mu_vec = VectorXr::Zero((index_t)C_all * 3);
     m_restitution_vec = VectorXr::Zero((index_t)C_all * 3);
  
-    int dynContactId = 0;  // next free row of W
+    int dynContactId = 0; 
     m_numFrictionalContacts = 0;
     m_numFrictionlessContacts = 0;
  
-    // ---------------------------------------------------------------------------------------------
     // Row assembly. Row layout: all frictionless contacts (1 row) first, then frictional ones
-    // (normal + 2 tangential rows).
-    // ---------------------------------------------------------------------------------------------
     for (bool frictionPass : {false, true}) {
         if (frictionPass && !frictionEnabled) break;
  
@@ -287,7 +282,6 @@ void DynamicsAssembler::rebuildW_() {
                 if (frictional) m_mu_vec[rowBase + r] = c.friction_mu;
             }
  
-            // Adds `sign * weight * J_k` of every attachment k of `side` to the rows of this contact.
             const auto accumulateSide = [&](const collision::ContactSide& side, real_t sign) {
                 for (int k = 0; k < side.count; ++k) {
                     const auto& att = side.attachments[(size_t)k];
@@ -307,7 +301,7 @@ void DynamicsAssembler::rebuildW_() {
                         veStatic = m_world.getVelocity(att.entity);
                         dof = (int)veStatic.size();
                     }
-                    assert(dof >= 0 && dof <= 6);  // buildContactRowByDof returns a Vector6r
+                    assert(dof >= 0 && dof <= 6);
                     if (dof == 0) continue;
  
                     for (int r = 0; r < nRows; ++r) {
@@ -328,9 +322,6 @@ void DynamicsAssembler::rebuildW_() {
         }
     }
  
-    // ---------------------------------------------------------------------------------------------
-    // Build W as C_dyn x totalV
-    // ---------------------------------------------------------------------------------------------
     const int C_dyn = dynContactId;
     const int totalV = m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back();
     m_W = TripletMatrix(C_dyn, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(trips)));

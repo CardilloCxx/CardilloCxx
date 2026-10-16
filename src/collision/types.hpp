@@ -39,8 +39,6 @@ struct Contact {
     // Number of rows allocated for this contact in solver (1 or 3)
     int impulse_size{0};
     // Global indices in the flattened contacts vector
-    // Index of this contact in the previous generation's flattened output; -1 if none (for
-    // warmstarting)
     int prev_global_out_index{-1};
     // Index of this contact in the current generation's flattened output (set during flatten)
     int global_out_index{-1};
