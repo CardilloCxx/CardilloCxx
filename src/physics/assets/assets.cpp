@@ -1,4 +1,5 @@
 #include "assets.hpp"
+#include "../../collision/coal_types.hpp"
 #include <coal/mesh_loader/loader.h>
 #include <fstream>
 #include <iomanip>
@@ -33,13 +34,13 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const Vector3
     if (!bvh) return out;
 
     std::vector<coal::Vec3s> Vscaled;
-    std::vector<coal::Triangle> F;
+    std::vector<collision::CoalTriangle> F;
     if (bvh->vertices) Vscaled = *bvh->vertices;
     if (bvh->tri_indices) F = *bvh->tri_indices;
     for (auto& v : Vscaled) {
-        v[0] *= (coal::CoalScalar)scale.x();
-        v[1] *= (coal::CoalScalar)scale.y();
-        v[2] *= (coal::CoalScalar)scale.z();
+        v[0] *= scale.x();
+        v[1] *= scale.y();
+        v[2] *= scale.z();
     }
     // COM & volume
     coal::Vec3s com(0, 0, 0);
@@ -100,7 +101,7 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const Vector3
     for (const auto& v : Vcentered) {
         Vector3r vc((real_t)v[0], (real_t)v[1], (real_t)v[2]);
         Vector3r vp = Rpa.transpose() * vc;
-        Vnorm.emplace_back((coal::CoalScalar)vp.x(), (coal::CoalScalar)vp.y(), (coal::CoalScalar)vp.z());
+        Vnorm.emplace_back(vp);
     }
     auto temp = std::make_shared<coal::BVHModel<coal::AABB>>();
     temp->beginModel();
@@ -119,7 +120,7 @@ coal::BVHModelPtr_t buildScaledBVH(const std::string& meshPath, const Vector3r& 
     coal::BVHModelPtr_t bvh = loader.load(meshPath);
     if (!bvh) return nullptr;
     std::vector<coal::Vec3s> V;
-    std::vector<coal::Triangle> F;
+    std::vector<collision::CoalTriangle> F;
     if (bvh->vertices) V = *bvh->vertices;
     if (bvh->tri_indices) F = *bvh->tri_indices;
     // Scale about AABB center
@@ -139,9 +140,9 @@ coal::BVHModelPtr_t buildScaledBVH(const std::string& meshPath, const Vector3r& 
     std::vector<coal::Vec3s> Vscaled;
     Vscaled.reserve(V.size());
     for (const auto& v : V) {
-        coal::CoalScalar dx = (coal::CoalScalar)scale.x() * (v[0] - cx);
-        coal::CoalScalar dy = (coal::CoalScalar)scale.y() * (v[1] - cy);
-        coal::CoalScalar dz = (coal::CoalScalar)scale.z() * (v[2] - cz);
+        real_t dx = scale.x() * (v[0] - cx);
+        real_t dy = scale.y() * (v[1] - cy);
+        real_t dz = scale.z() * (v[2] - cz);
         Vscaled.emplace_back(cx + dx, cy + dy, cz + dz);
     }
     auto temp = std::make_shared<coal::BVHModel<coal::AABB>>();
