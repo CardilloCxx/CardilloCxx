@@ -17,7 +17,12 @@ namespace cardillo::misc {
 //   FullSpectral: a single rho = 1/lambda_max(sym(G)) applied to all three components, from the
 //     FULL 3x3 block's largest eigenvalue (symmetrized -- G need not be exactly symmetric once an
 //     implicit-gyroscopic body is involved). Matches Siconos's compute_rho_spectral_norm.
-enum class ContactRhoStrategy { Split, FullSpectral };
+//   IsotropicDiagonal: rhoN=1/G(0,0), rhoT=2/(G(1,1)+G(2,2)) -- the cheapest choice, using only the
+//     diagonal of G. The two tangential step lengths must be equal: with rhoT1 != rhoT2 the fixed
+//     point of the projection satisfies a distorted friction law in which the friction impulse is
+//     not opposite to the slip velocity. The average keeps the mean step size of the per-row 
+//     diagonal and satisfies rhoT*lambda_max(G_TT)<=2.
+enum class ContactRhoStrategy { Split, FullSpectral, IsotropicDiagonal };
 
 // Returns (rhoN,rhoT,rhoT). Any component is -1 if the corresponding sub-block is (near-)singular
 // (<= eps) -- callers must check for a non-positive component and treat that as "this G is not

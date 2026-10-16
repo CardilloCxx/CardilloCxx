@@ -85,6 +85,7 @@ struct JointProperties {
         K2_r_S2J = transform::point(jf.r_refJ, refState, stateB);
 
         A_K1J = transform::rotation(jf.A_refJ, refState, stateA);
+        A_K2J = transform::rotation(jf.A_refJ, refState, stateB);
 
         // Precompute local skew matrices
         K1_r_S1J_skew = SkewSymmetricMatrix3r(K1_r_S1J);
@@ -94,7 +95,12 @@ struct JointProperties {
     // Joint position and orientation in the chosen reference frame
     Vector3r K1_r_S1J{Vector3r::Zero()};     // Joint pos in body A frame from S1
     Vector3r K2_r_S2J{Vector3r::Zero()};     // Joint pos in body B frame from S2
-    Matrix33r A_K1J{Matrix33r::Identity()};  // Joint orientation that maps J -> A
+    // Joint orientation in body A's and body B's frame (both constant, taken from the reference
+    // configuration, analogous to K1_r_S1J/K2_r_S2J). A_IJ1 = A_IK1*A_K1J and A_IJ2 = A_IK2*A_K2J
+    // describe the same joint frame J via body A and via body B; they coincide as long as the
+    // rotational rows are satisfied, and their mismatch is what the rotational position error measures.
+    Matrix33r A_K1J{Matrix33r::Identity()};  // Joint orientation that maps J via body A
+    Matrix33r A_K2J{Matrix33r::Identity()};  // Joint orientation that maps J via body B
     Matrix33r K1_r_S1J_skew{Matrix33r::Zero()};
     Matrix33r K2_r_S2J_skew{Matrix33r::Zero()};
 

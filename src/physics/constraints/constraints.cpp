@@ -112,19 +112,30 @@ void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::
     const auto& A_IK1 = wa.RA;
     const auto& A_IK2 = wa.RB;
     const auto& A_K1J = m_joint.A_K1J;
-    const Matrix33r A_IJ = A_IK1 * A_K1J;
-    const Matrix33r A_K2J = A_IK2.transpose() * A_IJ;
+    // Joint frame reconstructed via body A (J1) and via body B (J2); both coincide as long as the
+    // joint is satisfied.
+    const Matrix33r A_IJ1 = A_IK1 * A_K1J;
+    const Matrix33r A_IJ2 = A_IK2 * m_joint.A_K2J;
     const Matrix33r skew_g = SkewSymmetricMatrix3r(g);
 
-    // translations
-    WgA.topLeftCorner<3, 3>() = -A_IJ;
+    // translations: g_t = A_IJ1^T (r_OJ2 - r_OJ1), projected onto the joint frame of body A
+    WgA.topLeftCorner<3, 3>() = -A_IJ1;
     WgA.bottomLeftCorner<3, 3>() = -m_joint.K1_r_S1J_skew * A_K1J - A_K1J * skew_g;
-    WgB.topLeftCorner<3, 3>() = A_IJ;
-    WgB.bottomLeftCorner<3, 3>() = m_joint.K2_r_S2J_skew * A_K2J;
+    WgB.topLeftCorner<3, 3>() = A_IJ1;
+    WgB.bottomLeftCorner<3, 3>() = m_joint.K2_r_S2J_skew * (A_IK2.transpose() * A_IJ1);
 
-    // orientations
-    WgA.bottomRightCorner<3, 3>() = A_K1J;
-    WgB.bottomRightCorner<3, 3>() = -A_K2J;
+    // orientations: exact time derivatives of the axis products in getPositionError(). With the
+    // joint triads e1_i = A_IJ1*e_i (attached to A) and e2_i = A_IJ2*e_i (attached to B),
+    // d/dt (e1_j . e2_k) = (e1_j x e2_k) . (omega_A - omega_B) in inertial components. Near the
+    // reference configuration this reduces to A_K1J and -A_K2J. For a rotation about the primary
+    // axis e1_x, the directions of the y and z rows are -e1_x x e2_z = e2_y and e1_x x e2_y = e2_z,
+    // which stay orthonormal for every hinge angle.
+    Matrix33r N;
+    N.col(0) = A_IJ1.col(1).cross(A_IJ2.col(2));
+    N.col(1) = -A_IJ1.col(0).cross(A_IJ2.col(2));
+    N.col(2) = A_IJ1.col(0).cross(A_IJ2.col(1));
+    WgA.bottomRightCorner<3, 3>() = A_IK1.transpose() * N;
+    WgB.bottomRightCorner<3, 3>() = -A_IK2.transpose() * N;
 }
 
 ConstraintResult TranslationRotationConstraint::getConstraint() const {
