@@ -487,7 +487,6 @@ bool buildSphereMeshTriangles(const entt::registry& reg, entt::entity e, io::Mes
 
 bool buildConvexHullMeshTriangles(const entt::registry& reg, entt::entity e, io::MeshGenerator::EntityMesh& out) {
     const auto hull = reg.get<C_BeamHull>(e);
-
     std::vector<Vector3r> vertices, velocities;
     vertices.reserve(hull.polygonA.size() + hull.polygonB.size());
     velocities.reserve(hull.polygonA.size() + hull.polygonB.size());

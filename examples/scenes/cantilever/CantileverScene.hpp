@@ -53,7 +53,6 @@ public:
             std::cout << "s: " << s << ", factor: " << factor << std::endl;
             return physics::BeamCrossSection::rectangular((d * 2.0) * factor, d * factor);
         });
-
         auto beam_ends = engine.createBeam(spline, section, springs, stateDefaults, props, segments, physics::BeamColliderMode::InterSegmentHull);
         engine.makeStatic(beam_ends.first);
 
