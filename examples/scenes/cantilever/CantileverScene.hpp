@@ -39,15 +39,20 @@ public:
         misc::LinearSpline spline(p0, p1);
 
         // Number of beam segments
-        const size_t segments = 5;
+        const size_t segments = 30;
 
         // Default state: identity orientation; default density props
         physics::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());
         physics::RigidProps props = physics::RigidProps::withDensity(rho);
 
-        const auto section = physics::BeamCrossSection::triangle(d,d);
+        // const auto section = physics::BeamCrossSection::triangle(d,d);
         // const auto section = physics::BeamCrossSection::round(d);
         // const auto section = physics::BeamCrossSection::rectangular(d * 2.0, d);
+        const auto section = physics::BeamCrossSection::procedural([d](real_t s) {
+            real_t factor = 1.0 + 0.5 * std::sin(3.0 * s * M_PI); 
+            std::cout << "s: " << s << ", factor: " << factor << std::endl;
+            return physics::BeamCrossSection::rectangular((d * 2.0) * factor, d * factor);
+        });
         auto beam_ends = engine.createBeam(spline, section, springs, stateDefaults, props, segments, physics::BeamColliderMode::InterSegmentHull);
         engine.makeStatic(beam_ends.first);
 

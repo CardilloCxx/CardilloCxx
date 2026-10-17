@@ -178,12 +178,16 @@ struct RigidProps {
 enum class BeamColliderMode { RigidBodyPrimitive, InterSegmentHull };
 enum class BeamCrossSectionType { Square, Triangle, Round, Polygon };
 
+struct BeamCrossSection; // Forward declaration for recursive type usage in BeamHullShape
+using CrossSectionEvaluator = std::function<BeamCrossSection(real_t s)>;
+
 struct BeamCrossSection {
     real_t width{0};   
     real_t height{0};  
     real_t radius{0};  
     std::vector<Vector2r> polygon;  
     BeamCrossSectionType type{BeamCrossSectionType::Square};
+    std::optional<CrossSectionEvaluator> evaluator;
 
     static Vector2r centroidOf(const std::vector<Vector2r>& poly);
     static std::vector<Vector2r> recenter(const std::vector<Vector2r>& poly);
@@ -193,6 +197,12 @@ struct BeamCrossSection {
     static BeamCrossSection round(real_t radius, size_t numSegments = 8);
     static BeamCrossSection custom(const std::vector<Vector2r>& poly);
 
+    static BeamCrossSection procedural(CrossSectionEvaluator eval) {
+        BeamCrossSection sec;
+        sec.evaluator = std::move(eval);
+        return sec;
+    }
+
     real_t area() const;
     real_t Iy() const;
     real_t Iz() const;
@@ -200,6 +210,7 @@ struct BeamCrossSection {
     real_t maxAbsY() const;
     real_t maxAbsX() const;
     real_t sectionModulus() const;
+    BeamCrossSection evaluate(real_t s) const { return evaluator ? (*evaluator)(s) : *this; }
 };
 
 struct BeamHullShape {
@@ -212,6 +223,8 @@ struct BeamHullShape {
 
 using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape, BeamHullShape>;
 
+enum class BeamRestConfiguration { Initial, Straight };
+
 struct BeamSpringParams {
     real_t E{0};
     real_t nu{0};
@@ -219,8 +232,8 @@ struct BeamSpringParams {
     Vector3r scaleKf{Vector3r::Ones()};
     std::optional<Vector3r> Ke_direct;
     std::optional<Vector3r> Kf_direct;
-    std::optional<Vector3r> gamma0;
-    std::optional<Vector3r> kappa0;
+    BeamRestConfiguration restConfiguration{BeamRestConfiguration::Initial};
+    std::optional<real_t> axialPretension;
     real_t dampingFactor = 0.0;
 
     BeamSpringParams() = default;
@@ -229,6 +242,9 @@ struct BeamSpringParams {
     Vector3r Ke(real_t segLen, const BeamCrossSection& sec) const;
     Vector3r Kf(real_t segLen, const BeamCrossSection& sec) const;
     void setDampingFromFactor(real_t d);
+    BeamSpringParams& relaxedInInitialConfiguration();
+    BeamSpringParams& relaxedInStraightConfiguration();
+    BeamSpringParams& withAxialPretension(real_t relativeStrain);
 
     static BeamSpringParams fromMaterial(real_t E_in, real_t nu_in, real_t axialScale = (real_t)1, 
                                           real_t shearScale = (real_t)1, real_t torsionScale = (real_t)1, 

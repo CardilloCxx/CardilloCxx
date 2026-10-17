@@ -118,22 +118,31 @@ struct C_Collider_Cube {
 struct C_BeamHull {
     entt::entity endA{entt::null};
     entt::entity endB{entt::null};
-    std::vector<Vector2r> polygon;
-    float radius{0.0f};
+    std::vector<Vector2r> polygonA;
+    std::vector<Vector2r> polygonB;
+    float radiusA{0.0f};
+    float radiusB{0.0f};
 
     C_BeamHull() = default;
-    C_BeamHull(const std::vector<Vector2r>& poly, float r) : polygon(poly), radius(r) {}
+    C_BeamHull(const std::vector<Vector2r>& polyA, float rA, const std::vector<Vector2r>& polyB, float rB)
+        : polygonA(polyA), polygonB(polyB), radiusA(rA), radiusB(rB) {}
+    C_BeamHull(const std::vector<Vector2r>& poly, float r) : C_BeamHull(poly, r, poly, r) {}
 };
 
 struct C_Collider_BeamHull {
     entt::entity endA{entt::null};
     entt::entity endB{entt::null};
-    std::vector<Vector2r> polygon;
-
-    float radius{0.0f};  // optional radius for a rounded beam hull
+    std::vector<Vector2r> polygonA;
+    std::vector<Vector2r> polygonB;
+    float radiusA{0.0f};
+    float radiusB{0.0f};
 
     C_Collider_BeamHull() = default;
-    C_Collider_BeamHull(entt::entity a, entt::entity b, const std::vector<Vector2r>& poly, float r) : endA(a), endB(b), polygon(poly), radius(r) {};
+    C_Collider_BeamHull(entt::entity a, entt::entity b, const std::vector<Vector2r>& polyA, float rA,
+                        const std::vector<Vector2r>& polyB, float rB)
+        : endA(a), endB(b), polygonA(polyA), polygonB(polyB), radiusA(rA), radiusB(rB) {}
+    C_Collider_BeamHull(entt::entity a, entt::entity b, const std::vector<Vector2r>& poly, float r)
+        : C_Collider_BeamHull(a, b, poly, r, poly, r) {}
 };
 
 struct C_Collider_Plane {

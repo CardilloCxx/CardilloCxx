@@ -18,18 +18,40 @@ struct BeamSample {
     Vector3r tangent;
     Vector3r normal;
     Vector3r binormal;
+    real_t splineAlpha;
     real_t segLen;
 };
 
-void appendSplineSamples(const misc::SplinePattern& spline, size_t segments, std::vector<BeamSample>& outSamples) {
+void appendSplineSamples(const BeamColliderMode& colliderMode, const misc::SplinePattern& spline, size_t segments, std::vector<BeamSample>& outSamples) {
     if (segments == 0) return;
 
     const real_t minSegLen = (real_t)1e-8;
     const size_t segCount = segments;
 
+    if (colliderMode == BeamColliderMode::InterSegmentHull) {
+        for (size_t i = 0; i <= segCount; ++i) {
+            real_t alphaPrev = (real_t) (i - 1) / (real_t)segCount;
+            real_t alpha = (real_t)i / (real_t)segCount;
+            real_t alphaNext = (real_t)(i + 1) / (real_t)segCount;
+            if (spline.isLoop() && i == segCount) alpha = (real_t)0;
+
+            const misc::SplineSample siPrev = spline.sample(alphaPrev);
+            const misc::SplineSample si = spline.sample(alpha);
+            const misc::SplineSample siNext = spline.sample(alphaNext);
+
+            real_t segLen = 0;
+            if (i > 0) segLen += (si.position - siPrev.position).norm() * 0.5;
+            if (i < segCount) segLen += (siNext.position - si.position).norm() * 0.5;
+
+            outSamples.push_back(BeamSample{si.position, si.tangent, si.normal, si.binormal, alpha, segLen});
+        }
+        return;
+    }
+
     for (size_t i = 0; i < segCount; ++i) {
         real_t alpha0 = (real_t)i / (real_t)segCount;
         real_t alpha1 = (real_t)(i + 1) / (real_t)segCount;
+        real_t alphaMid = (alpha0 + alpha1) * (real_t)0.5;
         if (spline.isLoop() && i + 1 == segCount) alpha1 = (real_t)0;
 
         const misc::SplineSample si0 = spline.sample(alpha0);
@@ -67,7 +89,7 @@ void appendSplineSamples(const misc::SplinePattern& spline, size_t segments, std
         // The binormal is strictly the cross product of tangent and normal
         Vector3r midBinormal = midTangent.cross(midNormal).normalized();
 
-        outSamples.push_back(BeamSample{midPos, midTangent, midNormal, midBinormal, localSegLen});
+        outSamples.push_back(BeamSample{midPos, midTangent, midNormal, midBinormal, alphaMid, localSegLen});
     }
 }
 
@@ -163,11 +185,6 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
     real_t totalLen = (real_t)0;
     for (const auto& s : samples) totalLen += s.segLen;
     if (totalLen <= (real_t)0) totalLen = (real_t)1;
-// 
-    Matrix33r Rshape = Matrix33r::Identity();
-    if (section.type == BeamCrossSectionType::Round && colliderMode == BeamColliderMode::RigidBodyPrimitive) {
-        Rshape = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), Vector3r::UnitX()).toRotationMatrix();
-    }
 
     entt::entity root = entt::null;
     entt::entity prev = entt::null;
@@ -177,34 +194,45 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
 
     bool hasPrevFrame = false;
     Matrix33r prevFrame = Matrix33r::Identity();
+    real_t prevSplineAlpha = (real_t)0;
+    BeamCrossSection prevSection;
+    BeamCrossSection firstSection;
 
     for (const auto& s : samples) {
         const real_t segLen = s.segLen;
+        const auto currentSection = section.evaluate(s.splineAlpha);
+
+        Matrix33r Rshape = Matrix33r::Identity();
+        if (currentSection.type == BeamCrossSectionType::Round && colliderMode == BeamColliderMode::RigidBodyPrimitive) {
+            Rshape = Quaternion4r::FromTwoVectors(Vector3r::UnitZ(), Vector3r::UnitX()).toRotationMatrix();
+        }
 
         RigidShape shape;
         if (colliderMode == BeamColliderMode::RigidBodyPrimitive) {
-            if (section.type == BeamCrossSectionType::Square) {
-                shape = CubeShape(Vector3r(segLen * (real_t)0.5, section.width * (real_t)0.5, section.height * (real_t)0.5));
-            } else if (section.type == BeamCrossSectionType::Round) {
-                const real_t r = section.radius;
+            if (currentSection.type == BeamCrossSectionType::Square) {
+                shape = CubeShape(Vector3r(segLen * (real_t)0.5, currentSection.width * (real_t)0.5, currentSection.height * (real_t)0.5));
+            } else if (currentSection.type == BeamCrossSectionType::Round) {
+                const real_t r = currentSection.radius;
                 shape = CapsuleShape(r, segLen * (real_t)0.5, Rshape);
             } else 
                 throw(std::runtime_error("BeamFactory: BeamCrossSectionType Triangle or Polygon under RigidBodyPrimitive mode isn't meaningful"));
         } else 
         {
-            shape = BeamHullShape(section, segLen);
+            shape = BeamHullShape(currentSection, segLen);
         }
 
         // TODO:
         // More accurate approximation of segment length left / right
         // Use non streched seg-length for  density calculation
+        // Relative pretensioning
+        // Use the convex hull of adjacent cross-sections for density-based mass calculation.
 
         RigidProps segProps = propsDefaults;
         real_t massPerSegment = (real_t)0;
         if (propsDefaults.mass.has_value()) {
             massPerSegment = *propsDefaults.mass * (segLen / totalLen);
         } else if (propsDefaults.density.has_value()) {
-            massPerSegment = *propsDefaults.density * (section.area() * segLen);
+            massPerSegment = *propsDefaults.density * (currentSection.area() * segLen);
         }
         segProps.mass = (massPerSegment > (real_t)0) ? std::optional<real_t>(massPerSegment) : std::nullopt;
 
@@ -241,33 +269,50 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         sys.ecs().emplace<C_BeamElement>(cur, be_cur);
 
         if (prev != entt::null) {
-            ConstraintFactory::addBeamConstraint(sys, prev, cur, springs, section);
+            real_t linkAlpha = (prevSplineAlpha + s.splineAlpha) * (real_t)0.5;
+            if (loop && s.splineAlpha < prevSplineAlpha) {
+                linkAlpha = std::fmod((prevSplineAlpha + s.splineAlpha + (real_t)1) * (real_t)0.5, (real_t)1);
+            }
+            const auto linkSection = section.evaluate(linkAlpha);
+
+            ConstraintFactory::addBeamConstraint(sys, prev, cur, springs, linkSection);
             if (collision_mgr) collision_mgr->disablePair(prev, cur);
 
             auto updateHull = [&](auto& hull) {
                 hull.endB = prev;
                 hull.endA = cur;
-                hull.polygon = section.polygon;
-                hull.radius = section.radius;
+                hull.polygonA = currentSection.polygon;
+                hull.radiusA = (float)currentSection.radius;
+                hull.polygonB = prevSection.polygon;
+                hull.radiusB = (float)prevSection.radius;
             };
             if (sys.ecs().any_of<C_Collider_BeamHull>(prev)) updateHull(sys.ecs().get<C_Collider_BeamHull>(prev));
             if (sys.ecs().any_of<C_BeamHull>(prev)) updateHull(sys.ecs().get<C_BeamHull>(prev));
         }
 
-        if (root == entt::null) root = cur;
+        if (root == entt::null) {
+            root = cur;
+            firstSection = currentSection;
+        }
         prev = cur;
+        prevSplineAlpha = s.splineAlpha;
+        prevSection = currentSection;
         end = cur;
     }
 
     if (loop && root != entt::null && end != entt::null && end != root) {
-        ConstraintFactory::addBeamConstraint(sys, end, root, springs, section);
+        const auto currentSection = section.evaluate((real_t)1.0);
+
+        ConstraintFactory::addBeamConstraint(sys, end, root, springs, currentSection);
         if (collision_mgr) collision_mgr->disablePair(end, root);
 
         auto updateHull = [&](auto& hull) {
             hull.endB = end;
             hull.endA = root;
-            hull.polygon = section.polygon;
-            hull.radius = section.radius;
+            hull.polygonA = firstSection.polygon;
+            hull.radiusA = (float)firstSection.radius;
+            hull.polygonB = prevSection.polygon;
+            hull.radiusB = (float)prevSection.radius;
         };
         if (sys.ecs().any_of<C_Collider_BeamHull>(end)) updateHull(sys.ecs().get<C_Collider_BeamHull>(end));
         if (sys.ecs().any_of<C_BeamHull>(end)) updateHull(sys.ecs().get<C_BeamHull>(end));
@@ -280,9 +325,12 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
         }
     }
 
-    if (!loop && end != entt::null && sys.ecs().any_of<C_Collider_BeamHull>(end)) {
-        sys.ecs().remove<C_Collider_BeamHull>(end);
-        sys.ecs().remove<C_Collidable>(end);
+    if (!loop && end != entt::null) {
+        if (sys.ecs().any_of<C_Collider_BeamHull>(end)) {
+            sys.ecs().remove<C_Collider_BeamHull>(end);
+            sys.ecs().remove<C_Collidable>(end);
+        }
+        sys.ecs().remove<C_BeamHull>(end);
     }
 
     return {root, end};
@@ -296,7 +344,7 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeam(World& system, con
     std::vector<BeamSample> samples;
     samples.reserve(segments);
 
-    appendSplineSamples(spline, segments, samples);
+    appendSplineSamples(colliderMode, spline, segments, samples);
 
     const Vector3r splineCOMWorld = spline.centerOfMass();
     return buildBeamFromSamples(system, samples, spline.isLoop(), section, springs, stateDefaults, propsDefaults, splineCOMWorld, collision_mgr, colliderMode);
@@ -323,7 +371,7 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(World& system, co
         const real_t frac = sp->totalLength() / totalLen;
         const size_t segCount = std::max((size_t)1, (size_t)std::round((real_t)segments * frac));
 
-        appendSplineSamples(*sp, segCount, allSamples);
+        appendSplineSamples(colliderMode, *sp, segCount, allSamples);
     }
 
     if (allSamples.empty()) {

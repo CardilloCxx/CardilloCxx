@@ -53,3 +53,4 @@ cardillo_add_scene_example(cradle "scenes/cradle/NewtonsCradleScene.hpp" Newtons
 cardillo_add_scene_example(chain_fountain "scenes/chainFountain/ChainFountain.hpp" ChainFountainScene)
 cardillo_add_scene_example(chute "scenes/chute/Chute.hpp" ChuteScene)
 cardillo_add_scene_example(rubber_band "scenes/rubberBand/RubberBandsScene.hpp" RubberBandsScene)
+cardillo_add_scene_example(cilia_walker "scenes/ciliaWalker/CiliaWalkerScene.hpp" CiliaWalkerScene)

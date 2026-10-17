@@ -144,7 +144,7 @@ int main() {
             setPose(reg, B, b4);
             const physics::ConstraintResult r4 = c.getConstraint();
             // inertial directions of rows y and z from body A's (static-free) block: n = A_IK1 * W_A,rot
-            const Matrix33r RA = RigidBody::getState(reg, A).rotation;
+            const Matrix33r RA = RigidBody::getState(reg, A).rotation();
             const Vector3r ny = RA * r4.WgA.block<3, 1>(3, 4);
             const Vector3r nz = RA * r4.WgA.block<3, 1>(3, 5);
             check(std::abs(ny.norm() - 1) < 1e-12 && std::abs(nz.norm() - 1) < 1e-12 && std::abs(ny.dot(nz)) < 1e-12,

@@ -102,10 +102,9 @@ class CableBunchScene : public SceneBase {
         const auto tieSection = physics::BeamCrossSection::rectangular(w_tie, h_tie);
         physics::RigidProps tieProps = physics::RigidProps::withDensity(1000.0);
 
-        auto tieSprings = physics::BeamSpringParams::fromMaterial(1e9, 0.4);
-        tieSprings.gamma0 = Vector3r::Zero();
-        tieSprings.gamma0->x() = -h_tie * 0.05;  // Slight pre-compression to keep the ties tight around the bundle
-        tieSprings.kappa0 = Vector3r::Zero();
+        auto tieSprings = physics::BeamSpringParams::fromMaterial(1e9, 0.4)
+                              .relaxedInStraightConfiguration()
+                      .withAxialPretension((real_t)0.10);  // Matches the old 0.5 mm shortening per tie segment
 
         for (int i = 1; i < numTies; ++i) {
             real_t alpha = (real_t)i / (real_t)numTies;

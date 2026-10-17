@@ -100,15 +100,15 @@ Fields
      - ``nullopt``
      - Optional direct override for ``Kf`` (Nm/rad). When set, ``E``, ``nu``,
        and ``scaleKf`` are ignored for torsion/bending.
-   * - ``gamma0``
+   * - ``restConfiguration``
+     - ``Initial``
+     - Selects whether default rest strains come from the initial pose or
+       describe a straight, uncurved beam. Use the named methods below.
+   * - ``axialPretension``
      - ``nullopt``
-     - Optional rest-state translational strain ``γ₀``. When unset the
-       factory initialises it from the relative pose of the two connected
-       segments at creation time (natural configuration).
-   * - ``kappa0``
-     - ``nullopt``
-     - Optional rest-state curvature ``κ₀``. When unset the factory
-       initialises it from the initial segment orientation.
+     - Optional signed axial engineering strain relative to each segment's
+       natural length. Positive values pretension the beam, negative values
+       represent compression (must be greater than ``-1``); values above 1 are valid.
    * - ``dampingFactor``
      - ``0``
      - Rayleigh-type damping factor ``d`` applied to all stiffness terms.
@@ -141,6 +141,14 @@ Named constructors
        1.0, 1.0, 1.0, 1.0, 1.0, // all scales = 1
        0.005    // 0.5% Rayleigh damping
    );
+
+       // Default: relaxed at the initial pose. Alternatively, use a straight,
+       // uncurved natural shape, even when the beam starts curved:
+       springs.relaxedInInitialConfiguration();
+       // springs.relaxedInStraightConfiguration();
+
+       // Optional: hold the initial length at 2% axial strain relative to rest length.
+       springs.withAxialPretension(0.02);
 
 **From direct stiffness values** (bypasses material formulas):
 
