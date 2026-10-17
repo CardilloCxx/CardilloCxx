@@ -1,5 +1,8 @@
 #include "physics_types.hpp"
 
+#include <cmath>
+#include <stdexcept>
+
 #include "../../rigid_body/transformations.hpp"
 #include "../world.hpp"
 
@@ -204,6 +207,26 @@ Vector3r BeamSpringParams::Kf(real_t segLen, const BeamCrossSection& sec) const 
 }
 
 void BeamSpringParams::setDampingFromFactor(real_t d) { dampingFactor = d; }
+
+BeamSpringParams& BeamSpringParams::relaxedInInitialConfiguration() {
+    restConfiguration = BeamRestConfiguration::Initial;
+    axialPretension.reset();
+    return *this;
+}
+
+BeamSpringParams& BeamSpringParams::relaxedInStraightConfiguration() {
+    restConfiguration = BeamRestConfiguration::Straight;
+    axialPretension.reset();
+    return *this;
+}
+
+BeamSpringParams& BeamSpringParams::withAxialPretension(real_t relativeStrain) {
+    if (!(relativeStrain > (real_t)-1) || !std::isfinite(relativeStrain)) {
+        throw std::invalid_argument("Beam axial strain must be finite and greater than -1");
+    }
+    axialPretension = relativeStrain;
+    return *this;
+}
 
 BeamSpringParams BeamSpringParams::fromMaterial(real_t E_in, real_t nu_in, real_t axialScale, real_t shearScale, 
                                                  real_t torsionScale, real_t bendYScale, real_t bendZScale, 

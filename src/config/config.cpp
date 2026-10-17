@@ -1,6 +1,7 @@
 #include "config.hpp"
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -364,6 +365,26 @@ Config ConfigReader::fromFile(const std::string& path) {
             try {
                 int v = std::max(0, std::stoi(val));
                 cfg.collision_max_patches = static_cast<std::size_t>(v);
+            } catch (...) {
+            }
+        } else if (key == "collision.patch_num_samples") {
+            try {
+                const int v = std::stoi(val);
+                if (v >= 4) {
+                    cfg.collision_patch_num_samples = static_cast<std::size_t>(v);
+                } else {
+                    std::cerr << "Warning: 'collision.patch_num_samples' must be at least 4; ignoring value '" << val << "'." << std::endl;
+                }
+            } catch (...) {
+            }
+        } else if (key == "collision.patch_tolerance") {
+            try {
+                const real_t v = static_cast<real_t>(std::stod(val));
+                if (std::isfinite(v) && v > (real_t)0) {
+                    cfg.collision_patch_tolerance = v;
+                } else {
+                    std::cerr << "Warning: 'collision.patch_tolerance' must be finite and positive; ignoring value '" << val << "'." << std::endl;
+                }
             } catch (...) {
             }
         } else if (key == "collision.use_patch_vertices") {

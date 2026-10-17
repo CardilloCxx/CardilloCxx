@@ -189,20 +189,23 @@ BeamConstraint::BeamConstraint(entt::registry& reg, entt::entity a, entt::entity
     const Quaternion4r qMidQ(0.5 * (wa.qA.coeffs() + wa.qB.coeffs()));  // 0.5*(qA + qB)
     const Matrix33r A_mid = qMidQ.normalized().toRotationMatrix();
     const Vector3r gammaGeom = A_mid.transpose() * (wa.xB - wa.xA);  // axial + shear term from current pose
-    m_gamma0 = m_springs.gamma0.value_or(gammaGeom);
+    const real_t geometricLength = gammaGeom.norm();
+    m_gamma0 = m_springs.restConfiguration == physics::BeamRestConfiguration::Straight
+                   ? Vector3r(geometricLength, (real_t)0, (real_t)0)
+                   : gammaGeom;
 
-    if (m_springs.gamma0) m_gamma0.x() = gammaGeom.x() + m_springs.gamma0->x();
+    if (m_springs.axialPretension) m_gamma0.x() /= (real_t)1 + *m_springs.axialPretension;
 
     const Vector4r dQ = wa.qB.coeffs() - wa.qA.coeffs();
     const real_t factor = (real_t)2.0 / qMidQ.coeffs().squaredNorm();
     const real_t Qmid_w = qMidQ.coeffs()(3);
     const Vector3r Qmid_q = qMidQ.coeffs().head<3>();
     const Vector3r kappaGeom = factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
-    m_kappa0 = m_springs.kappa0.value_or(kappaGeom);
+    m_kappa0 = m_springs.restConfiguration == physics::BeamRestConfiguration::Straight ? Vector3r::Zero() : kappaGeom;
 
     // Keep constitutive segment length tied to the geometric initialization to
-    // avoid singular stiffness when user-provided gamma0 is near zero.
-    l_0 = gammaGeom.norm();
+    // avoid singular stiffness when the natural axial strain is near zero.
+    l_0 = geometricLength;
 }
 
 ConstraintResult BeamConstraint::getConstraint() const {

@@ -223,6 +223,8 @@ struct BeamHullShape {
 
 using RigidShape = std::variant<CubeShape, PlaneShape, CapsuleShape, CylinderShape, ConeShape, SphereShape, MeshShape, BeamHullShape>;
 
+enum class BeamRestConfiguration { Initial, Straight };
+
 struct BeamSpringParams {
     real_t E{0};
     real_t nu{0};
@@ -230,8 +232,8 @@ struct BeamSpringParams {
     Vector3r scaleKf{Vector3r::Ones()};
     std::optional<Vector3r> Ke_direct;
     std::optional<Vector3r> Kf_direct;
-    std::optional<Vector3r> gamma0;
-    std::optional<Vector3r> kappa0;
+    BeamRestConfiguration restConfiguration{BeamRestConfiguration::Initial};
+    std::optional<real_t> axialPretension;
     real_t dampingFactor = 0.0;
 
     BeamSpringParams() = default;
@@ -240,6 +242,9 @@ struct BeamSpringParams {
     Vector3r Ke(real_t segLen, const BeamCrossSection& sec) const;
     Vector3r Kf(real_t segLen, const BeamCrossSection& sec) const;
     void setDampingFromFactor(real_t d);
+    BeamSpringParams& relaxedInInitialConfiguration();
+    BeamSpringParams& relaxedInStraightConfiguration();
+    BeamSpringParams& withAxialPretension(real_t relativeStrain);
 
     static BeamSpringParams fromMaterial(real_t E_in, real_t nu_in, real_t axialScale = (real_t)1, 
                                           real_t shearScale = (real_t)1, real_t torsionScale = (real_t)1, 

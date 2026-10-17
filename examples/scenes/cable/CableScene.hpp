@@ -95,7 +95,7 @@ public:
         const auto cableSection = physics::BeamCrossSection::round(r_cable);
         auto cableSprings = physics::BeamSpringParams::fromMaterial((real_t)5e7, (real_t)0.4);
         cableSprings.setDampingFromFactor((real_t)1.0);
-        cableSprings.kappa0 = Vector3r::Zero();   // Set relaxed curvature to zero for a straight cable
+        cableSprings.relaxedInStraightConfiguration();
         
         physics::RigidProps cableProps = physics::RigidProps::withDensity((real_t)1200.0);
         physics::RigidState stateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity());

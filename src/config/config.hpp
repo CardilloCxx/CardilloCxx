@@ -33,6 +33,10 @@ struct Config {
     int collision_max_raw_contacts{1024};  // collision.max_raw_contacts
     // Maximum number of contact patches requested per pair
     std::size_t collision_max_patches{4};  // collision.max_patches
+    // Number of sampled support points for curved contact faces such as cylinder caps
+    std::size_t collision_patch_num_samples{12};  // collision.patch_num_samples
+    // Absolute distance from the support plane for including a point in a contact patch
+    real_t collision_patch_tolerance{(real_t)1e-3};  // collision.patch_tolerance
     // Prefer using patch vertices over raw contacts when available
     bool collision_use_patch_vertices{true};  // collision.use_patch_vertices
     // Maximum distance (in meters) to consider a current contact matched to a previous one

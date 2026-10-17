@@ -292,10 +292,9 @@ class ThreeDPrinterScene : public SceneBase {
             addAxisAligned(midLBottom, gantryLeftAnchor, false);
 
             const auto beltSection = physics::BeamCrossSection::rectangular((real_t)0.0005, (real_t)0.01);
-            physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, 1e6, (real_t)4000, (real_t)0.4, (real_t)0.4, (real_t)0.5);
-            beltSprings.gamma0 = Vector3r::Zero();
-            beltSprings.gamma0->x() = (real_t)-1.0e-4;
-            beltSprings.kappa0 = Vector3r::Zero();
+            physics::BeamSpringParams beltSprings = physics::BeamSpringParams::fromMaterial((real_t)1.0e9, (real_t)0.30, 1e6, (real_t)4000, (real_t)0.4, (real_t)0.4, (real_t)0.5)
+                                                           .relaxedInStraightConfiguration()
+                                                           .withAxialPretension((real_t)0.04);
             const physics::RigidProps beltProps = physics::RigidProps::withDensity((real_t)1100.0);
             const physics::RigidState beltStateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero());
 

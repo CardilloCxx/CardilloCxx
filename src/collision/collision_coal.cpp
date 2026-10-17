@@ -42,12 +42,6 @@ inline coal::Vec3s toCoalVec3(const Vector3r& v) {
     return coal::Vec3s(v);
     // return v.cast<coal::CoalScalar>();
 }
-// Contact patch settings. TODO: promote to config (collision_patch_num_samples / collision_patch_tolerance).
-// The tolerance is an absolute distance: a shape vertex belongs to a contact patch if it lies within this
-// distance of the separating plane. Rim samples are used for curved beam end caps.
-constexpr std::size_t kPatchNumSamples = 12;
-constexpr real_t kPatchTolerance = (real_t)1e-3;
-
 // Beam hull geometry (end-cross-section rings/discs) is stored directly in world coordinates, so its
 // collision object must always carry the identity transform, exactly like halfspaces do.
 inline coal::Transform3s identityTf() {
@@ -517,7 +511,8 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
     // Contact patch request/result
     const std::size_t max_patch_req = m_world ? m_cfg.collision_max_patches : (std::size_t)4;
-    coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req, /*num_samples_curved_shapes*/ kPatchNumSamples, /*patch_tolerance*/ kPatchTolerance);
+    coal::ContactPatchRequest patch_req(/*max_num_patch*/ max_patch_req, /*num_samples_curved_shapes*/ m_cfg.collision_patch_num_samples,
+                                        /*patch_tolerance*/ m_cfg.collision_patch_tolerance);
     coal::ContactPatchResult patch_res(patch_req);
     const bool usePatchVertices = m_world ? m_cfg.collision_use_patch_vertices : true;
 

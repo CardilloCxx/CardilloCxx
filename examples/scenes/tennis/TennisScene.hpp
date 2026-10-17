@@ -95,8 +95,7 @@ class TennisScene : public SceneBase {
         const auto stringSection = physics::BeamCrossSection::round(stringRadius);
         physics::BeamSpringParams stringSprings =
             physics::BeamSpringParams::fromMaterial((real_t)5.0e10, (real_t)0.35, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)1.0, (real_t)0.0005);
-        stringSprings.gamma0 = Vector3r::Zero();
-        stringSprings.gamma0->x() = (real_t)-1.0e-5;
+        stringSprings.relaxedInInitialConfiguration().withAxialPretension((real_t)0.0025);  // About 10 um shortening per element
         const physics::RigidProps stringProps = physics::RigidProps::withDensity((real_t)1200.0);
         const physics::RigidState stringStateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero());
 
