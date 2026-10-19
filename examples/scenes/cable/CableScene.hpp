@@ -108,6 +108,9 @@ public:
         engine.addRigidConstraint(cableEnds.first, loosePort);
         // Second end attached to the moving, trajectory-driven plug
         engine.addRigidConstraint(cableEnds.second, movingPlug);
+        // The end nodes lie at the cable ends, inside the bodies they are attached to.
+        engine.disableCollisionBetween(cableEnds.first, loosePort);
+        engine.disableCollisionBetween(cableEnds.second, movingPlug);
     }
 
     void updateScene(physics::PhysicsEngine& engine, real_t t, real_t dt) override {
