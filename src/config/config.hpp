@@ -58,7 +58,6 @@ struct Config {
     // Debug/diagnostics
     bool debug_rb{false};    // debug.rb  - enable rigid-body contact/W diagnostics in Moreau
     bool debug_pj{false};    // debug.pj  - enable ProjectedJacobi iteration logging
-    bool debug_mesh{false};  // debug.mesh - print mesh normalization info (volume, COM, inertia)
 
     // Solver selection
     SolverType solver{SolverType::ProjectedJacobi};
@@ -75,9 +74,8 @@ struct Config {
     // buildBlockPreconditioner()/rdiag_sparse() in projected_jacobi.cpp). Mathematically alpha's
     // role there matches Anitescu-Tasora's cone-complementarity framing: a step size bounded by the
     // reciprocal of the contact Delassus operator's Lipschitz constant, not an arbitrary damping
-    // knob -- confirmed empirically for condensed too (see CONDENSED_SOLVER_REPORT.md's alpha/
-    // relaxation review): the power-iteration spectral-radius estimate already built for
-    // pj.chebyshev, run at alpha=1, crosses 1 at almost exactly the alpha domino's own config
+    // knob -- confirmed empirically for condensed too: the power-iteration spectral-radius
+    // estimate already built for pj.chebyshev, run at alpha=1, crosses 1 at almost exactly the alpha domino's own config
     // comments arrived at by hand-tuning for condensed.sweep_mode=jacobi. Neither `alpha` nor
     // `relaxation` is currently derived from that estimate automatically for either solver --
     // hand-tuned per scene today. See the report for the full theory-vs-implementation writeup and
@@ -111,7 +109,7 @@ struct Config {
     // across window sizes before picking one for a new scene; m=1 (which has a closed-form
     // solution, no least-squares solve needed) was found not competitive on its own.
     bool pj_anderson{false};  // pj.anderson
-    int pj_anderson_m{2};     // pj.anderson_m (history window size, >= 1; 2 was the best of {1,2,3,5,8,12,20} across all three benchmark scenes -- see the report)
+    int pj_anderson_m{2};     // pj.anderson_m (history window size, >= 1; 2 was the best of {1,2,3,5,8,12,20} across all three benchmark scenes)
     bool pj_warmstart{true};  // pj.warmstart (enable warmstart & cache)
     // pj.rdiag_true_delassus: false (default) uses per-row step lengths alpha/D_ii (with a common
     // value alpha/mean(D_t1t1, D_t2t2) for both tangential rows of a frictional contact); true uses
@@ -124,7 +122,6 @@ struct Config {
     // pj_tol_rel, pj_relaxation, pj_alpha, pj_warmstart, debug_pj above.
     std::string condensed_sweep_mode{"gauss_seidel"};    // condensed.sweep_mode: jacobi | gauss_seidel | colored | chaotic
     std::string condensed_local_solve{"projection"};     // condensed.local_solve: projection | newton
-    std::string condensed_ordering{"natural"};           // condensed.ordering: natural | dominant
     int condensed_num_threads{0};                        // condensed.num_threads (0 = OpenMP default)
     int condensed_newton_max_iters{8};                   // condensed.newton_max_iters
     real_t condensed_newton_tol{(real_t)1e-10};          // condensed.newton_tol
@@ -133,8 +130,8 @@ struct Config {
     // tangential treated as separate 1- and 2-dof sub-problems) or "full" (a single rho from the
     // FULL 3x3 block's largest eigenvalue, capturing normal-tangential coupling that "split"
     // ignores). Matches Siconos's own compute_rho_split_spectral_norm/compute_rho_spectral_norm
-    // (fc3d_AlartCurnier_functions.c) respectively -- checked directly against that codebase. See
-    // CONDENSED_SOLVER_REPORT.md for a head-to-head comparison before switching a scene to "full".
+    // (fc3d_AlartCurnier_functions.c) respectively -- checked directly against that codebase.
+    // Compare both on the scene before switching it to "full".
     std::string condensed_newton_rho_strategy{"split"}; // condensed.newton_rho_strategy: split | full
     // How the step lengths (rhoN, rhoT, rhoT) of the plain projection update (GiiInv, used by every
     // sweep mode's default/fallback path) are derived from the local Delassus block of
@@ -160,7 +157,7 @@ struct Config {
     // the raw (unclamped) spectral radius at alpha=1, then picks alpha so the resulting operator's
     // estimated radius is approximately condensed_auto_alpha_target_rho (a linear-regime
     // extrapolation: rho(alpha) ~= alpha*(rho(1)+1) - 1 for alpha large enough to be dominated by
-    // the largest eigenvalue, confirmed empirically on domino -- see CONDENSED_SOLVER_REPORT.md).
+    // the largest eigenvalue, confirmed empirically on domino).
     // Recomputed fresh every step, unlike a static hand-tuned alpha -- motivated by the measured
     // finding that the true spectral radius is state-dependent and can swing between stable and
     // divergent within a few steps of the same run. Not yet validated widely enough to change the
@@ -175,7 +172,7 @@ struct Config {
     // stabilizing effect entirely), run a few real (unaccelerated, actually-projected) sweeps
     // first and estimate rho from the OBSERVED residual-decay ratio instead (classical "adaptive
     // SOR/Chebyshev", e.g. Manteuffel 1977/Ashby 1985).
-    // MEASURED RESULT (see CONDENSED_SOLVER_REPORT.md): on domino, this performed WORSE than the
+    // MEASURED RESULT: on domino, this performed WORSE than the
     // upfront linear estimate (1847 vs 1415 total sweeps), not better. Tracing the observed ratio
     // per warmup iteration found why: it does not settle to a stable value even over 20
     // iterations -- drifting from ~0.3 up through ~0.9 and transiently EXCEEDING 1 (residual
@@ -220,13 +217,6 @@ struct Config {
     real_t conicxx_equilibrate_min_scale{(real_t)1e-4};  // conicxx.equilibrate_min_scale
     real_t conicxx_equilibrate_max_scale{(real_t)1e4};   // conicxx.equilibrate_max_scale
     bool conicxx_validate_inputs{true};                 // conicxx.validate_inputs
-
-    // Presence flags for precedence handling (e.g., pj.alpha overrides alpha if both set)
-    bool has_pj_alpha{false};
-    bool has_pj_max_iterations{false};
-    bool has_pj_tol_abs{false};
-    bool has_pj_tol_rel{false};
-    bool has_pj_relaxation{false};
 
     // Integrator selection
     IntegratorType integrator{IntegratorType::Moreau};

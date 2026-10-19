@@ -501,9 +501,7 @@ with ``condensed.sweep_mode=chaotic`` is silently ignored.
    output, is provably a no-op. Any outer-iteration count above 1-2 you
    observe on a scene with no contacts is overwhelmingly the surrounding
    convergence-check/Nesterov bookkeeping confirming that nothing changed
-   anymore, not the Schur solve itself needing repeated work -- see
-   ``CONDENSED_SOLVER_REPORT.md`` for a worked example (``wilberforce``) with
-   exact iteration-count accounting.
+   anymore, not the Schur solve itself needing repeated work.
 
 How Sbb's off-diagonal blocks are built
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -777,7 +775,7 @@ gyroscopic bodies that never touch the compliant chain keeps the cheaper symmetr
    every printed digit. Building that PJ reference surfaced an independent, pre-existing bug in
    ``projected_jacobi`` itself -- its solver never passed ``moreau_implicit_gyroscopy``/
    ``moreau_lambda_theta`` through to the system-matrix assembly, so PJ's own implicit treatment was
-   also inactive until fixed. See ``CONDENSED_SOLVER_REPORT.md`` for the full validation writeup.
+   also inactive until fixed.
 
 Nesterov acceleration
 ----------------------
@@ -956,8 +954,7 @@ Known performance characteristics
 
 Measured on ``examples/scenes/domino`` (pure rigid, ~13k frictional
 contacts) and ``examples/scenes/slinky`` (compliant chain + friction, sparser
-contact set); see ``CONDENSED_SOLVER_REPORT.md`` for the full numbers,
-methodology, and caveats (short runs, one machine, not an exhaustive sweep).
+contact set); caveats: short runs, one machine, not an exhaustive sweep.
 These are specific, reproducible findings from that comparison, not general
 claims:
 
