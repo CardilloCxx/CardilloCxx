@@ -34,6 +34,10 @@ default-constructed engine.
 All config keys
 ---------------
 
+Each line of a config file has the form ``key = value``; ``#`` starts a comment.
+Keys that are not listed below are ignored with a warning that names the file
+and line, so typos do not silently fall back to defaults.
+
 Simulation timing
 ~~~~~~~~~~~~~~~~~
 
@@ -86,18 +90,6 @@ The simulation writes VTK output files that can be opened directly in
      - ``output.interval_steps``
      - ``50``
      - Write one VTK frame every *N* time steps (minimum 1).
-   * - ``output_heightfield_stride``
-     - ``output.heightfield_stride``
-     - ``8``
-     - Decimation factor for height-field VTK triangles (minimum 1; larger reduces file size).
-   * - ``output_write_contacts``
-     - ``output.write_contacts``
-     - ``false``
-     - Also write per-step contact geometry VTK files.
-   * - ``output_contacts_body_vectors``
-     - ``output.contacts_body_vectors``
-     - ``false``
-     - Include per-contact Body Basis normals/tangents/points in contact VTK.
 
 Collision settings
 ~~~~~~~~~~~~~~~~~~
@@ -194,11 +186,6 @@ Debug / diagnostics
      - ``debug.pj``
      - ``false``
      - Enable Projected Jacobi iteration logging. Accepts ``true/1/yes/on``.
-   * - ``debug_mesh``
-     - ``debug.mesh``
-     - ``false``
-     - Print mesh normalization info (volume, COM, inertia) at load time.
-       Accepts ``true/1/yes/on``.
 
 Solver selection and parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
