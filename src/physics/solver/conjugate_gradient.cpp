@@ -54,7 +54,7 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
 
     real_t rz_new = 0.0;
     real_t rz_old = z.dot(res);
-    real_t res_norm, alpha, beta;
+    real_t res_norm = res.norm(), alpha, beta;
 
     // ---------------------- CONJUGATE GRADIENT ITERATION ----------------------
 
@@ -69,7 +69,11 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
         Ap.noalias() = W_row * u_corr;
         Ap.noalias() += C_vec.cwiseProduct(p);
 
-        alpha = rz_old / p.dot(Ap);
+        // Breakdown: the residual vanished exactly (e.g. a small system solved in fewer iterations
+        // than its dimension) before reaching the tolerance.
+        const real_t pAp = p.dot(Ap);
+        if (rz_old == (real_t)0 || !(pAp > (real_t)0)) break;
+        alpha = rz_old / pAp;
 
         lambda += alpha * p;
         res -= alpha * Ap;
