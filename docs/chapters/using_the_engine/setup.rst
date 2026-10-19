@@ -154,12 +154,12 @@ Friction settings
      - Meaning
    * - ``friction_enable``
      - ``friction.enable``
-     - ``false``
+     - ``true``
      - Enable friction (adds tangent Jacobian rows to the contact problem).
        Accepts ``true/1/yes/on``. Roughly doubles solve cost.
    * - ``friction_combine``
      - ``friction.combine``
-     - ``"min"``
+     - ``"arith"``
      - Per-pair friction coefficient combination mode: ``min``, ``arith``, or ``geom``.
    * - ``friction_default_mu``
      - ``friction.default_mu``
@@ -228,7 +228,7 @@ Solver selection and parameters
      - Step-size multiplier for each Jacobi update.
    * - ``pj_nesterov``
      - ``solver.nesterov``
-     - ``false``
+     - ``true``
      - Enable Nesterov momentum acceleration. Accepts ``true/1/yes/on``.
    * - ``pj_nesterov_beta_threshold``
      - ``solver.nesterov_beta_threshold``
@@ -289,7 +289,7 @@ prefixes as shown:
    * - ``qoco_backend``
      - ``qoco.backend``
        accepts: ``auto``, ``cpu``, ``cuda``
-     - ``"auto"``
+     - ``"cpu"``
      - QOCO backend selection.
    * - ``ip_kkt_static_reg``
      - ``solver.kkt_static_reg``

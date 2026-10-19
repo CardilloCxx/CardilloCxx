@@ -7,7 +7,7 @@
 namespace cardillo::config {
 
 enum class IntegratorType { Moreau };
-enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Qoco, Clarabel, Conicxx, Condensed };
+enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Condensed, Qoco, Clarabel, Conicxx };
 
 struct Config {
     // Simulation settings
@@ -47,8 +47,8 @@ struct Config {
     // Set via `collision.min_pair_contact_distance`. Set to 0 to disable.
     real_t collision_min_pair_contact_distance{(real_t)0.0};
     // Friction settings
-    bool friction_enable{false};              // friction.enable - extend W with tangents
-    std::string friction_combine{"min"};      // friction.combine - one of [min, arith, geom]
+    bool friction_enable{true};               // friction.enable - extend W with tangents
+    std::string friction_combine{"arith"};    // friction.combine - one of [min, arith, geom]
     real_t friction_default_mu{(real_t)0.3};  // friction.default_mu - default C_Friction when not set on entities
 
     // Restitution settings
@@ -84,7 +84,7 @@ struct Config {
     // symmetric-positive-definite bilateral sub-system per the Ostrowski-Reich theorem).
     real_t pj_relaxation{(real_t)1.0};                 // pj.relaxation
     real_t pj_alpha{(real_t)0.3};                      // pj.alpha
-    bool pj_nesterov{false};                           // pj.nesterov (enable Nesterov acceleration)
+    bool pj_nesterov{true};                            // pj.nesterov (enable Nesterov acceleration)
     real_t pj_nesterov_beta_threshold{(real_t)1.0};    // pj.nesterov_beta_threshold
     int pj_nesterov_restart_limit{10000};              // pj.nesterov_restart_limit
     // Chebyshev semi-iterative acceleration: an alternative to Nesterov, estimating the iteration
@@ -187,7 +187,7 @@ struct Config {
     real_t constraint_bias_factor{(real_t)0.001};  // constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)
 
     // Interior-point solver settings shared across QOCO, Clarabel and ConicXX
-    std::string qoco_backend{"auto"};         // qoco.backend [auto, cpu, cuda]
+    std::string qoco_backend{"cpu"};          // qoco.backend [auto, cpu, cuda]
     real_t ip_kkt_static_reg{(real_t)1e-8};   // solver.kkt_static_reg
     real_t ip_kkt_dynamic_reg{(real_t)1e-8};  // solver.kkt_dynamic_reg
     int ip_iter_ref_iters{2};                 // solver.iter_ref_iters
