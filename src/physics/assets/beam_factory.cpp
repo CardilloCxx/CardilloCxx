@@ -371,7 +371,16 @@ std::pair<entt::entity, entt::entity> BeamFactory::createBeams(World& system, co
         const real_t frac = sp->totalLength() / totalLen;
         const size_t segCount = std::max((size_t)1, (size_t)std::round((real_t)segments * frac));
 
+        // Node-based sampling (InterSegmentHull) samples both end points of every spline, so the
+        // start of a spline coincides with the end of the previous one. Merge such a pair into one
+        // node (lumping both half segment lengths); otherwise it would become an element of zero
+        // length, whose stiffness ~ 1/l0 is singular.
+        const size_t first = allSamples.size();
         appendSplineSamples(colliderMode, *sp, segCount, allSamples);
+        if (first > 0 && first < allSamples.size() && (allSamples[first].position - allSamples[first - 1].position).norm() <= (real_t)1e-8) {
+            allSamples[first - 1].segLen += allSamples[first].segLen;
+            allSamples.erase(allSamples.begin() + (std::ptrdiff_t)first);
+        }
     }
 
     if (allSamples.empty()) {
