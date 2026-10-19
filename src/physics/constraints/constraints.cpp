@@ -1,4 +1,5 @@
 #include "constraints.hpp"
+#include <cmath>
 
 namespace cardillo {
 namespace physics {
@@ -130,8 +131,16 @@ void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::
     // reference configuration this reduces to A_K1J and -A_K2J. For a rotation about the primary
     // axis e1_x, the directions of the y and z rows are -e1_x x e2_z = e2_y and e1_x x e2_y = e2_z,
     // which stay orthonormal for every hinge angle.
+    // The x row is the twist angle phi = atan2(s, c) (see getPositionError()) with
+    // s = (e1_z . e2_y - e1_y . e2_z)/2 and c = (e1_y . e2_y + e1_z . e2_z)/2, hence
+    // d/dt(-phi) = -(c n_s - s n_c)/(s^2 + c^2) . (omega_A - omega_B); for a pure rotation about
+    // e1_x, this direction is e1_x itself.
+    const Vector3r n_s = (real_t)0.5 * (A_IJ1.col(2).cross(A_IJ2.col(1)) - A_IJ1.col(1).cross(A_IJ2.col(2)));
+    const Vector3r n_c = (real_t)0.5 * (A_IJ1.col(1).cross(A_IJ2.col(1)) + A_IJ1.col(2).cross(A_IJ2.col(2)));
+    const real_t s = (real_t)0.5 * (A_IJ1.col(2).dot(A_IJ2.col(1)) - A_IJ1.col(1).dot(A_IJ2.col(2)));
+    const real_t c = (real_t)0.5 * (A_IJ1.col(1).dot(A_IJ2.col(1)) + A_IJ1.col(2).dot(A_IJ2.col(2)));
     Matrix33r N;
-    N.col(0) = A_IJ1.col(1).cross(A_IJ2.col(2));
+    N.col(0) = -(c * n_s - s * n_c) / (s * s + c * c);
     N.col(1) = -A_IJ1.col(0).cross(A_IJ2.col(2));
     N.col(2) = A_IJ1.col(0).cross(A_IJ2.col(1));
     WgA.bottomRightCorner<3, 3>() = A_IK1.transpose() * N;
@@ -150,7 +159,7 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
     const Vector3r& g = m_joint.compute_g(wa.pA, wa.pB, wa.RA, wa.RB);
     buildJointJacobian(wa, g, out.WgA, out.WgB);
 
-    out.positionError = getPositionError(g);
+    out.positionError = getPositionError(g, wa);
 
     // For now, gamma rows mirror g rows
     out.WgammaA = out.WgA;
@@ -173,12 +182,30 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
     return out;
 }
 
-VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g) const {
+VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g, const WorldAttachments& wa) const {
     VectorXr posErr(6);
     posErr.head<3>() = g;
-    posErr.tail<3>().setZero();
-    // TODO: Replace the zero rotational bias error with a proper finite-rotation
-    // residual whose Jacobian and frame convention match the rotational rows.
+    // Rotational rows, built from the joint triad attached to A (A_IJ1) and the one attached to B
+    // (A_IJ2). They vanish in the reference configuration (A_IJ1 == A_IJ2) and measure the negative
+    // relative rotation of B with respect to A about the joint x, y and z axes, with time
+    // derivatives given by the rotational rows of buildJointJacobian().
+    //  - x row (primary/hinge axis): the negative twist angle -phi, phi = atan2(s, c), unwrapped
+    //    against the previous evaluation. It is exact for every hinge angle, so a torsional spring
+    //    (finite compliance of this row only) is linear in phi also beyond 180 degrees.
+    //  - y and z rows: axis products measured against the primary axis e1_x, i.e. -sin of the
+    //    rotation angle. They stay exactly zero under an arbitrary rotation about e1_x, and their
+    //    directions remain linearly independent for every hinge angle (a cyclic choice such as
+    //    e1_z . e2_x for the y row loses rank at 90 degrees).
+    const Matrix33r A_IJ1 = wa.RA * m_joint.A_K1J;
+    const Matrix33r A_IJ2 = wa.RB * m_joint.A_K2J;
+    const real_t s = (real_t)0.5 * (A_IJ1.col(2).dot(A_IJ2.col(1)) - A_IJ1.col(1).dot(A_IJ2.col(2)));  // sin(phi)
+    const real_t c = (real_t)0.5 * (A_IJ1.col(1).dot(A_IJ2.col(1)) + A_IJ1.col(2).dot(A_IJ2.col(2)));  // cos(phi)
+    const real_t twoPi = (real_t)2 * (real_t)M_PI;
+    const real_t phi = m_twist_ref + std::remainder(std::atan2(s, c) - m_twist_ref, twoPi);
+    m_twist_ref = phi;
+    posErr(3) = -phi;                              // -phi, rotation about x
+    posErr(4) = -A_IJ1.col(0).dot(A_IJ2.col(2));  // -x1 . z2 -> rotation about y
+    posErr(5) = A_IJ1.col(0).dot(A_IJ2.col(1));   // x1 . y2 -> rotation about z
     return posErr - m_g0;
 }
 

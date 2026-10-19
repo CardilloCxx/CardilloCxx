@@ -224,8 +224,12 @@ class TranslationRotationConstraint : public ConstraintPattern {
     Vector3r m_translational_velocity{Vector3r::Zero()};
     Vector3r m_angular_velocity{Vector3r::Zero()};
 
-    VectorXr getPositionError(const Vector3r& g) const;
+    VectorXr getPositionError(const Vector3r& g, const WorldAttachments& wa) const;
     VectorXr m_g0{VectorXr::Zero(6)};
+    // Twist angle about the joint x-axis at the last evaluation; the angle measured by
+    // getPositionError() is unwrapped against it, so that a torsional spring about x stays linear
+    // over several revolutions (rotations between two evaluations must stay below pi).
+    mutable real_t m_twist_ref{0};
 
     // Build full 6x6 Jacobians for a rigid joint using world attachments.
     void buildJointJacobian(const WorldAttachments& wa, const Vector3r& g, MatrixXXr& WgA, MatrixXXr& WgB) const;
