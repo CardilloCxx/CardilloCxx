@@ -112,10 +112,4 @@ public:
         engine.disableCollisionBetween(cableEnds.first, loosePort);
         engine.disableCollisionBetween(cableEnds.second, movingPlug);
     }
-
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t dt) override {
-        (void)engine;
-        (void)t;
-        (void)dt;
-    }
 };

@@ -17,8 +17,7 @@ const SparseMatrix<Eigen::ColMajor>& ClarabelAssembler::P(real_t dt, real_t thet
     return m_P_cache;
 }
 
-VectorXr& ClarabelAssembler::q(real_t dt, real_t theta) {
-    (void)theta;
+VectorXr& ClarabelAssembler::q(real_t dt, real_t /*theta*/) {
 
     auto q_top = -(m_dyn->MDiag().cwiseProduct(m_dyn->vVec()) + dt * (m_dyn->fVecGyroscopic() + m_dyn->fVecExternal()));
     auto q_bot = VectorXr::Zero(m_dyn->numSprings() + m_dyn->numDampers());
@@ -94,7 +93,6 @@ const std::vector<clarabel::SupportedConeT<double>>& ClarabelAssembler::cones() 
         m_cones_cache.push_back(clarabel::NonnegativeConeT<double>(l));
     }
     for (uintptr_t i = 0; i < nsoc; ++i) {
-        (void)i;
         m_cones_cache.push_back(clarabel::SecondOrderConeT<double>((uintptr_t)3));
     }
 

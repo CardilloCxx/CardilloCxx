@@ -116,7 +116,7 @@ class ConveyorScene : public SceneBase {
         createRollers(rollerStart, rollerEnd, rollerSpacing, rollerRadius, rollerHalfLength, (real_t)0.000005);
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
         // Spawn new packages at regular intervals with random shape and initial velocity.
         const real_t spawnInterval = (real_t)0.5;
         if (t >= m_nextSpawnTime) {

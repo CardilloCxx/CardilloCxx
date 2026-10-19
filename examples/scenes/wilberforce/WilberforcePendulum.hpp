@@ -128,7 +128,7 @@ public:
         engine.addRigidConstraint(m_bob, m_bottom);
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override 
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override 
     {
         // Pull bob downward slowly to start vertical oscillation
         const real_t vz0 = -0.5;

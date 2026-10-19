@@ -1,4 +1,5 @@
 #include "world.hpp"
+#include <iterator>
 #include <fstream>
 #include <iomanip>
 #include <optional>
@@ -213,14 +214,13 @@ real_t World::getKineticEnergy(entt::entity e) const {
 
 int World::numBodies() const {
     if (m_num_bodies_dirty) {
-        int count = 0;
         // Prefer assembler-assigned body indices when available
         auto viewIndexed = m_reg.view<C_BodyIndex, C_PhysicsObject>();
-        for (auto e : viewIndexed) (void)e, ++count;
+        int count = (int)std::distance(viewIndexed.begin(), viewIndexed.end());
         if (count == 0) {
             // Fallback: count dynamic physics objects directly before assembler runs
             auto viewDyn = m_reg.view<C_PhysicsObject>();
-            for (auto e : viewDyn) (void)e, ++count;
+            count = (int)std::distance(viewDyn.begin(), viewDyn.end());
         }
         m_num_bodies_cached = count;
         m_num_bodies_dirty = false;

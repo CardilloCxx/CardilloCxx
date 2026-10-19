@@ -7,15 +7,11 @@ void IntegrationBase::explicitPositionUpdate(World& world, real_t h) {
     auto _sc = m_timings.scope(misc::TimingManager::TimerId::Integration);
     auto& reg = world.ecs();
 
-    auto position_view = reg.view<C_Position3, const C_LinearVelocity3>();
-    for (auto [e, pos, vel] : position_view.each()) {
-        (void)e;
-        pos.value += h * vel.value;
-    }
+    reg.view<C_Position3, const C_LinearVelocity3>().each([h](C_Position3& pos, const C_LinearVelocity3& vel) { 
+        pos.value += h * vel.value; 
+    });
 
-    auto orientation_view = reg.view<C_Orientation, const C_AngularVelocity3>();
-    for (auto [e, orientation, angularVel] : orientation_view.each()) {
-        (void)e;
+    reg.view<C_Orientation, const C_AngularVelocity3>().each([h](C_Orientation& orientation, const C_AngularVelocity3& angularVel) {
         const Vector3r& omega = angularVel.value;
         const Quaternion4r q_prev = orientation.value;
 
@@ -26,22 +22,18 @@ void IntegrationBase::explicitPositionUpdate(World& world, real_t h) {
         P.head<3>() += h * 0.5 * (w * omega + P.head<3>().cross(omega));
 
         orientation.setValue(MathHelper::alignQuaternionTo(q, q_prev));
-    }
+    });
 }
 
 void IntegrationBase::linearImplicitPositionUpdate(World& world, real_t h) {
     auto _sc = m_timings.scope(misc::TimingManager::TimerId::Integration);
     auto& reg = world.ecs();
 
-    auto position_view = reg.view<C_Position3, const C_LinearVelocity3>();
-    for (auto [e, pos, vel] : position_view.each()) {
-        (void)e;
+    reg.view<C_Position3, const C_LinearVelocity3>().each([h](C_Position3& pos, const C_LinearVelocity3& vel) {
         pos.value += h * vel.value;
-    }
+    });
 
-    auto orientation_view = reg.view<C_Orientation, const C_AngularVelocity3>();
-    for (auto [e, orientation, angularVel] : orientation_view.each()) {
-        (void)e;
+    reg.view<C_Orientation, const C_AngularVelocity3>().each([h](C_Orientation& orientation, const C_AngularVelocity3& angularVel) {
         const Vector3r& omega = angularVel.value;
         const Quaternion4r q_prev = orientation.value;
 
@@ -56,7 +48,7 @@ void IntegrationBase::linearImplicitPositionUpdate(World& world, real_t h) {
         q.coeffs() = A.inverse() * q.coeffs();
 
         orientation.setValue(MathHelper::alignQuaternionTo(q, q_prev));
-    }
+    });
 }
 
 }  // namespace integration
