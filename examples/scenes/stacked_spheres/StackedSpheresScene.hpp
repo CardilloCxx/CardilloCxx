@@ -52,7 +52,7 @@ public:
         }
     }
 
-    void updateScene(PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(PhysicsEngine& engine, real_t t) override {
         double v = amplitude * std::sin(2 * M_PI * frequency * t);
         // engine.setConstraintLinearVelocity(cube_constraint, Vector3r(0, 0, v));
         // engine.setConstraintAngularVelocity(cube_constraint, Vector3r(5.0, 0, 0));

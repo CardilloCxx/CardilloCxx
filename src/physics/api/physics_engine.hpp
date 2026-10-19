@@ -79,6 +79,8 @@ class CARDILLO_API PhysicsEngine {
 
     /// Advance the simulation by the engine's configured time step.
     void step();
+    /// Time step size of step() (sim.dt).
+    real_t timeStep() const { return m_cfg.sim_dt; }
 
     /// Add a linear distance constraint between two entities.
     inline size_t addLinearDistanceConstraint(entt::entity a, entt::entity b, const Vector3r& rA_local = Vector3r::Zero(), const Vector3r& rB_local = Vector3r::Zero(),

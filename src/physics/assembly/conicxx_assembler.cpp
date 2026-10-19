@@ -17,8 +17,7 @@ const SparseMatrix<Eigen::ColMajor>& ConicxxAssembler::P(real_t dt, real_t theta
     return m_P_cache;
 }
 
-VectorXr& ConicxxAssembler::q(real_t dt, real_t theta) {
-    (void)theta;
+VectorXr& ConicxxAssembler::q(real_t dt, real_t /*theta*/) {
 
     auto q_top = -(m_dyn->MDiag().cwiseProduct(m_dyn->vVec()) + dt * (m_dyn->fVecGyroscopic() + m_dyn->fVecExternal()));
     auto q_bot = VectorXr::Zero(m_dyn->numSprings() + m_dyn->numDampers());
@@ -34,14 +33,12 @@ const SparseMatrix<Eigen::ColMajor>& ConicxxAssembler::A(real_t dt, real_t theta
     TripletMatrix A_diag = TripletMatrix::fromDiag(m_dyn->Adiag() * (1.0 / (theta * dt)));
 
     const int n_contact = m_dyn->numContactRows();
-    const int n_var = m_dyn->numV() + m_dyn->numSprings() + m_dyn->numDampers();
     VectorXr Smu = computeSmu();
 
     TripletMatrix A = (m_dyn->Wg() | (C * -1.0) | TripletMatrix::zero(C.nRows(), A_diag.nCols()))
                           .vConcat(m_dyn->Wgamma() | TripletMatrix::zero(A_diag.nRows(), C.nCols()) | (A_diag * -1.0))
                           .vConcat(m_dyn->W().scaleRows(Smu) * -1.0 | TripletMatrix::zero(n_contact, m_dyn->numSprings() + m_dyn->numDampers()));
 
-    (void)n_var;
     m_A_cache = A.asSparse();
     return m_A_cache;
 }

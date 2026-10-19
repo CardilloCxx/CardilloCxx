@@ -37,8 +37,7 @@ inline real_t maxPerfectConstraintViolation(physics::PhysicsEngine& engine) {
     return maxViolation;
 }
 
-inline void printTimingsAtExit(int sig) {
-    (void)sig;
+inline void printTimingsAtExit(int /*sig*/) {
     if (g_engine) g_engine->timings().printBreakdown(std::cout);
     std::exit(EXIT_FAILURE);
 }
@@ -66,7 +65,12 @@ int runExample(int argc, char** argv) {
     const bool dumpState = std::getenv("CARDILLO_DUMP_STATE") != nullptr;
     real_t maxViolationOverRun = 0;
     while (!engine.isFinished()) {
-        scene.updateScene(engine, t, dt);
+        // Call through the deprecated overload so that scenes still overriding updateScene(engine,
+        // t, dt) keep working; its default forwards to updateScene(engine, t).
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+        static_cast<SceneBase&>(scene).updateScene(engine, t, dt);
+#pragma GCC diagnostic pop
         engine.step();
         t += dt;
         if (dumpState) maxViolationOverRun = std::max(maxViolationOverRun, detail::maxPerfectConstraintViolation(engine));

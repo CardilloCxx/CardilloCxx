@@ -100,7 +100,7 @@ public:
         engine.setAngularVelocity(m_treatmill_entity, Vector3r::Zero());
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
         maybeSpawnParcel(engine, t);
         if (m_treatmill_entity != entt::null) {
             resetPosition(engine);

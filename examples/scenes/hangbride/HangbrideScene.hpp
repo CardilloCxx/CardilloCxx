@@ -38,7 +38,6 @@ public:
         physics::CubeShape rightCliffShape{Vector3r(cliffThickness*(real_t)0.5, cliffWidthY*(real_t)0.5, cliffHeight*(real_t)0.5)};
         physics::RigidState rightCliffState; rightCliffState.position = Vector3r(rightX, 0.0, cliffCenterZ); rightCliffState.setOrientation(Quaternion4r::Identity());
         physics::RigidProps rightCliffProps; entt::entity eRight = engine.addRigidBody(rightCliffShape, rightCliffState, rightCliffProps);
-        (void)eLeft; (void)eRight; // not needed further
 
         // Tripod parameters
         const real_t apexHeight = (real_t)0.6;  // height above top surface
@@ -133,7 +132,7 @@ public:
             for (int i = 0; i < segments; ++i) {
                 real_t t = (segments == 1) ? (real_t)0.5 : (real_t)i / (real_t)(segments - 1);
                 Vector3r p = (real_t)1.0 * ((real_t)1.0 - t) * pA + t * pB;
-                (void)engine.addPointMass(nodeMass, p, Vector3r::Zero(), (real_t)0.03); // sphere radius
+                engine.addPointMass(nodeMass, p, Vector3r::Zero(), (real_t)0.03); // sphere radius
                 // Retrieve the last created entity (point mass). addPointMass returns an index_t, not entity, so we can't directly get it here.
                 // Instead, find the last physics object without C_BodyIndex yet would be brittle; better to create entities manually.
             }
@@ -312,7 +311,6 @@ public:
         // Connect the deck's outer ends to the cliff inner edges for added stability
         if (!planks.empty()) {
             const real_t halfX = cliffThickness * (real_t)0.5;
-            const real_t halfY = cliffWidthY * (real_t)0.5; (void)halfY; // not strictly needed but informative
             const real_t halfZ = cliffHeight * (real_t)0.5;
             const real_t edgeZDown = (real_t)0.02; // attach slightly below the top edge on the vertical face
             const real_t kEdge = (real_t)4000.0;

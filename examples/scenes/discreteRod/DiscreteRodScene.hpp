@@ -63,8 +63,7 @@ public:
         engine.disableCollisionBetween(m_rightRod, arcLeftEnds.second);
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
-        (void)t;
+    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/) override {
         // Cancel gravity and prescribe motion for the two rods
         const real_t v_sep = (real_t)0.5;    // move apart along ±X
         const real_t omega = (real_t)1.0;    // twist around local Y

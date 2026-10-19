@@ -56,7 +56,7 @@ public:
         }
     }
 
-    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) override {
+    void updateScene(cardillo::physics::PhysicsEngine& engine, real_t /*t*/) override {
         engine.setAngularVelocity(m_spool, Vector3r(1.5, 0.0, 0.0)); 
         engine.setLinearVelocity (m_spool, Vector3r::Zero());
         engine.applyForce        (m_spool, 1e10 * Vector3r(0,0,9.81), Vector3r::Zero());  // counteract gravity

@@ -86,11 +86,10 @@ private:
         const Vector3r& half,
         real_t density,
         const Vector3r& baseCenter,
-        real_t gapLong = (real_t)0.002,
+        real_t /*gapLong*/ = (real_t)0.002,
         real_t extraLayerGap = (real_t)0.0,
         bool initialImpulse = true
     ) {
-        (void)gapLong; (void)extraLayerGap; // parameters kept for compatibility with older callers
         if (layers <= 0) return;
         const real_t L = (real_t)2.0 * half.x(); // long edge (in-plane)
         const real_t W = (real_t)2.0 * half.y(); // thickness (in-plane)

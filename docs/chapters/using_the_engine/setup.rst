@@ -364,8 +364,7 @@ comments. Inline comments after ``#`` are supported:
    solver.type        = projected_jacobi   # see table above for all aliases
    integrator         = moreau             # selects the time integrator (alias: solver.name)
 
-   # Baumgarte bias; many cfg.txt names work interchangeably
-   constraint_bias_factor = 0.01          # also works: baumgarte_bias_factor, baumgarte_bias
+   moreau.theta       = 0.6
 
    # Interior-point settings accept multiple prefixes
    solver.kkt_static_reg = 1e-6           # also: ip.kkt_static_reg, qoco.kkt_static_reg
@@ -389,11 +388,10 @@ After populating the engine you drive it with a simple while-loop:
 
    myScene.populate(engine);
 
-   real_t t  = 0.0;
-   real_t dt = cfg.sim_dt;
+   real_t t = 0.0;
 
    while (!engine.isFinished()) {
-       myScene.updateScene(engine, t, dt);
+       myScene.updateScene(engine, t);  // step size: engine.timeStep()
        engine.step();
        t += dt;
    }
