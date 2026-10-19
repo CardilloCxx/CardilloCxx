@@ -134,7 +134,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<C_BodyIndex>(constraint.a).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgA_sel = selectCols(constraint.WgA, c_used);
+                const MatrixXXr WgA_sel = selectCols(constraint.WgA, c_used).topRows(nV);  // point masses: 3 of the 6 rows
                 blockSpring.noalias() += WgA_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgA_sel;
             }
 
@@ -142,7 +142,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<C_BodyIndex>(constraint.b).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgB_sel = selectCols(constraint.WgB, c_used);
+                const MatrixXXr WgB_sel = selectCols(constraint.WgB, c_used).topRows(nV);  // point masses: 3 of the 6 rows
                 blockSpring.noalias() += WgB_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgB_sel;
             }
 
@@ -163,7 +163,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<C_BodyIndex>(constraint.a).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgammaA_sel = selectCols(constraint.WgammaA, a_used);
+                const MatrixXXr WgammaA_sel = selectCols(constraint.WgammaA, a_used).topRows(nV);  // point masses: 3 of the 6 rows
                 blockDamper.noalias() += WgammaA_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgammaA_sel;
             }
 
@@ -171,7 +171,7 @@ BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
                 int b = reg.get<C_BodyIndex>(constraint.b).b;
                 int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
                 int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgammaB_sel = selectCols(constraint.WgammaB, a_used);
+                const MatrixXXr WgammaB_sel = selectCols(constraint.WgammaB, a_used).topRows(nV);  // point masses: 3 of the 6 rows
                 blockDamper.noalias() += WgammaB_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgammaB_sel;
             }
 
