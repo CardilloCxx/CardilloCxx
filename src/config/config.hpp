@@ -7,6 +7,15 @@
 namespace cardillo::config {
 
 enum class IntegratorType { Moreau };
+// Discretization of the compliant force laws C*lambda + g(q) = 0 in the Moreau-theta scheme: the
+// theta-weighted force lambda_theta := theta lambda_{n+1} + (1 - theta) lambda_{n} is the unknown, 
+// and the position-level law is linearized at the intermediate configuration q_{n+theta} where 
+// W is evaluated:
+//   C*lambda_theta + g(t_{n+theta}, q_{n+theta}) + h*(theta^2 W^T u_{n+1} - (1-theta)^2 W^T u_n)
+//     + (2 theta - 1)*h*chi = 0,
+// with free bodies, kinematic drivers and prescribed rates all at t_{n+theta} = t_n + (1 - theta) h.
+// No initial multipliers, no drift, no stabilization parameter; perfect constraints require
+// theta > 1/2.
 enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Condensed, Qoco, Clarabel, Conicxx };
 
 struct Config {
@@ -184,8 +193,6 @@ struct Config {
     // this finding; do not enable without re-measuring on your own scene first.
     bool condensed_chebyshev_adaptive_rho{false};        // condensed.chebyshev_adaptive_rho
 
-    real_t constraint_bias_factor{(real_t)0.001};  // constraint_bias_factor - Baumgarte-style bias factor for position error correction (0 to disable)
-
     // Interior-point solver settings shared across QOCO, Clarabel and ConicXX
     std::string qoco_backend{"cpu"};          // qoco.backend [auto, cpu, cuda]
     real_t ip_kkt_static_reg{(real_t)1e-8};   // solver.kkt_static_reg
@@ -222,7 +229,6 @@ struct Config {
     IntegratorType integrator{IntegratorType::Moreau};
     real_t moreau_theta{(real_t)1.0};
     bool moreau_implicit_gyroscopy{false};
-    bool moreau_lambda_theta{false};
 
     std::string scene_name{"none-specified"};
 };

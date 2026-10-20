@@ -137,10 +137,10 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
     }
 }
 
-void DerivedEntitySync::updateEntities(World& world, real_t dt) {
+void DerivedEntitySync::updateEntities(World& world, real_t dt, real_t evalOffset) {
     auto& reg = world.ecs();
 
-    Trajectory::update(world, dt);
+    Trajectory::update(world, dt, evalOffset);
 
     // Centralized rigid-state refresh for this step.
     auto poseView = reg.view<const C_Position3>();

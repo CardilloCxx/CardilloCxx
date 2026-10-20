@@ -259,18 +259,14 @@ Integrator (Moreau) settings
      - ``moreau.theta``, alias: ``solver.theta``
      - ``1.0``
      - Moreau theta parameter. ``1.0`` is fully implicit (most stable),
-       ``0.5`` is midpoint (second-order accurate).
+       ``0.5`` is midpoint (second-order accurate, but no damping of
+       violations of perfect constraints; use ``theta > 0.5``).
    * - ``moreau_implicit_gyroscopy``
      - ``moreau.implicit_gyroscopy``, alias: ``solver.implicit_gyroscopy``
      - ``false``
      - Treat the gyroscopic torque term implicitly to conserve angular momentum.
        This makes the effective mass matrix non-symmetric. Accepts
        ``true/1/yes/on``.
-   * - ``moreau_lambda_theta``
-     - ``moreau.lambda_theta``, alias: ``solver.lambda_theta``
-     - ``false``
-     - Enable θ method for integrating the Lagrange multipliers in the Moreau
-       integrator. Accepts ``true/1/yes/on``.
 
 Interior-point solver settings (QOCO / Clarabel)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -303,25 +299,6 @@ prefixes as shown:
      - ``solver.iter_ref_iters``
      - ``0``
      - Maximum number of iterative refinement passes for the KKT solve (minimum 0).
-
-Position-error bias
-~~~~~~~~~~~~~~~~~~~
-
-.. list-table::
-   :header-rows: 1
-   :widths: 25 45 18 32
-
-   * - Variable name
-     - cfg.txt key(s)
-     - Default
-     - Meaning
-   * - ``constraint_bias_factor``
-     - ``solver.constraint_bias_factor``; also ``constraint_bias_factor``,
-       ``baumgarte_bias_factor``, ``baumgarte_bias``, ``baumgarte_factor``,
-       ``constraint_bias``
-     - ``0.001``
-     - Baumgarte-style position-error correction gain. Larger values fix drift
-       faster but can introduce artificial energy; 0 disables it entirely.
 
 Scene selection
 ~~~~~~~~~~~~~~~
@@ -393,5 +370,5 @@ After populating the engine you drive it with a simple while-loop:
    while (!engine.isFinished()) {
        myScene.updateScene(engine, t);  // step size: engine.timeStep()
        engine.step();
-       t += dt;
+       t += engine.timeStep();
    }

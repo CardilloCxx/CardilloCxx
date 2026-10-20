@@ -281,12 +281,6 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.ip_iter_ref_iters = std::max(0, std::stoi(val));
             } catch (...) {
             }
-        } else if (key == "solver.constraint_bias_factor" || key == "constraint_bias_factor" || key == "baumgarte_bias_factor" || key == "baumgarte_bias" || key == "baumgarte_factor" ||
-                   key == "constraint_bias") {
-            try {
-                cfg.constraint_bias_factor = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
         } else if (key == "moreau.theta" || key == "solver.theta") {
             try {
                 cfg.moreau_theta = static_cast<real_t>(std::stod(val));
@@ -294,8 +288,6 @@ Config ConfigReader::fromFile(const std::string& path) {
             }
         } else if (key == "moreau.implicit_gyroscopy" || key == "solver.implicit_gyroscopy") {
             cfg.moreau_implicit_gyroscopy = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
-        } else if (key == "moreau.lambda_theta" || key == "solver.lambda_theta") {
-            cfg.moreau_lambda_theta = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
         } else if (key == "sim.T") {
             try {
                 const real_t v = static_cast<real_t>(std::stod(val));
