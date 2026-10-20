@@ -229,10 +229,9 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
 
         void operator()(const MeshShape& s) const {
             if (props.visual) reg.emplace<C_MeshVisualTag>(e);
-            reg.emplace<C_Mesh>(e, s.path, s.scale);
-
             const real_t mass = getMass(s, props, &system);
             const bool dynamic = mass > 0;
+            reg.emplace<C_Mesh>(e, s.path, s.scale, dynamic);
             const MeshAsset& asset = system.assets().getMesh(s.path, s.scale, dynamic);
 
             if (props.collidable && !cfgRef.collision_disable_all) {
