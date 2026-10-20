@@ -50,8 +50,8 @@ coal::Vec3s BeamHullShape::endpointSupport(const coal::Vec3s& dir, int endpoint)
     if (circular_) {
         const Disc& disc = endpoint == 0 ? discA_ : discB_;
         const coal::Vec3s perp = dir - dir.dot(disc.n) * disc.n;
-        const coal::CoalScalar len = perp.norm();
-        if (len > std::numeric_limits<coal::CoalScalar>::epsilon() * dir.norm()) {
+        const real_t len = perp.norm();
+        if (len > std::numeric_limits<real_t>::epsilon() * dir.norm()) {
             return disc.c + (disc.r / len) * perp;
         }
         const coal::Vec3s axis = (std::abs(disc.n.x()) < 0.9) ? coal::Vec3s::UnitX() : coal::Vec3s::UnitY();
@@ -60,9 +60,9 @@ coal::Vec3s BeamHullShape::endpointSupport(const coal::Vec3s& dir, int endpoint)
 
     const auto& ring = endpoint == 0 ? ringA_ : ringB_;
     coal::Vec3s support = coal::Vec3s::Zero();
-    coal::CoalScalar bestDot = -std::numeric_limits<coal::CoalScalar>::infinity();
+    real_t bestDot = -std::numeric_limits<real_t>::infinity();
     for (const auto& point : ring) {
-        const coal::CoalScalar dot = dir.dot(point);
+        const real_t dot = dir.dot(point);
         if (dot > bestDot) {
             bestDot = dot;
             support = point;
@@ -79,7 +79,7 @@ void BeamHullShape::computeShapeSupport(const coal::Vec3s& dir, coal::Vec3s& sup
 }
 
 void BeamHullShape::computeShapeSupportSet(coal::SupportSet& supportSet, int& /*hint*/, coal::details::ShapeSupportData& data,
-                                           std::size_t numSamples, coal::CoalScalar tol) const {
+                                           std::size_t numSamples, real_t tol) const {
     const coal::Vec3s n = supportSet.getNormal();
 
     auto forEachCandidate = [&](auto&& f) {
@@ -87,12 +87,12 @@ void BeamHullShape::computeShapeSupportSet(coal::SupportSet& supportSet, int& /*
             for (int e = 0; e < 2; ++e) {
                 const Disc& d = e == 0 ? discA_ : discB_;
 
-                const coal::CoalScalar s = std::sqrt(std::max<coal::CoalScalar>(0, 1 - n.dot(d.n) * n.dot(d.n)));
+                const real_t s = std::sqrt(std::max<real_t>(0, 1 - n.dot(d.n) * n.dot(d.n)));
                 if (2 * d.r * s <= tol) {
                     coal::Vec3s u, v;
                     tangentFrameFromNormal(d.n, u, v);
                     for (std::size_t k = 0; k < numSamples; ++k) {
-                        const coal::CoalScalar a = 2 * M_PI * coal::CoalScalar(k) / coal::CoalScalar(numSamples);
+                        const real_t a = 2 * M_PI * real_t(k) / real_t(numSamples);
                         f(coal::Vec3s(d.c + d.r * (std::cos(a) * u + std::sin(a) * v)));
                     }
                 } else {
@@ -105,7 +105,7 @@ void BeamHullShape::computeShapeSupportSet(coal::SupportSet& supportSet, int& /*
         }
     };
 
-    coal::CoalScalar best = -std::numeric_limits<coal::CoalScalar>::infinity();
+    real_t best = -std::numeric_limits<real_t>::infinity();
     forEachCandidate([&](const coal::Vec3s& p) { best = std::max(best, n.dot(p)); });
 
     auto& poly = data.polygon;

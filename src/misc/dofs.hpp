@@ -3,6 +3,8 @@
 
 #include "types.hpp"
 
+namespace cardillo {
+
 template <index_t size_>
 struct Coordinates {
     static constexpr index_t size = size_;
@@ -14,3 +16,5 @@ struct Index {
     index_t start;
     static constexpr index_t size = size_;
 };
+
+}  // namespace cardillo

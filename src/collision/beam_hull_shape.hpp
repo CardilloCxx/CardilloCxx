@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <vector>
 #include "../misc/types.hpp"
+#include "coal_types.hpp"
 #include "../physics/world.hpp"
 
 namespace cardillo::collision {
@@ -15,7 +16,7 @@ namespace cardillo::collision {
 class BeamHullShape : public coal::ShapeBase {
 public:
     struct Disc {
-        coal::Vec3s c;  coal::Vec3s n;  coal::CoalScalar r;
+        coal::Vec3s c;  coal::Vec3s n;  real_t r;
         bool operator==(const Disc& o) const { return c == o.c && n == o.n && r == o.r; }
     };
     
@@ -36,7 +37,7 @@ public:
     // Support set (contact face) in the direction of supportSet.getNormal()
     void computeShapeSupportSet(coal::SupportSet& supportSet, int& hint,
                                 coal::details::ShapeSupportData& data,
-                                std::size_t numSamples, coal::CoalScalar tol) const override;
+                                std::size_t numSamples, real_t tol) const override;
 
     void computeLocalAABB() override;
     CollisionGeometry* clone() const override;
