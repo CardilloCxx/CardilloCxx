@@ -418,8 +418,14 @@ vtkSmartPointer<vtkPolyData> VtkWriter::contactManifoldsToPolyData(const std::ve
     auto idAArr = makeIntArray("id_a");
     auto idBArr = makeIntArray("id_b");
     auto patchIdArr = makeIntArray("patch_id");
+    // Percussion (impulse over the step) acting on body B (id_b) at each contact point:
+    // pn * normal + pt1 * tangent1 + pt2 * tangent2, normal from A to B (see warmstart.hpp).
     auto pnArr = makeFloatArray("pn", 1);
+    auto pt1Arr = makeFloatArray("pt1", 1);
+    auto pt2Arr = makeFloatArray("pt2", 1);
     auto ptMagArr = makeFloatArray("pt_mag", 1);
+    auto percussionNormalArr = makeFloatArray("percussion_normal", 3);
+    auto percussionTangentArr = makeFloatArray("percussion_tangent", 3);
     auto percussionArr = makeFloatArray("percussion", 3);
 
     vtkIdType base = 0;
@@ -445,8 +451,14 @@ vtkSmartPointer<vtkPolyData> VtkWriter::contactManifoldsToPolyData(const std::ve
             const real_t pt1 = pt.impulse.y();
             const real_t pt2 = pt.impulse.z();
             pnArr->InsertNextValue(f32(pn));
+            pt1Arr->InsertNextValue(f32(pt1));
+            pt2Arr->InsertNextValue(f32(pt2));
             ptMagArr->InsertNextValue(static_cast<float>(std::sqrt((double)pt1 * pt1 + (double)pt2 * pt2)));
-            const Vector3r pvec = pn * m.normal + pt1 * m.tangent1 + pt2 * m.tangent2;
+            const Vector3r pN = pn * m.normal;
+            const Vector3r pT = pt1 * m.tangent1 + pt2 * m.tangent2;
+            const Vector3r pvec = pN + pT;
+            percussionNormalArr->InsertNextTuple3(f32(pN.x()), f32(pN.y()), f32(pN.z()));
+            percussionTangentArr->InsertNextTuple3(f32(pT.x()), f32(pT.y()), f32(pT.z()));
             percussionArr->InsertNextTuple3(f32(pvec.x()), f32(pvec.y()), f32(pvec.z()));
         }
 
@@ -480,7 +492,11 @@ vtkSmartPointer<vtkPolyData> VtkWriter::contactManifoldsToPolyData(const std::ve
     pdData->AddArray(idBArr);
     pdData->AddArray(patchIdArr);
     pdData->AddArray(pnArr);
+    pdData->AddArray(pt1Arr);
+    pdData->AddArray(pt2Arr);
     pdData->AddArray(ptMagArr);
+    pdData->AddArray(percussionNormalArr);
+    pdData->AddArray(percussionTangentArr);
     pdData->AddArray(percussionArr);
     return pd;
 }
