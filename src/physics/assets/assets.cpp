@@ -1,5 +1,4 @@
 #include "assets.hpp"
-#include "../../collision/coal_types.hpp"
 #include <coal/mesh_loader/loader.h>
 #include <fstream>
 #include <iomanip>
@@ -23,7 +22,7 @@ struct MeshNormalizationResult {
     Vector3r inertia_diag_unit{Vector3r::Zero()};
     real_t volume{(real_t)0.0};
     Matrix33r Rpa{Matrix33r::Identity()};
-    coal::Vec3s com{0, 0, 0};
+    Vector3r com{0, 0, 0};
 };
 
 // Normalize mesh: scale, center at COM, rotate to principal axes
@@ -33,7 +32,7 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const Vector3
     coal::BVHModelPtr_t bvh = loader.load(meshPath);
     if (!bvh) return out;
 
-    std::vector<coal::Vec3s> Vscaled;
+    std::vector<Vector3r> Vscaled;
     std::vector<coal::Triangle32> F;
     if (bvh->vertices) Vscaled = *bvh->vertices;
     if (bvh->tri_indices) F = *bvh->tri_indices;
@@ -43,7 +42,7 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const Vector3
         v[2] *= scale.z();
     }
     // COM & volume
-    coal::Vec3s com(0, 0, 0);
+    Vector3r com(0, 0, 0);
     real_t vol = (real_t)0.0;
     if (!Vscaled.empty()) {
         auto temp0 = std::make_shared<coal::BVHModel<coal::AABB>>();
@@ -60,7 +59,7 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const Vector3
     out.com = com;
 
     // Center
-    std::vector<coal::Vec3s> Vcentered = Vscaled;
+    std::vector<Vector3r> Vcentered = Vscaled;
     for (auto& v : Vcentered) {
         v[0] -= com[0];
         v[1] -= com[1];
@@ -96,7 +95,7 @@ MeshNormalizationResult normalizeMesh(const std::string& meshPath, const Vector3
     out.inertia_diag_unit = Idiag;
 
     // Rotate to principal axes
-    std::vector<coal::Vec3s> Vnorm;
+    std::vector<Vector3r> Vnorm;
     Vnorm.reserve(Vcentered.size());
     for (const auto& v : Vcentered) {
         Vector3r vc((real_t)v[0], (real_t)v[1], (real_t)v[2]);
@@ -119,7 +118,7 @@ coal::BVHModelPtr_t buildScaledBVH(const std::string& meshPath, const Vector3r& 
     coal::MeshLoader loader(coal::BV_AABB);
     coal::BVHModelPtr_t bvh = loader.load(meshPath);
     if (!bvh) return nullptr;
-    std::vector<coal::Vec3s> V;
+    std::vector<Vector3r> V;
     std::vector<coal::Triangle32> F;
     if (bvh->vertices) V = *bvh->vertices;
     if (bvh->tri_indices) F = *bvh->tri_indices;
@@ -137,7 +136,7 @@ coal::BVHModelPtr_t buildScaledBVH(const std::string& meshPath, const Vector3r& 
     real_t cx = (min_x + max_x) * (real_t)0.5;
     real_t cy = (min_y + max_y) * (real_t)0.5;
     real_t cz = (min_z + max_z) * (real_t)0.5;
-    std::vector<coal::Vec3s> Vscaled;
+    std::vector<Vector3r> Vscaled;
     Vscaled.reserve(V.size());
     for (const auto& v : V) {
         real_t dx = scale.x() * (v[0] - cx);

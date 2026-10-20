@@ -4,7 +4,7 @@
 #include "../misc/timings/TimingManager.hpp"
 #include "../physics/world.hpp"
 #include "../rigid_body/transformations.hpp"
-#include "coal_types.hpp"
+#include "coal_types.hpp"  // compile-time check: real_t/Vector3r equal Coal's scalar/vector types
 #include "types.hpp"
 
 #include <coal/broadphase/broadphase.h>
