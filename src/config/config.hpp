@@ -44,7 +44,8 @@ struct Config {
     std::size_t collision_max_patches{4};  // collision.max_patches
     // Number of sampled support points for curved contact faces such as cylinder caps
     std::size_t collision_patch_num_samples{12};  // collision.patch_num_samples
-    // Absolute distance from the support plane for including a point in a contact patch
+    // Absolute distance from the support plane for including a point in a contact patch. Per pair,
+    // it is raised to the penetration depth, so that every penetrating vertex is part of the patch.
     real_t collision_patch_tolerance{(real_t)1e-3};  // collision.patch_tolerance
     // Prefer using patch vertices over raw contacts when available
     bool collision_use_patch_vertices{true};  // collision.use_patch_vertices
