@@ -83,7 +83,17 @@ FetchContent_MakeAvailable(Eigen3)
 
 add_library(eigen3 INTERFACE IMPORTED GLOBAL)
 target_link_libraries(eigen3 INTERFACE eigen)
-FetchContent_MakeAvailable(entt clarabel qoco coal)
+# Clarabel.cpp passes --release to cargo only if CMAKE_BUILD_TYPE matches "Release", so this
+# project's default RelWithDebInfo (and MinSizeRel) would build Clarabel's Rust core in cargo's
+# unoptimized debug profile (about 25-60x slower solves). Present the optimized build types as
+# Release to its CMake; Debug keeps the debug profile.
+set(CARDILLO_SAVED_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+if(CMAKE_BUILD_TYPE MATCHES "^(RelWithDebInfo|MinSizeRel)$")
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+FetchContent_MakeAvailable(clarabel)
+set(CMAKE_BUILD_TYPE "${CARDILLO_SAVED_BUILD_TYPE}")
+FetchContent_MakeAvailable(entt qoco coal)
 # Treat Coal's headers as system headers: Coal's own inline code (narrowphase.h) uses members it has
 # deprecated itself, which would otherwise warn in every translation unit that includes Coal.
 get_target_property(COAL_INCLUDE_DIRS coal INTERFACE_INCLUDE_DIRECTORIES)
