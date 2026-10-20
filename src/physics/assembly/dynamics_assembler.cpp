@@ -2,18 +2,12 @@
 #include "dynamics_assembler.hpp"
 #include <Eigen/Cholesky>
 #include <cmath>
-#include <cstdlib>
 #include <iostream>
 #include "../../collision/collision_coal.hpp"
 #include "../constraints/constraints.hpp"
 #include "contact_jacobian.hpp"
 
 namespace cardillo::physics {
-
-namespace {
-// Rows with a compliance (attenuation) above this bound are treated as free and removed.
-constexpr real_t kMaxCompliance = (real_t)1e10;
-}  // namespace
 
 void DynamicsAssembler::updateContactsFromSystem() {
     if (!m_collision_mgr) throw std::runtime_error("DynamicsAssembler::updateContactsFromSystem: no CollisionCoal provided");
@@ -415,10 +409,11 @@ void DynamicsAssembler::rebuildInteractionW_() {
             velDamper += constraint.WgammaB.transpose() * vB;
         }
 
-        // Spring rows
+        // Spring rows. Crows/Arows hold compliances (1/stiffness, 1/damping); a row with infinite
+        // compliance (zero stiffness or damping) is free and not assembled.
         for (int i = 0; i < nrows; ++i) {
             const real_t Ci = constraint.Crows[i];
-            if (Ci < kMaxCompliance) {
+            if (std::isfinite(Ci)) {
                 Crows.push_back(Ci);
                 C_vel.push_back(velSpring[i]);
                 g_error_vec.push_back(posError[i]);
@@ -432,7 +427,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
         const int ndamp = (int)constraint.Arows.size();
         for (int i = 0; i < ndamp; ++i) {
             const real_t Ai = constraint.Arows[i];
-            if (Ai < kMaxCompliance) {
+            if (std::isfinite(Ai)) {
                 Arows.push_back(Ai);
                 A_vel.push_back(velDamper[i]);
                 const int row = damperRowCounter++;

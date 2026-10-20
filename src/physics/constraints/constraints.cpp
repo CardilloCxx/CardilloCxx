@@ -38,10 +38,12 @@ ConstraintPattern::WorldAttachments ConstraintPattern::computeAttachments_() con
     return wa;
 }
 
+// Compliance 1/k of a row with stiffness (or damping coefficient) k: zero for a perfect
+// constraint (k = +inf), +inf for a free row (k <= 0), which is not assembled at all (see
+// DynamicsAssembler::rebuildInteractionW_()).
 real_t ConstraintPattern::stiffnessToCompliance(real_t k) {
-    const real_t eps = (real_t)1e-12;
-    if (std::isfinite(k)) return (k > eps) ? (real_t)1 / k : std::numeric_limits<real_t>::infinity();
-    return (real_t)0;  // +inf stiffness -> zero compliance
+    if (std::isinf(k)) return (real_t)0;
+    return (k > (real_t)0) ? (real_t)1 / k : std::numeric_limits<real_t>::infinity();
 }
 
 void ConstraintPattern::fillCompliance3(VectorXr& dst, int offset, const Vector3r& K) {
