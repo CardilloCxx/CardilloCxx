@@ -77,16 +77,7 @@ public:
         //                             * orientation0
         //                         ).normalized();
         //                         return pose;
-        //                     },
-        //                     std::nullopt
-        //                     );
-                            //  std::nullopt, 
-                            //  [](real_t t) {
-                            //      TrajectoryTwist twist;
-                            //      twist.first = {0, 0.0 * std::sin(10 * t), 0.0};
-                            //      twist.second = Vector3r::Zero();
-                            //      return twist;
-                            //  });
+        //                     });
 
         m_bottom = endpoints.second;
 
@@ -126,18 +117,6 @@ public:
 
         // Pin bottom endpoint to bob using a rigid constraint
         engine.addRigidConstraint(m_bob, m_bottom);
-    }
-
-    void updateScene(physics::PhysicsEngine& engine, real_t t) override 
-    {
-        // Pull bob downward slowly to start vertical oscillation
-        const real_t vz0 = -0.5;
-        const real_t t0 = 0.3;
-        if (t < t0) {
-            engine.setVelocityByForce(m_bob, Vector3r(0,0,vz0 * t / t0), Vector3r(0,0,0));
-        }
-
-        // engine.setConstraintLinearVelocity(cube_constraint, Vector3r(0, 0, 0.5 * std::sin(t)));
     }
 
 private:

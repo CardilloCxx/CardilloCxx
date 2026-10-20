@@ -66,10 +66,6 @@ public:
 
         std::cout << "Initial end position: " << initalEndPos.transpose() << std::endl;
 
-    //        void addTrajectory(entt::entity e, std::optional<std::function<TrajectoryPose(real_t)>> positionFunc, std::optional<std::function<TrajectoryTwist(real_t)>> velocityFunc) {
-    //     m_world->setTrajectory(e, std::move(positionFunc), std::move(velocityFunc));
-    // }
-
 //         engine.addTrajectory(beam_ends.second, [L, initialEndRot, initalEndPos](real_t t) {
 //             TrajectoryPose pose;
 //             
@@ -119,7 +115,7 @@ public:
 //             pose.second = Quaternion4r(initialEndRot.data()) * delta_rot; 
 // 
 //             return pose;
-//         }, std::nullopt);
+//         });
 
         // engine.addTranslationalConstraint(beam_ends.second, entt::null, physics::JointFrame(beam_ends.second), );
 
