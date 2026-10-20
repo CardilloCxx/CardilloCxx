@@ -10,13 +10,13 @@
 
 namespace cardillo::collision {
 
-inline std::vector<coal::Vec3s> ringFromEntityPose(const entt::registry& reg, entt::entity e, const std::vector<Vector2r>& polygon) {
+inline std::vector<Vector3r> ringFromEntityPose(const entt::registry& reg, entt::entity e, const std::vector<Vector2r>& polygon) {
     const Vector3r origin = reg.any_of<C_Position3>(e) ? reg.get<C_Position3>(e).value : Vector3r::Zero();
     const Quaternion4r q = reg.any_of<C_Orientation>(e) ? reg.get<C_Orientation>(e).value : Quaternion4r::Identity();
-    std::vector<coal::Vec3s> ring;
+    std::vector<Vector3r> ring;
     ring.reserve(polygon.size());
     for (const Vector2r& p2 : polygon) {
-        ring.push_back(coal::Vec3s(origin + q * Vector3r((real_t)0, p2.x(), p2.y())));
+        ring.push_back(origin + q * Vector3r((real_t)0, p2.x(), p2.y()));
     }
     return ring;
 }
@@ -46,20 +46,20 @@ void BeamHullShape::updateRings(const C_Collider_BeamHull& collider, const entt:
     recomputeLocalAABB_();
 }
 
-coal::Vec3s BeamHullShape::endpointSupport(const coal::Vec3s& dir, int endpoint) const {
+Vector3r BeamHullShape::endpointSupport(const Vector3r& dir, int endpoint) const {
     if (circular_) {
         const Disc& disc = endpoint == 0 ? discA_ : discB_;
-        const coal::Vec3s perp = dir - dir.dot(disc.n) * disc.n;
+        const Vector3r perp = dir - dir.dot(disc.n) * disc.n;
         const real_t len = perp.norm();
         if (len > std::numeric_limits<real_t>::epsilon() * dir.norm()) {
             return disc.c + (disc.r / len) * perp;
         }
-        const coal::Vec3s axis = (std::abs(disc.n.x()) < 0.9) ? coal::Vec3s::UnitX() : coal::Vec3s::UnitY();
+        const Vector3r axis = (std::abs(disc.n.x()) < 0.9) ? Vector3r::UnitX() : Vector3r::UnitY();
         return disc.c + disc.r * disc.n.cross(axis).normalized();
     }
 
     const auto& ring = endpoint == 0 ? ringA_ : ringB_;
-    coal::Vec3s support = coal::Vec3s::Zero();
+    Vector3r support = Vector3r::Zero();
     real_t bestDot = -std::numeric_limits<real_t>::infinity();
     for (const auto& point : ring) {
         const real_t dot = dir.dot(point);
@@ -71,16 +71,16 @@ coal::Vec3s BeamHullShape::endpointSupport(const coal::Vec3s& dir, int endpoint)
     return support;
 }
 
-void BeamHullShape::computeShapeSupport(const coal::Vec3s& dir, coal::Vec3s& support, int& hint, coal::details::ShapeSupportData& /*data*/) const {
-    const coal::Vec3s supportA = endpointSupport(dir, 0);
-    const coal::Vec3s supportB = endpointSupport(dir, 1);
+void BeamHullShape::computeShapeSupport(const Vector3r& dir, Vector3r& support, int& hint, coal::details::ShapeSupportData& /*data*/) const {
+    const Vector3r supportA = endpointSupport(dir, 0);
+    const Vector3r supportB = endpointSupport(dir, 1);
     support = (dir.dot(supportA) >= dir.dot(supportB)) ? supportA : supportB;
     hint = 0;
 }
 
 void BeamHullShape::computeShapeSupportSet(coal::SupportSet& supportSet, int& /*hint*/, coal::details::ShapeSupportData& data,
                                            std::size_t numSamples, real_t tol) const {
-    const coal::Vec3s n = supportSet.getNormal();
+    const Vector3r n = supportSet.getNormal();
 
     auto forEachCandidate = [&](auto&& f) {
         if (circular_) {
@@ -89,11 +89,11 @@ void BeamHullShape::computeShapeSupportSet(coal::SupportSet& supportSet, int& /*
 
                 const real_t s = std::sqrt(std::max<real_t>(0, 1 - n.dot(d.n) * n.dot(d.n)));
                 if (2 * d.r * s <= tol) {
-                    coal::Vec3s u, v;
+                    Vector3r u, v;
                     tangentFrameFromNormal(d.n, u, v);
                     for (std::size_t k = 0; k < numSamples; ++k) {
                         const real_t a = 2 * M_PI * real_t(k) / real_t(numSamples);
-                        f(coal::Vec3s(d.c + d.r * (std::cos(a) * u + std::sin(a) * v)));
+                        f(d.c + d.r * (std::cos(a) * u + std::sin(a) * v));
                     }
                 } else {
                     f(endpointSupport(n, e));
@@ -106,11 +106,11 @@ void BeamHullShape::computeShapeSupportSet(coal::SupportSet& supportSet, int& /*
     };
 
     real_t best = -std::numeric_limits<real_t>::infinity();
-    forEachCandidate([&](const coal::Vec3s& p) { best = std::max(best, n.dot(p)); });
+    forEachCandidate([&](const Vector3r& p) { best = std::max(best, n.dot(p)); });
 
     auto& poly = data.polygon;
     poly.clear();
-    forEachCandidate([&](const coal::Vec3s& p) {
+    forEachCandidate([&](const Vector3r& p) {
         if (best - n.dot(p) <= tol) poly.push_back(supportSet.tf.inverseTransform(p).head<2>());
     });
     coal::details::computeSupportSetConvexHull(poly, supportSet.points());
@@ -139,12 +139,12 @@ bool BeamHullShape::isEqual(const coal::CollisionGeometry& other) const {
 void BeamHullShape::recomputeLocalAABB_() {
 
     if (circular_) {
-        auto half = [](const Disc& D) -> coal::Vec3s {
-            return D.r * (coal::Vec3s::Ones() - D.n.cwiseProduct(D.n)).cwiseMax(0).cwiseSqrt();
+        auto half = [](const Disc& D) -> Vector3r {
+            return D.r * (Vector3r::Ones() - D.n.cwiseProduct(D.n)).cwiseMax(0).cwiseSqrt();
         };
-        const coal::Vec3s hA = half(discA_), hB = half(discB_);
-        const coal::Vec3s lo = (discA_.c - hA).cwiseMin(discB_.c - hB);
-        const coal::Vec3s hi = (discA_.c + hA).cwiseMax(discB_.c + hB);
+        const Vector3r hA = half(discA_), hB = half(discB_);
+        const Vector3r lo = (discA_.c - hA).cwiseMin(discB_.c - hB);
+        const Vector3r hi = (discA_.c + hA).cwiseMax(discB_.c + hB);
         aabb_local = coal::AABB(lo, hi);
         aabb_center = aabb_local.center();
         aabb_radius = (hi - lo).norm() / 2;
@@ -152,14 +152,14 @@ void BeamHullShape::recomputeLocalAABB_() {
     }
 
     if (ringA_.empty() && ringB_.empty()) {
-        aabb_local = coal::AABB(coal::Vec3s::Zero());
-        aabb_center = coal::Vec3s::Zero();
+        aabb_local = coal::AABB(Vector3r::Zero());
+        aabb_center = Vector3r::Zero();
         aabb_radius = 0;
         return;
     }
-    coal::Vec3s lo = ringA_.empty() ? ringB_.front() : ringA_.front();
-    coal::Vec3s hi = lo;
-    auto absorb = [&](const std::vector<coal::Vec3s>& ring) {
+    Vector3r lo = ringA_.empty() ? ringB_.front() : ringA_.front();
+    Vector3r hi = lo;
+    auto absorb = [&](const std::vector<Vector3r>& ring) {
         for (const auto& p : ring) {
             lo = lo.cwiseMin(p);
             hi = hi.cwiseMax(p);
