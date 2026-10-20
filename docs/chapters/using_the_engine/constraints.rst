@@ -155,7 +155,10 @@ several revolutions, as long as the rotation between two steps stays below 180
 degrees. This holds for every joint whose x-row is compliant: the x-row of a
 ``TranslationRotationConstraint`` always measures this twist angle, while the y-
 and z-rows measure the sine of the respective rotation angle. A torsional spring
-should therefore always use the joint x-axis.
+should therefore always use the joint x-axis. The example
+``torsional_oscillator`` (checked by ``tests/test_torsional_oscillator.cpp``
+against the closed-form solution) uses a hinge spring with rotations of more than
+180 degrees.
 
 .. code-block:: cpp
 

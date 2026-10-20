@@ -160,10 +160,6 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
         if (m_cfg.moreau_implicit_gyroscopy)
             std::cerr << "Warning: QOCO solver does not support implicit gyroscopic forces; "
                          "ignoring config setting.\n";
-
-        if (m_cfg.moreau_lambda_theta)
-            std::cerr << "Warning: QOCO solver does not support lambda theta integration; ignoring "
-                         "config setting.\n";
     }
 
     auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::QocoSetup);

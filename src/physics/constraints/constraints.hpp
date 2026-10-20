@@ -27,7 +27,6 @@ struct ConstraintResult {
     MatrixXXr WgammaB;
     VectorXr Crows;  // size N (compliances per spring row)
     VectorXr Arows;  // size N (compliances per damper row)
-    VectorXr biasFactor;  // size N; multiplier for position-bias stabilization
 
     VectorXr positionError;
 
@@ -132,6 +131,11 @@ class ConstraintPattern {
     virtual ConstraintResult getConstraint() const = 0;
 
     virtual VectorXr getSource() const { return VectorXr::Zero(m_numRows); }
+    // Integrates a prescribed rate chi = getSource() over one time step into the position-level
+    // reference of the pattern, so that d/dt g = W^T u + chi holds for the position error as well.
+    // Without it, the position-level force law would pull back
+    // against the prescribed motion. Default: no prescribed rate, nothing to do.
+    virtual void advancePrescribedMotion(real_t /*dt*/) {}
     virtual void setScalarVelocity(real_t v) { std::cerr << "Warning: setScalarVelocity not implemented for this constraint pattern" << std::endl; }
     virtual void setLinearVelocity(const Vector3r& v) { std::cerr << "Warning: setLinearVelocity not implemented for this constraint pattern" << std::endl; }
     virtual void setAngularVelocity(const Vector3r& w) { std::cerr << "Warning: setAngularVelocity not implemented for this constraint pattern" << std::endl; }
@@ -185,6 +189,8 @@ class LinearDistanceConstraint : public ConstraintPattern {
     ConstraintResult getConstraint() const override;
     VectorXr getSource() const override { return VectorXr::Constant(1, scalarVelocity); }
     void setScalarVelocity(real_t v) override { scalarVelocity = v; }
+    // g = |xB - xA| - L0 and d/dt g = W^T u + scalarVelocity  =>  d/dt L0 = -scalarVelocity
+    void advancePrescribedMotion(real_t dt) override { L0 -= dt * scalarVelocity; }
 
    private:
     real_t L0{(real_t)-1.0};  // rest length
@@ -210,6 +216,7 @@ class TranslationRotationConstraint : public ConstraintPattern {
     }
     void setLinearVelocity(const Vector3r& v) override { m_translational_velocity = v; }
     void setAngularVelocity(const Vector3r& w) override { m_angular_velocity = w; }
+    void advancePrescribedMotion(real_t dt) override;
 
     // Access joint-frame description for visualization/debugging
     const JointProperties& jointProperties() const { return m_joint; }

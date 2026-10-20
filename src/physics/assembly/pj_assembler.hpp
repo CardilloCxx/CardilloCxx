@@ -17,7 +17,7 @@ class PjAssembler
     PjAssembler(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(&dyn), m_cfg(cfg) {}
     ~PjAssembler();
 
-    bool buildAndFactorS(real_t dt, real_t theta, bool implicitGyro = false, bool lambdaTheta = false);
+    bool buildAndFactorS(real_t dt, real_t theta, bool implicitGyro = false);
     VectorXr rhs(real_t dt, real_t theta) const;
     VectorXr solveS(const VectorXr& rhs_ext) const;
     const TripletMatrix& S() const { return m_S; }

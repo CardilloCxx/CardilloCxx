@@ -84,7 +84,6 @@ ConstraintResult LinearDistanceConstraint::getConstraint() const {
 
     out.Crows = VectorXr::Zero(1);
     out.Arows = VectorXr::Zero(1);
-    out.biasFactor = VectorXr::Ones(1);
     setCompliance1(out.Crows, 0, m_k);
     setCompliance1(out.Arows, 0, m_d);
 
@@ -156,6 +155,21 @@ void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::
     WgB.bottomRightCorner<3, 3>() = -A_IK2.transpose() * N;
 }
 
+void TranslationRotationConstraint::advancePrescribedMotion(real_t dt) {
+    // Translational rows: g_t = A_IJ1^T (r_OJ2 - r_OJ1) - g_t0 with d/dt g_t = W_t^T u + v_src
+    // => d/dt g_t0 = -v_src.
+    m_g0.head<3>() -= dt * m_translational_velocity;
+    // Rotational rows: W_r^T u + w_src = 0 prescribes the relative angular velocity of B with respect
+    // to A as w_src (components in the joint frame J1). The joint frame attached to B must follow
+    // this rotation so that the rotational rows of getPositionError() stay zero:
+    // A_K2J <- A_K2J * exp(-dt * w_src~), exact for a constant rate.
+    const real_t angle = dt * m_angular_velocity.norm();
+    if (angle > (real_t)0) {
+        const Matrix33r R = Eigen::AngleAxis<real_t>(-angle, m_angular_velocity.normalized()).toRotationMatrix();
+        m_joint.A_K2J = m_joint.A_K2J * R;
+    }
+}
+
 ConstraintResult TranslationRotationConstraint::getConstraint() const {
     ConstraintResult out;
     out.a = m_a;
@@ -178,8 +192,6 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
     // 6 scalar rows: 3 translational (0..2), 3 rotational (3..5)
     out.Crows = VectorXr::Zero(6);
     out.Arows = VectorXr::Zero(6);
-    out.biasFactor = VectorXr::Ones(6);
-    out.biasFactor.tail<3>().setZero();
 
     // Translational compliances
     fillCompliance3(out.Crows, 0, m_K_trans);
@@ -263,7 +275,6 @@ ConstraintResult BeamConstraint::getConstraint() const {
     out.positionError = VectorXr::Zero(6);
     out.positionError.head<3>() = gamma - m_gamma0;
     out.positionError.tail<3>() = kappa - m_kappa0;
-    out.biasFactor = VectorXr::Ones(6);
 
     const Matrix33r gamma_skew = SkewSymmetricMatrix3r(gamma);
     const Matrix33r kappa_skew = SkewSymmetricMatrix3r(kappa);

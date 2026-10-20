@@ -66,7 +66,7 @@ TrajectoryTwist differentiatePose(const TrajectoryPose& prev, const TrajectoryPo
 
 }  // namespace
 
-void Trajectory::update(World& world, real_t dt) {
+void Trajectory::update(World& world, real_t dt, real_t evalOffset) {
     auto& reg = world.ecs();
 
     auto view = reg.view<C_StaticTrajectory>();
@@ -87,7 +87,7 @@ void Trajectory::update(World& world, real_t dt) {
         std::optional<TrajectoryTwist> twist_cmd;
 
         if (hasPos) {
-            pose_cmd = (*traj.positionFunc)(t);
+            pose_cmd = (*traj.positionFunc)(t + evalOffset);
         }
         if (hasVel) {
             twist_cmd = (*traj.velocityFunc)(t);
@@ -95,8 +95,8 @@ void Trajectory::update(World& world, real_t dt) {
 
         if (hasPos && !hasVel) {
             if (dt > kEps) {
-                const TrajectoryPose pose_next = (*traj.positionFunc)(t + dt);
-                twist_cmd = differentiatePose(*pose_cmd, pose_next, dt, hasAngularVelocity);
+                // Mean velocity over the step [t_n, t_n + dt].
+                twist_cmd = differentiatePose((*traj.positionFunc)(t), (*traj.positionFunc)(t + dt), dt, hasAngularVelocity);
             } else {
                 twist_cmd = twist_current;
             }
