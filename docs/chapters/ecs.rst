@@ -241,8 +241,8 @@ Trajectory data component
      - Fields
      - Meaning
    * - :cpp:struct:`C_StaticTrajectory <cardillo::C_StaticTrajectory>`
-     - ``positionFunc``, ``velocityFunc``, ``elapsed``, ``initialized``, ``previousPosition``
-     - Kinematic override. When present the integrator writes pose/velocity from the function instead of solving forces.
+     - ``positionFunc``, ``elapsed``
+     - Kinematic override. When present, the pose is set from the function and the velocity is derived from it, instead of solving forces.
 
 Force/torque data components
 """"""""""""""""""""""""""""
