@@ -103,46 +103,55 @@ TranslationRotationConstraint::TranslationRotationConstraint(entt::registry& reg
     m_g0 = res.positionError;
 }
 
+TranslationRotationConstraint::JointTriads TranslationRotationConstraint::computeJointTriads(const WorldAttachments& wa) const {
+    JointTriads tr;
+    // Joint frame reconstructed via body A (J1) and via body B (J2); both coincide as long as the
+    // joint is satisfied.
+    tr.A_IJ1 = wa.RA * m_joint.A_K1J;
+    tr.A_IJ2 = wa.RB * m_joint.A_K2J;
+    const Vector3r e1y = tr.A_IJ1.col(1), e1z = tr.A_IJ1.col(2);
+    const Vector3r e2y = tr.A_IJ2.col(1), e2z = tr.A_IJ2.col(2);
+    tr.s = (real_t)0.5 * (e1z.dot(e2y) - e1y.dot(e2z));
+    tr.c = (real_t)0.5 * (e1y.dot(e2y) + e1z.dot(e2z));
+    return tr;
+}
+
 // Helper: build full 6x6 Jacobians for a joint between A and B using
 // the precomputed joint-frame geometry. This encodes a
 // fully locked 6-DOF joint; specialised constraints will mask DOFs via C/A.
-void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::WorldAttachments& wa, const Vector3r& g, MatrixXXr& WgA, MatrixXXr& WgB) const {
+void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::WorldAttachments& wa, const JointTriads& tr, const Vector3r& g, MatrixXXr& WgA,
+                                                       MatrixXXr& WgB) const {
     WgA = MatrixXXr::Zero(6, 6);
     WgB = MatrixXXr::Zero(6, 6);
 
     const auto& A_IK1 = wa.RA;
     const auto& A_IK2 = wa.RB;
     const auto& A_K1J = m_joint.A_K1J;
-    // Joint frame reconstructed via body A (J1) and via body B (J2); both coincide as long as the
-    // joint is satisfied.
-    const Matrix33r A_IJ1 = A_IK1 * A_K1J;
-    const Matrix33r A_IJ2 = A_IK2 * m_joint.A_K2J;
     const Matrix33r skew_g = SkewSymmetricMatrix3r(g);
 
     // translations: g_t = A_IJ1^T (r_OJ2 - r_OJ1), projected onto the joint frame of body A
-    WgA.topLeftCorner<3, 3>() = -A_IJ1;
+    WgA.topLeftCorner<3, 3>() = -tr.A_IJ1;
     WgA.bottomLeftCorner<3, 3>() = -m_joint.K1_r_S1J_skew * A_K1J - A_K1J * skew_g;
-    WgB.topLeftCorner<3, 3>() = A_IJ1;
-    WgB.bottomLeftCorner<3, 3>() = m_joint.K2_r_S2J_skew * (A_IK2.transpose() * A_IJ1);
+    WgB.topLeftCorner<3, 3>() = tr.A_IJ1;
+    WgB.bottomLeftCorner<3, 3>() = m_joint.K2_r_S2J_skew * (A_IK2.transpose() * tr.A_IJ1);
 
-    // orientations: exact time derivatives of the axis products in getPositionError(). With the
+    // orientations: exact time derivatives of the rotational rows of getPositionError(). With the
     // joint triads e1_i = A_IJ1*e_i (attached to A) and e2_i = A_IJ2*e_i (attached to B),
     // d/dt (e1_j . e2_k) = (e1_j x e2_k) . (omega_A - omega_B) in inertial components. Near the
     // reference configuration this reduces to A_K1J and -A_K2J. For a rotation about the primary
     // axis e1_x, the directions of the y and z rows are -e1_x x e2_z = e2_y and e1_x x e2_y = e2_z,
     // which stay orthonormal for every hinge angle.
-    // The x row is the twist angle phi = atan2(s, c) (see getPositionError()) with
-    // s = (e1_z . e2_y - e1_y . e2_z)/2 and c = (e1_y . e2_y + e1_z . e2_z)/2, hence
-    // d/dt(-phi) = -(c n_s - s n_c)/(s^2 + c^2) . (omega_A - omega_B); for a pure rotation about
-    // e1_x, this direction is e1_x itself.
-    const Vector3r n_s = (real_t)0.5 * (A_IJ1.col(2).cross(A_IJ2.col(1)) - A_IJ1.col(1).cross(A_IJ2.col(2)));
-    const Vector3r n_c = (real_t)0.5 * (A_IJ1.col(1).cross(A_IJ2.col(1)) + A_IJ1.col(2).cross(A_IJ2.col(2)));
-    const real_t s = (real_t)0.5 * (A_IJ1.col(2).dot(A_IJ2.col(1)) - A_IJ1.col(1).dot(A_IJ2.col(2)));
-    const real_t c = (real_t)0.5 * (A_IJ1.col(1).dot(A_IJ2.col(1)) + A_IJ1.col(2).dot(A_IJ2.col(2)));
+    // The x row is the twist angle phi = atan2(s, c) with s and c from computeJointTriads(), hence
+    // d/dt(-phi) = -(c n_s - s n_c)/(s^2 + c^2) . (omega_A - omega_B), n_s and n_c the directions of
+    // d/dt s and d/dt c; for a pure rotation about e1_x, this direction is e1_x itself.
+    const Vector3r e1x = tr.A_IJ1.col(0), e1y = tr.A_IJ1.col(1), e1z = tr.A_IJ1.col(2);
+    const Vector3r e2y = tr.A_IJ2.col(1), e2z = tr.A_IJ2.col(2);
+    const Vector3r n_s = (real_t)0.5 * (e1z.cross(e2y) - e1y.cross(e2z));
+    const Vector3r n_c = (real_t)0.5 * (e1y.cross(e2y) + e1z.cross(e2z));
     Matrix33r N;
-    N.col(0) = -(c * n_s - s * n_c) / (s * s + c * c);
-    N.col(1) = -A_IJ1.col(0).cross(A_IJ2.col(2));
-    N.col(2) = A_IJ1.col(0).cross(A_IJ2.col(1));
+    N.col(0) = -(tr.c * n_s - tr.s * n_c) / (tr.s * tr.s + tr.c * tr.c);
+    N.col(1) = -e1x.cross(e2z);
+    N.col(2) = e1x.cross(e2y);
     WgA.bottomRightCorner<3, 3>() = A_IK1.transpose() * N;
     WgB.bottomRightCorner<3, 3>() = -A_IK2.transpose() * N;
 }
@@ -157,9 +166,10 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
 
     // Build full 6x6 Jacobians for a rigid joint at the current attachments.
     const Vector3r& g = m_joint.compute_g(wa.pA, wa.pB, wa.RA, wa.RB);
-    buildJointJacobian(wa, g, out.WgA, out.WgB);
+    const JointTriads tr = computeJointTriads(wa);
+    buildJointJacobian(wa, tr, g, out.WgA, out.WgB);
 
-    out.positionError = getPositionError(g, wa);
+    out.positionError = getPositionError(g, tr);
 
     // For now, gamma rows mirror g rows
     out.WgammaA = out.WgA;
@@ -182,7 +192,7 @@ ConstraintResult TranslationRotationConstraint::getConstraint() const {
     return out;
 }
 
-VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g, const WorldAttachments& wa) const {
+VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g, const JointTriads& tr) const {
     VectorXr posErr(6);
     posErr.head<3>() = g;
     // Rotational rows, built from the joint triad attached to A (A_IJ1) and the one attached to B
@@ -196,16 +206,13 @@ VectorXr TranslationRotationConstraint::getPositionError(const Vector3r& g, cons
     //    rotation angle. They stay exactly zero under an arbitrary rotation about e1_x, and their
     //    directions remain linearly independent for every hinge angle (a cyclic choice such as
     //    e1_z . e2_x for the y row loses rank at 90 degrees).
-    const Matrix33r A_IJ1 = wa.RA * m_joint.A_K1J;
-    const Matrix33r A_IJ2 = wa.RB * m_joint.A_K2J;
-    const real_t s = (real_t)0.5 * (A_IJ1.col(2).dot(A_IJ2.col(1)) - A_IJ1.col(1).dot(A_IJ2.col(2)));  // sin(phi)
-    const real_t c = (real_t)0.5 * (A_IJ1.col(1).dot(A_IJ2.col(1)) + A_IJ1.col(2).dot(A_IJ2.col(2)));  // cos(phi)
     const real_t twoPi = (real_t)2 * (real_t)M_PI;
-    const real_t phi = m_twist_ref + std::remainder(std::atan2(s, c) - m_twist_ref, twoPi);
+    const real_t phi = m_twist_ref + std::remainder(std::atan2(tr.s, tr.c) - m_twist_ref, twoPi);
     m_twist_ref = phi;
-    posErr(3) = -phi;                              // -phi, rotation about x
-    posErr(4) = -A_IJ1.col(0).dot(A_IJ2.col(2));  // -x1 . z2 -> rotation about y
-    posErr(5) = A_IJ1.col(0).dot(A_IJ2.col(1));   // x1 . y2 -> rotation about z
+    const Vector3r e1x = tr.A_IJ1.col(0);
+    posErr(3) = -phi;                       // -phi, rotation about x
+    posErr(4) = -e1x.dot(tr.A_IJ2.col(2));  // -x1 . z2 -> rotation about y
+    posErr(5) = e1x.dot(tr.A_IJ2.col(1));   // x1 . y2 -> rotation about z
     return posErr - m_g0;
 }
 
