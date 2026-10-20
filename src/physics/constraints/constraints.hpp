@@ -224,7 +224,18 @@ class TranslationRotationConstraint : public ConstraintPattern {
     Vector3r m_translational_velocity{Vector3r::Zero()};
     Vector3r m_angular_velocity{Vector3r::Zero()};
 
-    VectorXr getPositionError(const Vector3r& g, const WorldAttachments& wa) const;
+    // Joint triads attached to A (A_IJ1) and to B (A_IJ2) at the current attachments, and the sine
+    // and cosine of the twist angle phi about the joint x-axis; evaluated once per getConstraint()
+    // and shared by the Jacobian and the position error.
+    struct JointTriads {
+        Matrix33r A_IJ1;
+        Matrix33r A_IJ2;
+        real_t s;  // sin(phi) = (e1_z . e2_y - e1_y . e2_z) / 2
+        real_t c;  // cos(phi) = (e1_y . e2_y + e1_z . e2_z) / 2
+    };
+    JointTriads computeJointTriads(const WorldAttachments& wa) const;
+
+    VectorXr getPositionError(const Vector3r& g, const JointTriads& tr) const;
     VectorXr m_g0{VectorXr::Zero(6)};
     // Twist angle about the joint x-axis at the last evaluation; the angle measured by
     // getPositionError() is unwrapped against it, so that a torsional spring about x stays linear
@@ -232,7 +243,7 @@ class TranslationRotationConstraint : public ConstraintPattern {
     mutable real_t m_twist_ref{0};
 
     // Build full 6x6 Jacobians for a rigid joint using world attachments.
-    void buildJointJacobian(const WorldAttachments& wa, const Vector3r& g, MatrixXXr& WgA, MatrixXXr& WgB) const;
+    void buildJointJacobian(const WorldAttachments& wa, const JointTriads& tr, const Vector3r& g, MatrixXXr& WgA, MatrixXXr& WgB) const;
 };
 
 // Beam constraint (6 scalar rows): stretch/shear (x,y,z) and torsion/bend (x,y,z)
