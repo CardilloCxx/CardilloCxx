@@ -296,6 +296,13 @@ multiple bodies without re-loading.
    * - ``show_collider``
      - When using ``use_bbox_collider``, also draw the bounding box in the VTK
        output.
+   * - ``convex``
+     - Collide with the mesh as a convex polyhedron built from its vertices and
+       triangles (the mesh must be closed and convex; set the member,
+       ``shape.convex = true``). A general triangle mesh yields only one contact
+       point per intersecting triangle, so a box lying on a few large triangles
+       is supported by too few points; a convex collider yields full contact
+       patches like the primitives.
 
 .. note::
    For dynamic mesh bodies, ``RigidState::position`` is interpreted as an

@@ -166,7 +166,9 @@ struct C_StaticTrajectory {
     real_t elapsed{(real_t)0};
 };
 
-struct C_Collider_Mesh {};
+struct C_Collider_Mesh {
+    bool convex{false};  // collide as a convex polyhedron (see MeshShape::convex)
+};
 struct C_Collider_Sphere {};
 struct C_Collider_Capsule {
     real_t radius{(real_t)0};
@@ -191,6 +193,13 @@ struct C_ExternalTorque {
 
 struct C_TrackTag {
     std::string name;
+};
+// Prescribed velocity of the material points of a body's surface relative to the body, in body
+// coordinates (e.g. a conveyor belt: the geometry is at rest, the belt surface moves). Only the
+// contact laws see it: it is added to the relative contact velocity, projected onto the tangent
+// plane of each contact, so it drives friction but never pushes along the contact normal.
+struct C_SurfaceVelocity {
+    Vector3r value{Vector3r::Zero()};
 };
 struct C_BodyIndex {
     int b{-1};  // index of the body in the stacked velocity vector; -1: none
