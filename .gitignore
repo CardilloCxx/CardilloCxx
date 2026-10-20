@@ -18,3 +18,5 @@ docs/_build
 uv.lock
 src/config/path.hpp
 frontend*
+LaTeX*
+supplementary*
