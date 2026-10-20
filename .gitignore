@@ -20,3 +20,4 @@ src/config/path.hpp
 frontend*
 LaTeX*
 supplementary*
+*.pvsm

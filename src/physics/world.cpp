@@ -36,6 +36,14 @@ const PhysicsAssets& World::assets() const {
     return *m_assets;
 }
 
+void World::setSurfaceVelocity(entt::entity e, const Vector3r& v_body) {
+    if (!m_reg.valid(e)) return;
+    if (v_body.isZero())
+        m_reg.remove<C_SurfaceVelocity>(e);
+    else
+        m_reg.emplace_or_replace<C_SurfaceVelocity>(e, C_SurfaceVelocity{v_body});
+}
+
 void World::track(entt::entity e, const std::string& name) {
     if (!m_reg.valid(e)) return;
     if (!m_reg.any_of<C_TrackTag>(e)) {

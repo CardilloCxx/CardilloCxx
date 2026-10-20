@@ -11,6 +11,7 @@
 #include <coal/broadphase/default_broadphase_callbacks.h>
 #include <coal/collision.h>
 #include <coal/collision_data.h>
+#include <coal/shape/convex.h>
 #include <coal/contact_patch.h>
 #include <coal/math/transform.h>
 #include <coal/shape/geometric_shapes.h>
@@ -349,7 +350,12 @@ std::shared_ptr<coal::CollisionGeometry> CollisionCoal::makeGeometryFor_(Collide
         case ColliderKind::Mesh: {
             const auto& asset = m_world->getMeshAsset(e);
             if (!asset.bvh) throw std::runtime_error("COAL MeshLoader failed to load BVH for mesh entity");
-            return asset.bvh;
+            if (!reg.get<C_Collider_Mesh>(e).convex) return asset.bvh;
+            // Convex polyhedron from the mesh's own vertices and triangles (no hull computation:
+            // the mesh must be closed and convex).
+            auto points = std::make_shared<std::vector<Vector3r>>(*asset.bvh->vertices);
+            auto triangles = std::make_shared<std::vector<coal::Triangle32>>(*asset.bvh->tri_indices);
+            return std::make_shared<coal::Convex<coal::Triangle32>>(points, (unsigned int)points->size(), triangles, (unsigned int)triangles->size());
         }
        case ColliderKind::BeamHull: {
             const auto& link = reg.get<C_Collider_BeamHull>(e);
