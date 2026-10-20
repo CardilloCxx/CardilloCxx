@@ -28,9 +28,10 @@ cd docs && uv run make html               # Sphinx + Doxygen docs
   automates this for several scenes (see the `scene-smoke` skill). Full scenes can take minutes to hours.
 - Coal is fetched by FetchContent from a fork (see `.claude/docs/collision.md`). In extra worktrees,
   reuse an existing checkout with `-DFETCHCONTENT_SOURCE_DIR_COAL=<path to coal-src>`.
-- Clarabel needs Rust/cargo. Clarabel.cpp passes `--release` to cargo only for
-  `CMAKE_BUILD_TYPE=Release`; with the default RelWithDebInfo its Rust core is a debug build
-  (20–60× slower). Use `-DCMAKE_BUILD_TYPE=Release` for any solver timing.
+- Clarabel needs Rust/cargo. Its Rust core is built in cargo's release profile for Release,
+  RelWithDebInfo and MinSizeRel (`src/CMakeLists.txt` presents them as Release to Clarabel's CMake);
+  only Debug gives a debug Rust build (15–60× slower solves). Check with
+  `ldd build/src/libcardillo.so | grep clarabel` (path must contain `target/release`) before timing.
 - Changing `config::Config` (or other headers used by `example_main.hpp`) requires rebuilding **all**
   scene executables; stale binaries crash with a Config layout mismatch that looks unrelated.
 - Formatting: `.clang-format` (Google based, 4 spaces, column limit 200). `.clang-tidy` checks unused
