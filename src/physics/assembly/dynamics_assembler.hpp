@@ -108,6 +108,8 @@ class DynamicsAssembler {
     int numFrictionlessContacts() const { return m_numFrictionlessContacts; }
 
     // Accessors for Lagrange multipliers
+    // Bilateral percussions of the last step, pi_g = h*lambda_g and pi_gamma = h*lambda_gamma (theory
+    // manual, eq:percussions), acting as +W_g*pi_g / +W_gamma*pi_gamma. Used as warm start.
     const VectorXr& Lambda_g() const { return m_Lambda_g; }
     const VectorXr& Lambda_gamma() const { return m_Lambda_gamma; }
     void setLambda_g(const VectorXr& lam);

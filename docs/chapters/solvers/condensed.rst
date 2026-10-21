@@ -59,33 +59,38 @@ solver in this codebase solves, derived in full in
 
    \mathcal{S}(\mathbf{q}_{n+\theta}, \Delta t, \theta)\;\mathbf{x}_{n+1} = \mathbf{b}_n
 
-with :math:`\mathbf{x}_{n+1} = (\mathbf{u}_{n+1}, \boldsymbol\Lambda_{g,n+1}, \boldsymbol\Lambda_{\gamma,n+1})`
+with :math:`\mathbf{x}_{n+1} = (\mathbf{u}_{n+1}, \boldsymbol\pi_{g}, \boldsymbol\pi_{\gamma})`
 (contacts appended as extra rows/columns with a zero compliance block -- see that
 chapter for the full block layout, and the note on :math:`\mathbf{M}_\mathrm{eff}`
 below).
 
 **Eliminating the velocity** (matching :doc:`projected_gauss_seidel`'s own
 derivation, generalized to :math:`\mathbf{M}_\mathrm{eff}` instead of
-:math:`\mathbf{M}`) gives a reduced system purely in the stacked constraint/contact
-multipliers :math:`\boldsymbol\Lambda = (\boldsymbol\Lambda_g, \boldsymbol\Lambda_\gamma, \boldsymbol\Lambda_N, \boldsymbol\Lambda_T)`
+:math:`\mathbf{M}`) gives a reduced problem purely in the stacked percussions
+:math:`\boldsymbol\pi = (\boldsymbol\pi_g, \boldsymbol\pi_\gamma, \boldsymbol\pi_N, \boldsymbol\pi_T)`
 (springs, then dampers, then frictionless contacts, then frictional contacts --
-this exact packed order is ``CondensedTopology``'s own row layout):
+this exact packed order is ``CondensedTopology``'s own row layout), in the
+notation of the theory manual (``LaTeX/theory_doc.tex``): :math:`\boldsymbol\pi_g = h\boldsymbol\lambda_g`,
+:math:`\boldsymbol\pi_\gamma = h\boldsymbol\lambda_\gamma`, :math:`\pi_N \geq 0`, every block acting as
+:math:`+\hat W\boldsymbol\pi`, with the row velocities
 
 .. math::
 
-   \hat S\,\boldsymbol\Lambda = \tilde b,
+   \boldsymbol\xi = \hat S\,\boldsymbol\pi + \boldsymbol\xi^\mathrm{free},
    \qquad
    \hat S = \hat W^\top M_\mathrm{eff}^{-1} \hat W + \hat C,
    \qquad
    \hat W = (W_g, W_\gamma, W_N, W_T)
 
 with :math:`\hat C` block-diagonal (nonzero only on the spring/damper rows --
-contact rows have no compliance). Once :math:`\boldsymbol\Lambda` is known:
+contact rows have no compliance). For a bilateral block, :math:`\boldsymbol\xi_i = 0` is the
+discrete force law; for a contact block, :math:`\boldsymbol\xi_i` is the contact velocity.
+Once :math:`\boldsymbol\pi` is known:
 
 .. math::
 
    \mathbf{u}_{n+1} = \underbrace{M_\mathrm{eff}^{-1}\bigl(\mathbf{M}\mathbf{u}_n + \Delta t\,\mathbf f^\mathrm{ext}_{n+\theta}\bigr)}_{u_\mathrm{free}}
-                    - \underbrace{M_\mathrm{eff}^{-1}\,\hat W\,\boldsymbol\Lambda}_{u_\mathrm{corr}}
+                    + \underbrace{M_\mathrm{eff}^{-1}\,\hat W\,\boldsymbol\pi}_{\delta u}
 
 ``condensed`` -- like PGS -- never assembles :math:`\hat W` or :math:`\hat S` as
 matrices (dense or sparse). Instead it decomposes :math:`\hat W`'s **row space**
@@ -122,12 +127,12 @@ contacts -- read straight off ``DynamicsAssembler::Cdiag()``/``Adiag()``, no
 assembly needed since :math:`\hat C` is block-diagonal by construction.
 
 **Per-block right-hand side** (``CondensedAssembler::rhs()``, building
-:math:`\tilde b` block by block) differs by kind, matching
+the free row velocity :math:`\boldsymbol\xi^\mathrm{free} = \hat W^\top u_\mathrm{free} + \mathbf b`
+block by block) differs by kind, matching
 :doc:`../moreau_time_stepping`'s :math:`\mathbf b_n` variable for variable
 (:math:`\mathbf v_g \to` ``C_v_vec``, :math:`\mathbf v_\gamma \to`
-``A_v_vec``, :math:`\mathbf g(t_{n+\theta},\mathbf q_{n+\theta}) \to` ``g_error_vec``), in this codebase's own
-internal sign convention (identical to ``PgsAssembler::rhs()`` -- not
-independently re-derived here):
+``A_v_vec``, :math:`\mathbf g(t_{n+\theta},\mathbf q_{n+\theta}) \to` ``g_error_vec``), identical to
+``PgsAssembler::rhs()``:
 
 .. math::
 
@@ -144,7 +149,7 @@ the bias is ``DynamicsAssembler::springBias()``, shared by all solvers):
                                  + J_a M_{\mathrm{eff},a}^{-1}\,\text{rhs}_{\mathrm{vel},a} + J_b M_{\mathrm{eff},b}^{-1}\,\text{rhs}_{\mathrm{vel},b}
 
 No multiplier of the previous
-step enters; :math:`\Lambda_{g,n}` is only the warm start of the iteration.
+step enters; :math:`\pi_{g,n}` is only the warm start of the iteration.
 A **damper** row (``DynamicsAssembler::damperBias()``) has no position-level
 measure:
 
@@ -238,26 +243,26 @@ All four modes share the same per-block update
 (:math:`\lambda^{(k+1)} = \mathrm{proj}\bigl(\lambda^{(k)} + \omega\,\alpha\,D_i^{-1}\,r_i\bigr)`,
 :math:`r_i` the block's local residual, :math:`D_i^{-1}` its ``GiiInv``) --
 they differ only in *when* each block reads/writes the shared
-velocity-correction state ``u_corr``.
+velocity-correction state ``du``.
 
 .. mermaid::
 
    flowchart TD
-       A[Build RowBlock topology + compliance] --> B[Warmstart lambda, gather initial u_corr]
+       A[Build RowBlock topology + compliance] --> B[Warmstart lambda, gather initial du]
        B --> C{sweep_mode}
-       C -- gauss_seidel --> D[Sequential: propagate u_corr immediately after each block]
-       C -- jacobi --> E[Pass 1: update all blocks vs frozen u_corr snapshot -- Pass 2: each body gathers from its own incident blocks]
+       C -- gauss_seidel --> D[Sequential: propagate du immediately after each block]
+       C -- jacobi --> E[Pass 1: update all blocks vs frozen du snapshot -- Pass 2: each body gathers from its own incident blocks]
        C -- colored --> F[Greedy-color the shared-body adjacency graph once -- parallel within a color, sequential across colors]
-       C -- chaotic --> G[Shuffle block order periodically -- parallel over the permutation, atomic u_corr accumulator]
+       C -- chaotic --> G[Shuffle block order periodically -- parallel over the permutation, atomic du accumulator]
        D --> H{Converged?}
        E --> H
        F --> H
        G --> H
        H -- No --> C
-       H -- Yes --> I[Store impulses for warmstart, return u_free - u_corr]
+       H -- Yes --> I[Store impulses for warmstart, return u_free + du]
 
 **gauss_seidel** (default)
-   Sequential, in the blocks' natural (packed) order, propagating ``u_corr``
+   Sequential, in the blocks' natural (packed) order, propagating ``du``
    immediately -- structurally identical to :doc:`projected_gauss_seidel`'s
    own loop, just expressed over ``RowBlock`` s instead of a
    ``BlockDiagonal``/sparse ``W`` pair. Never parallelized (there is nothing
@@ -266,11 +271,11 @@ velocity-correction state ``u_corr``.
 **jacobi**
    Two OpenMP passes per sweep, run inside a single ``#pragma omp parallel``
    region (one thread-team spawn per sweep, not two): pass 1 updates every
-   block's own impulse against a *frozen* snapshot of ``u_corr`` from the
+   block's own impulse against a *frozen* snapshot of ``du`` from the
    previous sweep, writing only to that block's own (disjoint) slice of
    ``lambda``/``dlambda``; pass 2 has each *body* gather corrections from
    only its own incident blocks (via ``blocksOfBody``) into its own slice of
-   the new ``u_corr`` -- a gather, not a scatter, so this needs no atomics at
+   the new ``du`` -- a gather, not a scatter, so this needs no atomics at
    all, not even for the reduction.
 
 **colored**
@@ -279,7 +284,7 @@ velocity-correction state ``u_corr``.
    same body) -- deliberately **not** the dense Schur-complement/Delassus
    sparsity pattern, which for a compliant chain would be fully dense and
    collapse every color into one. Blocks within a color are updated in
-   parallel (no two share a body, so no two write the same ``u_corr``
+   parallel (no two share a body, so no two write the same ``du``
    entries); colors are processed sequentially, one ``#pragma omp for``
    each, inside a single ``#pragma omp parallel`` region for the whole
    sweep. See `Graph coloring algorithm`_ below for exactly how the coloring
@@ -289,7 +294,7 @@ velocity-correction state ``u_corr``.
    The experimental mode. Block processing order is a permutation, reshuffled
    every ``condensed.chaotic_reshuffle_interval`` sweeps; the permutation
    property means each block index is touched by exactly one thread per
-   sweep, so writes to ``lambda`` stay race-free. ``u_corr`` is different: two
+   sweep, so writes to ``lambda`` stay race-free. ``du`` is different: two
    blocks sharing a body genuinely can update it concurrently, and that
    staleness is the intended effect (Chazan-Miranker chaotic relaxation, not
    a bug), implemented with a real
@@ -338,7 +343,7 @@ this is **not** cached across steps today -- see the performance note below):
 The result (``Coloring::colorClasses``) is one contiguous block-index list
 per color, consumed directly by ``coloredSweep()``: color 0's blocks are all
 updated (in parallel) before any of color 1's blocks start, guaranteeing no
-two concurrently-running blocks ever touch the same body's ``u_corr`` slice.
+two concurrently-running blocks ever touch the same body's ``du`` slice.
 
 This produces more colors than a graph-theoretically optimal (chromatic-
 number) coloring in general -- greedy Welsh-Powell is a well-known
@@ -356,14 +361,17 @@ count it currently is.
 Local solve: projection vs. semismooth Newton
 -----------------------------------------------
 
-**projection** (default) clips exactly as :doc:`projected_gauss_seidel`
-does: normal impulse clamped to :math:`\Lambda_N \le 0`, tangential impulses
-scaled toward the Coulomb disk of radius :math:`-\mu\,\Lambda_N`.
+**projection** (default) updates exactly as :doc:`projected_gauss_seidel`
+does, with the negative variant of the projection shared by all
+projection-based solvers (``misc/contact_projection.hpp``):
+:math:`\pi_N = -\mathrm{proj}_{\mathbb{R}_{\le 0}}(\rho_N\xi_N - \pi_N)` and
+:math:`\pi_T = -\mathrm{proj}_{D(\mu\pi_N)}(\rho_T\xi_T - \pi_T)`, where the new
+:math:`\pi_N \ge 0` defines the radius of the friction disk.
 
 **newton** replaces that clip, for frictional (3-row) blocks only, with a
 guarded Alart-Curnier semismooth Newton solve
 (``src/physics/solver/local_contact_newton.{hpp,cpp}``). Given the block's
-local Delassus matrix :math:`G_i` and current residual :math:`r` (evaluated
+local Delassus matrix :math:`G_i` and current row velocity :math:`\xi` (evaluated
 at the current ``lambda``, i.e. ``blockResidual()``'s return value for this
 block):
 
@@ -381,18 +389,19 @@ diagonal preconditioners for the local Newton iteration, analogous in role
 to ``GiiInv`` for the linear path, just derived to make the *Newton* map
 well-scaled rather than to directly precondition a linear solve). With
 :math:`M = I - \mathrm{diag}(\rho_N,\rho_T,\rho_T)\,G_i` and
-:math:`c = \mathrm{diag}(\rho)\,(r + G_i\,\lambda)`, the trial state
-:math:`y(\lambda') = M\lambda' + c` (built so that :math:`y(\lambda_\mathrm{cur})`
-reduces to exactly the plain relaxation update's trial state before
-projection) is case-split, per Newton iterate, into:
+:math:`c = \mathrm{diag}(\rho)\,(\xi - G_i\,\lambda)`, the trial point of the
+negative variant :math:`y(\lambda') = \rho\,\xi(\lambda') - \lambda' = c - M\lambda'`
+(built so that :math:`y(\lambda_\mathrm{cur})` reduces to exactly the argument
+of the plain projection update) is case-split, per Newton iterate, into
+(:math:`g = -\mathrm{proj}_C(y)`):
 
 - **separation** (:math:`y_N \ge 0`): no contact force, :math:`g=0`,
   :math:`\partial g/\partial\lambda = 0`.
-- **sticking** (:math:`\|y_T\| \le -\mu y_N`): the unconstrained trial state
-  is already inside (or on) the friction cone, :math:`g=y`,
+- **sticking** (:math:`\|y_T\| \le -\mu y_N`): :math:`-y` is already inside
+  (or on) the friction cone, :math:`g=-y`,
   :math:`\partial g/\partial\lambda = M`.
-- **sliding** (otherwise): the tangential trial state is projected onto the
-  disk of radius :math:`-\mu y_N`, :math:`g_T = -\mu y_N\,\hat t`
+- **sliding** (otherwise): :math:`g_N = -y_N` and the tangential part is
+  projected onto the disk of radius :math:`-\mu y_N`, :math:`g_T = \mu y_N\,\hat t`
   (:math:`\hat t = y_T/\|y_T\|`), with the Jacobian's tangential rows
   accounting for both the direct scaling and the trial state's own
   dependence on :math:`\lambda` through :math:`y_N` and :math:`\hat t`.
@@ -445,34 +454,34 @@ letting them participate in the sweep at all.
 **The math**, worked from the same :math:`\hat S = \hat W^\top M_\mathrm{eff}^{-1}\hat W + \hat C`
 system derived above (nothing below is re-derived independently of that
 verified ground truth). Partition rows into bilateral (springs +
-dampers, pure equality constraints -- ``projectBlock()`` already no-ops for
-these) and contact (subject to the friction-cone projection):
+dampers, pure equality constraints -- ``updateBlock()`` takes the plain
+linear step for these) and contact (subject to the friction-cone projection):
 
 .. math::
 
    \hat S = \begin{bmatrix} S_{bb} & S_{bc} \\ S_{cb} & S_{cc} \end{bmatrix},
    \quad
-   \Lambda = \begin{bmatrix} \Lambda_b \\ \Lambda_c \end{bmatrix}
+   \pi = \begin{bmatrix} \pi_b \\ \pi_c \end{bmatrix}
 
-Eliminating :math:`\Lambda_b` gives the Schur complement over contacts alone:
-:math:`(S_{cc} - S_{cb} S_{bb}^{-1} S_{bc})\,\Lambda_c = \text{rhs}_c - S_{cb} S_{bb}^{-1}\,\text{rhs}_b`.
+Eliminating :math:`\pi_b` from :math:`\xi_b = 0` gives the Schur complement over contacts alone:
+:math:`\xi_c = (S_{cc} - S_{cb} S_{bb}^{-1} S_{bc})\,\pi_c + \xi^\mathrm{free}_c - S_{cb} S_{bb}^{-1}\,\xi^\mathrm{free}_b`.
 Explicitly forming this (generally dense, since :math:`S_{bb}^{-1}` is dense
 even though :math:`S_{bb}` is sparse) matrix is exactly what this solver
 family exists to avoid, and turns out not to be necessary: because bilateral
 rows are pure equalities with no projection, whatever the current contact
-impulses are, there is a single exact :math:`\Lambda_b` that zeroes every
-bilateral row's residual simultaneously --
-:math:`\delta\Lambda_b = S_{bb}^{-1}\,r_{\text{old}}`, where :math:`r_{\text{old}}`
+impulses are, there is a single exact :math:`\pi_b` that zeroes every
+bilateral row velocity simultaneously --
+:math:`\delta\pi_b = -S_{bb}^{-1}\,\xi_b`, where :math:`\xi_b`
 is the *already-existing* ``blockResidual()`` evaluated at the bilateral
 blocks' current state. Applied via the *already-existing* ``scatterDelta()``,
 this is architecturally just "one generalized block update over the whole
 bilateral row-set as a single joint block, using its exact factorized
 inverse" -- the same delta-then-scatter pattern every sweep function already
 uses per-row, just applied jointly instead of per-row-and-iteratively. No
-rhs()/blockResidual()/scatterDelta() changes, no new sign convention.
+rhs()/blockResidual()/scatterDelta() changes.
 
 Each outer iteration therefore becomes: (1) **exact bilateral step** --
-solve :math:`S_{bb}\,\delta = r_{\text{old}}` via a precomputed factorization
+solve :math:`S_{bb}\,\delta = -\xi_b` via a precomputed factorization
 and scatter the result, zeroing every bilateral row's residual in one shot;
 (2) **contact-only sweep** -- run the usual ``gauss_seidel``/``jacobi``/
 ``colored`` sweep restricted to just the contact blocks (bilateral rows never
@@ -772,9 +781,9 @@ Nesterov acceleration
 momentum acceleration via the standard ``pj.nesterov`` / ``pj.nesterov_beta_threshold``
 / ``pj.nesterov_restart_limit`` keys -- the exact same ones PJ and PGS already
 read, reused rather than duplicated. It's implemented once, generically: a
-``doSweep(lambda, u_corr)`` closure dispatches to whichever sweep mode is
+``doSweep(lambda, du)`` closure dispatches to whichever sweep mode is
 configured, and the Nesterov loop only ever extrapolates/restarts the outer
-``(lambda, u_corr)`` state between calls to it -- it has no knowledge of, and
+``(lambda, du)`` state between calls to it -- it has no knowledge of, and
 requires no changes to, the sweep internals. ``chaotic`` is excluded: its
 state lives in an atomic array rather than a plain vector, and
 momentum-extrapolating a value that is *already* being deliberately kept

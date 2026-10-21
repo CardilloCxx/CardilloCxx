@@ -99,9 +99,11 @@ registered with `cardillo_add_scene_example(...)` in `examples/CMakeLists.txt`; 
   `setAngularVelocity`/`setVelocityByForce` uses in scenes are to be removed, not extended.
 - **Compliances, not stiffnesses**, in `Crows/Arows`: stiffness ∞ → compliance 0 (perfect constraint),
   stiffness ≤ 0 → compliance ∞ (free row, not assembled). No magic thresholds.
-- **Contact percussion sign convention**: `Contact::last_impulse = (pn, pt1, pt2)` acts on body B
-  (normal from A to B), `pn ≥ 0`. PGS and condensed work with the negated vector internally and convert
-  all three components (`WarmstartProvider`, `invertSign`).
+- **Sign conventions** (theory manual, `LaTeX/theory_doc.tex`): `Contact::last_impulse = (pn, pt1, pt2)`
+  acts on body B (normal from A to B), `pn ≥ 0`, in every solver. Bilateral percussions are
+  π = h·λ (`Lambda_g`, `Lambda_gamma` hold π_g, π_γ). Every block acts as +W·π with the force
+  directions W of `DynamicsAssembler` unchanged; u = u_free + M⁻¹Wπ, ξ = Wᵀu + Ĉπ + b. Contacts use the
+  negative-variant projection λ = −proj_C(ρξ − λ) (`misc/contact_projection.hpp`, shared with PJ).
 - **No conversions to Coal**: `real_t == coal::Scalar`, `Vector3r == coal::Vec3s` (checked once in
   `src/collision/coal_types.hpp`); our own code uses `Vector3r`, never `coal::Vec3s`, and no casts.
 - Torsional springs belong on the joint x-axis (exact unwrapped twist angle; y/z rows measure sines).

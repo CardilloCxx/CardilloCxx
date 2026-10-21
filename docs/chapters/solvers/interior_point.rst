@@ -15,8 +15,9 @@ exactly.
 The QP formulation
 ------------------
 
-The Moreau step (velocity :math:`x = (u,\,\Lambda_g,\,\Lambda_\gamma)`,
-scaled multipliers as defined in :doc:`projected_gauss_seidel`) is cast as
+The Moreau step (unknowns :math:`x = (u,\,\pi_g,\,\pi_\gamma)` with the
+bilateral percussions :math:`\pi = h\lambda` of the theory manual,
+``LaTeX/theory_doc.tex``) is cast as
 a convex quadratic program:
 
 .. math::
@@ -32,7 +33,7 @@ constraints from contact.
 
    P = \begin{pmatrix}
      M_\mathrm{eff} & 0 & 0 \\
-     0 & \tfrac{C}{\theta\,dt^2} & 0 \\
+     0 & \tfrac{C}{\theta^2\,dt^2} & 0 \\
      0 & 0 & \tfrac{A}{\theta\,dt}
    \end{pmatrix},
    \qquad
@@ -45,17 +46,18 @@ constraints from contact.
 .. math::
 
    A = \begin{pmatrix}
-     W_g^\top & -\tfrac{C}{\theta\,dt^2} & 0 \\[2pt]
-     W_\gamma^\top & 0 & -\tfrac{A}{\theta\,dt}
+     W_g^\top & \tfrac{C}{\theta^2\,dt^2} & 0 \\[2pt]
+     W_\gamma^\top & 0 & \tfrac{A}{\theta\,dt}
    \end{pmatrix},
    \qquad
    b = \begin{pmatrix}
-     -\tfrac{C\,\Lambda_{g,n}}{\theta\,dt^2}
-     - \tfrac{1-\theta}{\theta}W_g^\top u_n
-     - \tfrac{1}{\theta}v_g \\[4pt]
-     - \tfrac{1-\theta}{\theta}W_\gamma^\top u_n
-     - \tfrac{1}{\theta}v_\gamma
+     -b_g \\[4pt]
+     -b_\gamma
    \end{pmatrix}
+
+with the biases :math:`b_g`, :math:`b_\gamma` of the position-level force law
+(``DynamicsAssembler::springBias()``, ``damperBias()``; theory manual,
+eq. (3.11)), i.e. the scaled force laws :math:`W^\top u + \hat C\pi + b = 0`.
 
 These enforce the compliant constraint laws :math:`Ax = b` as hard equalities
 (hard constraints simply have :math:`C = 0` or :math:`A = 0`, making those rows
@@ -142,15 +144,15 @@ Expanding the stationarity condition with the concrete matrices gives:
    M_\mathrm{eff}\,u + W_g\,y_g + W_\gamma\,y_\gamma - W_{NT} S_\mu\, z
    &= M u_n + dt\,f^\mathrm{ext}
    \\
-   \tfrac{C}{\theta\,dt^2}\,\Lambda_g - \tfrac{C}{\theta\,dt^2}\,y_g &= 0
-   \;\Rightarrow\; y_g = \Lambda_g
+   \hat C_g\,\pi_g + \hat C_g\,y_g &= 0
+   \;\Rightarrow\; y_g = -\pi_g
    \\
-   \tfrac{A}{\theta\,dt}\,\Lambda_\gamma - \tfrac{A}{\theta\,dt}\,y_\gamma &= 0
-   \;\Rightarrow\; y_\gamma = \Lambda_\gamma
+   \hat C_\gamma\,\pi_\gamma + \hat C_\gamma\,y_\gamma &= 0
+   \;\Rightarrow\; y_\gamma = -\pi_\gamma
 
-So the dual variables :math:`y_g` and :math:`y_\gamma` coincide with the
-primal multipliers, and the first KKT equation recovers the discrete momentum
-balance. The constraint rows enforce the compliant force laws, and the
+So the dual variables :math:`y_g` and :math:`y_\gamma` are the negated
+percussions, and the first KKT equation recovers the discrete momentum
+balance :math:`M_\mathrm{eff} u = M u_n + dt\,f^\mathrm{ext} + W_g\pi_g + W_\gamma\pi_\gamma + W_{NT}S_\mu z`. The constraint rows enforce the compliant force laws, and the
 complementarity condition enforces Signorini + Coulomb.
 
 QOCO vs Clarabel vs ConicXX

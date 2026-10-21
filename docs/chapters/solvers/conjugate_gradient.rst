@@ -23,23 +23,23 @@ elimination gives:
 
 .. math::
 
-   \mathbf{S}\,\hat\Lambda = \tilde{b},
+   \mathbf{S}\,\hat\pi = -\xi^\mathrm{free},
    \qquad
-   \mathbf{S} = \hat{W}^\top M^{-1} \hat{W} - \hat{C}
+   \mathbf{S} = \hat{W}^\top M^{-1} \hat{W} + \hat{C}
 
-where:
+where (notation of the theory manual, ``LaTeX/theory_doc.tex``):
 
-- :math:`\hat\Lambda = (\Lambda_g^\top, \Lambda_\gamma^\top)^\top` are the
-  stacked constraint multipliers
-- :math:`\hat{W} = (W_g, W_\gamma)` is the stacked constraint Jacobian
-- :math:`\hat{C} = \mathrm{diag}(-C/(\theta\,dt^2),\; -A/(\theta\,dt))` is
-  the (negative) block-diagonal compliance matrix
-- :math:`\tilde{b}` is the reduced right-hand side from the Schur complement
-  of the full system
+- :math:`\hat\pi = (\pi_g^\top, \pi_\gamma^\top)^\top` are the stacked
+  bilateral percussions :math:`\pi = h\lambda`
+- :math:`\hat{W} = (W_g, W_\gamma)` are the stacked force directions
+- :math:`\hat{C} = \mathrm{diag}(C/(\theta^2\,dt^2),\; A/(\theta\,dt))` is
+  the block-diagonal compliance matrix
+- :math:`\xi^\mathrm{free} = \hat W^\top u_\mathrm{free} + b` is the free row
+  velocity (``PgsAssembler::rhs()``); :math:`\xi = \mathbf{S}\hat\pi + \xi^\mathrm{free} = 0`
+  are the discrete force laws
 
 Because :math:`M^{-1}` is symmetric positive definite and the compliance
-diagonals :math:`-C/(\theta\,dt^2)` and :math:`-A/(\theta\,dt)` are
-non-positive, the full Schur complement :math:`\mathbf{S}` is symmetric
+diagonals are non-negative, :math:`\mathbf{S}` is symmetric
 positive semi-definite. This makes it amenable to the conjugate gradient
 method.
 
@@ -55,7 +55,7 @@ For each constraint pattern :math:`j`, the preconditioner block is:
 
 .. math::
 
-   D_j = \hat{W}_j^\top M^{-1} \hat{W}_j - \hat{C}_j
+   D_j = \hat{W}_j^\top M^{-1} \hat{W}_j + \hat{C}_j
 
 This is the same per-constraint block diagonal assembled by the PGS solver.
 Preconditioning with :math:`D^{-1}` clusters the eigenvalues of
@@ -69,7 +69,7 @@ without ever forming :math:`\mathbf{S}`:
 
    u_\mathrm{tmp} = M^{-1} \hat{W}\,p,
    \qquad
-   \mathbf{S}\,p = \hat{W}^\top u_\mathrm{tmp} - \hat{C}\,p
+   \mathbf{S}\,p = \hat{W}^\top u_\mathrm{tmp} + \hat{C}\,p
 
 This requires one sparse matrix-vector multiply with :math:`\hat{W}` and one
 with :math:`\hat{W}^\top` per CG iteration.
@@ -81,17 +81,17 @@ The PCG algorithm
 
    Algorithm: Preconditioned Conjugate Gradient for Contact Impulses
    ----------------------------------------------------------------
-   Input : ˜b, Ŵ, Ĉ, D⁻¹, M⁻¹, λ_prev, k_max, tol_abs
+   Input : ξ_free, Ŵ, Ĉ, D⁻¹, M⁻¹, λ_prev, k_max, tol_abs
    Output: u_{n+1}
 
    1.  λ ← λ_prev
-   2.  u_corr ← M⁻¹ Ŵ λ
-   3.  r ← ˜b − (Ŵᵀ u_corr − Ĉ λ)
+   2.  du ← M⁻¹ Ŵ λ
+   3.  r ← −(ξ_free + Ŵᵀ du + Ĉ λ)
    4.  z ← D⁻¹ r;   p ← z;   rz ← rᵀ z
 
    5.  for k = 0 to k_max do
    6.      u_tmp ← M⁻¹ Ŵ p
-   7.      Sp    ← Ŵᵀ u_tmp − Ĉ p
+   7.      Sp    ← Ŵᵀ u_tmp + Ĉ p
    8.      α     ← rz / (pᵀ Sp)
 
    9.      λ ← λ + α p
@@ -105,8 +105,8 @@ The PCG algorithm
    15.     p ← z + β p
    16.     rz ← rz_new
 
-   17. u_corr ← M⁻¹ Ŵ λ
-   18. u_{n+1} ← u_free − u_corr
+   17. du ← M⁻¹ Ŵ λ
+   18. u_{n+1} ← u_free + du
    19. Store (λ, λ_prev) for next time-step
 
 Each iteration costs two sparse matrix-vector products (with :math:`\hat{W}`

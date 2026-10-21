@@ -18,133 +18,82 @@ the solvers. In compact form:
 See the Moreau chapter :doc:`../moreau_time_stepping` for the full derivation and the detailed block
 definitions of :math:`\mathcal{S}` and :math:`\mathbf{b}_n`.
 
-Reducing to the constraint multiplier space
--------------------------------------------
-
-Eliminating :math:`u_{n+1}` from the second and third block rows via the Schur
-complement gives a reduced system purely in the constraint multipliers
-:math:`\hat\Lambda = (\Lambda_g^\top, \Lambda_\gamma^\top)^\top`:
-
-.. math::
-
-   \mathbf{S}\,\hat\Lambda = \tilde{b},
-
-where the Schur complement matrix is:
-
-.. math::
-
-   \mathbf{S} = \hat{W}^\top M^{-1} \hat{W} - \hat{C},
-
-with :math:`\hat{W} = (W_g, W_\gamma)` and block-diagonal
-:math:`\hat{C} = \mathrm{diag}(-C/(\theta\,dt^2),\; -A/(\theta\,dt))`.
-The right-hand side is:
-
-.. math::
-
-   \tilde{b} = \hat{W}^\top M^{-1} b_u - \hat{b}
-
-where :math:`b_u` and :math:`\hat{b}` are the corresponding blocks of the full
-right-hand side. Once :math:`\hat\Lambda` is known, the velocity is recovered as:
-
-.. math::
-
-   u_{n+1} = \underbrace{M^{-1} b_u}_{u_\mathrm{free}}
-           - \underbrace{M^{-1} \hat{W}\,\hat\Lambda}_{u_\mathrm{corr}}
-
-The matrix-vector product :math:`\mathbf{S}\hat\Lambda` is evaluated through
-the velocity correction:
-
-.. math::
-
-   u_\mathrm{corr} = M^{-1}\hat{W}\hat\Lambda,
-   \qquad
-   \mathbf{S}\hat\Lambda = \hat{W}^\top u_\mathrm{corr} - \hat{C}\hat\Lambda.
-
-This avoids ever forming :math:`\mathbf{S}` explicitly.
-
-Extending to contacts
+Condensed formulation
 ---------------------
 
-Adding contacts appends the contact Jacobian :math:`W_{NT}` as additional rows.
-The extended system becomes:
+PGS iterates on the condensed (impulse) form of the one-step problem, in the
+notation of the theory manual (``LaTeX/theory_doc.tex``, Section "The condensed
+form of the one-step problem"). All block percussions act on the velocities with
+the force directions of ``DynamicsAssembler`` as they are,
 
 .. math::
 
-   \begin{pmatrix}
-     M & \hat{W} & W_{NT} \\
-     \hat{W}^\top & -\hat{C} & 0 \\
-     W_{NT}^\top & 0 & 0
-   \end{pmatrix}
-   \begin{pmatrix} u_{n+1} \\ \hat\Lambda \\ \Lambda_{NT} \end{pmatrix}
-   =
-   \begin{pmatrix} b_u \\ \hat{b} \\ b_{NT} \end{pmatrix}
+   \pi = \begin{pmatrix} \pi_g \\ \pi_\gamma \\ \pi_c \end{pmatrix},
+   \qquad
+   W = \begin{pmatrix} W_g & W_\gamma & W_c \end{pmatrix},
+   \qquad
+   u_{n+1} = u_\mathrm{free} + \delta u, \qquad \delta u = M^{-1} W \pi,
 
-The zero block in the lower right means contact rows have no compliance term.
-Contact impulses are not determined by this linear system alone; they are
-subject to the non-smooth contact projection (Signorini + Coulomb). 
-
-The full multiplier vector in the implementation is therefore:
+with the bilateral percussions :math:`\pi_g = h\lambda_g`,
+:math:`\pi_\gamma = h\lambda_\gamma` and the contact percussions
+:math:`\pi_c = (\pi_N, \pi_T)`, :math:`\pi_N \geq 0` (``PgsAssembler::W()``).
+The row velocities are
 
 .. math::
 
-  \begin{pmatrix} \Lambda_g \\ \Lambda_\gamma \\ \Lambda_{NT} \end{pmatrix}
+   \xi = \xi^\mathrm{free} + W^\top \delta u + \hat{C}\pi,
+
+with :math:`\xi^\mathrm{free} = W^\top u_\mathrm{free} + b` (``PgsAssembler::rhs()``)
+and :math:`\hat C = \mathrm{diag}(C/(\theta^2 h^2),\, A/(\theta h),\, 0)`
+(``PgsAssembler::C()``). For a bilateral block, :math:`\xi_i = 0` is the
+discrete force law; for a contact block, :math:`\xi_i` is the contact
+velocity. This avoids ever forming the Delassus operator explicitly.
 
 The block diagonal preconditioner
 ----------------------------------
 
-PGS preconditions each block :math:`j` with the diagonal of the Schur complement
-restricted to that block:
-
-.. math::
-
-   D_j = \hat{W}_j^\top M^{-1} \hat{W}_j - \hat{C}_j
-
-For constraint patterns (hinges, beams, etc.) this is a small dense matrix
-(up to 6x6) that may be inverted implicitly using a Cholesky factorization.
+PGS preconditions each block :math:`j` with the inverse of the diagonal of
+:math:`S_{jj} = W_j^\top M^{-1} W_j + \hat{C}_j` (``PgsAssembler::DinvDiag()``).
 
 The PGS algorithm
 -----------------
 
 PGS differs from Projected Jacobi in that it updates each block sequentially
-and propagates the velocity correction :math:`u_\mathrm{corr}` immediately,
+and propagates the velocity correction :math:`\delta u` immediately,
 so later blocks in the same sweep already see the effect of earlier updates.
+Contact blocks use the negative variant of the projection,
+:math:`\pi_N = -\mathrm{proj}_{\mathbb{R}_{\leq 0}}(\rho_N\xi_N - \pi_N)` and
+:math:`\pi_T = -\mathrm{proj}_{D(\mu\pi_N)}(\rho_T\xi_T - \pi_T)`
+(``misc/contact_projection.hpp``, shared by all projection-based solvers).
 
 .. code-block:: text
 
-   Algorithm: Projected Gauss-Seidel for Contact Dynamics
-   -------------------------------------------------------
-   Input : rhs, W, M^{-1}, D^{-1}, k_max, relaxation
+   Algorithm: Projected Gauss-Seidel
+   ---------------------------------
+   Input : rhs = xi_free, W, M^{-1}, D^{-1}, k_max, relaxation
    Output: u_{n+1}
 
-   1. Initialize λ ← λ_warm_start
-   2. u_corr ← M^{-1} W^T λ
+   1. Initialize pi <- warm start (pi_g, pi_gamma, contact percussions)
+   2. du <- M^{-1} W pi
 
    3. for k = 0 to k_max do
    4.     for each block j in order do
-   5.         r_j ← rhs_j - W_j u_corr - C_j λ_j
-   6.         Δλ_j ← ω · D_j^{-1} · r_j
-   7.         if j is contact block then Δλ_j ← α · Δλ_j
+   5.         xi_j   <- rhs_j + W_j^T du + C_j pi_j
+   6.         step_j <- omega * D_j^{-1} * xi_j
+   7.         if j is contact block then step_j <- alpha * step_j
 
-   8.         λ_j ← λ_j + Δλ_j
+   8.         if j is bilateral then
+   9.             pi_j_new <- pi_j - step_j
+   10.        else
+   11.            pi_j_new <- -proj_{C_j}(step_j - pi_j)
 
-   9.         if j is frictionless then
-   10.            λ_j ← min(λ_j, 0)
-   11.        else if j is frictional then
-   12.            λ_j ← ProjectToCoulombDisk(λ_j)
+   12.        du  <- du + M^{-1} W_j (pi_j_new - pi_j)
+   13.        pi_j <- pi_j_new
 
-   13.        Δλ_j_proj ← λ_j - (λ_j_old)
-   14.        u_corr ← u_corr + M^{-1} W_j^T Δλ_j_proj
+   14.    check convergence
 
-   15.    check convergence (||Δλ|| < ε)
-
-   16. u_{n+1} ← u_free - u_corr
-   17. store λ and warm-start data for next step
-
-
-.. note::
-    The implementation stores normal contact impulses with
-    a negative sign convention inherited from the way the contact Jacobian is
-    assembled.
+   15. u_{n+1} <- u_free + du
+   16. store pi_g, pi_gamma and the contact percussions for the next step
 
 Convergence check
 -----------------
@@ -172,7 +121,7 @@ diagonal, but:
 - **PJ** updates all blocks using the velocity from the *previous* iteration
   and only then propagates the combined impulse change. This makes each sweep
   embarrassingly parallel.
-- **PGS** propagates each block's impulse change to :math:`u_\mathrm{corr}`
+- **PGS** propagates each block's impulse change to :math:`\delta u`
   immediately before moving to the next block. Later blocks therefore use more
   up-to-date information within the same sweep.
 

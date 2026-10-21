@@ -5,6 +5,7 @@
 #include <limits>
 #include <optional>
 #include "../../misc/block_diagonal.hpp"
+#include "../../misc/contact_projection.hpp"
 #include "../../misc/contact_rho.hpp"
 
 namespace cardillo::solver {
@@ -118,9 +119,11 @@ static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<r
     return D_scaled.calculateInverse();
 }
 
+// Contact update in the negative variant lambda = -proj_C(rho*xi - lambda) (misc/contact_projection.hpp),
+// with rho*xi = R*(W*u + bias) already in ws->delta_impulse.
 static inline void project(std::unique_ptr<workspace>& ws) {
-    // Frictionless contacts: clamp normal impulse >= 0
-    ws->impulse.segment(0, ws->Nnfc) = ws->impulse.segment(0, ws->Nnfc).cwiseMax((real_t)0);
+    // Frictionless contacts
+    for (int i = 0; i < ws->Nnfc; ++i) ws->impulse[i] = misc::proxNormal(ws->delta_impulse[i] - ws->impulse[i]);
 
     // Frictional contacts: normal clamp + Coulomb disk projection. Each iteration only reads/writes
     // its own contact's 3 impulse rows (i, i+1, i+2), so this is embarrassingly parallel across
@@ -128,15 +131,7 @@ static inline void project(std::unique_ptr<workspace>& ws) {
     // #pragma omp for (see condensed_solver.cpp). This loop runs once per PJ sweep, i.e. up to
     // cfg.pj_max_iterations times per timestep, so it's the hot per-iteration loop in this file.
 #pragma omp parallel for schedule(static)
-    for (int i = ws->Nnfc; i < ws->Nc; i += 3) {
-        ws->impulse[i] = std::max(ws->impulse[i], (real_t)0);
-        const real_t t1 = ws->impulse[i + 1], t2 = ws->impulse[i + 2];
-        const real_t tnorm_sq = t1 * t1 + t2 * t2;
-        if (tnorm_sq <= 0) continue;
-        const real_t s = std::min<real_t>((real_t)1, (ws->mu[i] * ws->impulse[i]) / std::sqrt((double)tnorm_sq));
-        ws->impulse[i + 1] = s * t1;
-        ws->impulse[i + 2] = s * t2;
-    }
+    for (int i = ws->Nnfc; i < ws->Nc; i += 3) misc::proxCoulomb(ws->delta_impulse.segment<3>(i) - ws->impulse.segment<3>(i), ws->mu[i], ws->impulse.segment<3>(i));
 }
 
 static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
@@ -148,8 +143,6 @@ static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
     ws->delta_impulse.noalias() = ws->RW * ws->x.head(ws->Nv);
     ws->delta_impulse += ws->biasImpulse;
     if (ws->R_block) ws->R_block->applyTo(ws->delta_impulse, ws->delta_impulse);
-
-    ws->impulse.noalias() -= ws->delta_impulse;
 
     project(ws);
     ws->delta_impulse = ws->impulse - ws->prev_impulse;
