@@ -64,9 +64,13 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro) {
     const real_t cScale = -DynamicsAssembler::springComplianceScale(dt, theta);
     const real_t aScale = -DynamicsAssembler::damperComplianceScale(dt, theta);
 
-    const TripletMatrix top = Mblk | m_dyn->Wg().T() | m_dyn->Wgamma().T();
-    const TripletMatrix mid = m_dyn->Wg() | (TripletMatrix::fromDiag(m_dyn->Cdiag()) * cScale) | TripletMatrix::zero(nSprings, nDampers);
-    const TripletMatrix bot = m_dyn->Wgamma() | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_dyn->Adiag()) * aScale);
+    // Saddle-point matrix of the theory manual (eq:saddle_point) in (u, pi_g, pi_gamma), pi = h*lambda:
+    //   [ M_eff  -W_g          -W_gamma        ]
+    //   [ -W_g^T -C/(th^2 h^2)  0              ]
+    //   [ -W_gamma^T  0        -A/(th h)       ]
+    const TripletMatrix top = Mblk | (m_dyn->Wg().T() * (real_t)-1) | (m_dyn->Wgamma().T() * (real_t)-1);
+    const TripletMatrix mid = (m_dyn->Wg() * (real_t)-1) | (TripletMatrix::fromDiag(m_dyn->Cdiag()) * cScale) | TripletMatrix::zero(nSprings, nDampers);
+    const TripletMatrix bot = (m_dyn->Wgamma() * (real_t)-1) | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_dyn->Adiag()) * aScale);
 
     m_S = top.vConcat(mid).vConcat(bot);
     const auto& S_sparse = m_S.asSparse();
@@ -137,8 +141,8 @@ VectorXr PjAssembler::rhs(real_t dt, real_t theta) const {
     VectorXr rhs = VectorXr::Zero((index_t)extV);
     rhs.segment(0, totalV) = M_diag.cwiseProduct(vn) + dt * fn_ext;
     if (!implicitGyro) rhs.segment(0, totalV) += dt * fn_gyro;
-    if (nSprings > 0) rhs.segment(totalV, nSprings) = -m_dyn->springBias(dt, theta);
-    if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = -m_dyn->damperBias(dt, theta);
+    if (nSprings > 0) rhs.segment(totalV, nSprings) = m_dyn->springBias(dt, theta);
+    if (nDampers > 0) rhs.segment(totalV + nSprings, nDampers) = m_dyn->damperBias(dt, theta);
 
     return rhs;
 }

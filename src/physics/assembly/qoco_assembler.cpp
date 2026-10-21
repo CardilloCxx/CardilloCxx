@@ -43,7 +43,7 @@ QOCOCscMatrix* QocoAssembler::A(real_t dt, real_t theta) {
     TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * DynamicsAssembler::springComplianceScale(dt, theta));
     TripletMatrix A = TripletMatrix::fromDiag(m_dyn->Adiag() * DynamicsAssembler::damperComplianceScale(dt, theta));
 
-    A = (m_dyn->Wg() | (C * -1.0) | TripletMatrix::zero(C.nRows(), A.nCols())).vConcat(m_dyn->Wgamma() | TripletMatrix::zero(A.nRows(), C.nCols()) | (A * -1.0));
+    A = (m_dyn->Wg() | C | TripletMatrix::zero(C.nRows(), A.nCols())).vConcat(m_dyn->Wgamma() | TripletMatrix::zero(A.nRows(), C.nCols()) | A);
 
     m_A_cache = A.asSparse();
     return toQocoCSC(m_A_cache, m_A_view);

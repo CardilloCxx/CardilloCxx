@@ -17,7 +17,7 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
     const auto& Dinv = m_assembler.Dinv(dt, theta);
 
     const VectorXr rhs = m_assembler.rhs(dt, theta, u_free);
-    VectorXr u_corr = VectorXr::Zero(u_free.size());
+    VectorXr du = VectorXr::Zero(u_free.size());  // u = u_free + du, du = Minv * W * lambda
 
     Eigen::SparseMatrix<real_t, Eigen::RowMajor> W_row(m_assembler.W());
     Eigen::SparseMatrix<real_t, Eigen::ColMajor> W_T = W_row.transpose();  // N x M
@@ -43,10 +43,10 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
 
     // ---------------------- SETUP CONJUGATE GRADIENT ----------------------
 
-    // res = b - A * x
-    u_corr = Minv.cwiseProduct(W_T * lambda);
-    res = rhs;
-    res.noalias() -= W_row * u_corr;
+    // Solves S * lambda = -xi^free (rhs = xi^free), i.e. res = b - A * x = -(xi^free + W^T du + C lambda) = -xi
+    du = Minv.cwiseProduct(W_T * lambda);
+    res = -rhs;
+    res.noalias() -= W_row * du;
     res.noalias() -= C_vec.cwiseProduct(lambda);
 
     Dinv.applyTo(res, z);
@@ -65,8 +65,8 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
 
         // Ap = A * p
         u_temp.noalias() = W_T * p;
-        u_corr.noalias() = Minv.cwiseProduct(u_temp);
-        Ap.noalias() = W_row * u_corr;
+        du.noalias() = Minv.cwiseProduct(u_temp);
+        Ap.noalias() = W_row * du;
         Ap.noalias() += C_vec.cwiseProduct(p);
 
         // Breakdown: the residual vanished exactly (e.g. a small system solved in fewer iterations
@@ -100,12 +100,12 @@ VectorXr ConjugateGradientSolver::solve(real_t dt, real_t theta) {
         std::cout << "[ConjugateGradient] Finished with res_norm = " << res_norm << " after " << m_last_iters << " iterations.\n";
     }
 
-    u_corr = Minv.cwiseProduct(W_T * lambda);
+    du = Minv.cwiseProduct(W_T * lambda);
 
     if (numSprings > 0) m_dyn.setLambda_g(lambda.head(numSprings));
     if (numDampers > 0) m_dyn.setLambda_gamma(lambda.tail(numDampers));
 
-    return u_free - u_corr;
+    return u_free + du;
 }
 
 }  // namespace cardillo::solver

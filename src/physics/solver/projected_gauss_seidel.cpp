@@ -6,51 +6,30 @@
 #include <limits>
 #include <vector>
 
+#include "../../misc/contact_projection.hpp"
+
 namespace cardillo::solver {
 
-static inline void project(VectorXr& impulse, VectorXr& dlambda, const real_t mu, const int offset, const int n) {
-    const real_t impulse_normal = impulse[offset];
-    impulse[offset] = std::min(impulse_normal, (real_t)0);
-    dlambda[offset] += impulse[offset] - impulse_normal;
-
-    if (n <= 1) return;
-
-    const VectorXr tangential = impulse.segment(offset + 1, n - 1);
-    const real_t t_norm = tangential.norm();
-    if (t_norm <= (real_t)0) return;
-
-    const real_t s = std::min<real_t>((real_t)1, -(mu * impulse[offset]) / t_norm);
-    const VectorXr t_proj = s * tangential;
-    dlambda.segment(offset + 1, n - 1) += t_proj - tangential;
-    impulse.segment(offset + 1, n - 1) = t_proj;
-}
-
-static inline void project_all(VectorXr& impulse, VectorXr& dlambda, const VectorXr& mu, const int nSprings, const int nDampers, int Nnfc, int Nfc) {
-    const int nContacts = Nnfc + Nfc;
-    const int nDyn = nSprings + nDampers;
-
-    if (nContacts == 0) return;
-
-    VectorXr impulse_normal = impulse.segment(nDyn, nContacts);
-
-    impulse.segment(nDyn, Nnfc) = impulse.segment(nDyn, Nnfc).cwiseMin((real_t)0);
-    dlambda.segment(nDyn, Nnfc) += impulse.segment(nDyn, Nnfc) - impulse_normal.head(Nnfc);
-
-    for (int i = 0; i < Nfc; i += 3) {
-        int idx = nDyn + Nnfc + i;
-        const real_t impulse_n = impulse[idx];
-        impulse[idx] = std::min(impulse_n, (real_t)0);
-        dlambda[idx] += impulse[idx] - impulse_n;
-
-        const VectorXr tangential = impulse.segment(idx + 1, 2);
-        const real_t t_norm = tangential.norm();
-        if (t_norm <= (real_t)0) continue;
-
-        const real_t s = std::min<real_t>((real_t)1, -(mu[nDyn + Nnfc + i] * impulse[idx]) / t_norm);
-        const VectorXr t_proj = s * tangential;
-        dlambda.segment(idx + 1, 2) += t_proj - tangential;
-        impulse.segment(idx + 1, 2) = t_proj;
+// Updates the block at `offset` from step = rho * xi (already relaxed/scaled) and writes the
+// applied change into `dlambda`: bilateral blocks take the linear step lambda - step, contact blocks
+// (n = 1: frictionless, n = 3: frictional) the negative variant lambda = -proj_C(step - lambda)
+// (misc/contact_projection.hpp).
+static inline void updateBlock(VectorXr& lambda, VectorXr& dlambda, bool isContact, const real_t mu, const int offset, const int n) {
+    if (!isContact) {
+        dlambda.segment(offset, n) = -dlambda.segment(offset, n);
+        lambda.segment(offset, n) += dlambda.segment(offset, n);
+        return;
     }
+    if (n == 1) {
+        const real_t lamNew = misc::proxNormal(dlambda[offset] - lambda[offset]);
+        dlambda[offset] = lamNew - lambda[offset];
+        lambda[offset] = lamNew;
+        return;
+    }
+    Vector3r lamNew;
+    misc::proxCoulomb(dlambda.segment<3>(offset) - lambda.segment<3>(offset), mu, lamNew);
+    dlambda.segment<3>(offset) = lamNew - lambda.segment<3>(offset);
+    lambda.segment<3>(offset) = lamNew;
 }
 
 VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
@@ -61,8 +40,6 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     const int nSprings = m_dyn.numSprings();
     const int nDampers = m_dyn.numDampers();
     const int nContacts = m_dyn.numContactRows();
-    const int Nnfc = m_dyn.numFrictionlessContacts();
-    const int Nfc = nContacts - Nnfc;
     const int nV = u_free.size();
     const int numLambda = nSprings + nDampers + nContacts;
 
@@ -75,7 +52,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     const VectorXr mus = m_dyn.muVec();
     const auto& DinvMatrix = m_assembler.DinvDiag(dt, theta);
     const VectorXr rhs = m_assembler.rhs(dt, theta, u_free);
-    VectorXr u_corr = VectorXr::Zero(nV);
+    VectorXr du = VectorXr::Zero(nV);
 
     Eigen::SparseMatrix<real_t, Eigen::RowMajor> W_row(m_assembler.W());
     Eigen::SparseMatrix<real_t, Eigen::ColMajor> MiW_T = m_dyn.MinvDiag().asDiagonal() * W_row.transpose();
@@ -94,10 +71,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
     if (m_cfg.pj_warmstart && nContacts > 0) {
         VectorXr l_contact = VectorXr::Zero(nContacts);
-        // PGS works internally with the negated percussion (normal impulse <= 0, see
-        // project_all() above); invert all components at this boundary to/from the canonical
-        // storage convention (see warmstart.hpp).
-        WarmstartProvider::applyWarmstart(l_contact, m_dyn, /*invertSign=*/true);
+        WarmstartProvider::applyWarmstart(l_contact, m_dyn);
         lambda.segment(nSprings + nDampers, nContacts) = l_contact;
     }
 
@@ -105,8 +79,8 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
     const real_t alpha = m_cfg.pj_alpha;
 
-    // Initial u_corr from warmstarted lambda
-    u_corr = MiW_T * lambda;
+    // Initial velocity correction du = Minv * W * lambda from the warmstarted lambda, u = u_free + du
+    du = MiW_T * lambda;
 
     const auto& DinvBlocks = DinvMatrix.blocks();
     const int nBlocks = (int)DinvBlocks.size();
@@ -122,11 +96,11 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     VectorXr res_v0(nV);
     VectorXr res_v1(nV);
 
-    auto residual = [&](const VectorXr& u_corr_k, const VectorXr& u_corr_k1) -> real_t {
-        const int Nv = (int)u_corr_k.size();
-        res_diff.noalias() = u_corr_k1 - u_corr_k;
-        res_v0.noalias() = u_free - u_corr_k;
-        res_v1.noalias() = u_free - u_corr_k1;
+    auto residual = [&](const VectorXr& du_k, const VectorXr& du_k1) -> real_t {
+        const int Nv = (int)du_k.size();
+        res_diff.noalias() = du_k1 - du_k;
+        res_v0.noalias() = u_free + du_k;
+        res_v1.noalias() = u_free + du_k1;
         res_q.array() = res_v0.cwiseAbs().cwiseMax(res_v1.cwiseAbs()).array() * m_cfg.pj_tol_rel + m_cfg.pj_tol_abs;
         return (real_t)(1.0 / std::sqrt((double)Nv) * res_diff.cwiseQuotient(res_q).norm());
     };
@@ -152,53 +126,38 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
             int blockSize = DinvBlocks[i].rows();
             int offset = offsets[i];
 
+            // Row velocity xi = xi^free + W^T du + C lambda of this block
             res.segment(offset, blockSize).noalias() = rhs.segment(offset, blockSize);
-            res.segment(offset, blockSize).noalias() -= W_row.middleRows(offset, blockSize) * u_corr;
-            res.segment(offset, blockSize).noalias() -= C_vec.segment(offset, blockSize).cwiseProduct(lambda.segment(offset, blockSize));
+            res.segment(offset, blockSize).noalias() += W_row.middleRows(offset, blockSize) * du;
+            res.segment(offset, blockSize).noalias() += C_vec.segment(offset, blockSize).cwiseProduct(lambda.segment(offset, blockSize));
 
+            const bool isContact = offset >= nSprings + nDampers;
             dlambda.segment(offset, blockSize).noalias() = (DinvBlocks[i] * res.segment(offset, blockSize)) * m_cfg.pj_relaxation;
-            if (offset >= nSprings + nDampers) dlambda.segment(offset, blockSize) *= alpha;
+            if (isContact) dlambda.segment(offset, blockSize) *= alpha;
+            updateBlock(lambda, dlambda, isContact, isContact ? mus[offset - nSprings - nDampers] : (real_t)0, offset, blockSize);
 
-            lambda.segment(offset, blockSize).noalias() += dlambda.segment(offset, blockSize);
-
-            if (offset >= nSprings + nDampers) project(lambda, dlambda, mus[offset - nSprings - nDampers], offset, blockSize);
-
-            u_corr.noalias() += MiW_T.middleCols(offset, blockSize) * dlambda.segment(offset, blockSize);
+            du.noalias() += MiW_T.middleCols(offset, blockSize) * dlambda.segment(offset, blockSize);
 
             // res_norm_sq += dlambda.segment(offset, blockSize).squaredNorm() / (DinvBlocks[i].diagonal().squaredNorm());
         }
     };
 
-    auto pj_sweep = [&](int iter) -> void {
-        auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
-
-        res = rhs;
-        res -= W_row * u_corr;
-        res -= C_vec.cwiseProduct(lambda);
-        dlambda = DinvMatrix * res * m_cfg.pj_relaxation;
-        if (nSprings + nDampers < numLambda) dlambda.tail(numLambda - nSprings - nDampers) *= alpha;
-
-        lambda += dlambda;
-        project_all(lambda, dlambda, mus, nSprings, nDampers, Nnfc, Nfc);
-        u_corr.noalias() += MiW_T * dlambda;
-    };
-
     if (!m_cfg.pj_nesterov) {
-        VectorXr u_k = u_corr;
+        VectorXr u_k = du;
 
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
             pgs_sweep(iter);
             m_last_iters = iter + 1;
 
-            if (check_residual(u_k, u_corr, iter) < 1.0) break;
-            u_k = u_corr;
+            if (check_residual(u_k, du, iter) < 1.0) break;
+            u_k = du;
         }
     } else {
         // Nesterov acceleration outer loop
         VectorXr lambda_k = lambda;
-        VectorXr u_k = u_corr;
+        VectorXr u_k = du;
         VectorXr lambda_y = lambda;
-        VectorXr u_y = u_corr;
+        VectorXr u_y = du;
 
         double thk = 1.0;
         real_t err_prev = std::numeric_limits<real_t>::infinity();
@@ -207,11 +166,11 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
         for (int iter = 0; iter < m_cfg.pj_max_iterations; iter++) {
             lambda = lambda_y;
-            u_corr = u_y;
+            du = u_y;
 
             pgs_sweep(iter);
             const VectorXr lambda_k1 = lambda;
-            const VectorXr u_k1 = u_corr;
+            const VectorXr u_k1 = du;
             // Exactly one pgs_sweep() happened this iteration -- same as every other loop in this
             // file and in PJ's own nesterov_loop()/chebyshev_loop() (both use iter+1) -- so this
             // must match, not iter+2. (Previously iter+2, a stray off-by-one with no second sweep
@@ -263,9 +222,9 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
     if (nSprings > 0) m_dyn.setLambda_g(lambda.head(nSprings));
     if (nDampers > 0) m_dyn.setLambda_gamma(lambda.segment(nSprings, nDampers));
-    if (nContacts > 0) WarmstartProvider::storeImpulse(lambda.segment(nSprings + nDampers, nContacts), m_dyn, /*invertSign=*/true);
+    if (nContacts > 0) WarmstartProvider::storeImpulse(lambda.segment(nSprings + nDampers, nContacts), m_dyn);
 
-    return u_free - u_corr;
+    return u_free + du;
 }
 
 }  // namespace cardillo::solver

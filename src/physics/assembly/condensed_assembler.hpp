@@ -74,7 +74,8 @@ struct CondensedTopology {
 
 // Builds and evaluates the condensed (block-sparse, matrix-free) system in exactly the same
 // mathematical convention as PgsAssembler (see docs/chapters/solvers/projected_gauss_seidel.rst):
-// same rhs()/compliance formulas, same sign convention (contact normal <= 0 internally). Every
+// same rhs()/compliance formulas, same sign convention (theory manual: every block's percussion pi
+// acts as +W*pi, bilateral pi = h*lambda, contact pN >= 0). Every
 // per-block dense piece is built directly from DynamicsAssembler::constraintResults()/contacts(),
 // never through Eigen::SparseMatrix.
 class CondensedAssembler {

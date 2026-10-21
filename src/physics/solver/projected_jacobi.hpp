@@ -14,10 +14,10 @@
 namespace cardillo::solver {
 
 // Simple Projected Jacobi solver for normal contact impulses (percussions)
-// Iteration: p_{k+1} = min(0, (R*G - I) p_k + R*b)
-// where R = alpha * D^{-1}, D = diag(G), and b = W * v (normal relative speeds)
+// Iteration: p_{k+1} = -proj_C(R*(W*u_k + b) - p_k)
+// where R = alpha * D^{-1}, D = diag(W*Minv*W^T), and C = R_0^- x D(mu*pN) the negated admissible
+// set of the contact percussions (pN >= 0, see misc/contact_projection.hpp).
 // Notes:
-// - We treat the projection as clamping to non-positive impulses (compressive only).
 // - alpha in (0,2) typically for convergence; default alpha=1.
 class ProjectedJacobiSolver : public SolverBase {
    public:

@@ -35,8 +35,8 @@ const SparseMatrix<Eigen::ColMajor>& ClarabelAssembler::A(real_t dt, real_t thet
     const int n_contact = m_dyn->numContactRows();
     VectorXr Smu = computeSmu();
 
-    TripletMatrix A = (m_dyn->Wg() | (C * -1.0) | TripletMatrix::zero(C.nRows(), A_diag.nCols()))
-                          .vConcat(m_dyn->Wgamma() | TripletMatrix::zero(A_diag.nRows(), C.nCols()) | (A_diag * -1.0))
+    TripletMatrix A = (m_dyn->Wg() | C | TripletMatrix::zero(C.nRows(), A_diag.nCols()))
+                          .vConcat(m_dyn->Wgamma() | TripletMatrix::zero(A_diag.nRows(), C.nCols()) | A_diag)
                           .vConcat(m_dyn->W().scaleRows(Smu) * -1.0 | TripletMatrix::zero(n_contact, m_dyn->numSprings() + m_dyn->numDampers()));
 
     m_A_cache = A.asSparse();

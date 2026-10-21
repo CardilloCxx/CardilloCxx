@@ -72,6 +72,7 @@ pretension kept at 0.17 %).
 ## Contact impulses
 
 `Contact::last_impulse = (pn, pt1, pt2)`: percussion on body B = pn·normal + pt1·tangent1 +
-pt2·tangent2, normal from A to B, pn ≥ 0. PJ, QOCO, Clarabel, ConicXX use it directly; PGS and
-condensed internally use Λ = −π in all components and convert with `invertSign`. VTK contact
+pt2·tangent2, normal from A to B, pn ≥ 0. All solvers work with it directly (no conversion). Bilateral
+percussions are π = h·λ (stored in `Lambda_g`/`Lambda_gamma`); every block acts as +W·π,
+u = u_free + M⁻¹Wπ, with W unchanged (theory manual, eq. (3.4), (3.12), Section 4). VTK contact
 manifolds export `pn`, `pt1`, `pt2`, `pt_mag`, `percussion`, `percussion_normal`, `percussion_tangent`.

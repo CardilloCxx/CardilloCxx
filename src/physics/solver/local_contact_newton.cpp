@@ -6,25 +6,15 @@ namespace cardillo::solver {
 
 namespace {
 
-// One case-split evaluation of the Alart-Curnier normal map, in PGS's lambda[0]<=0 convention.
-// Given the (per-Newton-call-constant) affine trial map y(lambda) = M*lambda + c, computes the
-// projected target g(lambda), its Jacobian dg/dlambda, and Phi = lambda - g.
-//
-// Derivation note: y(lambda') is built from the LOCAL linear model of how this block's own
-// residual r(lambda') changes as ONLY this block's impulse varies (all other blocks' impulses,
-// hence u_corr's other contributions, held fixed): r(lambda') = r_current - G*(lambda'-lambda_cur)
-// (the minus sign because increasing this block's own lambda increases u_corr via
-// `u_corr += Minv*J^T*Delta_lambda`, which in turn DECREASES r = rhs - matvec(u_corr) -- this is
-// this codebase's own u_corr/rhs convention, not a generic textbook one, and was checked directly
-// against CondensedSolver's own linear/projection update `lambda_new = lambda_cur + GiiInv*r`,
-// which is exactly the lambda'=M^{-1}... fixed point of r(lambda')=0 under this sign). The
-// resulting one-step trial state (before projection) is y(lambda') = lambda' + rho*r(lambda'),
-// with q := r_current + G*lambda_cur, M := I - rho*G, c := rho*q -- so that y(lambda_cur) reduces
-// to exactly lambda_cur + rho*r_current, matching the plain relaxation*GiiInv*r update's role as
-// "trial state before projection" for rho == GiiInv.
+// One case-split evaluation of the Alart-Curnier map in the negative variant of the theory manual
+// (eq:newton_trial, eq:alart_curnier, same as misc/contact_projection.hpp): the trial point
+//   y(lambda') = rho*xi(lambda') - lambda' = -M*lambda' + c,   M = I - rho*G,   c = rho*(xi_cur - G*lambda_cur),
+// follows from the local affine model xi(lambda') = xi_cur + G*(lambda' - lambda_cur) of this block's
+// row velocity with all other blocks frozen, and p(y) = -proj_C(y) is the new percussion. Computes
+// p and dp/dlambda = dp/dy * (-M); Phi = lambda - p.
 struct CaseEval {
-    Vector3r g;
-    Matrix33r Jg;  // dg/dlambda
+    Vector3r g;    // p(y)
+    Matrix33r Jg;  // dp/dlambda
 };
 
 CaseEval evalCase(const Matrix33r& M, const Vector3r& y, real_t mu) {
@@ -41,16 +31,16 @@ CaseEval evalCase(const Matrix33r& M, const Vector3r& y, real_t mu) {
     }
 
     if (s <= -mu * yN) {
-        // Sticking: unconstrained trial state is already inside (or on) the friction cone.
-        out.g = y;
+        // Sticking: -y is already inside (or on) the friction disk, p = -y, dp/dlambda = M.
+        out.g = -y;
         out.Jg = M;
         return out;
     }
 
-    // Sliding: project the tangential trial state onto the disk of radius -mu*yN.
+    // Sliding: p = (-yN, -proj_D(yT)) with the disk radius -mu*yN, i.e. p_T = mu*yN*t_hat.
     const Eigen::Matrix<real_t, 2, 1> that_hat = yT / s;
-    out.g[0] = yN;
-    out.g.template segment<2>(1) = -mu * yN * that_hat;
+    out.g[0] = -yN;
+    out.g.template segment<2>(1) = mu * yN * that_hat;
 
     const Eigen::Matrix<real_t, 1, 3> aN = M.row(0);
     const Eigen::Matrix<real_t, 2, 3> BT = M.block<2, 3>(1, 0);
@@ -64,20 +54,20 @@ CaseEval evalCase(const Matrix33r& M, const Vector3r& y, real_t mu) {
 
 }  // namespace
 
-bool solveContactBlockNewtonAC(const Matrix33r& G, const Vector3r& r, real_t mu, Vector3r& lambda, const NewtonACParams& params) {
+bool solveContactBlockNewtonAC(const Matrix33r& G, const Vector3r& xi, real_t mu, Vector3r& lambda, const NewtonACParams& params) {
     const real_t eps = (real_t)1e-12;
 
     const Vector3r rho = misc::computeContactRho(G, params.rhoStrategy, eps);
     if ((rho.array() <= (real_t)0).any()) return false;
 
     Matrix33r M = Matrix33r::Identity() - rho.asDiagonal() * G;
-    const Vector3r q = r + G * lambda;
+    const Vector3r q = xi - G * lambda;
     const Vector3r c = rho.asDiagonal() * q;
 
     // Writes into out-params rather than returning a fresh pair -- every call site below reuses
     // the same pre-declared storage instead of constructing new Vector3r/Matrix33r each time.
     auto phiAt = [&](const Vector3r& lam, Vector3r& phiOut, Matrix33r& JphiOut) {
-        const Vector3r y = M * lam + c;
+        const Vector3r y = c - M * lam;
         const CaseEval ce = evalCase(M, y, mu);
         phiOut = lam - ce.g;
         JphiOut = Matrix33r::Identity() - ce.Jg;
