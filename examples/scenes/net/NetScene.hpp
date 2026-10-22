@@ -51,7 +51,8 @@ public:
                 if ((i > 0 || j % 2 == 1) && (i < n-1 || j % 2 == 0) && (j > 0 && j < m-1)) props = physics::RigidProps::withDensity(density);
                 else props = physics::RigidProps(0); // static boundary rings
 
-                engine.createBeam(ring, sec_ring, springs_ring, physics::RigidState{center, rotation}, props, segments);
+                // engine.createBeam(ring, sec_ring, springs_ring, physics::RigidState{center, rotation}, props, segments, physics::BeamColliderMode::RigidBodyPrimitive);
+                engine.createBeam(ring, sec_ring, springs_ring, physics::RigidState{center, rotation}, props, segments, physics::BeamColliderMode::InterSegmentHull);
             }
         }
 
