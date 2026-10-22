@@ -12,6 +12,9 @@ whether an item was fixed before re-investigating; remove items once they are re
   iterations per step instead of ~150. About half comes from shear prestress at the pulleys (node
   frames follow the spline tangent while `relaxedInStraightConfiguration()` zeroes the shear rest
   strain); the rest from the node layout itself. Not caused by the pretension. Topic for the #77 author.
+- **ciliaWalker** (`cilia_walker`): the bidirectional and ring walkers (thin rectangular cilia, 12
+  elements, h = 1e-4) diverge in the condensed Gauss-Seidel sweep after ~0.1 s unless
+  `condensed.true_schur=true` (or h = 5e-5); the broken state then crashes Coal's contact patch hull.
 - **gears**: aborts with "PjAssembler::solveS called but S matrix is not factorized" (also on main
   before the position-law migration).
 - **cable_bunch**: segfault inside Coal `computeSupportSetConvexHull` (box-box patch) around step 1247.
