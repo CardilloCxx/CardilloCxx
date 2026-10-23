@@ -50,6 +50,11 @@ if(CARDILLO_ENABLE_NATIVE_ARCH)
     endif()
 endif()
 
+# Optional SCS backend (solver.type = scs): the ADMM conic solver from github.com/cvxgrp/scs, fetched
+# and built from source; only its direct (AMD + QDLDL) linear-system backend is used.
+option(CARDILLO_WITH_SCS "Enable the SCS solver backend (fetched and built from source)" ON)
+option(CARDILLO_SCS_OPENMP "Build SCS with its OpenMP-parallel cone projections (off: serial, like the other conic backends)" ON)
+
 add_subdirectory(src)
 add_subdirectory(examples)
 
