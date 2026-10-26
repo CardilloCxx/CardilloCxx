@@ -39,11 +39,10 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
             const auto R_A = RigidBody::getState(reg, a).rotation();
             const auto R_B = RigidBody::getState(reg, b).rotation();
 
-            index_t x_col_A = (reg.any_of<C_Capsule>(a) || reg.any_of<C_Cylinder>(a)) ? 2 : 0;
-            index_t x_col_B = (reg.any_of<C_Capsule>(b) || reg.any_of<C_Cylinder>(b)) ? 2 : 0;
-
-            auto e_Ax = R_A.col(x_col_A);
-            auto e_Bx = R_B.col(x_col_B);
+            // Beam nodes carry the beam tangent on their body x-axis for every collider shape
+            // (capsules map their own z-axis onto it via localRotation).
+            auto e_Ax = R_A.col(0);
+            auto e_Bx = R_B.col(0);
             real_t base = r_AB.norm();
             if (base > (real_t)0) {
                 auto r_hat = r_AB.normalized();

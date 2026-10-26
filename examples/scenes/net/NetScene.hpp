@@ -33,6 +33,9 @@ public:
         const int m = 18;
         const size_t segments = 32;
         const real_t eps = 1e-3;
+        // scene.primitive_colliders = 1: one capsule per ring segment instead of inter-segment hulls
+        const auto colliderMode = engine.config().sceneParam("primitive_colliders", 0) != 0 ? physics::BeamColliderMode::RigidBodyPrimitive
+                                                                                             : physics::BeamColliderMode::InterSegmentHull;
 
         const real_t c = (radius * 2 - thickness * 1.5);
         const real_t a = (radius + thickness * 0.5 + eps);
@@ -51,8 +54,7 @@ public:
                 if ((i > 0 || j % 2 == 1) && (i < n-1 || j % 2 == 0) && (j > 0 && j < m-1)) props = physics::RigidProps::withDensity(density);
                 else props = physics::RigidProps(0); // static boundary rings
 
-                // engine.createBeam(ring, sec_ring, springs_ring, physics::RigidState{center, rotation}, props, segments, physics::BeamColliderMode::RigidBodyPrimitive);
-                engine.createBeam(ring, sec_ring, springs_ring, physics::RigidState{center, rotation}, props, segments, physics::BeamColliderMode::InterSegmentHull);
+                engine.createBeam(ring, sec_ring, springs_ring, physics::RigidState{center, rotation}, props, segments, colliderMode);
             }
         }
 
