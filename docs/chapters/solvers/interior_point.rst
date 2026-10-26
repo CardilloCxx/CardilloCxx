@@ -5,158 +5,312 @@ Interior-Point Solvers (QOCO, Clarabel and ConicXX)
    :local:
    :depth: 2
 
-QOCO, Clarabel and ConicXX all formulate the contact and constraint problem as
-a convex second-order cone program (SOCP) and solve it with a primal-dual
-interior-point method. Unlike the iterative projection solvers (PJ, PGS), they
-enforce contact feasibility as a mathematical constraint rather than a
-post-projection step, which means they can satisfy the Coulomb friction cone
-exactly.
+QOCO, Clarabel and ConicXX formulate the one-step problem of the Moreau
+scheme as a convex second-order cone program (SOCP) and solve it with a
+primal-dual interior-point method. The bilateral force laws and frictionless
+contacts are reproduced exactly. Coulomb friction is not a convex law, so the
+conic backends solve a *convexified* friction law instead. Its error is
+characterized below. Contact percussions always lie in the friction cone, but
+the normal velocity of an active frictional contact is wrong by :math:`\mu` times
+the change of its sliding speed within the step.
 
-The QP formulation
-------------------
+The derivation below follows the theory manual (``LaTeX/theory_doc.tex``,
+section "Second-order cone formulation of the one-step problem"), which also
+contains the proofs and the closed-form benchmark. Notation: time step
+:math:`\Delta t`, percussions :math:`\pi = \Delta t\,\lambda` acting as
+:math:`+W\pi`, scaled compliances
+:math:`\hat C_g = \mathbf{C}/(\theta^2\Delta t^2)` (springs) and
+:math:`\hat C_\gamma = \mathbf{A}/(\theta\Delta t)` (dampers), biases :math:`b_g`,
+:math:`b_\gamma` of the position-level force law
+(``DynamicsAssembler::springBias()``, ``damperBias()``), contact force directions
+:math:`W_c`. Gyroscopic forces are explicit (:math:`f = f^\mathrm{ext} + f^\mathrm{gyr}(u_n)`),
+see :ref:`ip-limitations`.
 
-The Moreau step (unknowns :math:`x = (u,\,\pi_g,\,\pi_\gamma)` with the
-bilateral percussions :math:`\pi = h\lambda` of the theory manual,
-``LaTeX/theory_doc.tex``) is cast as
-a convex quadratic program:
+The one-step problem
+--------------------
+
+Unknowns are the new velocities :math:`u = u_{n+1}` and the percussions. The
+discrete balance of momentum and the scaled force laws are
 
 .. math::
 
-   \min_{x}\; \tfrac{1}{2}\,x^\top P\,x + c^\top x
+   M u &= M u_n + \Delta t\,f + W_g \pi_g + W_\gamma \pi_\gamma + W_c \pi_c ,
+   \\
+   0 &= W_g^\top u + \hat C_g \pi_g + b_g ,
+   \\
+   0 &= W_\gamma^\top u + \hat C_\gamma \pi_\gamma + b_\gamma ,
 
-subject to equality constraints from the compliant force laws and cone
-constraints from contact.
-
-**Objective** (:math:`P`, :math:`c`)
+and every closed contact satisfies the Signorini--Coulomb law between its
+percussion :math:`\pi_i = (\pi_N, \pi_T)` and the velocity of Newton's impact
+law
 
 .. math::
 
-   P = \begin{pmatrix}
-     M_\mathrm{eff} & 0 & 0 \\
-     0 & \tfrac{C}{\theta^2\,dt^2} & 0 \\
-     0 & 0 & \tfrac{A}{\theta\,dt}
+   \xi_i = W_{c,i}^\top u + b_{c,i}, \qquad
+   b_{c,i} = \chi_{c,i} + \mathrm{diag}(e_N, e_T, e_T)\,\gamma_i^-, \qquad
+   \gamma_i^- = W_{c,i}^\top u_n + \chi_{c,i},
+
+where :math:`\chi_c` is the velocity of static or driven partners and :math:`e_N`,
+:math:`e_T` are the restitution coefficients.
+
+Bilateral part: a convex QP
+---------------------------
+
+Without contacts, the one-step problem is the optimality system of the convex
+quadratic program
+
+.. math::
+
+   \min_{u,\,\pi_g,\,\pi_\gamma}\;
+   \tfrac{1}{2} u^\top M u - u^\top (M u_n + \Delta t\,f)
+   + \tfrac{1}{2} \pi_g^\top \hat C_g \pi_g + \tfrac{1}{2} \pi_\gamma^\top \hat C_\gamma \pi_\gamma
+   \quad\text{s.t.}\quad
+   W_g^\top u + \hat C_g \pi_g + b_g = 0, \quad
+   W_\gamma^\top u + \hat C_\gamma \pi_\gamma + b_\gamma = 0 .
+
+The objective is Gauss' principle for the velocity jump,
+:math:`\tfrac12\|u - u^\mathrm{free}\|_M^2`, plus the scaled complementary energy
+of the compliant elements. With multipliers :math:`y_g`, :math:`y_\gamma` of the
+equality constraints, the stationarity conditions are
+
+.. math::
+
+   M u - (M u_n + \Delta t\,f) + W_g y_g + W_\gamma y_\gamma &= 0 ,
+   \\
+   \hat C_g \pi_g + \hat C_g^\top y_g &= 0 ,
+   \\
+   \hat C_\gamma \pi_\gamma + \hat C_\gamma^\top y_\gamma &= 0 .
+
+The transposes come from the transposed constraint matrix. Since the scaled
+compliances are symmetric (diagonal in the code), the last two rows read
+:math:`\hat C(\pi + y) = 0`. Together with the constraints, :math:`u` and the
+percussions :math:`-y` therefore solve the momentum balance and the force laws
+above. For compliant rows, :math:`\pi = -y`. For perfect constraints
+(:math:`\hat C = 0`), the primal :math:`\pi` does not enter the problem and is not
+determined; the percussion is :math:`-y` only.
+
+Keeping :math:`\pi` as a primal unknown, instead of eliminating it into a
+penalty term :math:`\tfrac12\|W^\top u + b\|^2_{\hat C^{-1}}`, keeps the problem
+well defined in the rigid limit :math:`\hat C \to 0`. The objective needs a
+symmetric positive definite mass matrix, which is why implicit gyroscopic
+forces (non-symmetric :math:`M_\mathrm{eff}`) are not supported.
+
+Coulomb friction as a cone complementarity problem
+--------------------------------------------------
+
+For a contact with :math:`\mu > 0`, let
+:math:`K_\mu = \{\pi : \|\pi_T\| \le \mu\,\pi_N\}` be the Coulomb cone and
+:math:`K_\mu^* = \{\xi : \mu\|\xi_T\| \le \xi_N\}` its dual cone. De Saxcé's
+reformulation (De Saxcé & Feng 1998) states that the Signorini--Coulomb law is
+equivalent to
+
+.. math::
+
+   K_\mu^* \ni \hat\xi \;\perp\; \pi \in K_\mu,
+   \qquad
+   \hat\xi = \xi + \begin{pmatrix} \mu \|\xi_T\| \\ 0 \\ 0 \end{pmatrix} .
+
+The cases are separation (:math:`\pi = 0`, :math:`\xi_N \ge 0`), sticking
+(:math:`\pi` interior, :math:`\hat\xi = 0`) and sliding (:math:`\pi` on the cone
+boundary, :math:`\xi_N = 0`, :math:`\xi_T` opposite to :math:`\pi_T`). The shift
+:math:`\mu\|\xi_T\|` is not affine in :math:`u`, so the problem is not the
+optimality system of a convex program. Without the shift, the conditions
+describe Anitescu's associated relaxation, which requires the separation
+velocity :math:`\xi_N = \mu\|\xi_T\|` while sliding.
+
+Convexification
+---------------
+
+The conic backends freeze the shift at the pre-step velocity,
+:math:`c_i = \mu_i \|\gamma_{T,i}^-\|`. The shifted velocity
+:math:`\xi_i + (c_i, 0, 0)^\top` is then affine in :math:`u`, and the one-step
+problem becomes the SOCP
+
+.. math::
+
+   \min_{u,\,\pi_g,\,\pi_\gamma}\; \text{(objective above)}
+   \quad\text{s.t.}\quad
+   \text{(bilateral equalities)}, \quad
+   W_{c,i}^\top u + b_{c,i} + (c_i, 0, 0)^\top \in K_{\mu_i}^* , \quad
+   w_{N,j}^\top u + b_{N,j} \ge 0 ,
+
+with one cone constraint per frictional contact :math:`i` and one inequality per
+frictionless contact :math:`j`. The multipliers of the cone constraints are
+exactly the contact percussions :math:`\pi_{c,i} \in K_{\mu_i}`, and the KKT
+conditions are the balance of momentum, the bilateral force laws, Signorini's
+law for frictionless contacts and the *convexified* friction law
+
+.. math::
+
+   K_\mu^* \ni \xi + (c, 0, 0)^\top \;\perp\; \pi \in K_\mu .
+
+Scaling to the standard cone
+----------------------------
+
+The backends work with the self-dual standard cone
+:math:`L = \{(a, b) \in \mathbb{R}\times\mathbb{R}^2 : \|b\| \le a\}`. With the
+per-contact scaling :math:`S_\mu = \mathrm{diag}(1, \mu, \mu)`,
+
+.. math::
+
+   \pi \in K_\mu \iff z = S_\mu^{-1}\pi \in L,
+   \qquad
+   \hat\xi \in K_\mu^* \iff s = S_\mu \hat\xi \in L,
+   \qquad
+   s^\top z = \hat\xi^\top \pi ,
+
+so that the convexified law becomes the standard cone complementarity
+:math:`L \ni s \perp z \in L`. The normal row keeps its physical scale and the
+scaling stays bounded for :math:`\mu \to 0`, unlike the equivalent
+:math:`\mathrm{diag}(1/\mu, 1, 1)`, which blows up the normal row. Since the
+normal entry of :math:`S_\mu` is one, the shift is not scaled. Frictionless
+contacts are single rows in the non-negative orthant.
+
+Standard form
+-------------
+
+With :math:`x = (u, \pi_g, \pi_\gamma)`, :math:`S = \mathrm{blkdiag}(S_{\mu_i})`
+(one for frictionless rows) and :math:`\bar c = ((c_i, 0, 0))_i`, the assemblers
+(``*_assembler.cpp``, scaling and shift in ``conic_scaling.hpp``) build the
+matrices below. The sans-serif names are those of the backend interfaces, unrelated
+to the damper compliance :math:`\mathbf{A}` and the time step.
+
+.. math::
+
+   \mathsf{P} = \begin{pmatrix}
+     M & 0 & 0 \\
+     0 & \hat C_g & 0 \\
+     0 & 0 & \hat C_\gamma
    \end{pmatrix},
    \qquad
-   c = -\begin{pmatrix}
-     M u_n + dt\,f^\mathrm{ext} \\[2pt] 0 \\ 0
-   \end{pmatrix}
-
-**Constraint equations** (:math:`A`, :math:`b`) -- spring and damper rows
+   \mathsf{q} = -\begin{pmatrix}
+     M u_n + \Delta t\,f \\ 0 \\ 0
+   \end{pmatrix},
 
 .. math::
 
-   A = \begin{pmatrix}
-     W_g^\top & \tfrac{C}{\theta^2\,dt^2} & 0 \\[2pt]
-     W_\gamma^\top & 0 & \tfrac{A}{\theta\,dt}
+   \mathsf{A}_\mathrm{eq} = \begin{pmatrix}
+     W_g^\top & \hat C_g & 0 \\
+     W_\gamma^\top & 0 & \hat C_\gamma
    \end{pmatrix},
    \qquad
-   b = \begin{pmatrix}
-     -b_g \\[4pt]
-     -b_\gamma
-   \end{pmatrix}
-
-with the biases :math:`b_g`, :math:`b_\gamma` of the position-level force law
-(``DynamicsAssembler::springBias()``, ``damperBias()``; theory manual,
-eq. (3.11)), i.e. the scaled force laws :math:`W^\top u + \hat C\pi + b = 0`.
-
-These enforce the compliant constraint laws :math:`Ax = b` as hard equalities
-(hard constraints simply have :math:`C = 0` or :math:`A = 0`, making those rows
-purely kinematic).
-
-The Coulomb friction cone
--------------------------
-
-For a single frictional contact :math:`i` with friction coefficient
-:math:`\mu_i`, the admissible impulse set is the scaled second-order cone:
-
-.. math::
-
-   K_{\mu_i} = \bigl\{\,\Lambda_{NT} \in \mathbb{R}^3 \;\big|\;
-   \|\Lambda_{T}\| \leq \mu_i\,\Lambda_{N}\,\bigr\}
-
-Enforcing :math:`\Lambda_{NT} \in K_{\mu_i}` directly requires a scaled cone, which
-complicates the interior-point system. Following De Saxce and Acary, the
-implementation introduces the per-contact scaling matrix:
-
-.. math::
-
-   S_{\mu_i} = \mathrm{diag}\!\left(1,\, \mu_i,\, \mu_i\right)
-
-and the change of variables :math:`z_i = S_{\mu_i}^{-1}\Lambda_{NT, i}`, so that the
-scaled impulse :math:`z_i` lives in the standard SOC :math:`L`. The normal row keeps
-its physical scale and the tangential rows are scaled down by :math:`\mu_i`, so the
-scaling stays bounded for small friction coefficients (the equivalent
-:math:`\mathrm{diag}(1/\mu_i, 1, 1)` blows up the normal row as :math:`\mu_i \to 0`):
-
-.. math::
-
-   \Lambda_{NT,i} \in K_{\mu_i}
-   \quad\Longleftrightarrow\quad
-   z_i = S_{\mu_i}^{-1}\Lambda_{NT, i} \in L
-
-On the velocity side the contact velocity :math:`\gamma_i = W_{NT,i}^\top u`
-is corrected by the De Saxce term :math:`\bar{\gamma}_i` which is approximated from velocity of last timestep as
-:math:`\bar{\gamma} = \left( \mu\|\gamma_T\|, 0, 0 \right)^\top`.
-
-This allows the frictional contact condition to be written as the standard cone
-complementarity :math:`L \ni s_i \perp z_i \in L`.
-Frictionless contacts reduce to a single row in the non-negative orthant.
-
-**Contact friction**
-
-The contact friction conditions are expressed as the standard cone complementarity
-:math:`h_i - G_i\,x =s_i \in L` for each frictional contact :math:`i`.
-
-.. math::
-
-   G = \begin{pmatrix} -S_{\mu}^\top W_{NT}^\top &  0 & 0  \end{pmatrix}
+   \mathsf{b}_\mathrm{eq} = -\begin{pmatrix} b_g \\ b_\gamma \end{pmatrix},
    \qquad
-   h = S_{\mu}^\top\!\left(\gamma^\mathrm{ext} + \bar{\gamma}\right)
+   \mathsf{G} = \begin{pmatrix} -S W_c^\top & 0 & 0 \end{pmatrix},
+   \qquad
+   \mathsf{h} = S b_c + \bar c .
 
-
-where :math:`\gamma^\mathrm{ext}` is the contact velocity contribution
-from non-physical moving bodies.
-
-Because the non-convex coulomb friction problem is solved as a convexified problem,
-the interior-point method does not solve the exact coloumb friction problem.
-
-KKT conditions
---------------
-
-The optimal primal-dual solution
-:math:`(x^*,\, y^*,\, s^*,\, z^*)` satisfies:
+The cone slack is :math:`s = \mathsf{h} - \mathsf{G}x = S(W_c^\top u + b_c) + \bar c = S\hat\xi`,
+and the cone is :math:`\mathcal{K} = \mathbb{R}_{\ge 0}^{n_N} \times L \times \dots \times L`.
+QOCO solves
 
 .. math::
 
-   P\,x + c + A^\top y + G^\top z &= 0
+   \min_x\; \tfrac{1}{2} x^\top \mathsf{P} x + \mathsf{q}^\top x
+   \quad\text{s.t.}\quad
+   \mathsf{A}_\mathrm{eq} x = \mathsf{b}_\mathrm{eq}, \quad
+   \mathsf{h} - \mathsf{G} x = s \in \mathcal{K} .
+
+Clarabel and ConicXX stack the equality rows as a zero cone on top:
+:math:`\mathsf{A} = (\mathsf{A}_\mathrm{eq}; \mathsf{G})`,
+:math:`\mathsf{b} = (\mathsf{b}_\mathrm{eq}; \mathsf{h})`, cone
+:math:`\{0\}^{m_g + m_\gamma} \times \mathcal{K}`.
+
+KKT conditions and recovery of the solution
+-------------------------------------------
+
+With multipliers :math:`y = (y_g, y_\gamma)` of the equality rows and :math:`z`
+of the cone rows (for Clarabel and ConicXX, :math:`y` is the leading zero-cone
+part of their dual vector), the optimal primal-dual solution satisfies
+
+.. math::
+
+   \mathsf{P}x + \mathsf{q} + \mathsf{A}_\mathrm{eq}^\top y + \mathsf{G}^\top z &= 0
    \quad\text{(stationarity)}
    \\
-   A\,x &= b
-   \quad\text{(primal: constraint equations)}
+   \mathsf{A}_\mathrm{eq} x &= \mathsf{b}_\mathrm{eq}
+   \quad\text{(force laws)}
    \\
-   h - G\,x &= s
-   \quad\text{(primal: cone slack)}
+   \mathsf{h} - \mathsf{G} x &= s
+   \quad\text{(cone slack)}
    \\
-   L \ni s^i &\perp z^i \in L \quad \forall\, i
+   \mathcal{K} \ni s &\perp z \in \mathcal{K}
    \quad\text{(complementarity)}
 
-Expanding the stationarity condition with the concrete matrices gives:
+Expanding the stationarity condition with the concrete matrices gives
 
 .. math::
 
-   M_\mathrm{eff}\,u + W_g\,y_g + W_\gamma\,y_\gamma - W_{NT} S_\mu\, z
-   &= M u_n + dt\,f^\mathrm{ext}
+   M u - M u_n - \Delta t\,f + W_g\,y_g + W_\gamma\,y_\gamma - W_c S z &= 0 ,
    \\
-   \hat C_g\,\pi_g + \hat C_g\,y_g &= 0
-   \;\Rightarrow\; y_g = -\pi_g
+   \hat C_g\,\pi_g + \hat C_g^\top y_g &= 0 ,
    \\
-   \hat C_\gamma\,\pi_\gamma + \hat C_\gamma\,y_\gamma &= 0
-   \;\Rightarrow\; y_\gamma = -\pi_\gamma
+   \hat C_\gamma\,\pi_\gamma + \hat C_\gamma^\top y_\gamma &= 0 .
 
-So the dual variables :math:`y_g` and :math:`y_\gamma` are the negated
-percussions, and the first KKT equation recovers the discrete momentum
-balance :math:`M_\mathrm{eff} u = M u_n + dt\,f^\mathrm{ext} + W_g\pi_g + W_\gamma\pi_\gamma + W_{NT}S_\mu z`. The constraint rows enforce the compliant force laws, and the
-complementarity condition enforces Signorini + Coulomb.
+The solution of the one-step problem with the convexified friction law is
+therefore
+
+.. math::
+
+   u_{n+1} = u, \qquad
+   \pi_c = S z, \qquad
+   \pi_g = -y_g, \qquad
+   \pi_\gamma = -y_\gamma ,
+
+and the first row is the discrete balance of momentum
+:math:`M u_{n+1} = M u_n + \Delta t\,f + W_g\pi_g + W_\gamma\pi_\gamma + W_c\pi_c`.
+The solvers return :math:`u`, store :math:`S z` as ``Contact::last_impulse`` and
+:math:`-y` as bilateral percussions (``Lambda_g``, ``Lambda_gamma``), which also
+covers perfect constraints.
+
+Error of the convexified friction law
+-------------------------------------
+
+Every active frictional contact (:math:`\pi \ne 0`) of the conic solvers
+satisfies
+
+.. math::
+
+   \xi_N = \mu \bigl(\|\xi_T\| - \|\gamma_T^-\|\bigr)
+
+instead of Signorini's :math:`\xi_N = 0`. A separated contact satisfies
+:math:`\xi_N \ge \mu(\|\xi_T\| - \|\gamma_T^-\|)` instead of :math:`\xi_N \ge 0`.
+The friction cone, the direction of the friction percussion and the
+stick/slip alternative are those of Coulomb's law. Consequences:
+
+- **Exact** for permanent sticking and steady sliding (the sliding speed does
+  not change within the step).
+- **Persistent contact:** a decelerating slip pushes the bodies into each
+  other and an accelerating slip lifts them off. The normal velocity error is
+  :math:`\mathcal{O}(\Delta t)` per step, and the gap error telescopes to
+  :math:`\mu\,\Delta t\,(\|\gamma_{T,\mathrm{end}}\| - \|\gamma_{T,\mathrm{start}}\|)`,
+  i.e., :math:`\mathcal{O}(\Delta t)` without accumulation.
+- **Frictional impacts:** the sliding speed jumps within one step, and the
+  post-impact normal velocity has an :math:`\mathcal{O}(1)` error that does not
+  vanish for :math:`\Delta t \to 0`.
+
+The theory manual quantifies this with a solid sphere on a plane
+(:math:`\kappa = 1 + mR^2/\Theta = 7/2`), checked against all three
+backends in ``tests/test_convexified_friction.cpp``:
+
+- A ball **sliding** with :math:`v_0` and no spin sinks with
+  :math:`\kappa\mu^2 g\,\Delta t` and ends up :math:`\mu\,\Delta t\,v_0` deep in the
+  plane (0.6 mm for :math:`\mu = 0.3`, :math:`v_0 = 2\,\mathrm{m/s}`,
+  :math:`\Delta t = 1\,\mathrm{ms}`). Its rolling velocity is correct.
+- A **spinning ball dropped** onto the plane rebounds with the effective
+  restitution :math:`e^* = (e - \kappa\mu^2)/(1 + \kappa\mu^2)` (sliding impact)
+  or :math:`e^* = e - \mu\,\gamma_T^-/V` (sticking impact) instead of :math:`e`,
+  independently of :math:`\Delta t`. For :math:`\mu = 0.3` and :math:`e = 0.5`,
+  :math:`e^* = 0.14`: the ball reaches 8 % of the correct rebound height. For
+  :math:`e < \kappa\mu^2`, :math:`e^* < 0`, and the ball moves into the plane
+  after the impact. After an inelastic impact (:math:`e = 0`), it sinks by
+  :math:`\mu\,\Delta t\,\gamma_T^-` until it rolls (1.5 mm for
+  :math:`\gamma_T^- = 5\,\mathrm{m/s}`, :math:`\Delta t = 1\,\mathrm{ms}`): the
+  velocity error of the impact step is :math:`\mathcal{O}(1)`, but the
+  penetration is :math:`\mathcal{O}(\Delta t)`.
+
+Use projected Jacobi or the condensed solver, which solve the exact law, when
+frictional impacts matter.
 
 QOCO vs Clarabel vs ConicXX
 ---------------------------
@@ -231,18 +385,23 @@ nonzero pattern unchanged. ``ConicxxSolver`` guards against this explicitly by
 also comparing the freshly computed ``ConeSpec`` against the one used at the
 last ``setup()``, and forcing a full re-setup if it differs.
 
+.. _ip-limitations:
+
 Limitations
 -----------
 
+- **Convexified friction.** Frictional contacts follow the convexified law
+  above, not Coulomb's law; frictional impacts have an error that does not
+  vanish with the step size.
 - **QOCO/Clarabel: no warmstart, rebuilt every step.** The last result might
   not be feasible in the next timestep, so it cannot directly be used as
   warmstart, and when contacts appear or disappear the sparsity pattern of
-  :math:`G`/:math:`A` changes, requiring a full solver re-setup every step.
+  :math:`\mathsf{G}`/:math:`\mathsf{A}` changes, requiring a full solver re-setup every step.
   ConicXX does not have this limitation in the common case where the contact
   set is momentarily stable (see above).
 - **No implicit gyroscopy** (``moreau.implicit_gyroscopy``). This setting is
-  silently ignored by all three interior-point backends; use PJ or the
-  condensed solver if you need it.
+  silently ignored by all three interior-point backends (the QP needs a
+  symmetric mass matrix); use PJ or the condensed solver if you need it.
 
 Config keys
 -----------

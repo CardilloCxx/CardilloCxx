@@ -86,7 +86,8 @@ registered with `cardillo_add_scene_example(...)` in `examples/CMakeLists.txt`; 
 
 **Tests** (`tests/`, ctest): `test_joint_jacobian`, `test_beam_jacobian` (W vs. d/dt g),
 `test_beam_rest_configuration`, `test_position_level` (all solvers), `test_torsional_oscillator`
-(closed-form solution, convergence order), `test_condensed_true_schur` (condensed vs. PJ).
+(closed-form solution, convergence order), `test_condensed_true_schur` (condensed vs. PJ),
+`test_convexified_friction` (convexified Coulomb law of the conic solvers vs. closed form).
 
 ## Design decisions (do not undo without discussion)
 

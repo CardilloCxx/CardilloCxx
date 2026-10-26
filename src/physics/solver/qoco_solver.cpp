@@ -225,12 +225,15 @@ VectorXr QocoSolver::solve(real_t dt, real_t theta) {
     VectorXr x_vec = VectorXr::Zero(m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers());
     for (int i = 0; i < x_vec.size(); ++i) x_vec[i] = sol->x[i];
 
-    // Track spring and damper forces, return velocity.
+    // Bilateral percussions are the negated multipliers y of the equality rows. The primal
+    // percussions agree for compliant rows only; for perfect constraints they do not enter the problem.
     const int nV = (int)m_dyn.numV();
     const int nSprings = (int)m_dyn.numSprings();
     const int nDampers = (int)m_dyn.numDampers();
-    if (nSprings > 0) m_dyn.setLambda_g(x_vec.segment(nV, nSprings));
-    if (nDampers > 0) m_dyn.setLambda_gamma(x_vec.segment(nV + nSprings, nDampers));
+    VectorXr pi_b(nSprings + nDampers);
+    for (int i = 0; i < pi_b.size(); ++i) pi_b[i] = -sol->y[i];
+    if (nSprings > 0) m_dyn.setLambda_g(pi_b.head(nSprings));
+    if (nDampers > 0) m_dyn.setLambda_gamma(pi_b.tail(nDampers));
     return x_vec.segment(0, nV);
 }
 

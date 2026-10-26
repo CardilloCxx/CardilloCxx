@@ -36,3 +36,7 @@ whether an item was fixed before re-investigating; remove items once they are re
 - PGS ignores gyroscopic forces with `moreau.implicit_gyroscopy=true`; condensed ignores restitution.
 - Clarabel exports zero tangential percussions in the VTK output (not investigated; test solver).
 - `docs/chapters/using_the_engine/beams.rst` ("Rod model") cites the gitignored paper.
+- QOCO fails ("Numerical Error") on the rigid pendulum of `test_position_level` (perfect constraint, no
+  contacts), so that test fails for QOCO.
+- `docs/chapters/moreau_time_stepping.rst` ("Scaled Block Linear System") still uses the old sign
+  convention Lambda = -dt lambda; the code and theory manual use pi = h lambda acting as +W pi.

@@ -141,8 +141,13 @@ VectorXr ConicxxSolver::solve(real_t dt, real_t theta) {
     const int nV = static_cast<int>(m_dyn.numV());
     const int nSprings = static_cast<int>(m_dyn.numSprings());
     const int nDampers = static_cast<int>(m_dyn.numDampers());
-    if (nSprings > 0) m_dyn.setLambda_g(x_vec.segment(nV, nSprings));
-    if (nDampers > 0) m_dyn.setLambda_gamma(x_vec.segment(nV + nSprings, nDampers));
+    // Bilateral percussions are the negated multipliers of the equality (zero-cone) rows, which lead
+    // the dual vector. The primal percussions agree for compliant rows only; for perfect constraints
+    // they do not enter the problem.
+    VectorXr pi_b(nSprings + nDampers);
+    for (int i = 0; i < pi_b.size(); ++i) pi_b[i] = -static_cast<real_t>(solution->z[i]);
+    if (nSprings > 0) m_dyn.setLambda_g(pi_b.head(nSprings));
+    if (nDampers > 0) m_dyn.setLambda_gamma(pi_b.tail(nDampers));
 
     return x_vec.segment(0, nV);
 }
