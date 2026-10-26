@@ -80,10 +80,13 @@ implementation introduces the per-contact scaling matrix:
 
 .. math::
 
-   S_{\mu_i} = \mathrm{diag}\!\left(\tfrac{1}{\mu_i},\, 1,\, 1\right)
+   S_{\mu_i} = \mathrm{diag}\!\left(1,\, \mu_i,\, \mu_i\right)
 
 and the change of variables :math:`z_i = S_{\mu_i}^{-1}\Lambda_{NT, i}`, so that the
-scaled impulse :math:`z_i` lives in the standard SOC :math:`L`:
+scaled impulse :math:`z_i` lives in the standard SOC :math:`L`. The normal row keeps
+its physical scale and the tangential rows are scaled down by :math:`\mu_i`, so the
+scaling stays bounded for small friction coefficients (the equivalent
+:math:`\mathrm{diag}(1/\mu_i, 1, 1)` blows up the normal row as :math:`\mu_i \to 0`):
 
 .. math::
 

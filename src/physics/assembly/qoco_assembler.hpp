@@ -31,7 +31,7 @@ class QocoAssembler {
     QOCOFloat* b(real_t dt, real_t theta);
     QOCOFloat* h(real_t dt, real_t theta);
 
-    VectorXr computeSmu();
+    VectorXr computeSmu() const;
 
    private:
     physics::DynamicsAssembler* m_dyn{nullptr};

@@ -1,5 +1,6 @@
 #include "clarabel_assembler.hpp"
 
+#include "conic_scaling.hpp"
 #include "dynamics_assembler.hpp"
 
 namespace cardillo::physics::assembly {
@@ -56,13 +57,7 @@ VectorXr& ClarabelAssembler::b(real_t dt, real_t theta) {
 
     VectorXr b_top = -m_dyn->springBias(dt, theta);
     VectorXr b_mid = -m_dyn->damperBias(dt, theta);
-    VectorXr b_contact = Smu.cwiseProduct(biasImpulse);
-
-    for (int i = m_dyn->numFrictionlessContacts(); i < m_dyn->numContactRows(); i += 3) {
-        const real_t y_1 = gamma_old[i + 1];
-        const real_t y_2 = gamma_old[i + 2];
-        b_contact[i] += std::sqrt(y_1 * y_1 + y_2 * y_2);
-    }
+    VectorXr b_contact = scaledContactOffset(*m_dyn, Smu, biasImpulse, gamma_old);
 
     m_b_cache.resize(b_top.size() + b_mid.size() + b_contact.size());
     m_b_cache << b_top, b_mid, b_contact;
@@ -90,15 +85,6 @@ const std::vector<clarabel::SupportedConeT<double>>& ClarabelAssembler::cones() 
     return m_cones_cache;
 }
 
-VectorXr ClarabelAssembler::computeSmu() const {
-    VectorXr Smu = VectorXr::Ones(m_dyn->numContactRows());
-    for (const auto& c : m_dyn->contacts()) {
-        if (c.friction_mu <= 0) continue;
-        const int idx = c.impulse_base_index;
-        if (idx < 0 || idx >= Smu.size()) continue;
-        Smu[idx] = 1.0 / c.friction_mu;
-    }
-    return Smu;
-}
+VectorXr ClarabelAssembler::computeSmu() const { return frictionConeScaling(*m_dyn); }
 
 }  // namespace cardillo::physics::assembly

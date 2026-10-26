@@ -1,5 +1,6 @@
 #include "qoco_assembler.hpp"
 #include <stdexcept>
+#include "conic_scaling.hpp"
 #include "dynamics_assembler.hpp"
 
 namespace cardillo::physics::assembly {
@@ -49,16 +50,7 @@ QOCOCscMatrix* QocoAssembler::A(real_t dt, real_t theta) {
     return toQocoCSC(m_A_cache, m_A_view);
 }
 
-VectorXr QocoAssembler::computeSmu() {
-    VectorXr Smu = VectorXr::Ones(m_dyn->numContactRows());
-    for (const auto& c : m_dyn->contacts()) {
-        if (c.friction_mu <= 0) continue;
-        const int idx = c.impulse_base_index;
-        if (idx < 0 || idx >= Smu.size()) continue;
-        Smu[idx] = 1.0 / c.friction_mu;
-    }
-    return Smu;
-}
+VectorXr QocoAssembler::computeSmu() const { return frictionConeScaling(*m_dyn); }
 
 QOCOCscMatrix* QocoAssembler::G(real_t dt, real_t theta) {
     VectorXr Smu = computeSmu();
@@ -97,13 +89,7 @@ QOCOFloat* QocoAssembler::h(real_t dt, real_t theta) {
     if ((restitution.array() != 0.0).any())
         biasImpulse += restitution.cwiseProduct(gamma_old);
 
-    m_h_cache = Smu.cwiseProduct(biasImpulse);
-
-    for (int i = m_dyn->numFrictionlessContacts(); i < m_dyn->numContactRows(); i += 3) {
-        const real_t y_1 = gamma_old[i + 1];
-        const real_t y_2 = gamma_old[i + 2];
-        m_h_cache[i] += std::sqrt(y_1 * y_1 + y_2 * y_2);
-    }
+    m_h_cache = scaledContactOffset(*m_dyn, Smu, biasImpulse, gamma_old);
 
     return toQocoVector(m_h_cache);
 }
