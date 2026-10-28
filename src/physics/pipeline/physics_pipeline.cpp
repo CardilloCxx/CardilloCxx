@@ -14,6 +14,7 @@
 #include "../solver/condensed_solver.hpp"
 #include "../solver/conicxx_solver.hpp"
 #include "../solver/conjugate_gradient.hpp"
+#include "../solver/naive_schur_solver.hpp"
 #include "../solver/projected_gauss_seidel.hpp"
 #include "../solver/projected_jacobi.hpp"
 #include "../solver/qoco_solver.hpp"
@@ -51,6 +52,8 @@ PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::C
         m_solver = std::make_unique<ConicxxSolver>(*m_dyn, m_cfg);
     } else if (cfg.solver == config::SolverType::Condensed) {
         m_solver = std::make_unique<CondensedSolver>(*m_dyn, m_cfg);
+    } else if (cfg.solver == config::SolverType::NaiveSchur) {
+        m_solver = std::make_unique<NaiveSchurSolver>(*m_dyn, m_cfg);
     } else {
         std::cerr << "Warning: Unrecognized solver type in config; defaulting to ProjectedJacobi.\n";
         m_solver = std::make_unique<ProjectedJacobiSolver>(*m_dyn, m_cfg);

@@ -17,7 +17,7 @@ enum class IntegratorType { Moreau };
 // with free bodies, kinematic drivers and prescribed rates all at t_{n+theta} = t_n + (1 - theta) h.
 // No initial multipliers, no drift, no stabilization parameter; perfect constraints require
 // theta > 1/2.
-enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Condensed, Qoco, Clarabel, Conicxx };
+enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx };
 
 struct Config {
     // Simulation settings
