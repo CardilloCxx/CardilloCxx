@@ -1,6 +1,4 @@
-# 3.24 is required for FetchContent's OVERRIDE_FIND_PACKAGE/FetchContent_SetPopulated,
-# used in src/CMakeLists.txt to deduplicate QOCO's vendored qdldl copy against
-# ConicXX's own qdldl dependency (see the comment there for the full story).
+# 3.24 is required for FetchContent's OVERRIDE_FIND_PACKAGE (Eigen in src/CMakeLists.txt).
 cmake_minimum_required(VERSION 3.24)
 project(cardillo_project LANGUAGES C CXX)
 

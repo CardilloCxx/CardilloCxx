@@ -306,6 +306,58 @@ prefixes as shown:
      - ``solver.iter_ref_iters``
      - ``0``
      - Maximum number of iterative refinement passes for the KKT solve (minimum 0).
+   * - ``conicxx_warm_start``
+     - ``conicxx.warm_start``
+     - ``true``
+     - ConicXX: warm-start each solve from the previous solution.
+   * - ``conicxx_warm_lambda``
+     - ``conicxx.warm_lambda``
+     - ``0.99``
+     - ConicXX: weight of the previous solution in the warm start.
+   * - ``conicxx_warm_start_after_setup``
+     - ``conicxx.warm_start_after_setup``
+     - ``true``
+     - ConicXX: after a re-setup (changed contact set), warm-start from velocities, percussions and matched contact impulses.
+   * - ``conicxx_compliant_rows``
+     - ``conicxx.compliant_rows``
+     - ``true``
+     - ConicXX: springs and dampers as compliant zero-cone rows; ``false`` keeps their percussions as primal variables.
+   * - ``conicxx_verbose``
+     - ``conicxx.verbose``
+     - ``0``
+     - ConicXX: 0 silent, 1 summary, 2 iteration table per solve.
+   * - ``conicxx_dynamic_reg_eps``
+     - ``conicxx.dynamic_reg_eps``
+     - ``1e-13``
+     - ConicXX: pivots with D*sign below this are replaced by +-``solver.kkt_dynamic_reg``.
+   * - ``conicxx_refine_tol``
+     - ``conicxx.refine_tol``
+     - ``1e-13``
+     - ConicXX: relative residual target of iterative refinement.
+   * - ``conicxx_max_step_fraction``
+     - ``conicxx.max_step_fraction``
+     - ``0.99``
+     - ConicXX: fraction-to-the-boundary step factor.
+   * - ``conicxx_equilibrate``
+     - ``conicxx.equilibrate``
+     - ``true``
+     - ConicXX: Ruiz equilibration of the problem data.
+   * - ``conicxx_equilibrate_max_iter``
+     - ``conicxx.equilibrate_max_iter``
+     - ``10``
+     - ConicXX: Ruiz iterations.
+   * - ``conicxx_equilibrate_min_scale``
+     - ``conicxx.equilibrate_min_scale``
+     - ``1e-4``
+     - ConicXX: lower bound of the cumulative equilibration factors.
+   * - ``conicxx_equilibrate_max_scale``
+     - ``conicxx.equilibrate_max_scale``
+     - ``1e4``
+     - ConicXX: upper bound of the cumulative equilibration factors.
+   * - ``conicxx_validate_inputs``
+     - ``conicxx.validate_inputs``
+     - ``true``
+     - ConicXX: reject non-finite problem data.
 
 Scene selection
 ~~~~~~~~~~~~~~~

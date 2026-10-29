@@ -212,14 +212,23 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.conicxx_warm_start = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "conicxx.linear_solver") {
+        } else if (key == "conicxx.warm_lambda") {
+            try {
+                cfg.conicxx_warm_lambda = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "conicxx.warm_start_after_setup") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "eigen" || v == "qdldl" || v == "regularized_ldlt" || v == "regularized-ldlt" || v == "regularizedldlt") {
-                cfg.conicxx_linear_solver = (v == "regularized-ldlt" || v == "regularizedldlt") ? "regularized_ldlt" : v;
-            } else {
-                std::cerr << "Warning: unrecognized conicxx.linear_solver '" << val << "'. Defaulting to 'qdldl'." << std::endl;
-                cfg.conicxx_linear_solver = "qdldl";
+            cfg.conicxx_warm_start_after_setup = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "conicxx.compliant_rows") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.conicxx_compliant_rows = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "conicxx.verbose") {
+            try {
+                cfg.conicxx_verbose = std::max(0, std::stoi(val));
+            } catch (...) {
             }
         } else if (key == "conicxx.dynamic_reg_eps") {
             try {
