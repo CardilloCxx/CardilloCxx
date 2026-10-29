@@ -201,25 +201,19 @@ struct Config {
     real_t ip_kkt_dynamic_reg{(real_t)1e-8};  // solver.kkt_dynamic_reg
     int ip_iter_ref_iters{2};                 // solver.iter_ref_iters
 
-    // ConicXX-only: unlike QOCO/Clarabel it can reuse its KKT factorization and
-    // warm-start its iterate across steps when the active contact set hasn't
-    // changed (see docs/chapters/solvers/interior_point.rst).
-    bool conicxx_warm_start{true};  // conicxx.warm_start
-
-    // ConicXX-only: which sparse LDL^T backend factorizes/solves the KKT system.
-    // One of "eigen" (Eigen::SimplicialLDLT, always available), "qdldl" (the
-    // backend QOCO/Clarabel use -- ConicXX's own default), or
-    // "regularized_ldlt" (a custom Davis/ECOS-style backend correcting bad
-    // pivots inline during elimination instead of KktSystem's outer
-    // refactorize-from-scratch retry loop). "qdldl"/"regularized_ldlt" fall
-    // back to "eigen" with a one-time warning if ConicXX wasn't built with
-    // CONICXX_WITH_QDLDL.
-    std::string conicxx_linear_solver{"qdldl"};  // conicxx.linear_solver [eigen, qdldl, regularized_ldlt]
+    // ConicXX-only: unlike QOCO/Clarabel it keeps its solver across steps and warm-starts from the
+    // previous solution while the active contact set is unchanged (see
+    // docs/chapters/solvers/interior_point.rst).
+    bool conicxx_warm_start{true};               // conicxx.warm_start
+    real_t conicxx_warm_lambda{(real_t)0.99};    // conicxx.warm_lambda -- weight of the previous solution in the warm start
+    bool conicxx_warm_start_after_setup{true};   // conicxx.warm_start_after_setup -- warm start from velocities and matched impulses when the contact set changed
+    bool conicxx_compliant_rows{true};           // conicxx.compliant_rows -- springs/dampers as compliant zero-cone rows (off: percussions as primal variables)
+    int conicxx_verbose{0};                      // conicxx.verbose -- 0 silent, 1 summary, 2 iteration table per solve
 
     // ConicXX-only: remaining conicxx::Settings fields not already covered by
     // the shared ip_kkt_*/pj_tol_*/pj_max_iterations fields above.
-    real_t conicxx_dynamic_reg_eps{(real_t)1e-14};      // conicxx.dynamic_reg_eps -- pivot-magnitude threshold triggering a regularization bump
-    real_t conicxx_refine_tol{(real_t)1e-12};           // conicxx.refine_tol -- target relative residual for iterative refinement
+    real_t conicxx_dynamic_reg_eps{(real_t)1e-13};      // conicxx.dynamic_reg_eps -- pivots with D*sign below this are replaced by +-solver.kkt_dynamic_reg
+    real_t conicxx_refine_tol{(real_t)1e-13};           // conicxx.refine_tol -- relative residual target of iterative refinement
     real_t conicxx_max_step_fraction{(real_t)0.99};     // conicxx.max_step_fraction -- fraction-to-boundary safety factor
     bool conicxx_equilibrate{true};                     // conicxx.equilibrate -- enable Ruiz scaling
     int conicxx_equilibrate_max_iter{10};               // conicxx.equilibrate_max_iter

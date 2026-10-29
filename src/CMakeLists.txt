@@ -78,7 +78,8 @@ FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Cl
 # custom shapes (GEOM_CUSTOM) for the beam hull colliders.
 FetchContent_Declare(coal GIT_REPOSITORY https://github.com/41pha1/coal.git GIT_TAG a90ca6e50bc6a038598148c69cbd84afd9c19df2)
 FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
-FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG cddaa5d5454fc0eb82e7b5851a09fd07cf6777f3)
+# FetchContent_Declare(conicxx SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../ConicXX")
+FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG main)
 FetchContent_MakeAvailable(Eigen3)
 
 add_library(eigen3 INTERFACE IMPORTED GLOBAL)
@@ -100,52 +101,6 @@ get_target_property(COAL_INCLUDE_DIRS coal INTERFACE_INCLUDE_DIRECTORIES)
 set_target_properties(coal PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${COAL_INCLUDE_DIRS}")
 
 
-# QOCO vendors its own copy of QDLDL under lib/qdldl (plain add_subdirectory,
-# not FetchContent) at *global* CMake target scope: it unconditionally defines
-# targets literally named `qdldlobject`/`qdldlstatic`. ConicXX independently
-# wants a real, current qdldl (github.com/osqp/qdldl v0.1.9) as one of its
-# selectable KKT linear-solver backends (see
-# docs/chapters/solvers/interior_point.rst), fetched via its own
-# `find_package(qdldl QUIET)` + FetchContent-fallback using those exact same
-# unqualified target names.
-#
-# These two copies are NOT interchangeable: QOCO's vendored copy is an older
-# qdldl whose QDLDL_factor() has a different (shorter) parameter list than
-# the v0.1.9 API ConicXX's kkt/qdldl_ldlt.cpp and kkt/regularized_ldlt.cpp are
-# written against -- aliasing one copy for both call sites was tried first
-# and fails to compile with a hard "too few arguments to function
-# QDLDL_factor" error. So both copies are genuinely needed simultaneously,
-# which means their global CMake target names must not collide.
-#
-# FetchContent tracks population per *content name*, not per declared
-# GIT_REPOSITORY/GIT_TAG, so if "qdldl" is already populated under that name
-# by the time ConicXX's own (re-)declare + FetchContent_MakeAvailable(qdldl)
-# call runs, that call is a no-op and ConicXX picks up whatever we already
-# provided. So: fetch the real qdldl v0.1.9 ourselves first, with a
-# PATCH_COMMAND that renames its `qdldlobject`/`qdldlstatic` targets to
-# `conicxx_qdldlobject`/`conicxx_qdldlstatic` (see
-# cmake/qdldl_rename_targets.sed) so they can't collide with QOCO's copy of
-# the same names, then alias `qdldl::qdldl` to the renamed static target --
-# exactly what ConicXX's own (unpatched) logic would have aliased, just
-# under collision-safe names. (Flagged upstream to ConicXX too: an optional
-# dependency that always claims global, unnamespaced CMake target names is
-# inherently fragile against any sibling project vendoring the same
-# library under an incompatible version -- QOCO isn't unique in doing this.)
-set(QDLDL_BUILD_STATIC_LIB ON CACHE BOOL "" FORCE)
-set(QDLDL_BUILD_SHARED_LIB OFF CACHE BOOL "" FORCE)
-set(QDLDL_BUILD_DEMO_EXE OFF CACHE BOOL "" FORCE)
-set(QDLDL_UNITTESTS OFF CACHE BOOL "" FORCE)
-set(QDLDL_LONG OFF CACHE BOOL "" FORCE)  # QDLDL_int == int, matching conicxx::Index
-FetchContent_Declare(qdldl
-    GIT_REPOSITORY https://github.com/osqp/qdldl.git
-    GIT_TAG v0.1.9
-    GIT_SHALLOW TRUE
-    PATCH_COMMAND sed -i.bak -f "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/qdldl_rename_targets.sed" CMakeLists.txt
-)
-FetchContent_MakeAvailable(qdldl)
-if(NOT TARGET qdldl::qdldl)
-    add_library(qdldl::qdldl ALIAS conicxx_qdldlstatic)
-endif()
 FetchContent_MakeAvailable(conicxx)
 
 # --- 2. Engine Targets ---

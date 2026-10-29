@@ -13,16 +13,11 @@
 
 namespace cardillo::solver {
 
-// Unlike ClarabelSolver/QocoSolver (which have to fully rebuild their solver
-// object every step, see ClarabelSolver::updateSolver / QocoSolver::updateQocoSolver),
-// ConicxxSolver keeps a single conicxx::Solver alive across the whole
-// simulation and uses conicxx::Solver::updateData() for the common case where
-// the active contact set (and therefore the sparsity pattern of A and the
-// cone structure) hasn't changed since the last step. When it has changed,
-// it falls back to a fresh conicxx::Solver::setup() call, exactly as
-// documented in conicxx/solver.h's class comment. ConicXX also warm-starts
-// itself internally (Settings::warm_start) across successful solve() calls,
-// so no explicit setWarmStart() bookkeeping is needed here.
+// Unlike ClarabelSolver/QocoSolver (which rebuild their solver object every step), ConicxxSolver
+// keeps one conicxx::Solver for the whole simulation: conicxx::Solver::updateData() when the
+// sparsity pattern and the cone structure are unchanged (ConicXX then warm-starts from its previous
+// solution), conicxx::Solver::setup() otherwise. Spring and damper rows are compliant zero-cone
+// rows by default (conicxx.compliant_rows), see ConicxxAssembler.
 class ConicxxSolver : public SolverBase {
    public:
     explicit ConicxxSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg);
@@ -35,10 +30,13 @@ class ConicxxSolver : public SolverBase {
    private:
     conicxx::Settings makeSettings() const;
     bool coneSpecChanged(const conicxx::ConeSpec& spec) const;
+    // Warm start after a setup() (which discards ConicXX's own): x = current velocities (and
+    // percussions), z = previous percussions and matched contact impulses, s = b - Ax + C z_E.
+    void setWarmStartFromState(const SparseMatrix<Eigen::ColMajor>& A, const VectorXr& b, const VectorXr& compliance);
 
     physics::DynamicsAssembler& m_dyn;
-    physics::assembly::ConicxxAssembler m_assembler;
     config::Config m_cfg;
+    physics::assembly::ConicxxAssembler m_assembler;
 
     conicxx::Solver m_solver;
     bool m_setup_done{false};
