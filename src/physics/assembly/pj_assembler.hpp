@@ -20,6 +20,8 @@ class PjAssembler
     bool buildAndFactorS(real_t dt, real_t theta, bool implicitGyro = false);
     VectorXr rhs(real_t dt, real_t theta) const;
     VectorXr solveS(const VectorXr& rhs_ext) const;
+    // Solves S X = B for all columns of B at once (one factorization, many right-hand sides).
+    MatrixXXr solveSColumns(const MatrixXXr& B) const;
     const TripletMatrix& S() const { return m_S; }
 
    private:

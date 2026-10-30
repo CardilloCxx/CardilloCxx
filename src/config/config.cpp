@@ -142,6 +142,8 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.solver = SolverType::ConjugateGradient;
             else if (v == "condensed" || v == "condensed_solver")
                 cfg.solver = SolverType::Condensed;
+            else if (v == "naive_schur" || v == "naiveschur")
+                cfg.solver = SolverType::NaiveSchur;
             else {
                 std::cerr << "Warning: unrecognized solver.type '" << val << "'. Defaulting to ProjectedJacobi." << std::endl;
                 cfg.solver = SolverType::ProjectedJacobi;
@@ -368,7 +370,7 @@ Config ConfigReader::fromFile(const std::string& path) {
             cfg.output_write_contact_manifolds = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
         } else if (key == "output.interval_steps") {
             try {
-                cfg.output_interval_steps = std::max(1, std::stoi(val));
+                cfg.output_interval_steps = std::max(0, std::stoi(val));
             } catch (...) {
             }
         } else if (key == "output.folder") {

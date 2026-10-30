@@ -57,6 +57,9 @@ class TimingManager {
         CondensedSweep,
         CondensedColoring,
         CondensedLocalNewton,
+        NaiveSchurSetup,
+        NaiveSchur,
+        NaiveSchurSweep,
         Total,
         Other
     };
@@ -317,6 +320,12 @@ class TimingManager {
                 return "Condensed Coloring";
             case TimerId::CondensedLocalNewton:
                 return "Condensed Local Newton";
+            case TimerId::NaiveSchurSetup:
+                return "Naive Schur Setup";
+            case TimerId::NaiveSchur:
+                return "Naive Schur Solve";
+            case TimerId::NaiveSchurSweep:
+                return "Naive Schur Sweep";
             case TimerId::Total:
                 return "Total (all)";
             case TimerId::Other:

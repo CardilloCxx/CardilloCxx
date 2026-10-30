@@ -89,7 +89,7 @@ The simulation writes VTK output files that can be opened directly in
    * - ``output_interval_steps``
      - ``output.interval_steps``
      - ``50``
-     - Write one VTK frame every *N* time steps (minimum 1).
+     - Write one VTK frame every *N* time steps; 0 disables VTK output.
 
 Collision settings
 ~~~~~~~~~~~~~~~~~~
@@ -208,7 +208,7 @@ Solver selection and parameters
    * - ``solver``
      - ``solver.type``
      - ``ProjectedJacobi``
-     - Which contact solver to use (pj, pgs, ip, qoco, clarabel, cg)
+     - Which contact solver to use (pj, pgs, condensed, naive_schur, ip, qoco, clarabel, conicxx, cg)
    * - ``integrator``
      - ``integrator``, alias: ``solver.name``
      - ``Moreau``

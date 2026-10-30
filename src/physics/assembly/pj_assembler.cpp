@@ -158,4 +158,15 @@ VectorXr PjAssembler::solveS(const VectorXr& rhs_ext) const {
     }
     return sol;
 }
+
+MatrixXXr PjAssembler::solveSColumns(const MatrixXXr& B) const {
+    if (B.size() == 0) return B;
+    if (!m_S_sparse_lu.has_value()) throw std::runtime_error("PjAssembler::solveSColumns called but S matrix is not factorized");
+
+    MatrixXXr X = m_S_sparse_lu->solve(B);
+    if (m_S_sparse_lu->info() != Eigen::Success) {
+        throw std::runtime_error("PjAssembler::solveSColumns: SparseLU solve failed");
+    }
+    return X;
+}
 }  // namespace cardillo::physics::assembly

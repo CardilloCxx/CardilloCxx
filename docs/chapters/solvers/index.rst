@@ -62,6 +62,10 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
      - Block-sparse; config-selectable sweep strategy (Jacobi, Gauss-Seidel,
        graph-colored parallel, chaotic) and local solve (projection or
        semismooth Newton). Not accelerated. Experimental.
+   * - ``naive_schur``
+     - :doc:`naive_schur` (:cpp:class:`NaiveSchurSolver <cardillo::solver::NaiveSchurSolver>`)
+     - Reference solver: dense Schur complement onto the contacts, all
+       bilateral rows eliminated exactly. Small scenes only.
    * - ``conjugate_gradient``
      - :doc:`conjugate_gradient` (:cpp:class:`ConjugateGradientSolver <cardillo::solver::ConjugateGradientSolver>`)
      - Constraint-only scenes (no contact)
@@ -77,5 +81,6 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
    projected_jacobi
    projected_gauss_seidel
    condensed
+   naive_schur
    conjugate_gradient
    interior_point
