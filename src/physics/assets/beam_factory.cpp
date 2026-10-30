@@ -29,19 +29,24 @@ void appendSplineSamples(const BeamColliderMode& colliderMode, const misc::Splin
     const size_t segCount = segments;
 
     if (colliderMode == BeamColliderMode::InterSegmentHull) {
-        for (size_t i = 0; i <= segCount; ++i) {
+        const bool loop = spline.isLoop();
+        const size_t sampleCount = loop ? segCount : segCount + 1;
+        for (size_t i = 0; i < sampleCount; ++i) {
             real_t alphaPrev = (real_t) (i - 1) / (real_t)segCount;
             real_t alpha = (real_t)i / (real_t)segCount;
             real_t alphaNext = (real_t)(i + 1) / (real_t)segCount;
-            if (spline.isLoop() && i == segCount) alpha = (real_t)0;
+            if (loop) {
+                alphaPrev = (real_t)((i + segCount - 1) % segCount) / (real_t)segCount;
+                alphaNext = (real_t)((i + 1) % segCount) / (real_t)segCount;
+            }
 
             const misc::SplineSample siPrev = spline.sample(alphaPrev);
             const misc::SplineSample si = spline.sample(alpha);
             const misc::SplineSample siNext = spline.sample(alphaNext);
 
             real_t segLen = 0;
-            if (i > 0) segLen += (si.position - siPrev.position).norm() * 0.5;
-            if (i < segCount) segLen += (siNext.position - si.position).norm() * 0.5;
+            if (i > 0 || loop) segLen += (si.position - siPrev.position).norm() * 0.5;
+            if (i < segCount || loop) segLen += (siNext.position - si.position).norm() * 0.5;
 
             outSamples.push_back(BeamSample{si.position, si.tangent, si.normal, si.binormal, alpha, segLen});
         }
