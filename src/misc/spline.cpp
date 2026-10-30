@@ -69,7 +69,9 @@ SplineSample CircleSpline::sample(real_t alpha) const {
     alpha = std::min((real_t)1, std::max((real_t)0, alpha));
     real_t theta = m_theta0 + m_thetaSpan * alpha;
     Vector3r radial = std::cos(theta) * m_u + std::sin(theta) * m_v;  // outward in plane
-    Vector3r tangent = (-std::sin(theta) * m_u + std::cos(theta) * m_v).normalized();
+    // A negative span runs towards decreasing theta; the tangent follows increasing alpha.
+    const real_t direction = m_thetaSpan < (real_t)0 ? (real_t)-1 : (real_t)1;
+    Vector3r tangent = direction * (-std::sin(theta) * m_u + std::cos(theta) * m_v).normalized();
     Vector3r normal = radial.normalized();
     Vector3r binormal = tangent.cross(normal).normalized();  // aligns with m_n up to sign
     Vector3r pos = m_c + m_r * radial;
