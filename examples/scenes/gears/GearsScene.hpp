@@ -44,11 +44,11 @@ public:
         {
             real_t density = 5000.0;
             m_gear5 = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/gears4/gear1.obj", Vector3r(0.01, 0.01, 0.01)),physics::RigidState{Vector3r{-1,0,0}}, physics::RigidProps::withDensity(density));
-            auto rot5 = Quaternion4r(engine.getPosition(m_gear5).tail<4>()).toRotationMatrix().transpose();
+            Matrix33r rot5 = Quaternion4r(engine.getPosition(m_gear5).tail<4>()).toRotationMatrix().transpose();
             engine.addHingeConstraint(floor, m_gear5, physics::JointFrame::fromAxis(rot5 * Vector3r(-0.055,-0.055, 0), Vector3r::UnitZ(), m_gear5));
 
             auto gear6 = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/gears4/gear2.obj", Vector3r(0.01, 0.01, 0.01)),physics::RigidState{Vector3r{-1,0,0}}, physics::RigidProps::withDensity(density));
-            auto rot6 = Quaternion4r(engine.getPosition(gear6).tail<4>()).toRotationMatrix();
+            Matrix33r rot6 = Quaternion4r(engine.getPosition(gear6).tail<4>()).toRotationMatrix();
             engine.addHingeConstraint(floor, gear6, physics::JointFrame::fromAxis(rot6 * Vector3r(-0.05,0.05, 0), Vector3r::UnitZ(), gear6));
         }
 
@@ -56,11 +56,11 @@ public:
         {
             real_t density = 5000.0;
             auto gear7 = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/gears5/gear1.obj", Vector3r(0.01, 0.01, 0.01)),physics::RigidState{Vector3r{0,1,0}}, physics::RigidProps::withDensity(density));
-            auto rot7 = Quaternion4r(engine.getPosition(gear7).tail<4>()).toRotationMatrix();
+            Matrix33r rot7 = Quaternion4r(engine.getPosition(gear7).tail<4>()).toRotationMatrix();
             engine.addHingeConstraint(floor, gear7, physics::JointFrame::fromAxis(rot7 * Vector3r(-0.015,0.07,0), Vector3r::UnitZ(), gear7), 50, 1);
 
             m_gear8 = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/gears5/gear2.obj", Vector3r(0.01, 0.01, 0.01)),physics::RigidState{Vector3r{0,1,0}}, physics::RigidProps::withDensity(density));
-            auto rot8 = Quaternion4r(engine.getPosition(m_gear8).tail<4>()).toRotationMatrix();
+            Matrix33r rot8 = Quaternion4r(engine.getPosition(m_gear8).tail<4>()).toRotationMatrix();
             engine.addHingeConstraint(floor, m_gear8, physics::JointFrame::fromAxis(rot8 * Vector3r(0,0,0), Vector3r::UnitZ(), m_gear8));
         }
 
@@ -88,11 +88,11 @@ public:
         {
             real_t density = 5000.0;
             m_gear12 = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/gears8/gear1.obj", Vector3r(0.01, 0.01, 0.01)),physics::RigidState{Vector3r{1,-1,0}}, physics::RigidProps::withDensity(density));
-            auto rot12 = Quaternion4r(engine.getPosition(m_gear12).tail<4>()).toRotationMatrix().transpose();
+            Matrix33r rot12 = Quaternion4r(engine.getPosition(m_gear12).tail<4>()).toRotationMatrix().transpose();
             engine.addHingeConstraint(floor, m_gear12, physics::JointFrame::fromAxis(rot12 * Vector3r(0.022,-0.012,0), Vector3r::UnitZ(), m_gear12));
 
             auto gear13 = engine.addRigidBody(physics::MeshShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/gears8/gear2.obj", Vector3r(0.01, 0.01, 0.01)),physics::RigidState{Vector3r{1,-1,0}}, physics::RigidProps::withDensity(density));
-            auto rot13 = Quaternion4r(engine.getPosition(gear13).tail<4>()).toRotationMatrix().transpose();
+            Matrix33r rot13 = Quaternion4r(engine.getPosition(gear13).tail<4>()).toRotationMatrix().transpose();
             engine.addHingeConstraint(floor, gear13, physics::JointFrame::fromAxis(rot13 * Vector3r(-0.019,0.01,0), Vector3r::UnitZ(), gear13));
         }
     }
