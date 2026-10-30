@@ -298,9 +298,9 @@ ConstraintResult BeamConstraint::getConstraint() const {
     out.Crows = VectorXr::Zero(6);
     out.Arows = VectorXr::Zero(6);
 
-    // Effective stiffnesses (considering scaling factors)
-    Vector3r Ke_eff = m_springs.Ke(l_0, m_section).cwiseProduct(m_springs.scaleKe);
-    Vector3r Kf_eff = m_springs.Kf(l_0, m_section).cwiseProduct(m_springs.scaleKf);
+    // Ke()/Kf() already include the scaling factors scaleKe/scaleKf
+    Vector3r Ke_eff = m_springs.Ke(l_0, m_section);
+    Vector3r Kf_eff = m_springs.Kf(l_0, m_section);
     Vector3r De_eff = Ke_eff * m_springs.dampingFactor;
     Vector3r Df_eff = Kf_eff * m_springs.dampingFactor;
 
