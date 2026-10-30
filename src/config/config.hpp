@@ -17,7 +17,7 @@ enum class IntegratorType { Moreau };
 // with free bodies, kinematic drivers and prescribed rates all at t_{n+theta} = t_n + (1 - theta) h.
 // No initial multipliers, no drift, no stabilization parameter; perfect constraints require
 // theta > 1/2.
-enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx };
+enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx, Scs };
 
 struct Config {
     // Simulation settings
@@ -201,31 +201,47 @@ struct Config {
     real_t ip_kkt_dynamic_reg{(real_t)1e-8};  // solver.kkt_dynamic_reg
     int ip_iter_ref_iters{2};                 // solver.iter_ref_iters
 
-    // ConicXX-only: unlike QOCO/Clarabel it can reuse its KKT factorization and
-    // warm-start its iterate across steps when the active contact set hasn't
-    // changed (see docs/chapters/solvers/interior_point.rst).
-    bool conicxx_warm_start{true};  // conicxx.warm_start
-
-    // ConicXX-only: which sparse LDL^T backend factorizes/solves the KKT system.
-    // One of "eigen" (Eigen::SimplicialLDLT, always available), "qdldl" (the
-    // backend QOCO/Clarabel use -- ConicXX's own default), or
-    // "regularized_ldlt" (a custom Davis/ECOS-style backend correcting bad
-    // pivots inline during elimination instead of KktSystem's outer
-    // refactorize-from-scratch retry loop). "qdldl"/"regularized_ldlt" fall
-    // back to "eigen" with a one-time warning if ConicXX wasn't built with
-    // CONICXX_WITH_QDLDL.
-    std::string conicxx_linear_solver{"qdldl"};  // conicxx.linear_solver [eigen, qdldl, regularized_ldlt]
+    // ConicXX-only: unlike QOCO/Clarabel it keeps its solver across steps and warm-starts from the
+    // previous solution while the active contact set is unchanged (see
+    // docs/chapters/solvers/interior_point.rst).
+    bool conicxx_warm_start{true};               // conicxx.warm_start
+    real_t conicxx_warm_lambda{(real_t)0.99};    // conicxx.warm_lambda -- weight of the previous solution in the warm start
+    bool conicxx_warm_start_after_setup{true};   // conicxx.warm_start_after_setup -- warm start from velocities and matched impulses when the contact set changed
+    bool conicxx_compliant_rows{true};           // conicxx.compliant_rows -- springs/dampers as compliant zero-cone rows (off: percussions as primal variables)
+    int conicxx_verbose{0};                      // conicxx.verbose -- 0 silent, 1 summary, 2 iteration table per solve
 
     // ConicXX-only: remaining conicxx::Settings fields not already covered by
     // the shared ip_kkt_*/pj_tol_*/pj_max_iterations fields above.
-    real_t conicxx_dynamic_reg_eps{(real_t)1e-14};      // conicxx.dynamic_reg_eps -- pivot-magnitude threshold triggering a regularization bump
-    real_t conicxx_refine_tol{(real_t)1e-12};           // conicxx.refine_tol -- target relative residual for iterative refinement
+    real_t conicxx_dynamic_reg_eps{(real_t)1e-13};      // conicxx.dynamic_reg_eps -- pivots with D*sign below this are replaced by +-solver.kkt_dynamic_reg
+    real_t conicxx_refine_tol{(real_t)1e-13};           // conicxx.refine_tol -- relative residual target of iterative refinement
     real_t conicxx_max_step_fraction{(real_t)0.99};     // conicxx.max_step_fraction -- fraction-to-boundary safety factor
     bool conicxx_equilibrate{true};                     // conicxx.equilibrate -- enable Ruiz scaling
     int conicxx_equilibrate_max_iter{10};               // conicxx.equilibrate_max_iter
     real_t conicxx_equilibrate_min_scale{(real_t)1e-4};  // conicxx.equilibrate_min_scale
     real_t conicxx_equilibrate_max_scale{(real_t)1e4};   // conicxx.equilibrate_max_scale
     bool conicxx_validate_inputs{true};                 // conicxx.validate_inputs
+
+    // SCS-only (solver.type = scs, requires -DCARDILLO_WITH_SCS=ON). Negative numeric values keep
+    // SCS's own defaults (scs_set_default_settings). SCS is a first-order (ADMM) solver, so its
+    // tolerances are not comparable one-to-one with the interior-point ones; negative eps values fall
+    // back to pj.tol_abs / pj.tol_rel like the other conic backends.
+    real_t scs_eps_abs{(real_t)-1};              // scs.eps_abs
+    real_t scs_eps_rel{(real_t)-1};              // scs.eps_rel
+    real_t scs_eps_infeas{(real_t)-1};           // scs.eps_infeas
+    int scs_max_iters{-1};                       // scs.max_iters
+    real_t scs_time_limit_secs{(real_t)-1};      // scs.time_limit_secs
+    real_t scs_alpha{(real_t)-1};                // scs.alpha (Douglas-Rachford relaxation)
+    real_t scs_scale{(real_t)-1};                // scs.scale (initial dual scale)
+    real_t scs_rho_x{(real_t)-1};                // scs.rho_x
+    int scs_acceleration_lookback{-1};           // scs.acceleration_lookback (0 disables Anderson acceleration)
+    int scs_acceleration_interval{-1};           // scs.acceleration_interval
+    bool scs_adaptive_scale{true};               // scs.adaptive_scale
+    bool scs_normalize{true};                    // scs.normalize (data equilibration)
+    bool scs_warm_start{true};                   // scs.warm_start -- x from v_old/Lambda, y from the tracked contact impulses
+    bool scs_carry_scale{true};                  // scs.carry_scale -- start from the previous step's final adapted scale
+    std::string scs_stats_csv{""};               // scs.stats_csv -- per-step SCS statistics (empty = off)
+    std::string scs_dump_dir{""};                // scs.dump_dir -- write each step's cone program + warm start (see tests/conic_replay.cpp)
+    int scs_dump_every{1};                       // scs.dump_every -- dump every N-th step
 
     // Integrator selection
     IntegratorType integrator{IntegratorType::Moreau};

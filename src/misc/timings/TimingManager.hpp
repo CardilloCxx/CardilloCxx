@@ -46,6 +46,10 @@ class TimingManager {
         ClarabelSetup,
         ConicxxAssembly,
         ConicxxSetup,
+        ScsAssembly,
+        ScsSetup,
+        ScsSolve,
+        ScsExtract,
         OutputWrite,
         DynamicsAssembler_RefreshState,
         CondensedSetup,
@@ -294,6 +298,14 @@ class TimingManager {
                 return "ConicXX Assembly";
             case TimerId::ConicxxSetup:
                 return "ConicXX Setup";
+            case TimerId::ScsAssembly:
+                return "SCS Assembly";
+            case TimerId::ScsSetup:
+                return "SCS Setup (init + factorization)";
+            case TimerId::ScsSolve:
+                return "SCS Solve";
+            case TimerId::ScsExtract:
+                return "SCS Extract";
             case TimerId::DisableCollisionPairs:
                 return "Disable Collision Pairs";
             case TimerId::DynamicsAssembler_RefreshState:

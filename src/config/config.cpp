@@ -136,6 +136,8 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.solver = SolverType::Clarabel;
             else if (v == "conicxx" || v == "conic_xx" || v == "conicxx_solver")
                 cfg.solver = SolverType::Conicxx;
+            else if (v == "scs" || v == "scs_solver")
+                cfg.solver = SolverType::Scs;
             else if (v == "conjugate_gradient" || v == "conjugategradient" || v == "cg")
                 cfg.solver = SolverType::ConjugateGradient;
             else if (v == "condensed" || v == "condensed_solver")
@@ -214,14 +216,23 @@ Config ConfigReader::fromFile(const std::string& path) {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             cfg.conicxx_warm_start = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "conicxx.linear_solver") {
+        } else if (key == "conicxx.warm_lambda") {
+            try {
+                cfg.conicxx_warm_lambda = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "conicxx.warm_start_after_setup") {
             std::string v = val;
             std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "eigen" || v == "qdldl" || v == "regularized_ldlt" || v == "regularized-ldlt" || v == "regularizedldlt") {
-                cfg.conicxx_linear_solver = (v == "regularized-ldlt" || v == "regularizedldlt") ? "regularized_ldlt" : v;
-            } else {
-                std::cerr << "Warning: unrecognized conicxx.linear_solver '" << val << "'. Defaulting to 'qdldl'." << std::endl;
-                cfg.conicxx_linear_solver = "qdldl";
+            cfg.conicxx_warm_start_after_setup = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "conicxx.compliant_rows") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            cfg.conicxx_compliant_rows = (v == "1" || v == "true" || v == "yes" || v == "on");
+        } else if (key == "conicxx.verbose") {
+            try {
+                cfg.conicxx_verbose = std::max(0, std::stoi(val));
+            } catch (...) {
             }
         } else if (key == "conicxx.dynamic_reg_eps") {
             try {
@@ -267,6 +278,44 @@ Config ConfigReader::fromFile(const std::string& path) {
             if (v == "auto" || v == "cpu" || v == "builtin" || v == "cuda") {
                 if (v == "builtin") v = "cpu";
                 cfg.qoco_backend = v;
+            }
+        } else if (key == "scs.eps_abs" || key == "scs.eps_rel" || key == "scs.eps_infeas" || key == "scs.time_limit_secs" || key == "scs.alpha" || key == "scs.scale" ||
+                   key == "scs.rho_x") {
+            try {
+                const real_t x = static_cast<real_t>(std::stod(val));
+                if (key == "scs.eps_abs") cfg.scs_eps_abs = x;
+                else if (key == "scs.eps_rel") cfg.scs_eps_rel = x;
+                else if (key == "scs.eps_infeas") cfg.scs_eps_infeas = x;
+                else if (key == "scs.time_limit_secs") cfg.scs_time_limit_secs = x;
+                else if (key == "scs.alpha") cfg.scs_alpha = x;
+                else if (key == "scs.scale") cfg.scs_scale = x;
+                else cfg.scs_rho_x = x;
+            } catch (...) {
+            }
+        } else if (key == "scs.max_iters" || key == "scs.acceleration_lookback" || key == "scs.acceleration_interval") {
+            try {
+                const int x = std::stoi(val);
+                if (key == "scs.max_iters") cfg.scs_max_iters = x;
+                else if (key == "scs.acceleration_lookback") cfg.scs_acceleration_lookback = x;
+                else cfg.scs_acceleration_interval = x;
+            } catch (...) {
+            }
+        } else if (key == "scs.adaptive_scale" || key == "scs.normalize" || key == "scs.warm_start" || key == "scs.carry_scale") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            const bool on = (v == "1" || v == "true" || v == "yes" || v == "on");
+            if (key == "scs.adaptive_scale") cfg.scs_adaptive_scale = on;
+            else if (key == "scs.normalize") cfg.scs_normalize = on;
+            else if (key == "scs.warm_start") cfg.scs_warm_start = on;
+            else cfg.scs_carry_scale = on;
+        } else if (key == "scs.stats_csv") {
+            cfg.scs_stats_csv = val;
+        } else if (key == "scs.dump_dir") {
+            cfg.scs_dump_dir = val;
+        } else if (key == "scs.dump_every") {
+            try {
+                cfg.scs_dump_every = std::max(1, std::stoi(val));
+            } catch (...) {
             }
         } else if (key == "solver.kkt_static_reg" || key == "ip.kkt_static_reg" || key == "qoco.kkt_static_reg" || key == "clarabel.static_regularization_constant") {
             try {

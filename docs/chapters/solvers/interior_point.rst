@@ -334,7 +334,9 @@ are in standard form, implementation, and build requirements.
    * - Equality handling
      - Separate :math:`A`, :math:`b` matrices
      - Zero-cone rows prepended to :math:`A`
-     - Zero-cone rows prepended to :math:`A` (``ConeSpec::zero_dim``)
+     - Zero-cone rows prepended to :math:`A` (``ConeSpec::zero_dim``), with
+       an optional compliance per row (springs and dampers without extra
+       variables, see below)
    * - Iterative refinement
      - Not supported
      - ``solver.iter_ref_iters`` refinement passes per KKT solve
@@ -347,10 +349,9 @@ are in standard form, implementation, and build requirements.
    * - Warmstart
      - None (restarts from central path each step)
      - None
-     - **Yes** -- ``Solver::updateData()`` reuses the KKT sparsity pattern
-       and factorization symbolic analysis, and ``Settings::warm_start``
-       seeds the next solve from the previous iterate, whenever the active
-       contact set hasn't changed since the last step
+     - **Yes** -- from its previous solution while the contact set is
+       unchanged (``Solver::updateData()``), otherwise from the current
+       velocities and the matched contact impulses
 
 QOCO backend selection
 ----------------------
@@ -361,29 +362,65 @@ QOCO resolves its backend library at runtime:
 - ``qoco.backend = cpu`` -- CPU only
 - ``qoco.backend = cuda`` -- CUDA only
 
+ConicXX compliant rows
+----------------------
+
+ConicXX accepts a compliance :math:`c_i \ge 0` per zero-cone row and solves
+
+.. math::
+
+   \min_x\; \tfrac{1}{2} x^\top \mathsf{P} x + \mathsf{q}^\top x + \tfrac{1}{2} y^\top C y
+   \quad\text{s.t.}\quad
+   \mathsf{A}_\mathrm{eq} x - C y = \mathsf{b}_\mathrm{eq}, \quad
+   \mathsf{h} - \mathsf{G} x \in \mathcal{K},
+
+with :math:`y` the multipliers of the equality rows. This is the problem above
+with the percussions :math:`\pi = -y` eliminated. With
+``conicxx.compliant_rows = on`` (default) :cpp:class:`ConicxxAssembler
+<cardillo::physics::assembly::ConicxxAssembler>` therefore passes
+:math:`x = u`, :math:`\mathsf{P} = M`, the rows :math:`W_g^\top`,
+:math:`W_\gamma^\top` and :math:`C = \operatorname{diag}(\hat C_g, \hat C_\gamma)`;
+the percussions are read from :math:`\pi = -y` as before. ``off`` keeps the
+percussions as primal variables (the formulation above), for comparison. Both
+give the same solution. The compact form has fewer variables, and the
+compliance enters the KKT matrix exactly, not on top of the static
+regularization, which matters for stiff rods whose compliances are of the
+order of ``solver.kkt_static_reg``.
+
 ConicXX warm start and incremental reuse
 -----------------------------------------
 
 Unlike QOCO and Clarabel, :cpp:class:`ConicxxSolver <cardillo::solver::ConicxxSolver>`
 keeps a single ``conicxx::Solver`` instance alive for the whole simulation.
-Every step it rebuilds ``P``/``q``/``A``/``b``/cone spec from the assembler as
-usual, but instead of unconditionally re-creating the solver, it first tries
-``conicxx::Solver::updateData()`` (a cheap values-only update that reuses the
-existing KKT sparsity pattern and factorization symbolic analysis). Only when
-that fails -- i.e. the active contact set changed and the sparsity pattern of
-``A`` (or the cone composition; see below) no longer matches -- does it fall
-back to a full ``conicxx::Solver::setup()``, exactly mirroring the usage
-pattern documented in ConicXX's own ``solver.h``. When ``conicxx.warm_start``
-is enabled, ConicXX also seeds each solve from its own previous iterate
-automatically (no explicit bookkeeping needed on the CardilloMPI side).
+Every step it rebuilds ``P``/``q``/``A``/``b``/compliance/cone spec from the
+assembler, and first tries ``conicxx::Solver::updateData()`` (values only, same
+KKT sparsity pattern and symbolic analysis). Only when that fails -- the active
+contact set changed, so the sparsity pattern of ``A`` (or the cone composition,
+see below) no longer matches -- does it call ``conicxx::Solver::setup()``.
 
-Note that ``updateData()`` only checks the sparsity pattern of ``A``, not the
-cone composition itself -- a contact whose friction coefficient crosses zero
+With ``conicxx.warm_start`` (default ``on``) ConicXX starts each solve after
+``updateData()`` from its previous solution: the point
+:math:`\lambda\,(x, s, z)_\text{prev} + (1-\lambda)(0, e, e)` of the
+homogeneous embedding (Skajaa, Andersen, Ye 2013), :math:`\lambda` =
+``conicxx.warm_lambda``, if its residuals are not worse than those of the cold
+start. ``setup()`` discards that state; with ``conicxx.warm_start_after_setup``
+(default ``on``) ``ConicxxSolver`` then passes a warm start built from the
+current velocities, the previous bilateral percussions and the contact
+impulses matched across steps (``collision.match_max_dist``), which ConicXX
+projects onto the cones and accepts under the same rule.
+
+``updateData()`` only checks the sparsity pattern of ``A``, not the cone
+composition itself -- a contact whose friction coefficient crosses zero
 between steps can switch a row between the nonnegative orthant and a
 second-order cone block while coincidentally leaving ``A``'s row count and
 nonzero pattern unchanged. ``ConicxxSolver`` guards against this explicitly by
 also comparing the freshly computed ``ConeSpec`` against the one used at the
 last ``setup()``, and forcing a full re-setup if it differs.
+
+With ``debug.pj = on`` ``ConicxxSolver`` prints one line per step (setup or
+update, cone sizes, iterations, factorizations, dynamically regularized
+pivots, setup and solve time); ``conicxx.verbose = 2`` prints ConicXX's
+iteration table.
 
 .. _ip-limitations:
 
@@ -397,8 +434,9 @@ Limitations
   not be feasible in the next timestep, so it cannot directly be used as
   warmstart, and when contacts appear or disappear the sparsity pattern of
   :math:`\mathsf{G}`/:math:`\mathsf{A}` changes, requiring a full solver re-setup every step.
-  ConicXX does not have this limitation in the common case where the contact
-  set is momentarily stable (see above).
+  ConicXX does not have this limitation: it reuses its solver while the
+  contact set is unchanged and warm-starts from velocities and matched impulses
+  otherwise (see above).
 - **No implicit gyroscopy** (``moreau.implicit_gyroscopy``). This setting is
   silently ignored by all three interior-point backends (the QP needs a
   symmetric mass matrix); use PJ or the condensed solver if you need it.
@@ -427,32 +465,26 @@ Config keys
    * - ``solver.iter_ref_iters``
      - Iterative refinement passes per KKT solve (Clarabel, ConicXX)
    * - ``conicxx.warm_start``
-     - Enable/disable ConicXX's cross-step warm start and KKT reuse
-       (ConicXX only, default ``on``)
-   * - ``conicxx.linear_solver``
-     - Which sparse LDL^T backend factorizes the KKT system: ``eigen``
-       (``Eigen::SimplicialLDLT``, always available), ``qdldl`` (the backend
-       QOCO/Clarabel use -- ConicXX's own default), or ``regularized_ldlt``
-       (a custom Davis/ECOS-style backend correcting bad pivots inline
-       during elimination). ConicXX only; ``qdldl``/``regularized_ldlt``
-       silently fall back to ``eigen`` if ConicXX wasn't built with
-       ``CONICXX_WITH_QDLDL``.
-
-       .. warning::
-          ``regularized_ldlt`` was found to need dramatically more
-          interior-point iterations than ``eigen``/``qdldl`` on large,
-          heavily-contacted scenes (a domino-toppling scene with ~13,600
-          simultaneous frictional contacts didn't converge within 1200+
-          iterations, where ``eigen``/``qdldl`` converge in ~80) despite
-          identical per-factorization cost -- likely a convergence-quality
-          issue in how it handles many simultaneous near-degenerate pivots,
-          not a raw performance regression. Prefer ``qdldl`` (the default)
-          or ``eigen`` until this is resolved upstream.
+     - Enable/disable ConicXX's cross-step warm start (ConicXX only, default
+       ``on``)
+   * - ``conicxx.warm_lambda``
+     - Weight of the previous solution in the warm start (ConicXX only,
+       default ``0.99``)
+   * - ``conicxx.warm_start_after_setup``
+     - Warm start from velocities and matched contact impulses when the
+       contact set changed (ConicXX only, default ``on``)
+   * - ``conicxx.compliant_rows``
+     - Springs and dampers as compliant zero-cone rows (``on``, default) or
+       with their percussions as primal variables (``off``) (ConicXX only)
+   * - ``conicxx.verbose``
+     - ``0`` silent, ``1`` summary, ``2`` iteration table per solve (ConicXX
+       only)
    * - ``conicxx.dynamic_reg_eps``
-     - Pivot-magnitude threshold triggering a dynamic regularization bump
-       (ConicXX only)
+     - Pivots with :math:`D_{ii}\,\mathrm{sign}_i` below this are replaced by
+       :math:`\pm` ``solver.kkt_dynamic_reg`` (ConicXX only, default ``1e-13``)
    * - ``conicxx.refine_tol``
-     - Target relative residual for iterative refinement (ConicXX only)
+     - Relative residual target of iterative refinement (ConicXX only,
+       default ``1e-13``)
    * - ``conicxx.max_step_fraction``
      - Fraction-to-boundary step-length safety factor (ConicXX only)
    * - ``conicxx.equilibrate``

@@ -1,6 +1,4 @@
-# 3.24 is required for FetchContent's OVERRIDE_FIND_PACKAGE/FetchContent_SetPopulated,
-# used in src/CMakeLists.txt to deduplicate QOCO's vendored qdldl copy against
-# ConicXX's own qdldl dependency (see the comment there for the full story).
+# 3.24 is required for FetchContent's OVERRIDE_FIND_PACKAGE (Eigen in src/CMakeLists.txt).
 cmake_minimum_required(VERSION 3.24)
 project(cardillo_project LANGUAGES C CXX)
 
@@ -49,6 +47,11 @@ if(CARDILLO_ENABLE_NATIVE_ARCH)
         message(WARNING "CARDILLO_ENABLE_NATIVE_ARCH is ON but the compiler does not support -march=native (e.g. MSVC -- use /arch:AVX2 manually instead); ignoring.")
     endif()
 endif()
+
+# Optional SCS backend (solver.type = scs): the ADMM conic solver from github.com/cvxgrp/scs, fetched
+# and built from source; only its direct (AMD + QDLDL) linear-system backend is used.
+option(CARDILLO_WITH_SCS "Enable the SCS solver backend (fetched and built from source)" ON)
+option(CARDILLO_SCS_OPENMP "Build SCS with its OpenMP-parallel cone projections (off: serial, like the other conic backends)" ON)
 
 add_subdirectory(src)
 add_subdirectory(examples)

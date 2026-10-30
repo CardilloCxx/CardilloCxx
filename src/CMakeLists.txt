@@ -78,7 +78,8 @@ FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Cl
 # custom shapes (GEOM_CUSTOM) for the beam hull colliders.
 FetchContent_Declare(coal GIT_REPOSITORY https://github.com/41pha1/coal.git GIT_TAG a90ca6e50bc6a038598148c69cbd84afd9c19df2)
 FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
-FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG cddaa5d5454fc0eb82e7b5851a09fd07cf6777f3)
+# FetchContent_Declare(conicxx SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../ConicXX")
+FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG main)
 FetchContent_MakeAvailable(Eigen3)
 
 add_library(eigen3 INTERFACE IMPORTED GLOBAL)
@@ -100,58 +101,15 @@ get_target_property(COAL_INCLUDE_DIRS coal INTERFACE_INCLUDE_DIRECTORIES)
 set_target_properties(coal PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${COAL_INCLUDE_DIRS}")
 
 
-# QOCO vendors its own copy of QDLDL under lib/qdldl (plain add_subdirectory,
-# not FetchContent) at *global* CMake target scope: it unconditionally defines
-# targets literally named `qdldlobject`/`qdldlstatic`. ConicXX independently
-# wants a real, current qdldl (github.com/osqp/qdldl v0.1.9) as one of its
-# selectable KKT linear-solver backends (see
-# docs/chapters/solvers/interior_point.rst), fetched via its own
-# `find_package(qdldl QUIET)` + FetchContent-fallback using those exact same
-# unqualified target names.
-#
-# These two copies are NOT interchangeable: QOCO's vendored copy is an older
-# qdldl whose QDLDL_factor() has a different (shorter) parameter list than
-# the v0.1.9 API ConicXX's kkt/qdldl_ldlt.cpp and kkt/regularized_ldlt.cpp are
-# written against -- aliasing one copy for both call sites was tried first
-# and fails to compile with a hard "too few arguments to function
-# QDLDL_factor" error. So both copies are genuinely needed simultaneously,
-# which means their global CMake target names must not collide.
-#
-# FetchContent tracks population per *content name*, not per declared
-# GIT_REPOSITORY/GIT_TAG, so if "qdldl" is already populated under that name
-# by the time ConicXX's own (re-)declare + FetchContent_MakeAvailable(qdldl)
-# call runs, that call is a no-op and ConicXX picks up whatever we already
-# provided. So: fetch the real qdldl v0.1.9 ourselves first, with a
-# PATCH_COMMAND that renames its `qdldlobject`/`qdldlstatic` targets to
-# `conicxx_qdldlobject`/`conicxx_qdldlstatic` (see
-# cmake/qdldl_rename_targets.sed) so they can't collide with QOCO's copy of
-# the same names, then alias `qdldl::qdldl` to the renamed static target --
-# exactly what ConicXX's own (unpatched) logic would have aliased, just
-# under collision-safe names. (Flagged upstream to ConicXX too: an optional
-# dependency that always claims global, unnamespaced CMake target names is
-# inherently fragile against any sibling project vendoring the same
-# library under an incompatible version -- QOCO isn't unique in doing this.)
-set(QDLDL_BUILD_STATIC_LIB ON CACHE BOOL "" FORCE)
-set(QDLDL_BUILD_SHARED_LIB OFF CACHE BOOL "" FORCE)
-set(QDLDL_BUILD_DEMO_EXE OFF CACHE BOOL "" FORCE)
-set(QDLDL_UNITTESTS OFF CACHE BOOL "" FORCE)
-set(QDLDL_LONG OFF CACHE BOOL "" FORCE)  # QDLDL_int == int, matching conicxx::Index
-FetchContent_Declare(qdldl
-    GIT_REPOSITORY https://github.com/osqp/qdldl.git
-    GIT_TAG v0.1.9
-    GIT_SHALLOW TRUE
-    PATCH_COMMAND sed -i.bak -f "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/qdldl_rename_targets.sed" CMakeLists.txt
-)
-FetchContent_MakeAvailable(qdldl)
-if(NOT TARGET qdldl::qdldl)
-    add_library(qdldl::qdldl ALIAS conicxx_qdldlstatic)
-endif()
 FetchContent_MakeAvailable(conicxx)
 
 # --- 2. Engine Targets ---
 file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_library(cardillo SHARED ${CARDILLO_SOURCES})
 
+if(NOT CARDILLO_WITH_SCS)
+    list(FILTER CARDILLO_SOURCES EXCLUDE REGEX "/physics/solver/scs/[^/]*\\.cpp$")
+endif()
 
 # Python version of Coal:
 # find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
@@ -198,6 +156,62 @@ endif()
 
 target_include_directories(cardillo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
+# --- SCS (optional) ---
+# Only the direct backend (scsdir: AMD ordering + QDLDL LDL' of the quasi-definite KKT matrix) is
+# used. SCS vendors its own AMD and QDLDL under their original, unprefixed symbol names, and both
+# already exist in this process: libcardillo exports ConicXX's QDLDL (QDLDL_factor, ...) and libqoco
+# exports QOCO's AMD (amd_order, ...). scsdir is therefore built as its own shared library that
+# exports nothing but the public scs_* API (cmake/scs_exports.map): its internal QDLDL/AMD calls bind
+# to its own copies, and it cannot interpose on ConicXX's or QOCO's. scs_int = int and
+# scs_float = double (DLONG/SFLOAT off) are additionally checked by static_asserts in the adapter.
+if(CARDILLO_WITH_SCS)
+    set(BUILD_SHARED_LIBS ON)
+    # SCS compiles Anderson acceleration only with USE_LAPACK (src/aa.c); without it AA is silently
+    # disabled, which costs ADMM a large factor in iterations. Any BLAS/LAPACK will do (AA only needs
+    # small dense least-squares solves).
+    find_package(LAPACK QUIET)
+    if(LAPACK_FOUND)
+        set(USE_LAPACK ON)
+    else()
+        set(USE_LAPACK OFF)
+        message(WARNING "CARDILLO_WITH_SCS: no BLAS/LAPACK found; SCS is built without Anderson acceleration (expect many more iterations)")
+    endif()
+    set(DLONG OFF)
+    set(SFLOAT OFF)
+    # SCS's cmake/AddUninstallTarget.cmake defines a global `uninstall` target, which coal already
+    # defines; its own include guard skips it.
+    set(__ADD_UNINSTALL_TARGET_INCLUDED TRUE)
+    # SCS links OpenMP::OpenMP_C (and so compiles its `omp parallel for` loops over the cones and in
+    # a sparse mat-vec) whenever OpenMP_C_FOUND is set, independent of its own USE_OPENMP, and our
+    # find_package(OpenMP) above sets it. Fork-joining a full thread team per ADMM iteration over
+    # 3-dimensional cones made small scenes ~7x slower in practice, so SCS is built serial unless
+    # CARDILLO_SCS_OPENMP is on.
+    set(CARDILLO_SAVED_OpenMP_C_FOUND "${OpenMP_C_FOUND}")
+    if(NOT CARDILLO_SCS_OPENMP)
+        set(OpenMP_C_FOUND FALSE)
+    endif()
+    FetchContent_Declare(scs GIT_REPOSITORY https://github.com/cvxgrp/scs.git GIT_TAG 3.3.1 GIT_SHALLOW TRUE)
+    FetchContent_MakeAvailable(scs)
+    unset(BUILD_SHARED_LIBS)
+    unset(USE_LAPACK)
+    unset(DLONG)
+    unset(SFLOAT)
+    unset(__ADD_UNINSTALL_TARGET_INCLUDED)
+    set(OpenMP_C_FOUND "${CARDILLO_SAVED_OpenMP_C_FOUND}")
+    # SCS always defines its indirect (CG) and, with LAPACK, dense libraries; only scsdir is used.
+    foreach(_scs_unused scsindir scsdense)
+        if(TARGET ${_scs_unused})
+            set_target_properties(${_scs_unused} PROPERTIES EXCLUDE_FROM_ALL ON)
+        endif()
+    endforeach()
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_options(scsdir PRIVATE "LINKER:--version-script=${CMAKE_CURRENT_SOURCE_DIR}/../cmake/scs_exports.map")
+    endif()
+    # (macOS: two-level namespaces already bind scsdir's internal references to its own copies.)
+    target_link_libraries(cardillo PUBLIC scs::scsdir)
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_SCS=1)
+endif()
+
 # --- 4. QOCO-Specific Integration ---
 # Since QOCO requires specific path definitions, we derive them from the FetchContent locations
 set(QOCO_CPU_LIB_DIR "${qoco_BINARY_DIR}/lib")
@@ -214,8 +228,11 @@ endif()
 
 target_compile_definitions(cardillo PUBLIC 
     HAVE_QOCO=1
-    QOCO_CPU_LIB_PATH="${QOCO_CPU_LIB_DIR}/libqoco.so"
-    QOCO_CUDA_LIB_PATH="${QOCO_CPU_LIB_DIR}/libqoco.so" 
+    # QOCO_CPU_LIB_PATH="${QOCO_CPU_LIB_DIR}/libqoco.so"
+    # QOCO_CUDA_LIB_PATH="${QOCO_CPU_LIB_DIR}/libqoco.so" 
+    # The shared library's actual build location (it is not under ${QOCO_CPU_LIB_DIR}).
+    QOCO_CPU_LIB_PATH="$<TARGET_FILE:qoco>"
+    QOCO_CUDA_LIB_PATH="$<TARGET_FILE:qoco>" 
 )
 
 # --- 5. Clean Binary Properties ---
