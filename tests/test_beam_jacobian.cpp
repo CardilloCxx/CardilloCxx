@@ -10,9 +10,9 @@
 
 #include <Eigen/Geometry>
 
-#include "physics/api/physics_engine.hpp"
-#include "physics/constraints/constraints.hpp"
-#include "rigid_body/rigid_body.hpp"
+#include <cardillo/physics/api/physics_engine.hpp>
+#include <cardillo/physics/constraints/constraints.hpp>
+#include <cardillo/rigid_body/rigid_body.hpp>
 
 using namespace cardillo;
 using namespace cardillo::physics;

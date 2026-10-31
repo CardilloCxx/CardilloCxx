@@ -20,8 +20,8 @@
 #include <string>
 #include <vector>
 
-#include "physics/api/physics_engine.hpp"
-#include "physics/assembly/dynamics_assembler.hpp"
+#include <cardillo/physics/api/physics_engine.hpp>
+#include <cardillo/physics/assembly/dynamics_assembler.hpp>
 
 using namespace cardillo;
 using namespace cardillo::physics;
@@ -81,6 +81,7 @@ Run simulate(config::SolverType solver, real_t dt, real_t T, real_t z0, real_t v
     cfg.pj_tol_abs = conic ? 1e-10 : 1e-12;
     cfg.pj_tol_rel = conic ? 1e-10 : 1e-12;
     cfg.pj_max_iterations = 100000;
+    cfg.mosek_tol_rel_gap = cfg.mosek_tol_pfeas = cfg.mosek_tol_dfeas = 1e-10;  // MOSEK has its own tolerances
 
     PhysicsEngine engine(cfg);
     engine.addStaticBody(PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), 5, 5), RigidState{});
@@ -115,6 +116,8 @@ const char* name(config::SolverType s) {
             return "qoco";
         case config::SolverType::Clarabel:
             return "clarabel";
+        case config::SolverType::Mosek:
+            return "mosek";
         default:
             return "conicxx";
     }
@@ -216,7 +219,20 @@ void spinningImpact(config::SolverType solver, real_t dt, real_t omega0, real_t 
 
 int main() {
     using config::SolverType;
-    for (SolverType solver : {SolverType::ProjectedJacobi, SolverType::Qoco, SolverType::Clarabel, SolverType::Conicxx}) {
+    std::vector<SolverType> solvers = {SolverType::ProjectedJacobi};
+#ifdef CARDILLO_HAVE_QOCO
+    solvers.push_back(SolverType::Qoco);
+#endif
+#ifdef CARDILLO_HAVE_CLARABEL
+    solvers.push_back(SolverType::Clarabel);
+#endif
+#ifdef CARDILLO_HAVE_CONICXX
+    solvers.push_back(SolverType::Conicxx);
+#endif
+#ifdef CARDILLO_HAVE_MOSEK
+    solvers.push_back(SolverType::Mosek);
+#endif
+    for (SolverType solver : solvers) {
         try {
             for (real_t dt : {1e-3, 5e-4, 2.5e-4}) slidingBall(solver, dt);
             for (real_t dt : {1e-3, 1e-4}) {
@@ -225,10 +241,6 @@ int main() {
                 spinningImpact(solver, dt, 10.0, 0.5);  // sticking impact
             }
         } catch (const std::exception& ex) {
-            if (std::string(ex.what()).find("Failed to load QOCO runtime backend") != std::string::npos) {
-                std::cout << name(solver) << ": skipped (" << ex.what() << ")" << std::endl;
-                continue;
-            }
             check(false, std::string(name(solver)) + ": exception " + ex.what());
         }
     }

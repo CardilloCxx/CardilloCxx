@@ -13,8 +13,8 @@
 #include <string>
 #include <vector>
 
-#include "misc/spline.hpp"
-#include "physics/api/physics_engine.hpp"
+#include <cardillo/misc/spline.hpp>
+#include <cardillo/physics/api/physics_engine.hpp>
 
 using namespace cardillo;
 

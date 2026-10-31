@@ -15,8 +15,8 @@
 #include <utility>
 
 #include "../examples/scenes/torsional_oscillator/TorsionalOscillatorScene.hpp"
-#include "physics/constraints/constraints.hpp"
-#include "rigid_body/rigid_body.hpp"
+#include <cardillo/physics/constraints/constraints.hpp>
+#include <cardillo/rigid_body/rigid_body.hpp>
 
 using namespace cardillo;
 

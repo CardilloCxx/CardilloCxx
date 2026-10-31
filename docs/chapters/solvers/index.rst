@@ -74,6 +74,18 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
      - Interior-point, exact cone projection. ``conicxx`` additionally reuses
        its KKT factorization and warm-starts across steps when the active
        contact set is unchanged.
+   * - ``scs``
+     - ``ScsSolver`` (same cone program as Clarabel)
+     - First-order ADMM conic solver.
+   * - ``mosek``
+     - :doc:`interior_point` (``MosekSolver``)
+     - Interior-point via the commercial MOSEK conic optimizer; same problem
+       as ``clarabel``. Needs a MOSEK installation and license.
+
+The conic backends are optional and not built by default. Each is enabled with its CMake option
+(``-DCARDILLO_WITH_QOCO=ON``, ``CARDILLO_WITH_CLARABEL``, ``CARDILLO_WITH_CONICXX``,
+``CARDILLO_WITH_SCS``, ``CARDILLO_WITH_MOSEK``); selecting a backend that was not built throws an error naming the option.
+Their sources live in ``src/cardillo/physics/solver/conic/<backend>/``.
 
 .. toctree::
    :hidden:

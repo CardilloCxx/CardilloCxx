@@ -1,7 +1,7 @@
 # Collision (Coal) and geometry
 
-Code: `src/collision/collision_coal.{hpp,cpp}`, `beam_hull_shape.{hpp,cpp}`, `contact_tracker.*`,
-`src/physics/assets/{rigid_body_factory,beam_factory,assets}.cpp`, contact rows in
+Code: `src/cardillo/collision/collision_coal.{hpp,cpp}`, `beam_hull_shape.{hpp,cpp}`, `contact_tracker.*`,
+`src/cardillo/physics/assets/{rigid_body_factory,beam_factory,assets}.cpp`, contact rows in
 `DynamicsAssembler::rebuildW_()`.
 
 ## Coal version
@@ -12,7 +12,7 @@ patch fixes by the project owner) plus custom shapes (`GEOM_CUSTOM`, `computeSha
 needed by `BeamHullShape`. Switch back to an upstream release once these are merged there. Coal's
 headers are marked as system headers (Coal uses members it has deprecated itself).
 
-`src/collision/coal_types.hpp` only holds `static_assert`s (`real_t == coal::Scalar`,
+`src/cardillo/collision/coal_types.hpp` only holds `static_assert`s (`real_t == coal::Scalar`,
 `Vector3r == coal::Vec3s`); it is included once, in `collision_coal.cpp`. Pass Eigen values to Coal
 directly; use `coal::Triangle32` for triangles.
 

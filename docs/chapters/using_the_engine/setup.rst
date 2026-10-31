@@ -289,11 +289,6 @@ prefixes as shown:
      - cfg.txt key(s)
      - Default
      - Meaning
-   * - ``qoco_backend``
-     - ``qoco.backend``
-       accepts: ``auto``, ``cpu``, ``cuda``
-     - ``"cpu"``
-     - QOCO backend selection.
    * - ``ip_kkt_static_reg``
      - ``solver.kkt_static_reg``
      - ``1e-8``

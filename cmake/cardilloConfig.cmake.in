@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Eigen3)
+find_dependency(EnTT)
+find_dependency(coal)
+if(@OpenMP_CXX_FOUND@)
+    find_dependency(OpenMP)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/cardilloTargets.cmake")
+
+set(cardillo_WITH_CLARABEL @CARDILLO_WITH_CLARABEL@)
+set(cardillo_WITH_QOCO @CARDILLO_WITH_QOCO@)
+set(cardillo_WITH_CONICXX @CARDILLO_WITH_CONICXX@)
+set(cardillo_WITH_SCS @CARDILLO_WITH_SCS@)
+check_required_components(cardillo)

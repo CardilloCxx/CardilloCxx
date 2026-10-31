@@ -10,7 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "misc/spline.hpp"
+#include <cardillo/misc/spline.hpp>
 
 using namespace cardillo;
 

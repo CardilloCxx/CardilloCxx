@@ -1,5 +1,5 @@
-Interior-Point Solvers (QOCO, Clarabel and ConicXX)
-====================================================
+Interior-Point Solvers (QOCO, Clarabel, ConicXX and MOSEK)
+==========================================================
 
 .. contents:: On this page
    :local:
@@ -13,6 +13,11 @@ conic backends solve a *convexified* friction law instead. Its error is
 characterized below. Contact percussions always lie in the friction cone, but
 the normal velocity of an active frictional contact is wrong by :math:`\mu` times
 the change of its sliding speed within the step.
+
+The backends are optional: build them with ``-DCARDILLO_WITH_QOCO=ON``,
+``-DCARDILLO_WITH_CLARABEL=ON`` (needs Rust/cargo), ``-DCARDILLO_WITH_CONICXX=ON`` and
+``-DCARDILLO_WITH_MOSEK=ON`` (needs a MOSEK installation and license). Clarabel, SCS and MOSEK share the
+cone program assembled by ``ConeProgramAssembler``.
 
 The derivation below follows the theory manual (``LaTeX/theory_doc.tex``,
 section "Second-order cone formulation of the one-step problem"), which also
@@ -353,14 +358,63 @@ are in standard form, implementation, and build requirements.
        unchanged (``Solver::updateData()``), otherwise from the current
        velocities and the matched contact impulses
 
-QOCO backend selection
-----------------------
+MOSEK backend
+-------------
 
-QOCO resolves its backend library at runtime:
+``solver.type = mosek`` (:cpp:class:`MosekSolver <cardillo::solver::MosekSolver>`)
+solves exactly the problem Clarabel solves -- its data comes from the same
+assembler, in the stacked form :math:`Ax + s = b`, :math:`s \in \{0\}^p \times
+\mathbb{R}_+^l \times L \times \dots \times L` -- through the low-level MOSEK
+Optimizer API (``mosek.h``, no Fusion). It is only compiled with
+``-DCARDILLO_WITH_MOSEK=ON`` (see :doc:`../getting_started` for installation and license setup).
 
-- ``qoco.backend = auto`` -- tries CUDA first, falls back to CPU
-- ``qoco.backend = cpu`` -- CPU only
-- ``qoco.backend = cuda`` -- CUDA only
+Translation to MOSEK's conic form:
+
+* zero-cone rows become ordinary linear constraints with bounds
+  :math:`l_c = u_c = b`;
+* all other rows become affine conic constraints :math:`Fx + g \in K` with
+  :math:`F = -A`, :math:`g = b` (i.e. :math:`b - Ax = s \in K`); the sign flip
+  is applied while copying the coefficients. Second-order cones use the same
+  ordering (:math:`s_0 \ge \|s_{1:}\|`) in all backends, so nothing is permuted;
+* MOSEK rejects a quadratic objective together with conic constraints, so
+  :math:`\tfrac12 x^\top P x` is modelled by epigraph variables: for the
+  diagonal :math:`P` of the Moreau step one rotated cone
+  :math:`(t_i, 1, \sqrt{P_{ii}}\,x_i) \in Q_r^3` per variable and objective
+  :math:`q^\top x + \sum_i t_i`. (A single rotated cone over all of
+  :math:`x` is also available but was measured to be markedly less accurate on
+  large problems.) Non-diagonal :math:`P` is supported through a sparse
+  :math:`LDL^\top` factorization.
+
+The returned contact duals follow Clarabel's convention
+(:math:`Px + q + A^\top z = 0`). The MOSEK environment (and license checkout)
+and task persist for the whole simulation; if dimensions, cone composition and
+sparsity patterns are unchanged from the previous step, only the numerical
+values are written into the existing task, otherwise the task is rebuilt. MOSEK's
+interior-point optimizer does not accept a starting point, so there is no warm
+start.
+
+All parameters default to MOSEK's own defaults:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Key
+     - Meaning
+   * - ``mosek.num_threads``
+     - ``MSK_IPAR_NUM_THREADS`` (``0`` = MOSEK decides)
+   * - ``mosek.tol_rel_gap``, ``mosek.tol_pfeas``, ``mosek.tol_dfeas``
+     - ``MSK_DPAR_INTPNT_CO_TOL_{REL_GAP,PFEAS,DFEAS}``
+   * - ``mosek.max_iterations``
+     - ``MSK_IPAR_INTPNT_MAX_ITERATIONS``
+   * - ``mosek.max_time``
+     - ``MSK_DPAR_OPTIMIZER_MAX_TIME`` in seconds
+   * - ``mosek.presolve``
+     - ``default``, ``on``, ``off`` or ``free`` (``MSK_IPAR_PRESOLVE_USE``)
+
+``debug.pj = true`` forwards MOSEK's log to ``stdout``. The timers
+``MOSEK Assembly/Setup/Update/Solve/Extract`` separate problem assembly, task
+construction, numerical update, optimization and solution extraction.
 
 ConicXX compliant rows
 ----------------------
@@ -452,8 +506,6 @@ Config keys
      - Effect
    * - ``solver.type = qoco`` / ``clarabel`` / ``conicxx``
      - Select backend
-   * - ``qoco.backend``
-     - ``auto`` / ``cpu`` / ``cuda`` (QOCO only)
    * - ``solver.max_iterations``
      - Maximum interior-point iterations
    * - ``solver.tol_abs``, ``solver.tol_rel``

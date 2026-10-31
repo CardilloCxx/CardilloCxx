@@ -1,64 +1,83 @@
-# 3.24 is required for FetchContent's OVERRIDE_FIND_PACKAGE (Eigen in src/CMakeLists.txt).
+# 3.24: FetchContent with FIND_PACKAGE_ARGS (cmake/Dependencies.cmake), header file sets.
 cmake_minimum_required(VERSION 3.24)
-project(cardillo_project LANGUAGES C CXX)
+project(cardillo VERSION 0.1.0 LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# CMake's own default build type is empty (no -O/-DNDEBUG at all) unless explicitly requested;
-# for a numerics-heavy library that default silently produces an unoptimized build. Default to
-# RelWithDebInfo (-O2 -g -DNDEBUG) so a plain `cmake ..` is fast, while still allowing
-# `-DCMAKE_BUILD_TYPE=...` to override it as usual. Skipped for multi-config generators
-# (Visual Studio/Xcode), which select the configuration at build time instead.
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build type" FORCE)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-# ThreadSanitizer instrumentation, for validating CondensedSolver's parallel (jacobi/colored/
-# chaotic) sweep modes. TSan needs -O1 (not -O0, and not RelWithDebInfo's -O2 -DNDEBUG) for a
-# reasonable instrumentation/perf tradeoff with usable stack traces, so configure with
-# -DCARDILLO_ENABLE_TSAN=ON -DCMAKE_BUILD_TYPE=Debug (or any non-RelWithDebInfo type) -- otherwise
-# RelWithDebInfo's own -O2 -DNDEBUG fights these flags. Applied at this top-level scope, before
-# add_subdirectory, so it also instruments third-party C/C++ deps fetched under src/ (they're
-# add_subdirectory'd from there); Clarabel's Rust core is a separate cargo build and is NOT
-# instrumented -- TSan won't observe races inside it, which is fine since CondensedSolver never
-# calls into it.
-option(CARDILLO_ENABLE_TSAN "Build with ThreadSanitizer instrumentation" OFF)
+if(PROJECT_IS_TOP_LEVEL)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    # Without a build type CMake compiles without optimization; default to RelWithDebInfo.
+    if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+        set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build type" FORCE)
+        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+    endif()
+endif()
+
+# --- Options ---
+# Examples, tests, install rules and -march=native default to ON only when CardilloCxx is the
+# top-level project, so that a parent project using it through add_subdirectory/FetchContent gets
+# just the library.
+option(CARDILLO_BUILD_EXAMPLES "Build the example scene executables" ${PROJECT_IS_TOP_LEVEL})
+option(CARDILLO_BUILD_TESTS "Build the tests (ctest)" ${PROJECT_IS_TOP_LEVEL})
+option(CARDILLO_INSTALL "Generate install rules and the CMake package (find_package(cardillo))" ${PROJECT_IS_TOP_LEVEL})
+# -march=native ties the binaries to the build machine's CPU; turn it off for binaries run elsewhere.
+option(CARDILLO_ENABLE_NATIVE_ARCH "Compile with -march=native" ${PROJECT_IS_TOP_LEVEL})
+option(CARDILLO_ENABLE_TSAN "Build with ThreadSanitizer (use with CMAKE_BUILD_TYPE=Debug)" OFF)
+option(CARDILLO_ENABLE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+# Use an installed Coal instead of fetching the fork; it must be built from the fork (custom shapes).
+option(CARDILLO_USE_SYSTEM_COAL "Use an installed Coal built from the 41pha1/coal fork" OFF)
+
+# Optional conic solver backends (solver.type = clarabel | qoco | conicxx | scs | mosek). The production
+# solvers (projected Jacobi, condensed) and the reference solvers are always built.
+option(CARDILLO_WITH_CLARABEL "Clarabel interior-point backend (needs Rust/cargo)" OFF)
+option(CARDILLO_WITH_QOCO "QOCO interior-point backend" OFF)
+option(CARDILLO_WITH_CONICXX "ConicXX interior-point backend" OFF)
+option(CARDILLO_WITH_SCS "SCS ADMM backend" OFF)
+# MOSEK is not fetched: it needs an installation and a license (cmake/FindMOSEK.cmake, MOSEK_ROOT).
+option(CARDILLO_WITH_MOSEK "MOSEK interior-point backend (needs a MOSEK installation and license)" OFF)
+option(CARDILLO_SCS_OPENMP "Build SCS with its OpenMP-parallel cone projections" ON)
+
+# --- Compile flags of this project and of the dependencies it fetches ---
+if(CARDILLO_ENABLE_TSAN AND CARDILLO_ENABLE_ASAN)
+    message(FATAL_ERROR "CARDILLO_ENABLE_TSAN and CARDILLO_ENABLE_ASAN cannot be combined.")
+endif()
 if(CARDILLO_ENABLE_TSAN)
     add_compile_options(-fsanitize=thread -g -O1)
     add_link_options(-fsanitize=thread)
 endif()
-
-# Native-ISA vectorization, on by default. Without this, the compiler targets its default baseline
-# ISA (e.g. SSE2 on x86-64), so Eigen's own vectorized kernels -- the bulk of this engine's per-step
-# cost -- run at 2-wide double packets instead of 4-wide+FMA under AVX2. -march=native ties the
-# binary to the build machine's exact CPU and can SIGILL if the binary is later run/copied to
-# different hardware (e.g. a heterogeneous cluster, a CI runner, another machine); if you build here
-# but deploy/run elsewhere, configure with -DCARDILLO_ENABLE_NATIVE_ARCH=OFF instead.
-option(CARDILLO_ENABLE_NATIVE_ARCH "Compile with -march=native for AVX2/FMA vectorization (ties binary to the build machine's CPU)" ON)
+if(CARDILLO_ENABLE_ASAN)
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
+    add_link_options(-fsanitize=address,undefined)
+endif()
 if(CARDILLO_ENABLE_NATIVE_ARCH)
     include(CheckCXXCompilerFlag)
     check_cxx_compiler_flag("-march=native" CARDILLO_HAS_MARCH_NATIVE)
     if(CARDILLO_HAS_MARCH_NATIVE)
+        # Global, so that the fetched dependencies use the same ISA; it is also a usage requirement of
+        # cardillo (src/CMakeLists.txt) because it changes the alignment of Eigen types in the API.
         add_compile_options(-march=native)
     else()
-        message(WARNING "CARDILLO_ENABLE_NATIVE_ARCH is ON but the compiler does not support -march=native (e.g. MSVC -- use /arch:AVX2 manually instead); ignoring.")
+        message(WARNING "The compiler does not support -march=native; building for the default ISA.")
     endif()
 endif()
 
-# Optional SCS backend (solver.type = scs): the ADMM conic solver from github.com/cvxgrp/scs, fetched
-# and built from source; only its direct (AMD + QDLDL) linear-system backend is used.
-option(CARDILLO_WITH_SCS "Enable the SCS solver backend (fetched and built from source)" ON)
-option(CARDILLO_SCS_OPENMP "Build SCS with its OpenMP-parallel cone projections (off: serial, like the other conic backends)" ON)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+include(cmake/Dependencies.cmake)
+include(cmake/ConicBackends.cmake)
 
 add_subdirectory(src)
-add_subdirectory(examples)
-
-option(CARDILLO_BUILD_TESTS "Build unit tests (ctest)" ON)
+if(CARDILLO_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
 if(CARDILLO_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
-# add_subdirectory(frontend)
+if(CARDILLO_INSTALL)
+    include(cmake/Install.cmake)
+endif()
+
+message(STATUS "CardilloCxx ${PROJECT_VERSION}: Clarabel=${CARDILLO_WITH_CLARABEL} QOCO=${CARDILLO_WITH_QOCO} ConicXX=${CARDILLO_WITH_CONICXX} SCS=${CARDILLO_WITH_SCS} MOSEK=${CARDILLO_WITH_MOSEK}")

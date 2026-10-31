@@ -13,7 +13,8 @@ solver backends. Topic notes with more detail live in `.claude/docs/`:
 ## Commands
 
 ```bash
-cmake -S . -B build                       # default build type RelWithDebInfo, -march=native, tests ON
+cmake -S . -B build                       # RelWithDebInfo, -march=native, examples+tests ON, conic backends OFF
+cmake -S . -B build -DCARDILLO_WITH_CLARABEL=ON -DCARDILLO_WITH_QOCO=ON -DCARDILLO_WITH_CONICXX=ON -DCARDILLO_WITH_SCS=ON  # + _MOSEK
 cmake --build build -j$(nproc)            # library, all scene executables, tests
 cmake --build build --target chain        # a single scene (target names: examples/CMakeLists.txt)
 cd build && ctest                         # all tests; single test: ctest -R test_torsional_oscillator
@@ -22,14 +23,20 @@ cd docs && uv run make html               # Sphinx + Doxygen docs
 ```
 
 - Run scenes **from the repository root** (mesh paths like `res/meshes/...` are relative to the cwd):
-  `build/examples/<target> examples/scenes/<dir>/scene.config`. (The README's `build/bin/` is outdated.)
+  `build/examples/<target> examples/scenes/<dir>/scene.config`.
 - Short runs: copy the config and append overrides; a key given later wins, e.g.
   `printf "\nsim.T=0.05\noutput.interval_steps=0\n" >> copy.config`. `.claude/scripts/run_scenes.sh`
   automates this for several scenes (see the `scene-smoke` skill). Full scenes can take minutes to hours.
 - Coal is fetched by FetchContent from a fork (see `.claude/docs/collision.md`). In extra worktrees,
   reuse an existing checkout with `-DFETCHCONTENT_SOURCE_DIR_COAL=<path to coal-src>`.
+- Library sources and headers live in `src/cardillo/`; everyone (also examples and tests) includes them as
+  `<cardillo/...>`. The library is installable (`cmake --install`, `find_package(cardillo)`,
+  target `cardillo::cardillo`) and usable as a subproject; build files: `CMakeLists.txt` (options),
+  `cmake/Dependencies.cmake`, `cmake/ConicBackends.cmake`, `cmake/Install.cmake`.
+- The conic backends (`src/cardillo/physics/solver/conic/<backend>/`) are optional: `CARDILLO_WITH_CLARABEL`,
+  `_QOCO`, `_CONICXX`, `_SCS`, `_MOSEK` (all OFF); a scene selecting a backend that was not built throws.
 - Clarabel needs Rust/cargo. Its Rust core is built in cargo's release profile for Release,
-  RelWithDebInfo and MinSizeRel (`src/CMakeLists.txt` presents them as Release to Clarabel's CMake);
+  RelWithDebInfo and MinSizeRel (`cmake/ConicBackends.cmake` presents them as Release to Clarabel's CMake);
   only Debug gives a debug Rust build (15–60× slower solves). Check with
   `ldd build/src/libcardillo.so | grep clarabel` (path must contain `target/release`) before timing.
 - Changing `config::Config` (or other headers used by `example_main.hpp`) requires rebuilding **all**
@@ -39,41 +46,42 @@ cd docs && uv run make html               # Sphinx + Doxygen docs
 
 ## Architecture
 
-**Facade and ownership.** `physics::PhysicsEngine` (`src/physics/api`) is the scene-facing API. It
-owns the `World` (EnTT registry with ECS components from `src/physics/ecs_types.hpp`, mesh assets,
+**Facade and ownership.** `physics::PhysicsEngine` (`src/cardillo/physics/api`) is the scene-facing API. It
+owns the `World` (EnTT registry with ECS components from `src/cardillo/physics/ecs_types.hpp`, mesh assets,
 constraint patterns), `collision::CollisionCoal` and the `PhysicsPipeline`, which owns the
 `DynamicsAssembler`, the solver selected by `solver.type`, and the `MoreauIntegrator`.
 
-**One step** (`src/physics/integration/moreau.cpp`): drift positions by (1−θ)h → advance prescribed
+**One step** (`src/cardillo/physics/integration/moreau.cpp`): drift positions by (1−θ)h → advance prescribed
 constraint rates → `DynamicsAssembler::updateStateDependentTerms` (kinematic drivers evaluated at
 t_{n+θ}, rigid-state cache, beam element geometry, Coal collision → contacts, contact Jacobian `W`,
 constraint rows `Wg`/`Wγ`, compliances, position errors) → `solver.solve(dt, θ)` returns the new
 velocities → drift by θh.
 
-**DynamicsAssembler** (`src/physics/assembly`) is the single source of the discretization: flat
+**DynamicsAssembler** (`src/cardillo/physics/assembly`) is the single source of the discretization: flat
 velocity vector with per-body offsets (`m_body_vel_offsets`; rigid bodies 6 dofs, point masses 3),
 contact rows (each contact side may have several weighted attachments, used by beam hulls),
 spring/damper rows from all `ConstraintPattern`s, and the Moreau-θ terms `springBias()`,
 `damperBias()`, `springComplianceScale()`, `damperComplianceScale()`. Every solver must use these
-instead of its own copies. Each solver has a matching assembler (`pj_`, `condensed_`, `pgs_`,
-`qoco_`, `clarabel_`, `conicxx_assembler`).
+instead of its own copies. Each solver has a matching assembler (`pj_`, `condensed_`, `pgs_assembler`
+in `src/cardillo/physics/assembly`; the conic backends keep theirs in `solver/conic/`, Clarabel, SCS and
+MOSEK share `ConeProgramAssembler`).
 
-**Solvers** (`src/physics/solver`). The production solvers are **projected Jacobi** (`pj`: direct
+**Solvers** (`src/cardillo/physics/solver`). The production solvers are **projected Jacobi** (`pj`: direct
 factorization of the bilateral saddle-point system, projected iteration on contacts) and
 **condensed** (block-sparse Schur complement; `condensed.true_schur=true` eliminates the bilateral
 subsystem exactly, needed for stiff rods). Test and validate mainly with these two. PGS, CG,
-QOCO, Clarabel and ConicXX are convexified/test backends.
+naive Schur and the optional QOCO, Clarabel, ConicXX, SCS and MOSEK backends are reference/test backends.
 
-**Constraints** (`src/physics/constraints`): `getConstraint()` returns a `ConstraintResult`
+**Constraints** (`src/cardillo/physics/constraints`): `getConstraint()` returns a `ConstraintResult`
 (Jacobian columns `WgA/WgB`, compliances `Crows/Arows`, `positionError`, prescribed rate). Main
 patterns: `LinearDistanceConstraint`, `TranslationRotationConstraint` (all joints; hinge = x-axis),
 `BeamConstraint` (Cosserat rod element between two nodes, Petrov–Galerkin force directions).
 
-**Bodies** (`src/physics/assets`): `RigidBodyFactory`, `BeamFactory` (rods = chains of rigid nodes;
+**Bodies** (`src/cardillo/physics/assets`): `RigidBodyFactory`, `BeamFactory` (rods = chains of rigid nodes;
 colliders `RigidBodyPrimitive` or `InterSegmentHull`), soft bodies, point masses. Dynamic mesh bodies
 live in the principal-axes frame of their mesh (see collision notes).
 
-**Config** (`src/config`): `key = value` files, `#` comments. Unknown keys warn with `file:line`.
+**Config** (`src/cardillo/config`): `key = value` files, `#` comments. Unknown keys warn with `file:line`.
 Adding a key means: field with default in `config.hpp`, parser branch in `config.cpp`, row in the
 table of `docs/chapters/using_the_engine/setup.rst`. Scene-specific values use `scene.<name> = value`
 and are read via `engine.config().sceneParam("<name>", fallback)`.
@@ -106,7 +114,7 @@ registered with `cardillo_add_scene_example(...)` in `examples/CMakeLists.txt`; 
   directions W of `DynamicsAssembler` unchanged; u = u_free + M⁻¹Wπ, ξ = Wᵀu + Ĉπ + b. Contacts use the
   negative-variant projection λ = −proj_C(ρξ − λ) (`misc/contact_projection.hpp`, shared with PJ).
 - **No conversions to Coal**: `real_t == coal::Scalar`, `Vector3r == coal::Vec3s` (checked once in
-  `src/collision/coal_types.hpp`); our own code uses `Vector3r`, never `coal::Vec3s`, and no casts.
+  `src/cardillo/collision/coal_types.hpp`); our own code uses `Vector3r`, never `coal::Vec3s`, and no casts.
 - Torsional springs belong on the joint x-axis (exact unwrapped twist angle; y/z rows measure sines).
 
 ## Code style expected here

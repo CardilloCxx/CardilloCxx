@@ -1,244 +1,81 @@
-cmake_minimum_required(VERSION 3.24)
-project(cardillo LANGUAGES CXX)
-set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path prefix" FORCE)
-include(FetchContent)
-include(ExternalProject)
-find_package(OpenMP QUIET)
+# The engine library. Users include its headers as <cardillo/...>. Sources of the optional conic
+# backends (cardillo/physics/solver/conic/) are added only when their CARDILLO_WITH_<NAME> option is on;
+# their headers are private to the library.
+set(CARDILLO_CONIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cardillo/physics/solver/conic")
 
-# --- VTK (used by the VTK export writer) ---
-# Prefer a system-installed VTK (fast, no compile) over building it from source.
-# 1) Standard find_package: covers a normal libvtk9-dev-style install.
-# 2) Debian/Ubuntu's ParaView packages bundle their own VTK under a non-standard
-#    CMake config location (/usr/lib/*/cmake/paraview-*/vtk instead of the usual
-#    vtk-9.x path) -- installing the standalone libvtk9-dev package conflicts with
-#    an existing ParaView install on such systems (it depends on python3-vtk9,
-#    which Conflicts: python3-paraview), so probe that location as a fallback.
-# 3) Only build VTK from source via FetchContent if neither is found.
-set(CARDILLO_VTK_COMPONENTS CommonCore CommonDataModel IOXML)
-find_package(VTK QUIET COMPONENTS ${CARDILLO_VTK_COMPONENTS})
-if(NOT VTK_FOUND)
-    file(GLOB CARDILLO_VTK_PARAVIEW_HINTS
-        "/usr/lib/*/cmake/paraview-*/vtk"
-        "/usr/local/lib/*/cmake/paraview-*/vtk"
-    )
-    if(CARDILLO_VTK_PARAVIEW_HINTS)
-        find_package(VTK QUIET COMPONENTS ${CARDILLO_VTK_COMPONENTS} PATHS ${CARDILLO_VTK_PARAVIEW_HINTS} NO_DEFAULT_PATH)
+file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cardillo/*.cpp")
+file(GLOB_RECURSE CARDILLO_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cardillo/*.hpp")
+list(FILTER CARDILLO_SOURCES EXCLUDE REGEX "/physics/solver/conic/")
+list(FILTER CARDILLO_HEADERS EXCLUDE REGEX "/physics/solver/conic/")
+
+if(CARDILLO_WITH_CLARABEL OR CARDILLO_WITH_SCS)
+    # Cone program shared by Clarabel and SCS.
+    list(APPEND CARDILLO_SOURCES "${CARDILLO_CONIC_DIR}/cone_program_assembler.cpp")
+endif()
+foreach(_backend CLARABEL QOCO CONICXX SCS MOSEK)
+    if(CARDILLO_WITH_${_backend})
+        string(TOLOWER ${_backend} _dir)
+        file(GLOB _backend_sources CONFIGURE_DEPENDS "${CARDILLO_CONIC_DIR}/${_dir}/*.cpp")
+        list(APPEND CARDILLO_SOURCES ${_backend_sources})
     endif()
-endif()
+endforeach()
 
-if(VTK_FOUND)
-    message(STATUS "Using system VTK ${VTK_VERSION} (${VTK_DIR}) for VTK export")
-else()
-    message(STATUS "No system VTK found; building VTK from source via FetchContent (this is slow)")
-    set(VTK_GROUP_ENABLE_StandAlone "DONT_WANT" CACHE STRING "" FORCE)
-    set(VTK_MODULE_ENABLE_VTK_CommonCore "YES" CACHE STRING "" FORCE)
-    set(VTK_MODULE_ENABLE_VTK_CommonDataModel "YES" CACHE STRING "" FORCE)
-    set(VTK_MODULE_ENABLE_VTK_IOXML "YES" CACHE STRING "" FORCE)
-    set(VTK_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-    set(VTK_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(VTK_BUILD_DOCUMENTATION OFF CACHE BOOL "" FORCE)
-    set(VTK_WRAP_PYTHON OFF CACHE BOOL "" FORCE)
-    set(VTK_WRAP_JAVA OFF CACHE BOOL "" FORCE)
-    FetchContent_Declare(vtk GIT_REPOSITORY https://gitlab.kitware.com/vtk/vtk.git GIT_TAG v9.3.1)
-    FetchContent_MakeAvailable(vtk)
-endif()
-
-# --- 0. Set paths ---
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/config/path.hpp.in
-    ${CMAKE_CURRENT_SOURCE_DIR}/config/path.hpp
-    @ONLY
-)
-
-# --- 1. Dependencies ---
-set(BUILD_PYTHON_INTERFACE OFF CACHE BOOL "Disable Coal Python bindings" FORCE)
-set(COAL_BUILD_PYTHON_INTERFACE OFF CACHE BOOL "Disable Coal Python bindings" FORCE)
-set(COAL_BUILD_TESTING OFF CACHE BOOL "Disable Coal testing" FORCE)
-set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
-set(EIGEN_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-# Eigen >= 5.0 gates its install(EXPORT Eigen3Targets ...) call behind this
-# option, defaulted to PROJECT_IS_TOP_LEVEL (OFF for a FetchContent subproject).
-# Without it, the "Eigen3Targets" export set is registered via install(TARGETS)
-# but never completed via install(EXPORT), so coal's install(EXPORT coalTargets)
-# fails dependency-completeness validation ("target eigen ... not in any export
-# set"). Eigen 3.4 called install(EXPORT) unconditionally, so this never came up.
-set(EIGEN_BUILD_CMAKE_PACKAGE ON CACHE BOOL "" FORCE)
-set(CONICXX_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(CONICXX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(CONICXX_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
-set(CONICXX_INSTALL OFF CACHE BOOL "" FORCE)
-
-FetchContent_Declare(Eigen3 GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 5.0.1 OVERRIDE_FIND_PACKAGE)
-FetchContent_Declare(entt GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.2)
-FetchContent_Declare(clarabel GIT_REPOSITORY https://github.com/oxfordcontrol/Clarabel.cpp.git GIT_TAG v0.11.1)
-# FetchContent_Declare(coal GIT_REPOSITORY https://github.com/coal-library/coal.git GIT_TAG v3.0.4)
-# Coal fork 41pha1/coal (branch beam-support-set-hook, on top of devel incl. coal-library/coal#908):
-# custom shapes (GEOM_CUSTOM) for the beam hull colliders.
-FetchContent_Declare(coal GIT_REPOSITORY https://github.com/41pha1/coal.git GIT_TAG a90ca6e50bc6a038598148c69cbd84afd9c19df2)
-FetchContent_Declare(qoco GIT_REPOSITORY https://github.com/qoco-org/qoco.git GIT_TAG v0.3.2)
-# FetchContent_Declare(conicxx SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../ConicXX")
-FetchContent_Declare(conicxx GIT_REPOSITORY https://github.com/ConicXX/ConicXX.git GIT_TAG main)
-FetchContent_MakeAvailable(Eigen3)
-
-add_library(eigen3 INTERFACE IMPORTED GLOBAL)
-target_link_libraries(eigen3 INTERFACE eigen)
-# Clarabel.cpp passes --release to cargo only if CMAKE_BUILD_TYPE matches "Release", so this
-# project's default RelWithDebInfo (and MinSizeRel) would build Clarabel's Rust core in cargo's
-# unoptimized debug profile (about 25-60x slower solves). Present the optimized build types as
-# Release to its CMake; Debug keeps the debug profile.
-set(CARDILLO_SAVED_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
-if(CMAKE_BUILD_TYPE MATCHES "^(RelWithDebInfo|MinSizeRel)$")
-    set(CMAKE_BUILD_TYPE Release)
-endif()
-FetchContent_MakeAvailable(clarabel)
-set(CMAKE_BUILD_TYPE "${CARDILLO_SAVED_BUILD_TYPE}")
-FetchContent_MakeAvailable(entt qoco coal)
-# Treat Coal's headers as system headers: Coal's own inline code (narrowphase.h) uses members it has
-# deprecated itself, which would otherwise warn in every translation unit that includes Coal.
-get_target_property(COAL_INCLUDE_DIRS coal INTERFACE_INCLUDE_DIRECTORIES)
-set_target_properties(coal PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${COAL_INCLUDE_DIRS}")
-
-
-FetchContent_MakeAvailable(conicxx)
-
-# --- 2. Engine Targets ---
-file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_library(cardillo SHARED ${CARDILLO_SOURCES})
-
-if(NOT CARDILLO_WITH_SCS)
-    list(FILTER CARDILLO_SOURCES EXCLUDE REGEX "/physics/solver/scs/[^/]*\\.cpp$")
+add_library(cardillo::cardillo ALIAS cardillo)
+target_sources(cardillo PUBLIC FILE_SET HEADERS BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${CARDILLO_HEADERS})
+target_compile_features(cardillo PUBLIC cxx_std_20)
+if(CARDILLO_HAS_MARCH_NATIVE AND CARDILLO_ENABLE_NATIVE_ARCH)
+    # Code using cardillo must be compiled for the same ISA: the alignment of fixed-size Eigen members
+    # (e.g. 32 bytes with AVX, 16 with SSE2) is part of the ABI of the headers.
+    target_compile_options(cardillo PUBLIC -march=native)
 endif()
+set_target_properties(cardillo PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    # The installed library finds the (fetched and installed) shared dependencies next to it.
+    INSTALL_RPATH "$ORIGIN")
 
-# Python version of Coal:
-# find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
-# include_directories( ${PYTHON3_INCLUDE_DIRS})
-# set(COAL_INSTALL_DIR ${CMAKE_BINARY_DIR}/external/coal)
-# ExternalProject_Add(coal_project
-#     PREFIX ${CMAKE_BINARY_DIR}/_deps/coal
-#     DOWNLOAD_COMMAND ""
-#     CONFIGURE_COMMAND ""
-#     BUILD_COMMAND ${Python3_EXECUTABLE} -m pip install coal -t ${COAL_INSTALL_DIR}
-#     INSTALL_COMMAND ""
-# )
-# 
-# add_dependencies(${PROJECT_NAME} coal_project)
-# target_include_directories(${PROJECT_NAME} PUBLIC
-#     "${COAL_INSTALL_DIR}/cmeel.prefix/include/"
-# )
-# 
-# target_link_directories(${PROJECT_NAME} PUBLIC
-#     "${COAL_INSTALL_DIR}/cmeel.prefix/lib/"
-# )
-# target_link_libraries(${PROJECT_NAME} INTERFACE coal)
-
-
-# --- 3. Link Dependencies ---
-target_link_libraries(cardillo PUBLIC
-    Eigen3::Eigen
-    EnTT::EnTT
-    coal::coal
-    qoco
-    libclarabel_c_shared
-    conicxx::conicxx
-    VTK::CommonCore
-    VTK::CommonDataModel
-    VTK::IOXML
-)
+# Eigen, EnTT and Coal types appear in the public headers; VTK is used only in the implementation.
+target_link_libraries(cardillo
+    PUBLIC Eigen3::Eigen EnTT::EnTT coal::coal
+    PRIVATE VTK::CommonCore VTK::CommonDataModel VTK::IOXML)
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(cardillo PUBLIC OpenMP::OpenMP_CXX)
     target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_OPENMP=1)
 else()
-    message(STATUS "OpenMP not found; CondensedSolver's jacobi/colored/chaotic sweep modes will run single-threaded.")
+    message(STATUS "OpenMP not found; the condensed solver's parallel sweep modes run single-threaded.")
 endif()
 
-target_include_directories(cardillo PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-
-# --- SCS (optional) ---
-# Only the direct backend (scsdir: AMD ordering + QDLDL LDL' of the quasi-definite KKT matrix) is
-# used. SCS vendors its own AMD and QDLDL under their original, unprefixed symbol names, and both
-# already exist in this process: libcardillo exports ConicXX's QDLDL (QDLDL_factor, ...) and libqoco
-# exports QOCO's AMD (amd_order, ...). scsdir is therefore built as its own shared library that
-# exports nothing but the public scs_* API (cmake/scs_exports.map): its internal QDLDL/AMD calls bind
-# to its own copies, and it cannot interpose on ConicXX's or QOCO's. scs_int = int and
-# scs_float = double (DLONG/SFLOAT off) are additionally checked by static_asserts in the adapter.
+# The backends are linked as build-only dependencies: they are not part of the exported interface,
+# the installed libcardillo finds their shared libraries next to itself (INSTALL_RPATH).
+if(CARDILLO_WITH_CLARABEL)
+    target_link_libraries(cardillo PRIVATE $<BUILD_INTERFACE:libclarabel_c_shared>)
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_CLARABEL=1)
+endif()
+if(CARDILLO_WITH_QOCO)
+    # QOCO installs its library without a CMake package, so it is linked by file (its target would have
+    # to be exported with cardillo). qoco_assembler.hpp fills QOCO's structs from its internal headers.
+    add_dependencies(cardillo qoco)
+    target_link_libraries(cardillo PRIVATE $<BUILD_INTERFACE:$<TARGET_FILE:qoco>>)
+    get_property(_qoco_include GLOBAL PROPERTY QOCO_INCLUDE)
+    target_include_directories(cardillo SYSTEM PRIVATE ${_qoco_include})
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_QOCO=1)
+endif()
+if(CARDILLO_WITH_CONICXX)
+    target_link_libraries(cardillo PRIVATE $<BUILD_INTERFACE:conicxx::conicxx>)
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_CONICXX=1)
+endif()
 if(CARDILLO_WITH_SCS)
-    set(BUILD_SHARED_LIBS ON)
-    # SCS compiles Anderson acceleration only with USE_LAPACK (src/aa.c); without it AA is silently
-    # disabled, which costs ADMM a large factor in iterations. Any BLAS/LAPACK will do (AA only needs
-    # small dense least-squares solves).
-    find_package(LAPACK QUIET)
-    if(LAPACK_FOUND)
-        set(USE_LAPACK ON)
-    else()
-        set(USE_LAPACK OFF)
-        message(WARNING "CARDILLO_WITH_SCS: no BLAS/LAPACK found; SCS is built without Anderson acceleration (expect many more iterations)")
-    endif()
-    set(DLONG OFF)
-    set(SFLOAT OFF)
-    # SCS's cmake/AddUninstallTarget.cmake defines a global `uninstall` target, which coal already
-    # defines; its own include guard skips it.
-    set(__ADD_UNINSTALL_TARGET_INCLUDED TRUE)
-    # SCS links OpenMP::OpenMP_C (and so compiles its `omp parallel for` loops over the cones and in
-    # a sparse mat-vec) whenever OpenMP_C_FOUND is set, independent of its own USE_OPENMP, and our
-    # find_package(OpenMP) above sets it. Fork-joining a full thread team per ADMM iteration over
-    # 3-dimensional cones made small scenes ~7x slower in practice, so SCS is built serial unless
-    # CARDILLO_SCS_OPENMP is on.
-    set(CARDILLO_SAVED_OpenMP_C_FOUND "${OpenMP_C_FOUND}")
-    if(NOT CARDILLO_SCS_OPENMP)
-        set(OpenMP_C_FOUND FALSE)
-    endif()
-    FetchContent_Declare(scs GIT_REPOSITORY https://github.com/cvxgrp/scs.git GIT_TAG 3.3.1 GIT_SHALLOW TRUE)
-    FetchContent_MakeAvailable(scs)
-    unset(BUILD_SHARED_LIBS)
-    unset(USE_LAPACK)
-    unset(DLONG)
-    unset(SFLOAT)
-    unset(__ADD_UNINSTALL_TARGET_INCLUDED)
-    set(OpenMP_C_FOUND "${CARDILLO_SAVED_OpenMP_C_FOUND}")
-    # SCS always defines its indirect (CG) and, with LAPACK, dense libraries; only scsdir is used.
-    foreach(_scs_unused scsindir scsdense)
-        if(TARGET ${_scs_unused})
-            set_target_properties(${_scs_unused} PROPERTIES EXCLUDE_FROM_ALL ON)
-        endif()
-    endforeach()
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_link_options(scsdir PRIVATE "LINKER:--version-script=${CMAKE_CURRENT_SOURCE_DIR}/../cmake/scs_exports.map")
-    endif()
-    # (macOS: two-level namespaces already bind scsdir's internal references to its own copies.)
-    target_link_libraries(cardillo PUBLIC scs::scsdir)
+    target_link_libraries(cardillo PRIVATE $<BUILD_INTERFACE:scs::scsdir>)
     target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_SCS=1)
 endif()
-
-# --- 4. QOCO-Specific Integration ---
-# Since QOCO requires specific path definitions, we derive them from the FetchContent locations
-set(QOCO_CPU_LIB_DIR "${qoco_BINARY_DIR}/lib")
-target_include_directories(cardillo PUBLIC 
-    "${qoco_SOURCE_DIR}/include"
-    "${qoco_SOURCE_DIR}/include/qdldl"
-    "${qoco_SOURCE_DIR}/src/include"
-)
-
-get_target_property(QOCO_INCLUDES qoco INTERFACE_INCLUDE_DIRECTORIES)
-if(NOT QOCO_INCLUDES)
-    target_include_directories(qoco INTERFACE "${qoco_SOURCE_DIR}/include")
+if(CARDILLO_WITH_MOSEK)
+    # Linked by file like QOCO: MOSEK is a user installation, not part of cardillo's package. The
+    # installed library finds it through its RUNPATH.
+    target_link_libraries(cardillo PRIVATE $<BUILD_INTERFACE:${MOSEK_LIBRARY}>)
+    target_include_directories(cardillo SYSTEM PRIVATE ${MOSEK_INCLUDE_DIR})
+    get_filename_component(_mosek_lib_dir "${MOSEK_LIBRARY}" DIRECTORY)
+    set_property(TARGET cardillo APPEND PROPERTY INSTALL_RPATH "${_mosek_lib_dir}")
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_MOSEK=1)
 endif()
-
-target_compile_definitions(cardillo PUBLIC 
-    HAVE_QOCO=1
-    # QOCO_CPU_LIB_PATH="${QOCO_CPU_LIB_DIR}/libqoco.so"
-    # QOCO_CUDA_LIB_PATH="${QOCO_CPU_LIB_DIR}/libqoco.so" 
-    # The shared library's actual build location (it is not under ${QOCO_CPU_LIB_DIR}).
-    QOCO_CPU_LIB_PATH="$<TARGET_FILE:qoco>"
-    QOCO_CUDA_LIB_PATH="$<TARGET_FILE:qoco>" 
-)
-
-# --- 5. Clean Binary Properties ---
-target_compile_definitions(cardillo PRIVATE BUILDING_CARDILLO_LIB=1)
-# set_target_properties(cardillo PROPERTIES
-#     CXX_VISIBILITY_PRESET hidden
-#     VISIBILITY_INLINES_HIDDEN 1
-#     POSITION_INDEPENDENT_CODE ON
-# )
