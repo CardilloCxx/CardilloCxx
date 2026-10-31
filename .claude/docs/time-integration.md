@@ -1,7 +1,7 @@
 # Time integration: Moreau-θ with the position-level force law
 
-Code: `src/physics/integration/moreau.cpp`, `src/physics/assembly/dynamics_assembler.{hpp,cpp}`
-(`springBias`, `damperBias`, `*ComplianceScale`, `advancePrescribedMotion`), `src/config/config.hpp`
+Code: `src/cardillo/physics/integration/moreau.cpp`, `src/cardillo/physics/assembly/dynamics_assembler.{hpp,cpp}`
+(`springBias`, `damperBias`, `*ComplianceScale`, `advancePrescribedMotion`), `src/cardillo/config/config.hpp`
 (header comment). User docs: `docs/chapters/moreau_time_stepping.rst`, `docs/chapters/solvers/*.rst`.
 Theory: `LaTeX/theory_doc.tex` if present locally (gitignored, separate git repository).
 
@@ -44,7 +44,7 @@ the previous step enters (Λ_n is only a warm start), no stabilization parameter
 - Constraint rates (`setConstraintScalarVelocity`/`Linear`/`Angular`) are integrated into the
   position-level reference by `advancePrescribedMotion()` (distance constraint: L0; joints: g0 and the
   joint frame of B), otherwise the position law would pull back against the prescribed motion.
-- Trajectories (`C_StaticTrajectory`, `src/physics/synchronization/trajectory.cpp`) set the pose at
+- Trajectories (`C_StaticTrajectory`, `src/cardillo/physics/synchronization/trajectory.cpp`) set the pose at
   t_n + (1−θ)h and the velocity to `(pose(t_n+h) − pose(t_n)) / h` (angular velocity in the body
   frame). Only pose functions exist; a velocity v(t) is prescribed via its integral.
 - `addTrajectory` makes the body static. For dynamic mesh bodies, read the created pose from the ECS

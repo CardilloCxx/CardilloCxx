@@ -181,7 +181,7 @@ Block-sparse representation
 ----------------------------
 
 The assembler (``CondensedAssembler`` / ``RowBlock`` / ``CondensedTopology``
-in ``src/physics/assembly/condensed_assembler.hpp``) never builds an
+in ``src/cardillo/physics/assembly/condensed_assembler.hpp``) never builds an
 ``Eigen::SparseMatrix``, not even for matrix-free matvecs. Every spring,
 damper, frictionless contact (1 row), or frictional contact (3 rows: normal +
 2 tangential) becomes a ``RowBlock``:
@@ -279,7 +279,7 @@ velocity-correction state ``du``.
    all, not even for the reduction.
 
 **colored**
-   Greedy Welsh-Powell coloring (``src/misc/graph_coloring.hpp``) of the
+   Greedy Welsh-Powell coloring (``src/cardillo/misc/graph_coloring.hpp``) of the
    *shared-body* adjacency graph (two blocks are adjacent iff they touch the
    same body) -- deliberately **not** the dense Schur-complement/Delassus
    sparsity pattern, which for a compliant chain would be fully dense and
@@ -321,7 +321,7 @@ velocity-correction state ``du``.
 Graph coloring algorithm
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``colorGreedyWelshPowell()`` (``src/misc/graph_coloring.hpp``/``.cpp``) is a
+``colorGreedyWelshPowell()`` (``src/cardillo/misc/graph_coloring.hpp``/``.cpp``) is a
 standard greedy graph coloring, computed fresh every ``solve()`` call when
 ``condensed.sweep_mode=colored`` (unlike ``true_schur``'s elimination order,
 this is **not** cached across steps today -- see the performance note below):
@@ -370,7 +370,7 @@ projection-based solvers (``misc/contact_projection.hpp``):
 
 **newton** replaces that clip, for frictional (3-row) blocks only, with a
 guarded Alart-Curnier semismooth Newton solve
-(``src/physics/solver/local_contact_newton.{hpp,cpp}``). Given the block's
+(``src/cardillo/physics/solver/local_contact_newton.{hpp,cpp}``). Given the block's
 local Delassus matrix :math:`G_i` and current row velocity :math:`\xi` (evaluated
 at the current ``lambda``, i.e. ``blockResidual()``'s return value for this
 block):
@@ -539,7 +539,7 @@ Block-sparse factorization algorithm (``BlockSparseLDLT``)
 ``S_bb``'s sparsity, in row-space, is exactly the shared-body adjacency graph
 restricted to bilateral rows -- a path graph for every current example scene
 except ``hangbridge``, which has real branching nodes (tripod apexes / deck
-planks, degree 4-6). ``BlockSparseLDLT`` (``src/misc/block_sparse_ldlt.{hpp,cpp}``)
+planks, degree 4-6). ``BlockSparseLDLT`` (``src/cardillo/misc/block_sparse_ldlt.{hpp,cpp}``)
 is a small, generic, reusable block-sparse factorization over a graph of
 dense blocks (never a dense/global matrix), used via
 ``CondensedAssembler::buildBilateralFactorization()``.

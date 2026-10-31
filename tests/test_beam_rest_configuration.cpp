@@ -1,7 +1,7 @@
 #include <cmath>
 #include <iostream>
 
-#include "physics/api/physics_engine.hpp"
+#include <cardillo/physics/api/physics_engine.hpp>
 
 using namespace cardillo;
 using namespace cardillo::physics;

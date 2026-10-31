@@ -6,7 +6,7 @@
 #include <optional>
 #include <vector>
 #include "../SceneBase.hpp"
-#include "misc/spline.hpp"
+#include <cardillo/misc/spline.hpp>
 
 using namespace cardillo;
 
@@ -27,7 +27,7 @@ public:
         physics::CubeShape groundShape(Vector3r(10.0, 10.0, 0.1));
         engine.addStaticBody(groundShape, physics::RigidState(Vector3r(0.0, 0.0, -0.5)));
 
-        physics::MeshShape jackShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/ethernet_jack.obj");
+        physics::MeshShape jackShape(std::string(CARDILLO_SOURCE_DIR) + "/res/meshes/ethernet_jack.obj");
         jackShape.use_bbox_collider = true;
 
         engine.addStaticBody(jackShape, physics::RigidState(Vector3r::Zero()));
@@ -46,7 +46,7 @@ public:
         CatmullRomSpline cableSpline(cablePoints, false);
 
         // --------------------------------------------------------
-        physics::MeshShape plugShape(std::string(PROJECT_SOURCE_DIR) + "/res/meshes/ethernet_plug.obj");
+        physics::MeshShape plugShape(std::string(CARDILLO_SOURCE_DIR) + "/res/meshes/ethernet_plug.obj");
         plugShape.use_bbox_collider = true;
 
         physics::RigidProps movingPlugProps;

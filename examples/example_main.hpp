@@ -1,8 +1,7 @@
 #pragma once
 
-#include "io/vtk_writer.hpp"
-#include "physics/integration/integration_base.hpp"
-#include "physics/integration/moreau.hpp"
+#include <cardillo/physics/integration/integration_base.hpp>
+#include <cardillo/physics/integration/moreau.hpp>
 
 #include <Eigen/Geometry>
 
@@ -13,8 +12,8 @@
 #include <iomanip>
 #include <iostream>
 
-#include "config/config.hpp"
-#include "physics/ecs_types.hpp"
+#include <cardillo/config/config.hpp>
+#include <cardillo/physics/ecs_types.hpp>
 #include "scenes/SceneBase.hpp"
 
 namespace cardillo::examples {

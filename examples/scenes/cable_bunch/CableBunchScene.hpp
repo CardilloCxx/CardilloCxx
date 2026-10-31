@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include "../SceneBase.hpp"
-#include "misc/spline.hpp"
+#include <cardillo/misc/spline.hpp>
 
 using namespace cardillo;
 

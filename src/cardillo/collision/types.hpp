@@ -1,0 +1,128 @@
+#pragma once
+
+#include <entt/entt.hpp>
+#include <array>
+#include <unordered_map>
+#include <vector>
+#include "../physics/world.hpp"
+#include "cardillo/misc/types.hpp"
+
+namespace cardillo::collision {
+
+struct ContactAttachment {
+    entt::entity entity{entt::null};
+    real_t weight{1};
+    Vector3r point_body{Vector3r::Zero()};
+};
+
+struct ContactSide {
+    std::array<ContactAttachment, 2> attachments{};
+    int count{0};
+};
+
+// Contact information for a pairwise collision
+struct Contact {
+    entt::entity a;   // entity id of first colliding object
+    entt::entity b;   // entity id of second colliding object
+    Vector3r point;   // contact point (on surface or midpoint between)
+    Vector3r normal;  // normal pointing from a to b
+    // An orthonormal tangent frame spanning the contact plane (world space)
+    // The pair (tangent1, tangent2, normal) forms a right-handed ONB.
+    Vector3r tangent1;  // first tangent (world)
+    Vector3r tangent2;  // second tangent (world)
+    real_t penetration;       // overlap distance (> 0 means interpenetration)
+    real_t friction_mu{0};    // combined friction coefficient for the pair at this contact
+    // Last solved impulse for this contact (pn, pt1, pt2) stored in contact for warmstarting
+    Vector3r last_impulse{Vector3r::Zero()};
+    // Base index into dynamic solver rows for this contact (-1 if not dynamic)
+    int impulse_base_index{-1};
+    // Number of rows allocated for this contact in solver (1 or 3)
+    int impulse_size{0};
+    // Global indices in the flattened contacts vector
+    int prev_global_out_index{-1};
+    // Index of this contact in the current generation's flattened output (set during flatten)
+    int global_out_index{-1};
+    // Ordinary contacts use one attachment per side. Beam hulls use two weighted endpoint
+    // attachments so the solver can distribute the contact Jacobian over the segment.
+    ContactSide sideA;
+    ContactSide sideB;
+};
+
+// Stable key for a contact pair (canonical entity order: a.id <= b.id)
+struct ContactPairKey {
+    entt::entity a{entt::null};
+    entt::entity b{entt::null};
+    static inline ContactPairKey make(entt::entity ea, entt::entity eb) {
+        if (entt::to_integral(ea) <= entt::to_integral(eb)) return {ea, eb};
+        return {eb, ea};
+    }
+    bool operator==(const ContactPairKey& other) const noexcept { return a == other.a && b == other.b; }
+};
+
+struct ContactPairKeyHash {
+    std::size_t operator()(const ContactPairKey& k) const noexcept {
+        // Combine 32-bit ids into 64-bit and hash
+        const uint64_t ia = static_cast<uint64_t>(entt::to_integral(k.a));
+        const uint64_t ib = static_cast<uint64_t>(entt::to_integral(k.b));
+        const uint64_t x = (ia << 32) ^ ib;
+        return std::hash<uint64_t>{}(x);
+    }
+};
+
+using ContactList = std::vector<Contact>;
+using ContactMap = std::unordered_map<ContactPairKey, ContactList, ContactPairKeyHash>;
+
+// The actual clipped contact patch coal computed for one colliding pair (a line segment, a
+// polygon, or a single point), as opposed to Contact's single representative point. Points are
+// mid-surface (coal::ContactPatch::getPoint), in coal's own CCW winding order. normal/tangent1/
+// tangent2/penetration/friction_mu are patch-level (one contact frame per patch, matching
+// coal::ContactPatch's single normal); impulse is per-point since force distribution across a
+// patch is not necessarily uniform.
+struct ContactManifold {
+    entt::entity a{entt::null};
+    entt::entity b{entt::null};
+    Vector3r normal{Vector3r::Zero()};
+    Vector3r tangent1{Vector3r::Zero()};
+    Vector3r tangent2{Vector3r::Zero()};
+    real_t penetration{0};
+    real_t friction_mu{0};
+    real_t pressure{0};  // filled in later by VtkWriter; 0 at capture time
+
+    struct Point {
+        Vector3r position{Vector3r::Zero()};  // mid-surface, world
+        Vector3r impulse{Vector3r::Zero()};   // (pn, pt1, pt2) in (normal, tangent1, tangent2); zero until matched
+    };
+    std::vector<Point> points;
+};
+
+// Collider shapes resolved from ECS
+struct SphereCollider {
+    entt::entity e;
+    Vector3r center;
+    real_t radius;
+};
+
+struct PlaneCollider {
+    entt::entity e;
+    Vector3r point;   // plane origin/center
+    Vector3r normal;  // unit normal
+    Vector3r u;       // unit in-plane axis U (orthonormal to normal)
+    Vector3r v;       // unit in-plane axis V (orthonormal to normal and U)
+    real_t hx;        // half extent along U
+    real_t hy;        // half extent along V
+};
+
+struct AabbCollider {
+    entt::entity e;
+    Vector3r center;
+    Vector3r halfExtents;
+};
+
+struct ObbCollider {
+    entt::entity e;
+    Vector3r center;
+    Vector3r halfExtents;
+    Matrix33r R;
+};
+
+}  // namespace cardillo::collision

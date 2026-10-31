@@ -1,8 +1,7 @@
 #pragma once
 
-#include "../src/physics/api/physics.hpp"
-#include "../src/misc/types.hpp"
-#include "../src/config/path.hpp"
+#include <cardillo/physics/api/physics.hpp>
+#include <cardillo/misc/types.hpp>
 
 using cardillo::real_t;
 

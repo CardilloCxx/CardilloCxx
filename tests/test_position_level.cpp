@@ -11,10 +11,11 @@
 #include <iostream>
 #include <string>
 #include <utility>
+#include <vector>
 
-#include "physics/api/physics_engine.hpp"
-#include "physics/assembly/dynamics_assembler.hpp"
-#include "rigid_body/rigid_body.hpp"
+#include <cardillo/physics/api/physics_engine.hpp>
+#include <cardillo/physics/assembly/dynamics_assembler.hpp>
+#include <cardillo/rigid_body/rigid_body.hpp>
 
 using namespace cardillo;
 using namespace cardillo::physics;
@@ -102,9 +103,19 @@ Run simulateImpl(config::SolverType solver, real_t theta, real_t stiffness) {
 
 int main() {
     using config::SolverType;
-    const std::pair<SolverType, std::string> solvers[] = {{SolverType::ProjectedJacobi, "projected_jacobi"}, {SolverType::Condensed, "condensed"}, {SolverType::ProjectedGaussSeidel, "pgs"},
-                                                          {SolverType::ConjugateGradient, "cg"},          {SolverType::Qoco, "qoco"},           {SolverType::Clarabel, "clarabel"},
-                                                          {SolverType::Conicxx, "conicxx"}};
+    std::vector<std::pair<SolverType, std::string>> solvers = {{SolverType::ProjectedJacobi, "projected_jacobi"},
+                                                               {SolverType::Condensed, "condensed"},
+                                                               {SolverType::ProjectedGaussSeidel, "pgs"},
+                                                               {SolverType::ConjugateGradient, "cg"}};
+#ifdef CARDILLO_HAVE_QOCO
+    solvers.emplace_back(SolverType::Qoco, "qoco");
+#endif
+#ifdef CARDILLO_HAVE_CLARABEL
+    solvers.emplace_back(SolverType::Clarabel, "clarabel");
+#endif
+#ifdef CARDILLO_HAVE_CONICXX
+    solvers.emplace_back(SolverType::Conicxx, "conicxx");
+#endif
     // Bilateral percussions of projected Jacobi (first solver) as reference for all solvers, in
     // particular for the perfect constraint, whose percussion is a multiplier in the conic solvers.
     real_t refPercussion[3] = {0, 0, 0};

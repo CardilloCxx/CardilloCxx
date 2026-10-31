@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../SceneBase.hpp"
-#include "misc/spline.hpp"
+#include <cardillo/misc/spline.hpp>
 
 #include <Eigen/Geometry>
 #include <cmath>

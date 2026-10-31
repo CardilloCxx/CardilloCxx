@@ -16,7 +16,6 @@ docs/api*
 docs/_build
 .venv*
 uv.lock
-src/config/path.hpp
 frontend*
 LaTeX*
 supplementary*
