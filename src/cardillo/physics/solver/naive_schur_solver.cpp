@@ -1,12 +1,19 @@
 #include "naive_schur_solver.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <deque>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
 
+#ifdef CARDILLO_HAVE_OPENMP
+#include <omp.h>
+#endif
+
 #include "../../misc/contact_projection.hpp"
 #include "../../misc/contact_rho.hpp"
+#include "../../misc/graph_coloring.hpp"
 #include "local_contact_newton.hpp"
 #include "warmstart.hpp"
 
@@ -25,9 +32,13 @@ struct ContactBlock {
     Vector3r rho{Vector3r::Zero()};  // step lengths (rhoN, rhoT, rhoT)
 };
 
+enum class SweepMode { GaussSeidel, Jacobi, Colored };
+
 struct SchurProblem {
     RowMatrixXXr G;  // n_c x n_c Schur complement onto the contact rows
     std::vector<ContactBlock> blocks;
+    misc::Coloring coloring;
+    SweepMode mode{SweepMode::GaussSeidel};
     real_t stepScale{(real_t)1};  // pj.alpha * pj.relaxation
     bool useNewton{false};
     NewtonACParams newton{};
@@ -69,8 +80,68 @@ void updateBlockInPlace(const SchurProblem& p, const ContactBlock& blk, const Ve
     pi.segment(blk.offset, blk.dim) = lam.head(blk.dim);
 }
 
-void sweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
+void gaussSeidelSweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
     for (const auto& blk : p.blocks) updateBlockInPlace(p, blk, blockVelocity(p, blk, c, pi), pi);
+}
+
+void jacobiSweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
+    const VectorXr xi = c + p.G * pi;
+    const int n = (int)p.blocks.size();
+#pragma omp parallel for schedule(static)
+    for (int k = 0; k < n; ++k) {
+        const auto& blk = p.blocks[(size_t)k];
+        Vector3r xiBlk = Vector3r::Zero();
+        xiBlk.head(blk.dim) = xi.segment(blk.offset, blk.dim);
+        updateBlockInPlace(p, blk, xiBlk, pi);
+    }
+}
+
+void coloredSweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
+    std::vector<Vector3r> xi(p.blocks.size(), Vector3r::Zero());
+#pragma omp parallel
+    for (const auto& colorClass : p.coloring.colorClasses) {
+        const int n = (int)colorClass.size();
+#pragma omp for schedule(static)
+        for (int k = 0; k < n; ++k) {
+            const int block = colorClass[(size_t)k];
+            xi[(size_t)k] = blockVelocity(p, p.blocks[(size_t)block], c, pi);
+        }
+#pragma omp for schedule(static)
+        for (int k = 0; k < n; ++k) {
+            const int block = colorClass[(size_t)k];
+            updateBlockInPlace(p, p.blocks[(size_t)block], xi[(size_t)k], pi);
+        }
+    }
+}
+
+void sweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
+    switch (p.mode) {
+        case SweepMode::Jacobi:
+            jacobiSweep(p, c, pi);
+            break;
+        case SweepMode::Colored:
+            coloredSweep(p, c, pi);
+            break;
+        default:
+            gaussSeidelSweep(p, c, pi);
+    }
+}
+
+misc::Coloring colorCouplingGraph(const SchurProblem& p) {
+    const int n = (int)p.blocks.size();
+    std::vector<std::vector<int>> adjacency((size_t)n);
+    for (int i = 0; i < n; ++i) {
+        const auto& bi = p.blocks[(size_t)i];
+        for (int j = i + 1; j < n; ++j) {
+            const auto& bj = p.blocks[(size_t)j];
+            const bool coupled = !p.G.block(bi.offset, bj.offset, bi.dim, bj.dim).isZero(0) || !p.G.block(bj.offset, bi.offset, bj.dim, bi.dim).isZero(0);
+            if (coupled) {
+                adjacency[(size_t)i].push_back(j);
+                adjacency[(size_t)j].push_back(i);
+            }
+        }
+    }
+    return misc::colorGreedyWelshPowell(n, adjacency);
 }
 
 }  // namespace
@@ -128,6 +199,11 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
         row += blk.dim;
     }
 
+    const std::string& sweepMode = m_cfg.condensed_sweep_mode;
+    p.mode = (sweepMode == "jacobi") ? SweepMode::Jacobi : (sweepMode == "colored") ? SweepMode::Colored : SweepMode::GaussSeidel;
+    if (sweepMode == "chaotic" && m_cfg.debug_pj) std::cout << "[NaiveSchur] condensed.sweep_mode=chaotic is not supported; using gauss_seidel." << std::endl;
+    if (p.mode == SweepMode::Colored) p.coloring = colorCouplingGraph(p);
+
     p.stepScale = m_cfg.pj_alpha * m_cfg.pj_relaxation;
     p.useNewton = (m_cfg.condensed_local_solve == "newton");
     p.newton =
@@ -136,7 +212,15 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
     VectorXr pi = VectorXr::Zero(nC);
     if (m_cfg.pj_warmstart) WarmstartProvider::applyWarmstart(pi, m_dyn);
 
-    if (m_cfg.debug_pj) std::cout << "[NaiveSchur] nContactRows=" << nC << " nBlocks=" << p.blocks.size() << std::endl;
+#ifdef CARDILLO_HAVE_OPENMP
+    if (m_cfg.condensed_num_threads > 0) omp_set_num_threads(m_cfg.condensed_num_threads);
+#endif
+
+    const bool useNesterov = m_cfg.pj_nesterov;
+    const bool useChebyshev = m_cfg.pj_chebyshev && !useNesterov;
+    const bool useAnderson = m_cfg.pj_anderson && !useNesterov && !useChebyshev;
+    if (useChebyshev && m_cfg.debug_pj) std::cout << "[NaiveSchur] pj.chebyshev is not supported; using the standard sweep." << std::endl;
+    if (m_cfg.debug_pj) std::cout << "[NaiveSchur] nContactRows=" << nC << " nBlocks=" << p.blocks.size() << " colors=" << p.coloring.numColors << std::endl;
     scSetup.~Scope();
     auto scSolve = m_dyn.timings()->scope(misc::TimingManager::TimerId::NaiveSchur);
 
@@ -155,7 +239,7 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
         throw std::runtime_error("NaiveSchur solver diverged");
     };
 
-    if (m_cfg.pj_nesterov) {
+    if (useNesterov) {
         // Nesterov momentum with adaptive restart, as in the projected Jacobi and condensed solvers.
         VectorXr piK = pi, piY = pi, uK = velocity(pi), uY = uK;
         double thk = 1.0;
@@ -196,6 +280,51 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
             uK = uK1;
             errPrev = err;
         }
+    } else if (useAnderson) {
+        const int m = std::max(1, m_cfg.pj_anderson_m);
+        std::deque<VectorXr> zHist, fHist;
+        VectorXr z = pi;
+        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
+            VectorXr w = z;
+            doSweep(w);
+            m_last_iters = iter + 1;
+            if (!w.allFinite()) fail(iter);
+
+            const real_t err = residual(velocity(z), velocity(w));
+            m_lastError = err;
+            if (err <= (real_t)1) {
+                z = w;
+                break;
+            }
+
+            const VectorXr f = w - z;
+            zHist.push_back(z);
+            fHist.push_back(f);
+            if ((int)fHist.size() > m + 1) {
+                zHist.pop_front();
+                fHist.pop_front();
+            }
+            const int mk = (int)fHist.size() - 1;
+            if (mk < 1) {
+                z = w;
+                continue;
+            }
+            MatrixXXr dF(nC, mk), dZ(nC, mk);
+            for (int j = 0; j < mk; ++j) {
+                dF.col(j) = fHist[(size_t)j + 1] - fHist[(size_t)j];
+                dZ.col(j) = zHist[(size_t)j + 1] - zHist[(size_t)j];
+            }
+            const VectorXr gamma = dF.colPivHouseholderQr().solve(f);
+            const VectorXr candidate = w - (dZ + dF) * gamma;
+            if (gamma.allFinite() && candidate.allFinite()) {
+                z = candidate;
+            } else {
+                z = w;
+                zHist.clear();
+                fHist.clear();
+            }
+        }
+        pi = z;
     } else {
         VectorXr uPrev = velocity(pi);
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
