@@ -217,10 +217,14 @@ Solver selection and parameters
      - ``solver.max_iterations``
      - ``200000``
      - Hard iteration cap for Projected Jacobi (minimum 1). Clamped to ≥ 1.
+   * - ``pj_criterion``
+     - ``pj.criterion``, alias: ``solver.criterion``
+     - ``velocity_rms``
+     - PJ stopping measure: ``velocity_rms`` (legacy) or ``natural_map`` (blockwise contact natural-map residual).
    * - ``pj_tol_abs``
      - ``solver.tol_abs``
      - ``1e-4``
-     - Absolute convergence tolerance on the velocity residual.
+     - Absolute convergence tolerance for the selected PJ criterion.
    * - ``pj_tol_rel``
      - ``solver.tol_rel``
      - ``1e-4``

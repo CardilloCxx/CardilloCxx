@@ -18,6 +18,7 @@ enum class IntegratorType { Moreau };
 // No initial multipliers, no drift, no stabilization parameter; perfect constraints require
 // theta > 1/2.
 enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx, Scs, Mosek };
+enum class PjTerminationCriterion { VelocityRms, NaturalMap };
 
 struct Config {
     // Simulation settings
@@ -73,6 +74,7 @@ struct Config {
     // Solver selection
     SolverType solver{SolverType::ProjectedJacobi};
     int pj_max_iterations{200000};                     // pj.max_iterations
+    PjTerminationCriterion pj_criterion{PjTerminationCriterion::VelocityRms};  // pj.criterion
     real_t pj_tol_abs{(real_t)1e-5};                   // pj.tol_abs
     real_t pj_tol_rel{(real_t)1e-5};                   // pj.tol_rel
     // WARNING: these two keys mean genuinely different things in PJ vs. PGS/condensed -- not just

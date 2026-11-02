@@ -150,6 +150,28 @@ We use a mixed absolute/relative residual:
             {\varepsilon_\mathrm{abs}\,\mathbf{1} + \varepsilon_\mathrm{rel}\,\max(|u^{(k+1)}|,|u^{(k)}|)}
      \right\rVert_2 \leq 1
 
+This is the legacy ``velocity_rms`` criterion and remains the default. To use
+``pj.criterion = natural_map``, PJ instead evaluates the contact natural-map
+residual for each projection block:
+
+.. math::
+
+   r_b = P_b^{-1}(\Lambda_b^{(k)} - \Lambda_b^{(k+1)}),
+   \qquad
+   e = \max_b \max\!\left(
+   \frac{|r_N|}{\varepsilon_\mathrm{abs} + \varepsilon_\mathrm{rel}|\gamma_N|},
+   \frac{\lVert r_T\rVert_2}{\varepsilon_\mathrm{abs} + \varepsilon_\mathrm{rel}\lVert\gamma_T\rVert_2}
+   \right).
+
+Here :math:`P_b` is the same contact step used by the projection. Frictional
+blocks scale the normal and tangential components separately, using a 2-norm
+for the tangential pair; frictionless blocks contain only the normal component.
+Each relative scale uses the larger corresponding row-velocity magnitude from
+the current and previous sweeps.
+The criterion is evaluated in every accelerated loop and at PJ's existing
+check interval in the standard loop. ``pj.tol_abs`` and ``pj.tol_rel`` control
+both criteria.
+
 Config keys
 -----------
 
@@ -163,6 +185,8 @@ Config keys
      - Hard iteration cap (default 200000)
    * - ``solver.tol_abs``, ``solver.tol_rel``
      - Convergence tolerances on the velocity residual
+   * - ``pj.criterion`` (alias ``solver.criterion``)
+     - ``velocity_rms`` (default) or ``natural_map``; select the legacy velocity increment or the blockwise contact natural-map residual
    * - ``solver.alpha``
      - Step-size multiplier for each Jacobi sweep (default 0.3)
    * - ``solver.nesterov``

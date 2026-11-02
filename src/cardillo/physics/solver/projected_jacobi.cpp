@@ -7,12 +7,14 @@
 #include "../../misc/block_diagonal.hpp"
 #include "../../misc/contact_projection.hpp"
 #include "../../misc/contact_rho.hpp"
+#include "termination.hpp"
 
 namespace cardillo::solver {
 
 struct workspace {
     const int Nv, Ns, Nd, Nnfc, Nfc, Nc;
     const VectorXr mu;
+    const VectorXr stepSize;
     const VectorXr biasImpulse;  // dyn.contactVVec(), constant (scaled by Rdiag unless block preconditioning is used)
     const Eigen::SparseMatrix<real_t, Eigen::RowMajor> W;
     const Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW;  // Rdiag-scaled W, or plain W when using the block preconditioner
@@ -27,14 +29,19 @@ struct workspace {
     VectorXr impulse;
     VectorXr delta_impulse;
     VectorXr prev_impulse;
+    VectorXr rowVelocity;
+    VectorXr previousRowVelocity;
     VectorXr rhs;  // reusable RHS buffer for solveS
 
+    config::PjTerminationCriterion criterion;
+    real_t lastError{0};
     int iter = 0;
     misc::TimingManager* timer;
     physics::assembly::PjAssembler* assembler;
 
     workspace(int nv, int ns, int nd, int nnfc, int nfc, int nc, Eigen::SparseMatrix<real_t, Eigen::RowMajor> W, Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW, VectorXr biasImpulse, VectorXr mu,
-              std::optional<BlockDiagonal> R_block, VectorXr p_init, VectorXr x_init, misc::TimingManager* timer, physics::assembly::PjAssembler* assembler)
+              VectorXr stepSize, config::PjTerminationCriterion criterion, std::optional<BlockDiagonal> R_block, VectorXr p_init, VectorXr x_init, misc::TimingManager* timer,
+              physics::assembly::PjAssembler* assembler)
         : Nv(nv),
           Ns(ns),
           Nd(nd),
@@ -42,6 +49,7 @@ struct workspace {
           Nfc(nfc),
           Nc(nc),
           mu(std::move(mu)),
+          stepSize(std::move(stepSize)),
           biasImpulse(std::move(biasImpulse)),
           W(std::move(W)),
           RW(std::move(RW)),
@@ -51,7 +59,10 @@ struct workspace {
           impulse(std::move(p_init)),
           prev_impulse(impulse),
           delta_impulse(VectorXr::Zero(nv + ns + nd)),
+          rowVelocity(VectorXr::Zero(nc)),
+          previousRowVelocity(VectorXr::Zero(nc)),
           rhs(VectorXr::Zero(nv + ns + nd)),
+          criterion(criterion),
           timer(timer),
           assembler(assembler) {}
 };
@@ -91,14 +102,16 @@ static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::Row
 // never reaches it) frictional contacts.
 // Nfc is the number of *frictional rows* (Nc - Nnfc, i.e. 3 per frictional contact), matching the
 // convention used by workspace::Nfc and project() above -- not the number of frictional contacts.
-static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, int Nnfc, int Nfc, real_t alpha) {
+static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, int Nnfc, int Nfc, real_t alpha, VectorXr& stepSize) {
     BlockDiagonal D_scaled;  // holds D/alpha per block, so calculateInverse() yields alpha*D^{-1} directly
+    stepSize = VectorXr::Zero(W.rows());
     const real_t invAlpha = (alpha > (real_t)0) ? ((real_t)1 / alpha) : (real_t)0;
 
     for (int cid = 0; cid < Nnfc; ++cid) {
         real_t Dii = 0;
         for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) Dii += it.value() * it.value() * MinvDiag[it.col()];
         D_scaled.addBlockDiag(VectorXr::Constant(1, Dii * invAlpha));
+        stepSize[cid] = (Dii > (real_t)0) ? (alpha / Dii) : (real_t)0;
     }
 
     // Frictional contacts: not the full 3x3 inverse -- coupling normal and tangential rows (or
@@ -114,6 +127,7 @@ static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<r
         if (!(rho.array() > (real_t)0).all()) rho = misc::computeContactRho(G, misc::ContactRhoStrategy::IsotropicDiagonal);
         const Vector3r diagD = (rho.array() > (real_t)0).select(rho.cwiseInverse(), Vector3r::Zero());
         D_scaled.addBlockDiag(diagD * invAlpha);
+        stepSize.segment<3>(cid) = (diagD.array() > (real_t)0).select((real_t)1 / (diagD * invAlpha).array(), Vector3r::Zero());
     }
 
     return D_scaled.calculateInverse();
@@ -143,6 +157,10 @@ static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
     ws->delta_impulse.noalias() = ws->RW * ws->x.head(ws->Nv);
     ws->delta_impulse += ws->biasImpulse;
     if (ws->R_block) ws->R_block->applyTo(ws->delta_impulse, ws->delta_impulse);
+    if (ws->criterion == config::PjTerminationCriterion::NaturalMap) {
+        ws->previousRowVelocity = ws->rowVelocity;
+        ws->rowVelocity = ws->delta_impulse.cwiseQuotient(ws->stepSize);
+    }
 
     project(ws);
     ws->delta_impulse = ws->impulse - ws->prev_impulse;
@@ -151,10 +169,13 @@ static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
     ws->x += ws->assembler->solveS(ws->rhs);
 }
 
-static inline real_t residual(const VectorXr& v, const VectorXr& v_prev, config::Config& cfg) {
-    const int Nv = (int)v.size();
-    const VectorXr q = v.cwiseAbs().cwiseMax(v_prev.cwiseAbs()) * cfg.pj_tol_rel + VectorXr::Constant(Nv, cfg.pj_tol_abs);
-    return 1.0 / sqrt((double)Nv) * (v - v_prev).cwiseQuotient(q).norm();
+static inline real_t iterationError(workspace& ws, const VectorXr& v, const VectorXr& v_prev, const config::Config& cfg) {
+    if (cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap) {
+        ws.lastError = termination::naturalMapError(ws.prev_impulse, ws.impulse, ws.stepSize, ws.rowVelocity, ws.previousRowVelocity, ws.Nnfc, cfg.pj_tol_abs, cfg.pj_tol_rel);
+    } else {
+        ws.lastError = termination::velocityRms(v, v_prev, cfg.pj_tol_abs, cfg.pj_tol_rel);
+    }
+    return ws.lastError;
 }
 
 // Estimates the spectral radius of the LINEAR part of the sweep map x -> M*x + c (i.e. ignoring
@@ -205,7 +226,7 @@ static inline void chebyshev_loop(std::unique_ptr<workspace>& ws, config::Config
         pj_sweep(ws);
         ws->iter = iter + 1;
 
-        const real_t err = residual(ws->x.head(ws->Nv), xk1.head(ws->Nv), cfg);
+        const real_t err = iterationError(*ws, ws->x.head(ws->Nv), xk1.head(ws->Nv), cfg);
         if (cfg.debug_pj && iter % 1000 == 0) std::cout << "PJ cheb iter " << iter << ", residual norm: " << err << std::endl;
         if (err <= (real_t)1) break;
 
@@ -280,7 +301,7 @@ static inline void anderson_loop(std::unique_ptr<workspace>& ws, config::Config&
         const VectorXr w = concat(ws->x, ws->impulse);  // g(z)
         const VectorXr f = w - z;
 
-        const real_t err = residual(ws->x.head(ws->Nv), x_prev.head(ws->Nv), cfg);
+        const real_t err = iterationError(*ws, ws->x.head(ws->Nv), x_prev.head(ws->Nv), cfg);
         if (cfg.debug_pj && iter % 1000 == 0) std::cout << "PJ AA iter " << iter << ", residual norm: " << err << std::endl;
         ws->iter = iter + 1;
         if (err <= (real_t)1) {
@@ -347,6 +368,7 @@ static inline std::unique_ptr<workspace> build_workspace(physics::DynamicsAssemb
     // cannot be folded that way (block multiplication mixes a contact's 3 rows together), so it
     // keeps W/contactBias unscaled and applies R_block as a separate step in pj_sweep().
     Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW;
+    VectorXr stepSize;
 
     VectorXr v_prev = W * dyn.vVec() + contactBias;   // Previous contact-relative velocity
     VectorXr biasImpulse = contactBias + restitution.cwiseProduct(v_prev);
@@ -354,11 +376,11 @@ static inline std::unique_ptr<workspace> build_workspace(physics::DynamicsAssemb
     std::optional<BlockDiagonal> R_block;
     if (cfg.pj_rdiag_true_delassus) {
         RW = W;
-        R_block = buildBlockPreconditioner(W, Minv, Nnfc, Nfc, cfg.pj_alpha);
+        R_block = buildBlockPreconditioner(W, Minv, Nnfc, Nfc, cfg.pj_alpha, stepSize);
     } else {
-        VectorXr Rdiag = rdiag_sparse(W, Minv, cfg.pj_alpha, Nnfc);
-        RW = Rdiag.asDiagonal() * W;
-        biasImpulse = Rdiag.asDiagonal() * biasImpulse;
+        stepSize = rdiag_sparse(W, Minv, cfg.pj_alpha, Nnfc);
+        RW = stepSize.asDiagonal() * W;
+        biasImpulse = stepSize.asDiagonal() * biasImpulse;
     }
 
     // Base RHS without any contact-impulse correction (before warmstart is folded in). Note: we
@@ -378,15 +400,15 @@ static inline std::unique_ptr<workspace> build_workspace(physics::DynamicsAssemb
 
     VectorXr mus = dyn.muVec();
 
-    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, W, std::move(RW), std::move(biasImpulse), std::move(mus), std::move(R_block), std::move(p), std::move(x_init), dyn.timings(),
-                                        &assembler);
+    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, W, std::move(RW), std::move(biasImpulse), std::move(mus), std::move(stepSize), cfg.pj_criterion,
+                                       std::move(R_block), std::move(p), std::move(x_init), dyn.timings(), &assembler);
 }
 
 static inline void standard_loop(std::unique_ptr<workspace>& ws, config::Config& cfg) {
     for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
         pj_sweep(ws);
         ws->iter = iter + 1;
-        if (iter % 10 == 0 && residual(ws->x.head(ws->Nv), ws->prev_x.head(ws->Nv), cfg) <= 1) break;
+        if (iter % 10 == 0 && iterationError(*ws, ws->x.head(ws->Nv), ws->prev_x.head(ws->Nv), cfg) <= 1) break;
     }
 }
 
@@ -411,7 +433,7 @@ static inline void nesterov_loop(std::unique_ptr<workspace>& ws, config::Config&
         pk1 = ws->impulse;
         ws->iter = iter + 1;
 
-        const real_t err = residual(xk1.head(ws->Nv), xy.head(ws->Nv), cfg);
+        const real_t err = iterationError(*ws, xk1.head(ws->Nv), xy.head(ws->Nv), cfg);
 
         if (cfg.debug_pj && iter % 1000 == 0) std::cout << "PJ nes iter " << iter << ", residual norm: " << err << std::endl;
         if (err <= (real_t)1) break;
@@ -473,6 +495,7 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
 
     if (m_dyn.numContacts() == 0) {
         // No contacts: free solution only
+        m_lastError = 0;
         VectorXr rhs = m_assembler.rhs(dt, theta);
         VectorXr x_free = m_assembler.solveS(rhs);
         m_dyn.setLambda_g(x_free.segment(numV, numS));
@@ -503,6 +526,7 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
     }
 
     m_last_iters = ws->iter;
+    m_lastError = ws->lastError;
 
     solver::WarmstartProvider::storeImpulse(ws->impulse, m_dyn);
 

@@ -47,6 +47,15 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.pj_max_iterations = std::max(1, std::stoi(val));
             } catch (...) {
             }
+        } else if (key == "pj.criterion" || key == "solver.criterion") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            if (v == "velocity_rms")
+                cfg.pj_criterion = PjTerminationCriterion::VelocityRms;
+            else if (v == "natural_map")
+                cfg.pj_criterion = PjTerminationCriterion::NaturalMap;
+            else
+                std::cerr << "Warning: unrecognized PJ termination criterion '" << val << "'. Keeping the current value." << std::endl;
         } else if (key == "pj.tol_abs" || key == "solver.tol_abs") {
             try {
                 cfg.pj_tol_abs = static_cast<real_t>(std::stod(val));
