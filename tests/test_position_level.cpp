@@ -114,6 +114,9 @@ int main() {
 #ifdef CARDILLO_HAVE_CONICXX
     solvers.emplace_back(SolverType::Conicxx, "conicxx");
 #endif
+#ifdef CARDILLO_HAVE_SCS
+    solvers.emplace_back(SolverType::Scs, "scs");
+#endif
     // Bilateral percussions of projected Jacobi (first solver) as reference for all solvers, in
     // particular for the perfect constraint, whose percussion is a multiplier in the conic solvers.
     real_t refPercussion[3] = {0, 0, 0};
