@@ -67,7 +67,11 @@ void ContactTracker::matchContactsForPair(const ContactList& prev, ContactList& 
         currMatched[i] = true;
         prevUsed[j] = true;
         curr[i].prev_global_out_index = prev[j].global_out_index;
-        curr[i].last_impulse = prev[j].last_impulse;
+        // The tangent frame is rebuilt from the new normal, so the tangential percussion is
+        // carried over as a world vector and expressed in the new frame.
+        const Vector3r& p = prev[j].last_impulse;
+        const Vector3r pt = p.y() * prev[j].tangent1 + p.z() * prev[j].tangent2;
+        curr[i].last_impulse = Vector3r(p.x(), curr[i].tangent1.dot(pt), curr[i].tangent2.dot(pt));
     }
 }
 

@@ -5,7 +5,7 @@ function(cardillo_add_scene_example target scene_header scene_type)
 		CARDILLO_EXAMPLE_SCENE_TYPE=${scene_type}
 		CARDILLO_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 	)
-	target_link_libraries(${target} PRIVATE cardillo::cardillo)
+	target_link_libraries(${target} PRIVATE cardillo::cardillo cardillo_warnings)
 endfunction()
 
 cardillo_add_scene_example(stacked_spheres "scenes/stacked_spheres/StackedSpheresScene.hpp" StackedSpheresScene)

@@ -38,7 +38,7 @@ set_target_properties(cardillo PROPERTIES
 # Eigen, EnTT and Coal types appear in the public headers; VTK is used only in the implementation.
 target_link_libraries(cardillo
     PUBLIC Eigen3::Eigen EnTT::EnTT coal::coal
-    PRIVATE VTK::CommonCore VTK::CommonDataModel VTK::IOXML)
+    PRIVATE VTK::CommonCore VTK::CommonDataModel VTK::IOXML $<BUILD_INTERFACE:cardillo_warnings>)
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(cardillo PUBLIC OpenMP::OpenMP_CXX)

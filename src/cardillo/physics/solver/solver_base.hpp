@@ -7,9 +7,8 @@ namespace cardillo {
 namespace solver {
 
 /**
- * @brief Common interface for the velocity-level contact/constraint solvers (Projected
- * Jacobi/Gauss-Seidel, Conjugate Gradient, and the QOCO/Clarabel cone-program solvers) used by
- * the Moreau-Jean theta-method integrator (see cardillo::integration::MoreauIntegrator).
+ * @brief Common interface of the contact/constraint solvers (projected Jacobi, condensed, PGS,
+ * naive Schur and the optional conic backends) used by the Moreau-theta integrator (see cardillo::integration::MoreauIntegrator).
  */
 class SolverBase {
    public:
@@ -27,7 +26,6 @@ class SolverBase {
 
     // Diagnostics
     virtual int lastIterations() const { return m_last_iters; }
-    virtual real_t lastError() const { return (real_t)0; }
 
     virtual const char* name() const { return "SolverBase"; }
 

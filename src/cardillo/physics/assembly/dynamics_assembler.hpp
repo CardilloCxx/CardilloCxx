@@ -91,8 +91,8 @@ class DynamicsAssembler {
     // impulses Lambda_g = h lambda_{g,theta} and Lambda_gamma = h lambda_{gamma,theta}, row i reads
     //   W_i^T u_{n+1} + b_i + c_i Lambda_i = 0,
     // with the compliance factors c_g = C/(theta^2 h^2), c_gamma = A/(theta h) and the biases below
-    // (position-level force law, see config.hpp). The saddle-point assemblers (projected Jacobi,
-    // cone programs) use the negative of the bias as right-hand side.
+    // (position-level force law, see config.hpp). The cone-program assemblers (QOCO, Clarabel/SCS/
+    // MOSEK, ConicXX) use the negative of the bias as right-hand side; projected Jacobi uses +b.
     static real_t springComplianceScale(real_t dt, real_t theta) { return (real_t)1 / (theta * theta * dt * dt); }
     static real_t damperComplianceScale(real_t dt, real_t theta) { return (real_t)1 / (theta * dt); }
     VectorXr springBias(real_t dt, real_t theta) const;
@@ -151,6 +151,7 @@ class DynamicsAssembler {
 
     int m_numFrictionalContacts{0};
     int m_numFrictionlessContacts{0};
+    bool m_warnedThetaPerfect{false};  // theta <= 1/2 warning with perfect constraints given once
 
     std::vector<int> m_body_vel_offsets;  // size Nb+1, prefix sums for body velocity columns
     std::vector<int> m_body_pos_offsets;  // size Nb+1, prefix sums for body position columns

@@ -25,8 +25,8 @@ struct workspace {
     VectorXr x;
     VectorXr prev_x;
     VectorXr impulse;
-    VectorXr delta_impulse;
     VectorXr prev_impulse;
+    VectorXr delta_impulse;
     VectorXr rhs;  // reusable RHS buffer for solveS
 
     int iter = 0;
@@ -84,11 +84,8 @@ static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::Row
 // Exact per-contact local Delassus block preconditioner: R_block = alpha * D^{-1}, where D is the
 // contact's own (1x1, or 3x3 for a frictional contact) diagonal block of W*Minv*W^T -- as opposed
 // to rdiag_sparse() above, which only uses each row's own scalar diagonal entry and ignores the
-// normal/tangential cross-coupling within a frictional contact's 3 rows. See the design writeup
-// in the accompanying report for the theory; this reuses the same block-inversion machinery
-// (Cholesky, falling back to LDLT, falling back to a diagonal-only inverse) already used by
-// PgsAssembler::Dinv() for springs/dampers and (dead, for contacts, since ConjugateGradientSolver
-// never reaches it) frictional contacts.
+// normal/tangential cross-coupling within a frictional contact's 3 rows. Blocks are inverted by
+// misc/block_diagonal.hpp (Cholesky, falling back to LDLT, then to a diagonal-only inverse).
 // Nfc is the number of *frictional rows* (Nc - Nnfc, i.e. 3 per frictional contact), matching the
 // convention used by workspace::Nfc and project() above -- not the number of frictional contacts.
 static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, int Nnfc, int Nfc, real_t alpha) {

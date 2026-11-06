@@ -17,7 +17,6 @@ class PgsAssembler {
     VectorXr rhs(real_t dt, real_t theta) const { return rhs(dt, theta, ufree(dt, theta)); }
     VectorXr rhs(real_t dt, real_t theta, const VectorXr& u_free) const;
     VectorXr ufree(real_t dt, real_t theta) const;
-    BlockDiagonal Dinv(real_t dt, real_t theta) const;
     BlockDiagonal DinvDiag(real_t dt, real_t theta) const;
 
     Eigen::SparseMatrix<real_t> W() const;

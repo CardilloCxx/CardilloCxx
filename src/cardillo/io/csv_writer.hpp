@@ -2,6 +2,8 @@
 
 #include <entt/entt.hpp>
 #include <fstream>
+#include <iomanip>
+#include <limits>
 #include <string>
 #include <vector>
 #include "../config/config.hpp"
@@ -18,7 +20,7 @@ class CsvWriter {
     CsvWriter(const std::string& path, const std::vector<std::string>& header) { open(path, header); }
 
     // Construct with config: store pending path for lazy opening using config values
-    CsvWriter(const config::Config& cfg, const std::string& suffix = "_tracked.csv") { m_pending_path = cfg.output_folder + "/" + cfg.output_filename_prefix + suffix; }
+    CsvWriter(const config::Config& cfg, const std::string& suffix = "_tracked.csv") { m_pending_path = cfg.output_folder + "/" + cfg.outputPrefix() + suffix; }
 
     bool isOpen() const { return static_cast<bool>(m_stream); }
 
@@ -30,6 +32,7 @@ class CsvWriter {
         m_stream.rdbuf()->pubsetbuf(nullptr, 1 << 16);
         m_stream.open(path);
         if (!m_stream) return;
+        m_stream << std::setprecision(std::numeric_limits<real_t>::max_digits10);
         for (size_t i = 0; i < header.size(); ++i) {
             m_stream << header[i];
             if (i + 1 < header.size()) m_stream << ",";

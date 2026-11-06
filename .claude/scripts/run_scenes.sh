@@ -6,7 +6,7 @@
 #            torsional_oscillator:torsional_oscillator:scene.config:1.0
 # Runs from the repository root (scenes load meshes relative to the cwd), with build/ in the root.
 # Prints one line per scene: exit code, last solver iteration count and the first error message.
-# Timeout per scene: SCENE_TIMEOUT seconds (default 900).
+# Timeout per scene: SCENE_TIMEOUT seconds (default 900). Build directory: BUILD_DIR (default build).
 
 set -u
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -15,7 +15,7 @@ shift
 mkdir -p "$OUT"
 for sc in "$@"; do
     IFS=: read -r target dir cfg T <<< "$sc"
-    bin="$ROOT/build/examples/$target"
+    bin="$ROOT/${BUILD_DIR:-build}/examples/$target"
     [ -x "$bin" ] || { echo "== $target: no binary $bin"; continue; }
     copy="$OUT/$target.config"
     cp "$ROOT/examples/scenes/$dir/$cfg" "$copy"

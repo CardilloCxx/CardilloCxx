@@ -18,7 +18,7 @@ public:
         // ground (static obstacle cube via unified API)
         physics::CubeShape groundShape{Vector3r(5.0, 5.0, 0.5)};
         physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-0.5); groundState.setOrientation(Quaternion4r::Identity());
-        entt::entity eGround = engine.addStaticBody(groundShape, groundState);
+        engine.addStaticBody(groundShape, groundState);
 
         // Flat cube that acts as a "foot" (dynamic)
         physics::CubeShape footShape{Vector3r(0.2, 0.2, 0.02)}; // wide and flat
@@ -241,7 +241,6 @@ private:
 
         // Connect consecutive bodies with very large stiffness translational springs (large finite value)
         const real_t k_inf = (real_t)1e9;
-        const real_t d_inf = (real_t)1.0;
         for (size_t i = 0; i + 1 < bodies.size(); ++i) {
             entt::entity a = bodies[i];
             entt::entity b = bodies[i+1];

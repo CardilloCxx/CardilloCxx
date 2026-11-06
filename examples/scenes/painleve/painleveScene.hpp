@@ -20,8 +20,6 @@ public:
         physics::RigidState groundState; groundState.position = Vector3r(0.0,0.0,-groundHalfThickness); groundState.setOrientation(Quaternion4r::Identity());
         engine.addStaticBody(groundShape, groundState);
 
-        const real_t phi = (real_t)(-31.0 * M_PI / 180.0);
-        const real_t friction = (real_t)5 / 2;
         const real_t mass = (real_t)1.0;
         const real_t J = (real_t)(mass * (1.0 / 3.0));
         const real_t l = (real_t)1.0;

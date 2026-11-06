@@ -41,8 +41,6 @@ public:
 
         // Tripod parameters
         const real_t apexHeight = (real_t)0.6;  // height above top surface
-        const real_t legFootRadius = (real_t)0.25; // spread around apex in x/y (unused)
-        const real_t legSteeperInward = (real_t)0.22; // extra inward shift for cliff-facing leg to avoid overhang (unused)
         const real_t legK = (real_t)200000.0;    // stiff tripod springs
         const real_t legD = (real_t)2.0;        // tripod damping
 
@@ -96,7 +94,6 @@ public:
             const real_t halfZ = cliffHeight * (real_t)0.5;
 
             // Center tripod under apex: two front legs at the inner top edge (±Y around apex.y), one back leg aligned in Y with apex and further inward in X.
-            const real_t edgeMargin   = (real_t)0.005;  // attach on vertical inner face near top edge
             const real_t zDown        = (real_t)0.02;   // slightly below top edge on z
             const real_t frontSpreadY = (real_t)0.14;   // symmetric under apex (reduced to prevent overlap)
             const real_t backInward   = (real_t)0.26;   // stabilizing back leg further from edge
@@ -123,20 +120,6 @@ public:
         anchorsL.push_back(buildTripod(apexL[1], true));
         anchorsR.push_back(buildTripod(apexR[0], false));
         anchorsR.push_back(buildTripod(apexR[1], false));
-
-        // Helper: create a rope as a chain of point masses with springs; attach to two anchor entities
-        auto addRope = [&](entt::entity eA, const Vector3r& pA, entt::entity eB, const Vector3r& pB,
-                           int segments, real_t nodeMass, real_t k, real_t d){
-            std::vector<entt::entity> nodes; nodes.reserve((size_t)segments);
-            // Uniform initial positions along straight line
-            for (int i = 0; i < segments; ++i) {
-                real_t t = (segments == 1) ? (real_t)0.5 : (real_t)i / (real_t)(segments - 1);
-                Vector3r p = (real_t)1.0 * ((real_t)1.0 - t) * pA + t * pB;
-                engine.addPointMass(nodeMass, p, Vector3r::Zero(), (real_t)0.03); // sphere radius
-                // Retrieve the last created entity (point mass). addPointMass returns an index_t, not entity, so we can't directly get it here.
-                // Instead, find the last physics object without C_BodyIndex yet would be brittle; better to create entities manually.
-            }
-        };
 
         // Since addPointMass returns index_t, create nodes explicitly to keep entity handles
         auto createPointMass = [&](real_t mass, const Vector3r& p, real_t radius){

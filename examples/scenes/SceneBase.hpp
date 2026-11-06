@@ -21,11 +21,4 @@ public:
     // Optional per-step scene update, called once before each simulation step with the time t at
     // the beginning of the step. Default is no-op. The step size is engine.timeStep().
     virtual void updateScene(cardillo::physics::PhysicsEngine& /*engine*/, real_t /*t*/) {}
-
-    // Deprecated: dt is redundant (engine.timeStep()). Kept so that scenes overriding the old
-    // signature still work; the default forwards to updateScene(engine, t).
-    [[deprecated("override updateScene(engine, t) and use engine.timeStep() if the step size is needed")]] 
-    virtual void updateScene(cardillo::physics::PhysicsEngine& engine, real_t t, real_t /*dt*/) {
-        updateScene(engine, t);
-    }
 };

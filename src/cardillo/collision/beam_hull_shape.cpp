@@ -110,9 +110,16 @@ void BeamHullShape::computeShapeSupportSet(coal::SupportSet& supportSet, int& /*
 
     auto& poly = data.polygon;
     poly.clear();
+    if (!std::isfinite(best)) {  // degenerate element (non-finite node state): no support set
+        supportSet.points().clear();
+        return;
+    }
     forEachCandidate([&](const Vector3r& p) {
         if (best - n.dot(p) <= tol) poly.push_back(supportSet.tf.inverseTransform(p).head<2>());
     });
+    // Coincident rings (degenerate element) give duplicate points; the hull needs distinct ones.
+    std::sort(poly.begin(), poly.end(), [](const auto& a, const auto& b) { return a.x() < b.x() || (a.x() == b.x() && a.y() < b.y()); });
+    poly.erase(std::unique(poly.begin(), poly.end(), [tol](const auto& a, const auto& b) { return (a - b).squaredNorm() <= tol * tol; }), poly.end());
     coal::details::computeSupportSetConvexHull(poly, supportSet.points());
 }
 

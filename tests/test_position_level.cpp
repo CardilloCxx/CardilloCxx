@@ -103,10 +103,8 @@ Run simulateImpl(config::SolverType solver, real_t theta, real_t stiffness) {
 
 int main() {
     using config::SolverType;
-    std::vector<std::pair<SolverType, std::string>> solvers = {{SolverType::ProjectedJacobi, "projected_jacobi"},
-                                                               {SolverType::Condensed, "condensed"},
-                                                               {SolverType::ProjectedGaussSeidel, "pgs"},
-                                                               {SolverType::ConjugateGradient, "cg"}};
+    std::vector<std::pair<SolverType, std::string>> solvers = {
+        {SolverType::ProjectedJacobi, "projected_jacobi"}, {SolverType::Condensed, "condensed"}, {SolverType::ProjectedGaussSeidel, "pgs"}, {SolverType::NaiveSchur, "naive_schur"}};
 #ifdef CARDILLO_HAVE_QOCO
     solvers.emplace_back(SolverType::Qoco, "qoco");
 #endif

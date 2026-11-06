@@ -17,7 +17,7 @@ enum class IntegratorType { Moreau };
 // with free bodies, kinematic drivers and prescribed rates all at t_{n+theta} = t_n + (1 - theta) h.
 // No initial multipliers, no drift, no stabilization parameter; perfect constraints require
 // theta > 1/2.
-enum class SolverType { ProjectedJacobi, ConjugateGradient, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx, Scs, Mosek };
+enum class SolverType { ProjectedJacobi, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx, Scs, Mosek };
 
 struct Config {
     // Simulation settings
@@ -29,7 +29,7 @@ struct Config {
     // Output settings
     int output_interval_steps{50};                // output.interval_steps - VTK write interval in steps
     std::string output_folder{"./vtk_out"};       // output.folder
-    std::string output_filename_prefix{"scene"};  // output.filename_prefix
+    std::string output_filename_prefix{""};  // output.filename_prefix (empty: outputPrefix() falls back to "scene")
     bool output_write_contact_manifolds{true};    // output.write_contact_manifolds
 
     // Collision settings
@@ -75,74 +75,38 @@ struct Config {
     int pj_max_iterations{200000};                     // pj.max_iterations
     real_t pj_tol_abs{(real_t)1e-5};                   // pj.tol_abs
     real_t pj_tol_rel{(real_t)1e-5};                   // pj.tol_rel
-    // WARNING: these two keys mean genuinely different things in PJ vs. PGS/condensed -- not just
-    // different tuning, a structurally different formula. PGS/condensed multiply BOTH onto the
-    // per-iteration delta every sweep: dlambda = relaxation * GiiInv * r, with an EXTRA *alpha
-    // applied only to contact rows (so relaxation is a uniform SOR-style damping factor across
-    // every row kind, alpha an additional contact-only one). PJ never reads pj_relaxation at all
-    // (grepped: zero references in projected_jacobi.cpp) and instead bakes alpha directly into the
-    // contact preconditioner ONCE per solve() call: R_block = alpha * D^{-1} (see
-    // buildBlockPreconditioner()/rdiag_sparse() in projected_jacobi.cpp). Mathematically alpha's
-    // role there matches Anitescu-Tasora's cone-complementarity framing: a step size bounded by the
-    // reciprocal of the contact Delassus operator's Lipschitz constant, not an arbitrary damping
-    // knob -- confirmed empirically for condensed too: the power-iteration spectral-radius
-    // estimate already built for pj.chebyshev, run at alpha=1, crosses 1 at almost exactly the alpha domino's own config
-    // comments arrived at by hand-tuning for condensed.sweep_mode=jacobi. Neither `alpha` nor
-    // `relaxation` is currently derived from that estimate automatically for either solver --
-    // hand-tuned per scene today. See the report for the full theory-vs-implementation writeup and
-    // the roadmap of what's untested (e.g. relaxation > 1, true over-relaxation, has never been
-    // tried anywhere in this codebase's example scenes despite being provably safe for the
-    // symmetric-positive-definite bilateral sub-system per the Ostrowski-Reich theorem).
+    // Step-length factors. PGS/condensed: dlambda = relaxation * GiiInv * r on every row, with an
+    // additional factor alpha on contact rows. PJ ignores relaxation and uses the contact step
+    // R = alpha * D^-1 (D = W M^-1 W^T); alpha bounds the step by the Lipschitz constant of the
+    // contact Delassus operator. Both are tuned per scene.
     real_t pj_relaxation{(real_t)1.0};                 // pj.relaxation
     real_t pj_alpha{(real_t)0.3};                      // pj.alpha
     bool pj_nesterov{true};                            // pj.nesterov (enable Nesterov acceleration)
     real_t pj_nesterov_beta_threshold{(real_t)1.0};    // pj.nesterov_beta_threshold
     int pj_nesterov_restart_limit{10000};              // pj.nesterov_restart_limit
-    // Chebyshev semi-iterative acceleration: an alternative to Nesterov, estimating the iteration
-    // operator's spectral radius via power iteration each solve() call. Mutually exclusive with
-    // pj_nesterov (pj_nesterov takes precedence if both are set). Shared by both
-    // solver.type=projected_jacobi (matrix-based power iteration through PjAssembler::solveS())
-    // and solver.type=condensed (matrix-free power iteration reusing condensed's own
-    // block-sweep functions with projection/Newton disabled and a zero rhs -- see
-    // estimateSpectralRadius() in condensed_solver.cpp). Verified on three scenes against a true
-    // (non-accelerated) baseline: 3.4-10.7x fewer sweeps than no acceleration, matching or beating
-    // pj_nesterov in every case tested (up to ~1.8x fewer sweeps than Nesterov on dense
-    // rigid-contact scenes; within ~3% of Nesterov, still both a ~3.4x win over baseline, on an
-    // elastic+frictional scene) -- for PJ. On condensed, ~20% fewer sweeps than no acceleration and
-    // competitive with/slightly ahead of Nesterov on both domino and slinky (see
-    // docs/chapters/solvers/condensed.rst). Not yet default -- see the accompanying report for the
-    // full methodology before relying on these numbers for a scene not yet tested.
+    // Chebyshev semi-iterative acceleration with a power-iteration estimate of the spectral radius
+    // of the linearized sweep (PJ and condensed). Precedence: pj_nesterov > pj_chebyshev > pj_anderson.
     bool pj_chebyshev{false};  // pj.chebyshev
-    // Anderson acceleration (Type-II / unconstrained-least-squares reformulation): mixes the last
-    // pj_anderson_m residual differences via a small least-squares solve each sweep. Precedence
-    // when multiple acceleration flags are set: pj_nesterov > pj_chebyshev > pj_anderson.
-    // Window size matters a lot in practice -- see the accompanying report's benchmark sweep
-    // across window sizes before picking one for a new scene; m=1 (which has a closed-form
-    // solution, no least-squares solve needed) was found not competitive on its own.
+    // Anderson acceleration (type II) over the last pj_anderson_m residual differences (PJ and naive Schur).
     bool pj_anderson{false};  // pj.anderson
-    int pj_anderson_m{2};     // pj.anderson_m (history window size, >= 1; 2 was the best of {1,2,3,5,8,12,20} across all three benchmark scenes)
+    int pj_anderson_m{2};     // pj.anderson_m (history window size, >= 1)
     bool pj_warmstart{true};  // pj.warmstart (enable warmstart & cache)
     // pj.rdiag_true_delassus: false (default) uses per-row step lengths alpha/D_ii (with a common
     // value alpha/mean(D_t1t1, D_t2t2) for both tangential rows of a frictional contact); true uses
     // the "split" step lengths (1/D_NN, 1/lambda_max of the tangential block) per frictional contact.
     bool pj_rdiag_true_delassus{false};                // pj.rdiag_true_delassus
-    std::string pj_convergence_csv_dir{""};            // pj.convergence_csv_dir (empty to disable)
 
     // Condensed (matrix-free block-relaxation) solver settings. Iteration/tolerance/relaxation/
     // warmstart/debug knobs are shared with PJ/PGS -- see pj_max_iterations, pj_tol_abs,
     // pj_tol_rel, pj_relaxation, pj_alpha, pj_warmstart, debug_pj above.
-    std::string condensed_sweep_mode{"gauss_seidel"};    // condensed.sweep_mode: jacobi | gauss_seidel | colored | chaotic
+    std::string condensed_sweep_mode{"gauss_seidel"};    // condensed.sweep_mode: gauss_seidel | colored
     std::string condensed_local_solve{"projection"};     // condensed.local_solve: projection | newton
     int condensed_num_threads{0};                        // condensed.num_threads (0 = OpenMP default)
     int condensed_newton_max_iters{8};                   // condensed.newton_max_iters
     real_t condensed_newton_tol{(real_t)1e-10};          // condensed.newton_tol
-    // How the per-contact Newton step's diagonal preconditioner is derived from the block's own
-    // local Delassus matrix -- "split" (default, this codebase's original strategy: normal and
-    // tangential treated as separate 1- and 2-dof sub-problems) or "full" (a single rho from the
-    // FULL 3x3 block's largest eigenvalue, capturing normal-tangential coupling that "split"
-    // ignores). Matches Siconos's own compute_rho_split_spectral_norm/compute_rho_spectral_norm
-    // (fc3d_AlartCurnier_functions.c) respectively -- checked directly against that codebase.
-    // Compare both on the scene before switching it to "full".
+    // Step lengths of the local Newton solve: "split" (normal and tangential treated separately) or
+    // "full" (one rho from the largest eigenvalue of the 3x3 block); Siconos'
+    // compute_rho_split_spectral_norm / compute_rho_spectral_norm.
     std::string condensed_newton_rho_strategy{"split"}; // condensed.newton_rho_strategy: split | full
     // How the step lengths (rhoN, rhoT, rhoT) of the plain projection update (GiiInv, used by every
     // sweep mode's default/fallback path) are derived from the local Delassus block of
@@ -153,47 +117,10 @@ struct Config {
     // of the projection, i.e. the converged impulses violate Coulomb's law (friction not opposite to
     // the slip velocity). Spring/damper rows always use the per-row diagonal 1/(Gii(i,i)+c_i).
     std::string condensed_projection_rho_strategy{"diagonal"}; // condensed.projection_rho_strategy: diagonal | split | full
-    int condensed_chaotic_reshuffle_interval{50};        // condensed.chaotic_reshuffle_interval (sweeps between reshuffles)
-    unsigned condensed_chaotic_seed{12345u};             // condensed.chaotic_seed
-    // condensed.true_schur: exactly eliminate the bilateral (spring+damper) rows every outer
-    // iteration via a block-sparse LDLT factorization (see BlockSparseLDLT, CondensedAssembler::
-    // buildBilateralFactorization()), instead of letting them participate in the Gauss-Seidel/
-    // Jacobi/colored/chaotic sweep like every other row. Default false -- preserves today's
-    // validated behavior; only affects scenes with springs/dampers (a no-op on e.g. domino).
+    // condensed.true_schur: eliminate the bilateral (spring+damper) rows exactly in every sweep with
+    // a block-sparse LDLT (CondensedAssembler::buildBilateralFactorization()) instead of sweeping them.
     bool condensed_true_schur{false};                    // condensed.true_schur
 
-    // EXPERIMENTAL, opt-in, default off: derive `alpha` for THIS solve() call from the same
-    // zero-rhs/linearOnly power iteration built for pj.chebyshev, instead of using the fixed
-    // pj_alpha every scene currently hand-tunes once and leaves static for the whole run. Measures
-    // the raw (unclamped) spectral radius at alpha=1, then picks alpha so the resulting operator's
-    // estimated radius is approximately condensed_auto_alpha_target_rho (a linear-regime
-    // extrapolation: rho(alpha) ~= alpha*(rho(1)+1) - 1 for alpha large enough to be dominated by
-    // the largest eigenvalue, confirmed empirically on domino).
-    // Recomputed fresh every step, unlike a static hand-tuned alpha -- motivated by the measured
-    // finding that the true spectral radius is state-dependent and can swing between stable and
-    // divergent within a few steps of the same run. Not yet validated widely enough to change the
-    // default; see the report for head-to-head comparisons against hand-tuned alpha before relying
-    // on this for a scene not yet tested there.
-    bool condensed_auto_alpha{false};                    // condensed.auto_alpha
-    real_t condensed_auto_alpha_target_rho{(real_t)0.7}; // condensed.auto_alpha_target_rho
-
-    // EXPERIMENTAL, opt-in, default off, only meaningful with pj.chebyshev: instead of the
-    // separate zero-rhs/linearOnly power-iteration estimate above (measured to be overly
-    // pessimistic for contact-rich scenes -- it ignores the friction-cone projection's own
-    // stabilizing effect entirely), run a few real (unaccelerated, actually-projected) sweeps
-    // first and estimate rho from the OBSERVED residual-decay ratio instead (classical "adaptive
-    // SOR/Chebyshev", e.g. Manteuffel 1977/Ashby 1985).
-    // MEASURED RESULT: on domino, this performed WORSE than the
-    // upfront linear estimate (1847 vs 1415 total sweeps), not better. Tracing the observed ratio
-    // per warmup iteration found why: it does not settle to a stable value even over 20
-    // iterations -- drifting from ~0.3 up through ~0.9 and transiently EXCEEDING 1 (residual
-    // growing) as the active contact set keeps resolving. The classical technique assumes a
-    // linearly-convergent iteration with a well-defined asymptotic ratio; this codebase's
-    // Gauss-Seidel/Jacobi-with-projection sweep doesn't obviously have one on any practically
-    // affordable observation window. Left available (not removed -- it's not wrong, just not
-    // beneficial so far) in case a longer/smarter ratio estimator or a different scene changes
-    // this finding; do not enable without re-measuring on your own scene first.
-    bool condensed_chebyshev_adaptive_rho{false};        // condensed.chebyshev_adaptive_rho
 
     // Interior-point solver settings shared across QOCO, Clarabel and ConicXX
     real_t ip_kkt_static_reg{(real_t)1e-8};   // solver.kkt_static_reg
@@ -264,15 +191,17 @@ struct Config {
     std::map<std::string, std::string> scene_params;
 
     // Value of the scene parameter `name` (key "scene.<name>"), or `fallback` if it is not set.
-    real_t sceneParam(const std::string& name, real_t fallback) const {
-        const auto it = scene_params.find(name);
-        return (it == scene_params.end()) ? fallback : static_cast<real_t>(std::stod(it->second));
-    }
+    // Throws if the value is not a number.
+    real_t sceneParam(const std::string& name, real_t fallback) const;
+
+    // Prefix of all output file names.
+    std::string outputPrefix() const { return output_filename_prefix.empty() ? std::string("scene") : output_filename_prefix; }
 };
 
 class ConfigReader {
    public:
-    // Load config from file. If loading/parsing fails, returns a Config with header defaults.
+    // Loads a config file over the defaults of Config. Throws with file:line on a missing file or an
+    // invalid value; unknown keys only warn.
     static Config fromFile(const std::string& path);
 };
 

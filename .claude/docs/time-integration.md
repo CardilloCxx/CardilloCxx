@@ -30,7 +30,8 @@ With the impulses Λ = h λ_θ every solver sees the row `Wᵢᵀu_{n+1} + bᵢ 
 - `springBias = g / (θ² h) − ((1−θ)/θ)² Wᵀu_n + (2θ−1)/θ² χ`
 - `damperBias = ((1−θ)/θ) Wᵀu_n + χ/θ`
 
-Saddle-point assemblers (PJ, cone programs) use the negative bias as right-hand side. No multiplier of
+The cone-program assemblers (QOCO, Clarabel/SCS/MOSEK, ConicXX) use the negative bias as right-hand
+side; projected Jacobi uses +b. No multiplier of
 the previous step enters (Λ_n is only a warm start), no stabilization parameter, no drift.
 
 - θ = 1/2 is the trapezoidal rule (energy-conserving for linear springs, `test_position_level`), but

@@ -116,7 +116,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     };
 
     // Single sweep callable used by both standard and Nesterov loops
-    auto pgs_sweep = [&](int iter) -> void {
+    auto pgs_sweep = [&]() -> void {
         auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
         // real_t res_norm_sq = 0;
         const bool backward = false;
@@ -146,7 +146,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
         VectorXr u_k = du;
 
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-            pgs_sweep(iter);
+            pgs_sweep();
             m_last_iters = iter + 1;
 
             if (check_residual(u_k, du, iter) < 1.0) break;
@@ -168,14 +168,9 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
             lambda = lambda_y;
             du = u_y;
 
-            pgs_sweep(iter);
+            pgs_sweep();
             const VectorXr lambda_k1 = lambda;
             const VectorXr u_k1 = du;
-            // Exactly one pgs_sweep() happened this iteration -- same as every other loop in this
-            // file and in PJ's own nesterov_loop()/chebyshev_loop() (both use iter+1) -- so this
-            // must match, not iter+2. (Previously iter+2, a stray off-by-one with no second sweep
-            // anywhere to justify it -- purely cosmetic, only ever read by the progress-bar/log
-            // "iters=" display, never by any convergence or control-flow decision.)
             m_last_iters = iter + 1;
 
             const real_t err = check_residual(u_y, u_k1, iter);

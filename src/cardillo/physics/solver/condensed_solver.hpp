@@ -8,14 +8,11 @@
 
 namespace cardillo::solver {
 
-// Block-sparse, matrix-free contact solver generalizing ProjectedGaussSeidel: same rhs()/
-// compliance formulas and sign convention (see condensed_assembler.hpp), but built directly on a
-// std::vector<RowBlock> instead of Eigen::SparseMatrix, so it can support multiple sweep
-// strategies (Jacobi, Gauss-Seidel, graph-colored parallel, chaotic) and local-solve strategies
-// (projection, semismooth Newton) as config choices rather than separate classes.
-//
-// v1 (this file): only "gauss_seidel" sweep mode + "projection" local solve are implemented,
-// single-threaded, to validate the block representation against PGS before adding parallelism.
+// Block-sparse, matrix-free projected Gauss-Seidel on the Delassus blocks of all rows (same rhs()/
+// compliance formulas and sign convention as PGS, see condensed_assembler.hpp), built on a
+// std::vector<RowBlock>. Sweep modes: sequential Gauss-Seidel or graph-colored (OpenMP-parallel
+// within a color); local solve: projection or semismooth Newton; condensed.true_schur eliminates
+// the bilateral rows exactly with a block-sparse LDLT in every sweep.
 class CondensedSolver : public SolverBase {
    public:
     explicit CondensedSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(dyn), m_cfg(cfg), m_assembler(dyn, cfg) {}

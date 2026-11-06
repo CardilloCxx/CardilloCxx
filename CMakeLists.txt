@@ -65,6 +65,14 @@ if(CARDILLO_ENABLE_NATIVE_ARCH)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+# Warnings for the project's own targets (link cardillo_warnings). GCC reports -Wmaybe-uninitialized
+# false positives inside Eigen's AVX-512 GEMM/TRSM kernels, which are inlined into our translation
+# units, so that warning is disabled for GCC.
+add_library(cardillo_warnings INTERFACE)
+target_compile_options(cardillo_warnings INTERFACE
+    $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-Wall -Wextra>
+    $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Wno-maybe-uninitialized>)
+
 include(cmake/Dependencies.cmake)
 include(cmake/ConicBackends.cmake)
 
