@@ -38,9 +38,8 @@ scs::Settings ScsSolver::makeSettings() const {
     return s;
 }
 
-// x0 = [v_old; Lambda_g; Lambda_gamma]. For the compliant rows, stationarity in the lambda_g /
-// lambda_gamma columns (P = C/(theta dt^2), A = -C/(theta dt^2), q = 0) gives y = lambda, so their
-// duals are the stored multipliers as well. Contact duals are y = impulse / S_mu (y_N = mu lambda_N),
+// x0 = [v_old; Lambda_g; Lambda_gamma]. Stationarity in the percussion columns (P = C_hat, equality
+// rows A = [W^T  C_hat], q = 0) gives C_hat (pi_b + y) = 0, so the equality duals are y = -pi_b. Contact duals are y = impulse / S_mu (y_N = mu lambda_N),
 // projected onto K since the transported impulses need not lie exactly in the cone. s0 is the cone
 // projection of the slack b - A x0 (zero on the equality rows).
 void ScsSolver::fillWarmStart(const SparseMatrix<Eigen::ColMajor>& A, const VectorXr& b, const VectorXr& Smu) {
@@ -58,11 +57,11 @@ void ScsSolver::fillWarmStart(const SparseMatrix<Eigen::ColMajor>& A, const Vect
     x.head(nV) = m_dyn.vVec();
     if (nS > 0 && m_dyn.Lambda_g().size() == nS) {
         x.segment(nV, nS) = m_dyn.Lambda_g();
-        y.head(nS) = m_dyn.Lambda_g();
+        y.head(nS) = -m_dyn.Lambda_g();
     }
     if (nD > 0 && m_dyn.Lambda_gamma().size() == nD) {
         x.segment(nV + nS, nD) = m_dyn.Lambda_gamma();
-        y.segment(nS, nD) = m_dyn.Lambda_gamma();
+        y.segment(nS, nD) = -m_dyn.Lambda_gamma();
     }
 
     VectorXr impulse = VectorXr::Zero(nC);
@@ -169,8 +168,12 @@ VectorXr ScsSolver::solve(real_t dt, real_t theta) {
     const int nV = static_cast<int>(m_dyn.numV());
     const int nSprings = m_dyn.numSprings();
     const int nDampers = m_dyn.numDampers();
-    if (nSprings > 0) m_dyn.setLambda_g(x.segment(nV, nSprings));
-    if (nDampers > 0) m_dyn.setLambda_gamma(x.segment(nV + nSprings, nDampers));
+    // Bilateral percussions are the negated duals of the equality (zero-cone) rows, which lead y. The
+    // primal percussions agree for compliant rows only; for perfect constraints they do not enter the
+    // problem.
+    const VectorXr pi_b = -m_solver.y().head(nSprings + nDampers);
+    if (nSprings > 0) m_dyn.setLambda_g(pi_b.head(nSprings));
+    if (nDampers > 0) m_dyn.setLambda_gamma(pi_b.tail(nDampers));
 
     return x.head(nV);
 }
