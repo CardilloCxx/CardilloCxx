@@ -151,7 +151,7 @@ inline Contact makeContact(entt::entity ea, entt::entity eb, const RigidBody::Ri
     c.normal = nN;  // convention: from A -> B
     collision::tangentFrameFromNormal(nN, c.tangent1, c.tangent2);
     c.point = (p1W + p2W) * (real_t)0.5;
-    c.penetration = std::max<real_t>(0.0, depth);
+    c.penetration = std::max<real_t>(0.0, -depth);  // depth: Coal's signed distance, < 0 when overlapping
     const RigidBody::RigidState inertial{}; // default ctro => identity
     const Vector3r pointA_body = transform::point(c.point, inertial, stateA);
     const Vector3r pointB_body = transform::point(c.point, inertial, stateB);
@@ -254,7 +254,7 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
 
     // Fallback: emit raw contacts from narrowphase result -- one single-point manifold per raw
     // contact, since there's no patch to group them by.
-    for (int k = 0; k < cres.numContacts(); ++k) {
+    for (std::size_t k = 0; k < cres.numContacts(); ++k) {
         const coal::Contact c0 = cres.getContact(k);
         Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, c0.nearest_points[0], c0.nearest_points[1], c0.normal, (real_t)c0.penetration_depth);
         populateBeamHullSide(c, c.sideA, ea, reg);
@@ -396,9 +396,9 @@ void CollisionCoal::rebuild() {
         auto geom = makeGeometryFor_(kind, e);
         m_geoms.push_back(geom);
         auto obj = std::make_unique<coal::CollisionObject>(geom, /*compute_local_aabb*/ true);
-        // Beam hull geometry lives in world coordinates (see applyTransforms): never apply the entity pose.
-        obj->setTransform(kind == ColliderKind::BeamHull ? identityTf() : makeTfFromEcs(reg, e));
-        obj->computeAABB();
+        // Beam hull and halfspace geometry live in world coordinates: never apply the entity pose.
+        obj->setTransform(kind == ColliderKind::BeamHull || kind == ColliderKind::Halfspace ? identityTf() : makeTfFromEcs(reg, e));
+        computeAABB_(*obj);
 
         // set stable indices as user data for fast reverse mapping
         const std::size_t idx = m_objects.size();                                     // index after previous pushes
@@ -412,6 +412,38 @@ void CollisionCoal::rebuild() {
     // Register in broadphase and setup
     m_broadphase->registerObjects(raw);
     m_broadphase->setup();
+}
+
+// World AABB inflated by the security margin, so that the broadphase reports every pair the
+// narrowphase can turn into a contact.
+void CollisionCoal::computeAABB_(coal::CollisionObject& obj) const {
+    obj.computeAABB();
+    if (m_cfg.collision_security_margin > 0) obj.getAABB().expand(m_cfg.collision_security_margin);
+}
+
+// Rod segments with primitive colliders change their length every step (DerivedEntitySync); the
+// Coal geometry is resized in place instead of rebuilding the collision world.
+void CollisionCoal::syncPrimitiveSize_(ColliderKind kind, entt::entity e, coal::CollisionObject& obj) const {
+    const auto& reg = m_world->ecs();
+    auto* geom = obj.collisionGeometry().get();
+    bool changed = false;
+    if (kind == ColliderKind::Box) {
+        auto* box = static_cast<coal::Box*>(geom);
+        const Vector3r halfSide = reg.get<C_Collider_Cube>(e).halfExtents;
+        changed = box->halfSide != halfSide;
+        box->halfSide = halfSide;
+    } else if (kind == ColliderKind::Capsule) {
+        auto* cap = static_cast<coal::Capsule*>(geom);
+        const real_t halfLength = reg.get<C_Collider_Capsule>(e).halfLength;
+        changed = cap->halfLength != halfLength;
+        cap->halfLength = halfLength;
+    } else if (kind == ColliderKind::Cylinder) {
+        auto* cyl = static_cast<coal::Cylinder*>(geom);
+        const real_t halfLength = reg.get<C_Collider_Cylinder>(e).halfLength;
+        changed = cyl->halfLength != halfLength;
+        cyl->halfLength = halfLength;
+    }
+    if (changed) geom->computeLocalAABB();
 }
 
 void CollisionCoal::applyTransforms() {
@@ -449,9 +481,10 @@ void CollisionCoal::applyTransforms() {
             shape->updateRings(link, reg);
             obj->setTransform(identityTf());
         } else {
+            syncPrimitiveSize_(m_kinds[i], e, *obj);
             obj->setTransform(makeTfFromEcs(m_world->ecs(), e));
         }
-        obj->computeAABB();
+        computeAABB_(*obj);
         updated.push_back(obj);
     }
     m_broadphase->update(updated);
@@ -590,7 +623,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
     m_flattened.reserve(std::max<std::size_t>(m_prev_flattened.size(), 64));
     int globalIndex = 0;
     for (auto& [key, list] : mapCurr) {
-        for (int i = 0; i < list.size(); ++i) {
+        for (std::size_t i = 0; i < list.size(); ++i) {
             Contact& c = list[i];
             m_flattened.emplace_back(std::move(c));
             m_flattened.back().global_out_index = globalIndex++;
@@ -615,6 +648,7 @@ void CollisionCoal::clear() {
     m_objects.clear();
     m_geoms.clear();
     m_entities.clear();
+    m_kinds.clear();
     m_index_from_entity.clear();
 }
 

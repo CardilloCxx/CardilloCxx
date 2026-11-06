@@ -315,7 +315,6 @@ private:
         std::vector<Vector3r> frameCenters;
         const real_t pairSpacing = layerWidth;
         const real_t frameMargin = (real_t)0.02;
-        const real_t axleNormalOffset = (real_t)0.04;
         const real_t walkerLiftLocal = p2_world.z() - params.dz; // derive lift from provided p2
         const real_t axleZMin = params.dz + walkerLiftLocal; // p2 z
         const real_t axleZBase = walkerLiftLocal;            // p1 z
@@ -391,7 +390,7 @@ private:
 
         entt::entity leftAxle = addSingleAxle(p1LeftPoints); Vector3r leftPos = p1LeftPoints.front() + (p1LeftPoints.back() - p1LeftPoints.front()) * (real_t)0.5;
         entt::entity rightAxle = addSingleAxle(p1RightPoints); Vector3r rightPos = p1RightPoints.front() + (p1RightPoints.back() - p1RightPoints.front()) * (real_t)0.5;
-        entt::entity middleAxle = addSingleAxle(p2Points); Vector3r middlePos = p2Points.front() + (p2Points.back() - p2Points.front()) * (real_t)0.5;
+        entt::entity middleAxle = addSingleAxle(p2Points);
 
         // Attach single axles to all frames via hinge (free about normal, locked otherwise)
         auto attachAxleToFrames = [&](entt::entity axle, Vector3r axlePos = Vector3r::Zero()){

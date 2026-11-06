@@ -53,39 +53,37 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
      - Notes
    * - ``projected_jacobi`` (default)
      - :doc:`projected_jacobi` (:cpp:class:`ProjectedJacobiSolver <cardillo::solver::ProjectedJacobiSolver>`)
-     - General purpose, most reliable
-   * - ``projected_gauss_seidel``
-     - :doc:`projected_gauss_seidel` (:cpp:class:`ProjectedGaussSeidelSolver <cardillo::solver::ProjectedGaussSeidelSolver>`)
-     - Can be faster than ``projected_jacobi`` for large systems
+     - Production solver: direct factorization of the bilateral saddle-point
+       system, projected iteration on the contacts. Most reliable.
    * - ``condensed``
      - :doc:`condensed` (:cpp:class:`CondensedSolver <cardillo::solver::CondensedSolver>`)
-     - Block-sparse; config-selectable sweep strategy (Jacobi, Gauss-Seidel,
-       graph-colored parallel, chaotic) and local solve (projection or
-       semismooth Newton). Not accelerated. Experimental.
+     - Production solver: block-sparse Schur complement; sweep strategy
+       (Gauss-Seidel or graph-colored parallel), local solve (projection or
+       semismooth Newton), Nesterov/Chebyshev acceleration and exact
+       elimination of the bilateral rows (``condensed.true_schur``, needed
+       for stiff rods).
+   * - ``projected_gauss_seidel``
+     - :doc:`projected_gauss_seidel` (:cpp:class:`ProjectedGaussSeidelSolver <cardillo::solver::ProjectedGaussSeidelSolver>`)
+     - Small reference solver.
    * - ``naive_schur``
      - :doc:`naive_schur` (:cpp:class:`NaiveSchurSolver <cardillo::solver::NaiveSchurSolver>`)
      - Reference solver: dense Schur complement onto the contacts, all
        bilateral rows eliminated exactly. Small scenes only.
-   * - ``conjugate_gradient``
-     - :doc:`conjugate_gradient` (:cpp:class:`ConjugateGradientSolver <cardillo::solver::ConjugateGradientSolver>`)
-     - Constraint-only scenes (no contact)
-   * - ``qoco / clarabel / conicxx``
-     - :doc:`interior_point` (:cpp:class:`QocoSolver <cardillo::solver::QocoSolver>`, :cpp:class:`ClarabelSolver <cardillo::solver::ClarabelSolver>`, :cpp:class:`ConicxxSolver <cardillo::solver::ConicxxSolver>`)
-     - Interior-point, exact cone projection. ``conicxx`` additionally reuses
-       its KKT factorization and warm-starts across steps when the active
-       contact set is unchanged.
-   * - ``scs``
-     - ``ScsSolver`` (same cone program as Clarabel)
-     - First-order ADMM conic solver.
+   * - ``qoco / clarabel / conicxx / scs``
+     - :doc:`interior_point` (:cpp:class:`QocoSolver <cardillo::solver::QocoSolver>`, :cpp:class:`ClarabelSolver <cardillo::solver::ClarabelSolver>`, :cpp:class:`ConicxxSolver <cardillo::solver::ConicxxSolver>`, :cpp:class:`ScsSolver <cardillo::solver::ScsSolver>`)
+     - Conic backends for the convexified contact law. Optional: each must be
+       enabled at configure time with its CMake option
+       (``CARDILLO_WITH_QOCO``, ``CARDILLO_WITH_CLARABEL``,
+       ``CARDILLO_WITH_CONICXX``, ``CARDILLO_WITH_SCS``; all ``OFF`` by
+       default). Selecting a backend that was not built throws a runtime
+       error naming the option. ``conicxx`` additionally reuses its KKT
+       factorization and warm-starts across steps when the active contact
+       set is unchanged.
    * - ``mosek``
      - :doc:`interior_point` (``MosekSolver``)
      - Interior-point via the commercial MOSEK conic optimizer; same problem
-       as ``clarabel``. Needs a MOSEK installation and license.
-
-The conic backends are optional and not built by default. Each is enabled with its CMake option
-(``-DCARDILLO_WITH_QOCO=ON``, ``CARDILLO_WITH_CLARABEL``, ``CARDILLO_WITH_CONICXX``,
-``CARDILLO_WITH_SCS``, ``CARDILLO_WITH_MOSEK``); selecting a backend that was not built throws an error naming the option.
-Their sources live in ``src/cardillo/physics/solver/conic/<backend>/``.
+       as ``clarabel``. Optional (``CARDILLO_WITH_MOSEK``), needs a MOSEK
+       installation and license.
 
 .. toctree::
    :hidden:
@@ -94,5 +92,4 @@ Their sources live in ``src/cardillo/physics/solver/conic/<backend>/``.
    projected_gauss_seidel
    condensed
    naive_schur
-   conjugate_gradient
    interior_point

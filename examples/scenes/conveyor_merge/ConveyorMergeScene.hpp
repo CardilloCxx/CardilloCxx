@@ -50,7 +50,7 @@ class ConveyorMergeScene : public SceneBase {
         // along the waterfall edge y = 0.65.
         const real_t w = cfg.sceneParam("infeed_width", (real_t)0.8);
         const real_t length = cfg.sceneParam("infeed_length", (real_t)2.0);
-        const std::string infeedMesh = writeInfeedMesh(cfg.output_folder + "/" + cfg.output_filename_prefix + "_infeed.obj", parcelStart, -d, mergeHalfWidth, w, length, h,
+        const std::string infeedMesh = writeInfeedMesh(cfg.output_folder + "/" + cfg.outputPrefix() + "_infeed.obj", parcelStart, -d, mergeHalfWidth, w, length, h,
                                                        2 * beltHalfThickness);
         physics::MeshShape infeedShape(infeedMesh);
         infeedShape.convex = true;

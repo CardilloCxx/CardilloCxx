@@ -208,7 +208,10 @@ Solver selection and parameters
    * - ``solver``
      - ``solver.type``
      - ``ProjectedJacobi``
-     - Which contact solver to use (pj, pgs, condensed, naive_schur, ip, qoco, clarabel, conicxx, cg)
+     - Which contact solver to use (``pj``, ``condensed``, ``pgs``, ``naive_schur``,
+       ``qoco`` (alias ``ip``), ``clarabel``, ``conicxx``, ``scs``). The conic
+       backends must be enabled with their CMake option
+       (``CARDILLO_WITH_<NAME>``); selecting one that was not built throws.
    * - ``integrator``
      - ``integrator``, alias: ``solver.name``
      - ``Moreau``

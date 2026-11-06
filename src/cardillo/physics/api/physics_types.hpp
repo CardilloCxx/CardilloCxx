@@ -211,7 +211,8 @@ struct BeamCrossSection {
     real_t area() const;
     real_t Iy() const;
     real_t Iz() const;
-    real_t Jp() const;
+    real_t Jp() const;               // polar moment Iy + Iz (rotary inertia)
+    real_t torsionConstant() const;  // Saint-Venant torsion constant J (torsional stiffness G J)
     real_t maxAbsY() const;
     real_t maxAbsX() const;
     real_t sectionModulus() const;

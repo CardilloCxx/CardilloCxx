@@ -18,26 +18,11 @@ namespace cardillo::solver {
 // where R = alpha * D^{-1}, D = diag(W*Minv*W^T), and C = R_0^- x D(mu*pN) the negated admissible
 // set of the contact percussions (pN >= 0, see misc/contact_projection.hpp).
 // Notes:
-// - alpha in (0,2) typically for convergence; default alpha=1.
+// - alpha in (0,2) typically for convergence.
 class ProjectedJacobiSolver : public SolverBase {
    public:
     explicit ProjectedJacobiSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg)
-        : m_dyn(dyn),
-          m_assembler(dyn, cfg),
-          m_cfg(cfg),
-          m_alpha(cfg.pj_alpha),
-          m_relax(std::clamp<real_t>(cfg.pj_relaxation, 0, 1)),
-          m_maxIterations(std::max(1, cfg.pj_max_iterations)),
-          m_warmStart(cfg.pj_warmstart),
-          m_debug(cfg.debug_pj),
-          m_useNesterov(cfg.pj_nesterov),
-          m_nest_beta_threshold((double)cfg.pj_nesterov_beta_threshold),
-          m_nest_restart_limit(std::max(0, cfg.pj_nesterov_restart_limit)),
-          m_epsRel(cfg.pj_tol_rel),
-          m_convCsvDir(cfg.pj_convergence_csv_dir) {}
-
-    real_t alpha() const { return m_alpha; }
-    real_t lastError() const override { return m_lastError; }
+        : m_dyn(dyn), m_assembler(dyn, cfg), m_cfg(cfg) {}
 
     // Concatenated API: accept stacked preliminary velocities and return stacked velocities
     VectorXr solve(real_t dt, real_t theta) override;
@@ -48,20 +33,6 @@ class ProjectedJacobiSolver : public SolverBase {
     physics::DynamicsAssembler& m_dyn;
     physics::assembly::PjAssembler m_assembler;
     config::Config m_cfg;
-
-    real_t m_alpha{(real_t)1};
-    // No internal row-vector warmstart fallback; only via external cache when enabled
-    real_t m_relax{(real_t)1};
-    int m_maxIterations{1000000};
-    bool m_warmStart{true};
-    bool m_debug{false};
-    bool m_useNesterov{false};
-    double m_nest_beta_threshold{0.995};
-    int m_nest_restart_limit{4};
-    real_t m_epsRel{(real_t)0};
-
-    std::string m_convCsvDir{};
-    real_t m_lastError{(real_t)0};
 };
 
 }  // namespace cardillo::solver

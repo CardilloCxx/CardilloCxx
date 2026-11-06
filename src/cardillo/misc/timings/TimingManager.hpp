@@ -28,9 +28,6 @@ class TimingManager {
         ProjectedGaussSeidel,
         ProjectedGaussSeidelSweep,
         ProjectedGaussSeidelSetup,
-        ConjugateGradientSetup,
-        ConjugateGradientSolve,
-        ConjugateGradientSweep,
         ProjectedNewton,
         ProjectedNewtonSetup,
         QocoSolve,
@@ -95,8 +92,12 @@ class TimingManager {
             }
             return *this;
         }
-        ~Scope() {
+        ~Scope() { stop(); }
+
+        // Ends the scope before the object goes out of scope; the destructor then does nothing.
+        void stop() {
             if (m_active && m_mgr) m_mgr->end();
+            m_active = false;
         }
 
        private:
@@ -179,7 +180,7 @@ class TimingManager {
     using clock = std::chrono::steady_clock;
 
     struct HierNode {
-        TimerId id;
+        TimerId id{TimerId::Other};
         double inclusiveSec{0.0};
         double exclusiveSec{0.0};
         std::uint64_t calls{0};
@@ -223,7 +224,8 @@ class TimingManager {
     HierNode* getOrCreateNode(TimerId id) const {
         auto it = m_flatNodes.find(id);
         if (it != m_flatNodes.end()) return it->second.get();
-        auto n = std::make_unique<HierNode>(HierNode{id});
+        auto n = std::make_unique<HierNode>();
+        n->id = id;
         auto ptr = n.get();
         m_flatNodes[id] = std::move(n);
         return ptr;
@@ -275,12 +277,6 @@ class TimingManager {
                 return "Prox Gauss-Seidel Setup";
             case TimerId::ProjectedGaussSeidelSweep:
                 return "Prox Gauss-Seidel Sweep";
-            case TimerId::ConjugateGradientSetup:
-                return "Conjugate Gradient Setup";
-            case TimerId::ConjugateGradientSolve:
-                return "Conjugate Gradient Solve";
-            case TimerId::ConjugateGradientSweep:
-                return "Conjugate Gradient Sweep";
             case TimerId::ProjectedNewton:
                 return "Projected Newton";
             case TimerId::ProjectedNewtonSetup:

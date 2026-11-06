@@ -59,7 +59,7 @@ public:
 
             physics::RigidState state(pos, Vector3r::Zero(), q);
 
-            auto ends = engine.createBeam(ring, section, springs, state, props, segments, physics::BeamColliderMode::InterSegmentHull);
+            engine.createBeam(ring, section, springs, state, props, segments, physics::BeamColliderMode::InterSegmentHull);
         }
     }
 

@@ -32,8 +32,6 @@ public:
         // A-frame tilt away from vertical (degrees)
         const real_t tiltDeg = (real_t)18.0;
         const real_t tiltRad = tiltDeg * (real_t)M_PI / (real_t)180.0;
-        const real_t sinTilt = std::sin(tiltRad);
-        const real_t cosTilt = std::cos(tiltRad);
 
         // Geometry: upright cards start flat, then rotate about Y by 90° ± tilt so their planes are parallel to yz
         // Feet are separated along x; all cards share the same y (yOffset).

@@ -1,5 +1,5 @@
 #include "moreau.hpp"
-#include "../solver/projected_jacobi.hpp"
+#include "../synchronization/derived_entity_sync.hpp"
 
 namespace cardillo::integration {
 
@@ -15,6 +15,8 @@ void MoreauIntegrator::step(real_t dt) {
     m_dyn.writeVelocityToSystem(m_solver.solve(dt, m_config.moreau_theta), dt);
     explicitPositionUpdate(m_world, m_config.moreau_theta * dt);
     m_dyn.advancePrescribedMotion(m_config.moreau_theta * dt);
+    // The cached RigidState (read by outputs, applyForceAt, new constraints) now holds q_{n+1}, u_{n+1}.
+    physics::DerivedEntitySync::refreshRigidStates(m_world);
 }
 
 }  // namespace cardillo::integration

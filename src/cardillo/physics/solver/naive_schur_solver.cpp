@@ -32,7 +32,7 @@ struct ContactBlock {
     Vector3r rho{Vector3r::Zero()};  // step lengths (rhoN, rhoT, rhoT)
 };
 
-enum class SweepMode { GaussSeidel, Jacobi, Colored };
+enum class SweepMode { GaussSeidel, Colored };
 
 struct SchurProblem {
     RowMatrixXXr G;  // n_c x n_c Schur complement onto the contact rows
@@ -84,18 +84,6 @@ void gaussSeidelSweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
     for (const auto& blk : p.blocks) updateBlockInPlace(p, blk, blockVelocity(p, blk, c, pi), pi);
 }
 
-void jacobiSweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
-    const VectorXr xi = c + p.G * pi;
-    const int n = (int)p.blocks.size();
-#pragma omp parallel for schedule(static)
-    for (int k = 0; k < n; ++k) {
-        const auto& blk = p.blocks[(size_t)k];
-        Vector3r xiBlk = Vector3r::Zero();
-        xiBlk.head(blk.dim) = xi.segment(blk.offset, blk.dim);
-        updateBlockInPlace(p, blk, xiBlk, pi);
-    }
-}
-
 void coloredSweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
     std::vector<Vector3r> xi(p.blocks.size(), Vector3r::Zero());
 #pragma omp parallel
@@ -115,16 +103,10 @@ void coloredSweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
 }
 
 void sweep(const SchurProblem& p, const VectorXr& c, VectorXr& pi) {
-    switch (p.mode) {
-        case SweepMode::Jacobi:
-            jacobiSweep(p, c, pi);
-            break;
-        case SweepMode::Colored:
-            coloredSweep(p, c, pi);
-            break;
-        default:
-            gaussSeidelSweep(p, c, pi);
-    }
+    if (p.mode == SweepMode::Colored)
+        coloredSweep(p, c, pi);
+    else
+        gaussSeidelSweep(p, c, pi);
 }
 
 misc::Coloring colorCouplingGraph(const SchurProblem& p) {
@@ -159,7 +141,6 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
 
     const VectorXr xFree = m_assembler.solveS(m_assembler.rhs(dt, theta));
     m_last_iters = 0;
-    m_lastError = 0;
 
     if (nC == 0) {
         m_dyn.setLambda_g(xFree.segment(nV, nS));
@@ -199,9 +180,7 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
         row += blk.dim;
     }
 
-    const std::string& sweepMode = m_cfg.condensed_sweep_mode;
-    p.mode = (sweepMode == "jacobi") ? SweepMode::Jacobi : (sweepMode == "colored") ? SweepMode::Colored : SweepMode::GaussSeidel;
-    if (sweepMode == "chaotic" && m_cfg.debug_pj) std::cout << "[NaiveSchur] condensed.sweep_mode=chaotic is not supported; using gauss_seidel." << std::endl;
+    p.mode = (m_cfg.condensed_sweep_mode == "colored") ? SweepMode::Colored : SweepMode::GaussSeidel;
     if (p.mode == SweepMode::Colored) p.coloring = colorCouplingGraph(p);
 
     p.stepScale = m_cfg.pj_alpha * m_cfg.pj_relaxation;
@@ -221,7 +200,7 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
     const bool useAnderson = m_cfg.pj_anderson && !useNesterov && !useChebyshev;
     if (useChebyshev && m_cfg.debug_pj) std::cout << "[NaiveSchur] pj.chebyshev is not supported; using the standard sweep." << std::endl;
     if (m_cfg.debug_pj) std::cout << "[NaiveSchur] nContactRows=" << nC << " nBlocks=" << p.blocks.size() << " colors=" << p.coloring.numColors << std::endl;
-    scSetup.~Scope();
+    scSetup.stop();
     auto scSolve = m_dyn.timings()->scope(misc::TimingManager::TimerId::NaiveSchur);
 
     const auto Xu = X.topRows(nV);
@@ -254,7 +233,6 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
             if (!pi.allFinite() || !uK1.allFinite()) fail(iter);
 
             const real_t err = residual(uY, uK1);
-            m_lastError = err;
             if (err <= (real_t)1) break;
 
             const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
@@ -291,7 +269,6 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
             if (!w.allFinite()) fail(iter);
 
             const real_t err = residual(velocity(z), velocity(w));
-            m_lastError = err;
             if (err <= (real_t)1) {
                 z = w;
                 break;
@@ -332,7 +309,6 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
             const VectorXr u = velocity(pi);
             m_last_iters = iter + 1;
             const real_t err = residual(uPrev, u);
-            m_lastError = err;
             if (!std::isfinite(err)) fail(iter);
             if (err <= (real_t)1) break;
             uPrev = u;

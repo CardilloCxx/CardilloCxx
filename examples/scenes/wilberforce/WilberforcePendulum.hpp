@@ -24,7 +24,6 @@ public:
 
         // Spring parameters
         const real_t wireDiameter = 0.0010;               // wire diameter 1 mm
-        const real_t wireRadius = 0.5 * wireDiameter;    // wire radius 0.5 mm
         const real_t coilDiameter = 0.032;               // spring mean radius 32 mm
         const real_t coilRadius = 0.5 * coilDiameter;    // spring mean radius 16 mm
         // const size_t turns = 20;                         // helical turns count
@@ -36,7 +35,6 @@ public:
         const real_t density = 7850.0;               // kg/m^3
         const real_t E = 206e9;                      // Young's modulus (GPa)
         const real_t nu = 0.2638;                    // Poisson ratio (G ~ 81.5 GPa)
-        const real_t G = E / (2.0 * (1.0 + nu));     // Shear modulus
 
         engine.setGravity(Vector3r(0, 0, -9.81)); // no gravity
 
@@ -52,7 +50,6 @@ public:
         // springs.setDampingFromFactor(0.001); // set damping factor
 
         const real_t pitch = wireDiameter;
-        const real_t freeLength = static_cast<real_t>(turns) * pitch;
         // Build spring via CompoundSpline (single helix segment now, extensible for future pieces)
         auto helix = misc::HelixSpline(Vector3r::Zero(), -Vector3r::UnitZ(), coilRadius, pitch, static_cast<real_t>(turns), Vector3r::UnitX());
 
@@ -63,11 +60,11 @@ public:
                 
         m_top = endpoints.first;
         // cube_constraint = engine.addRigidConstraint(m_top);
-        // TODO: I think `getPosition` should be named `getPose`
-        VectorXr pose0 = engine.getPosition(m_top);
-        Vector3r position0 = pose0.head<3>();
-        Quaternion4r orientation0 = Quaternion4r(pose0.tail<4>().data());
         engine.makeStatic(m_top);
+        // TODO: I think `getPosition` should be named `getPose`
+        // VectorXr pose0 = engine.getPosition(m_top);
+        // Vector3r position0 = pose0.head<3>();
+        // Quaternion4r orientation0 = Quaternion4r(pose0.tail<4>().data());
         // engine.addTrajectory(m_top,
         //                     [position0, orientation0](real_t t) {
         //                         TrajectoryPose pose;

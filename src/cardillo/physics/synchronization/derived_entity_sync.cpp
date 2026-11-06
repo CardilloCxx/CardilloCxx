@@ -76,64 +76,21 @@ void DerivedEntitySync::updateBeamElementEntity(World& world, entt::entity e) {
         newLen = avgLen;
     }
 
-    const real_t prevLen = be.l;
     be.l = newLen;
 
-    const real_t eps = (real_t)1e-8;
-    if (std::abs(be.l - prevLen) > eps) {
-        bool shapeChanged = false;
-        if (reg.any_of<C_Cube>(e)) {
-            auto& cb = reg.get<C_Cube>(e);
-            const real_t newHalfX = be.l * (real_t)0.5;
-            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) {
-                cb.halfExtents.x() = newHalfX;
-                shapeChanged = true;
-            }
-        }
-        if (reg.any_of<C_Capsule>(e)) {
-            auto& cap = reg.get<C_Capsule>(e);
-            const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cap.halfLength - newHalf) > eps) {
-                cap.halfLength = newHalf;
-                shapeChanged = true;
-            }
-        }
-        if (reg.any_of<C_Cylinder>(e)) {
-            auto& cyl = reg.get<C_Cylinder>(e);
-            const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cyl.halfLength - newHalf) > eps) {
-                cyl.halfLength = newHalf;
-                shapeChanged = true;
-            }
-        }
-        if (reg.any_of<C_Collider_Cube>(e)) {
-            auto& cb = reg.get<C_Collider_Cube>(e);
-            const real_t newHalfX = be.l * (real_t)0.5;
-            if (std::abs(cb.halfExtents.x() - newHalfX) > eps) {
-                cb.halfExtents.x() = newHalfX;
-                shapeChanged = true;
-            }
-        }
-        if (reg.any_of<C_Collider_Capsule>(e)) {
-            auto& cap = reg.get<C_Collider_Capsule>(e);
-            const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cap.halfLength - newHalf) > eps) {
-                cap.halfLength = newHalf;
-                shapeChanged = true;
-            }
-        }
-        if (reg.any_of<C_Collider_Cylinder>(e)) {
-            auto& cyl = reg.get<C_Collider_Cylinder>(e);
-            const real_t newHalf = be.l * (real_t)0.5;
-            if (std::abs(cyl.halfLength - newHalf) > eps) {
-                cyl.halfLength = newHalf;
-                shapeChanged = true;
-            }
-        }
-        if (shapeChanged) {
-            world.markStructureDirty();
-        }
-    }
+    // Primitive segment shapes follow the element length; CollisionCoal resizes its geometry in place.
+    const real_t half = be.l * (real_t)0.5;
+    if (auto* cb = reg.try_get<C_Cube>(e)) cb->halfExtents.x() = half;
+    if (auto* cap = reg.try_get<C_Capsule>(e)) cap->halfLength = half;
+    if (auto* cyl = reg.try_get<C_Cylinder>(e)) cyl->halfLength = half;
+    if (auto* cb = reg.try_get<C_Collider_Cube>(e)) cb->halfExtents.x() = half;
+    if (auto* cap = reg.try_get<C_Collider_Capsule>(e)) cap->halfLength = half;
+    if (auto* cyl = reg.try_get<C_Collider_Cylinder>(e)) cyl->halfLength = half;
+}
+
+void DerivedEntitySync::refreshRigidStates(World& world) {
+    auto& reg = world.ecs();
+    for (auto e : reg.view<const C_Position3>()) RigidBody::updateState(reg, e);
 }
 
 void DerivedEntitySync::updateEntities(World& world, real_t dt, real_t evalOffset) {
@@ -141,11 +98,7 @@ void DerivedEntitySync::updateEntities(World& world, real_t dt, real_t evalOffse
 
     Trajectory::update(world, dt, evalOffset);
 
-    // Centralized rigid-state refresh for this step.
-    auto poseView = reg.view<const C_Position3>();
-    for (auto e : poseView) {
-        RigidBody::updateState(reg, e);
-    }
+    refreshRigidStates(world);
 
     for (auto e : reg.view<C_BeamElement, const C_Position3>()) updateBeamElementEntity(world, e);
 }

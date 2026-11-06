@@ -62,7 +62,6 @@ public:
         engine.makeStatic(beam_ends2.first);
 
         const Vector3r initalEndPos = engine.getPosition(beam_ends.second).head<3>();
-        const Vector4r initialEndRot = engine.getPosition(beam_ends.second).tail<4>();
 
         std::cout << "Initial end position: " << initalEndPos.transpose() << std::endl;
 
@@ -146,7 +145,7 @@ public:
 
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
+    void updateScene(physics::PhysicsEngine& /*engine*/, real_t t) override {
         real_t t1 = 3.0;
         if (t < t1 * 10.0) {
             // engine.applyForce(m_beamRightEnd, Vector3r(-0.5 * std::max(t1, t), -0.5 * std::max(t1, t), 1.5 * std::max(t1, t)), Vector3r::Zero());

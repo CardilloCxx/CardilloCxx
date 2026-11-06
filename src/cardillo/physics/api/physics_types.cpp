@@ -134,8 +134,8 @@ real_t BeamCrossSection::Iz() const {
     switch (type) {
         case BeamCrossSectionType::Round:
             return (real_t)M_PI * std::pow(radius, 4) / (real_t)4.0;
-        case BeamCrossSectionType::Triangle:
-            return std::pow(width, (real_t)3) * height / (real_t)36.0;
+        case BeamCrossSectionType::Triangle:  // isosceles, about its symmetry axis
+            return std::pow(width, (real_t)3) * height / (real_t)48.0;
         case BeamCrossSectionType::Polygon: {
             real_t Iz_val = (real_t)0;
             size_t n = polygon.size();
@@ -152,6 +152,25 @@ real_t BeamCrossSection::Iz() const {
 }
 
 real_t BeamCrossSection::Jp() const { return Iy() + Iz(); }
+
+real_t BeamCrossSection::torsionConstant() const {
+    switch (type) {
+        case BeamCrossSectionType::Round:
+            return Jp();
+        case BeamCrossSectionType::Triangle:
+        case BeamCrossSectionType::Polygon: {
+            // Saint-Venant's approximation for compact solid sections, exact for ellipses.
+            const real_t A = area();
+            return A * A * A * A / ((real_t)4 * (real_t)M_PI * (real_t)M_PI * Jp());
+        }
+        default: {
+            // Rectangle b x t (b >= t), Roark's formula (error below 4 % for all aspect ratios).
+            const real_t b = std::max(width, height), t = std::min(width, height);
+            const real_t r = t / b;
+            return b * t * t * t * ((real_t)1 / 3 - (real_t)0.21 * r * ((real_t)1 - r * r * r * r / (real_t)12));
+        }
+    }
+}
 
 real_t BeamCrossSection::maxAbsY() const {
     real_t m = (real_t)0;
@@ -171,7 +190,7 @@ real_t BeamCrossSection::sectionModulus() const {
             return (real_t)M_PI * std::pow(radius, 3) / (real_t)4.0;
         case BeamCrossSectionType::Triangle: {
             real_t S_horizontal = width * height * height / (real_t)24.0;
-            real_t S_vertical   = width * width * height / (real_t)18.0;
+            real_t S_vertical   = width * width * height / (real_t)24.0;
             return std::min(S_horizontal, S_vertical);
         }
         case BeamCrossSectionType::Polygon: {
@@ -192,7 +211,7 @@ BeamSpringParams::BeamSpringParams(const Vector3r& Ke_in, const Vector3r& Kf_in,
     : Ke_direct(Ke_in), Kf_direct(Kf_in), dampingFactor(dampingFactor_in) {}
 
 Vector3r BeamSpringParams::Ke(real_t segLen, const BeamCrossSection& sec) const {
-    if (Ke_direct.has_value()) return *Ke_direct;
+    if (Ke_direct.has_value()) return Ke_direct->cwiseProduct(scaleKe);
     const real_t G = E / ((real_t)2.0 * ((real_t)1.0 + nu));
     const real_t A = sec.area();
     Vector3r base(E * A / segLen, G * A / segLen, G * A / segLen);
@@ -200,9 +219,9 @@ Vector3r BeamSpringParams::Ke(real_t segLen, const BeamCrossSection& sec) const 
 }
 
 Vector3r BeamSpringParams::Kf(real_t segLen, const BeamCrossSection& sec) const {
-    if (Kf_direct.has_value()) return *Kf_direct;
+    if (Kf_direct.has_value()) return Kf_direct->cwiseProduct(scaleKf);
     const real_t G = E / ((real_t)2.0 * ((real_t)1.0 + nu));
-    Vector3r base(G * sec.Jp() / segLen, E * sec.Iy() / segLen, E * sec.Iz() / segLen);
+    Vector3r base(G * sec.torsionConstant() / segLen, E * sec.Iy() / segLen, E * sec.Iz() / segLen);
     return base.cwiseProduct(scaleKf);
 }
 

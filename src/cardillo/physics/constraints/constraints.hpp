@@ -136,9 +136,9 @@ class ConstraintPattern {
     // Without it, the position-level force law would pull back
     // against the prescribed motion. Default: no prescribed rate, nothing to do.
     virtual void advancePrescribedMotion(real_t /*dt*/) {}
-    virtual void setScalarVelocity(real_t v) { std::cerr << "Warning: setScalarVelocity not implemented for this constraint pattern" << std::endl; }
-    virtual void setLinearVelocity(const Vector3r& v) { std::cerr << "Warning: setLinearVelocity not implemented for this constraint pattern" << std::endl; }
-    virtual void setAngularVelocity(const Vector3r& w) { std::cerr << "Warning: setAngularVelocity not implemented for this constraint pattern" << std::endl; }
+    virtual void setScalarVelocity(real_t /*v*/) { std::cerr << "Warning: setScalarVelocity not implemented for this constraint pattern" << std::endl; }
+    virtual void setLinearVelocity(const Vector3r& /*v*/) { std::cerr << "Warning: setLinearVelocity not implemented for this constraint pattern" << std::endl; }
+    virtual void setAngularVelocity(const Vector3r& /*w*/) { std::cerr << "Warning: setAngularVelocity not implemented for this constraint pattern" << std::endl; }
 
     bool getAttachPointsWorld(Vector3r& xA, Vector3r& xB) const;
 
@@ -193,10 +193,10 @@ class LinearDistanceConstraint : public ConstraintPattern {
     void advancePrescribedMotion(real_t dt) override { L0 -= dt * scalarVelocity; }
 
    private:
-    real_t L0{(real_t)-1.0};  // rest length
-    real_t scalarVelocity = (real_t)0;
     real_t m_k{(real_t)0};
     real_t m_d{(real_t)0};
+    real_t L0{(real_t)-1.0};  // rest length
+    real_t scalarVelocity = (real_t)0;
 };
 
 // Generic 6-DOF translation+rotation constraint using the joint-frame Jacobian

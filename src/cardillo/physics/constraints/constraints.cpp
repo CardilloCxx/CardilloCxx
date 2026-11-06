@@ -150,7 +150,9 @@ void TranslationRotationConstraint::buildJointJacobian(const ConstraintPattern::
     const Vector3r n_s = (real_t)0.5 * (e1z.cross(e2y) - e1y.cross(e2z));
     const Vector3r n_c = (real_t)0.5 * (e1y.cross(e2y) + e1z.cross(e2z));
     Matrix33r N;
-    N.col(0) = -(tr.c * n_s - tr.s * n_c) / (tr.s * tr.s + tr.c * tr.c);
+    // s = c = 0 only for a half turn about an axis normal to e1_x, where the twist angle is undefined.
+    const real_t sc2 = tr.s * tr.s + tr.c * tr.c;
+    N.col(0) = sc2 > 0 ? Vector3r(-(tr.c * n_s - tr.s * n_c) / sc2) : Vector3r(-e1x);
     N.col(1) = -e1x.cross(e2z);
     N.col(2) = e1x.cross(e2y);
     WgA.bottomRightCorner<3, 3>() = A_IK1.transpose() * N;
@@ -251,9 +253,9 @@ BeamConstraint::BeamConstraint(entt::registry& reg, entt::entity a, entt::entity
     const Vector3r kappaGeom = factor * (Qmid_w * dQ.head<3>() - Qmid_q.cross(dQ.head<3>()) - Qmid_q * dQ(3));
     m_kappa0 = m_springs.restConfiguration == physics::BeamRestConfiguration::Straight ? Vector3r::Zero() : kappaGeom;
 
-    // Keep constitutive segment length tied to the geometric initialization to
-    // avoid singular stiffness when the natural axial strain is near zero.
-    l_0 = geometricLength;
+    // Constitutive length: the stress-free length of the element (the geometric length without the
+    // axial pretension).
+    l_0 = geometricLength / ((real_t)1 + m_springs.axialPretension.value_or((real_t)0));
 }
 
 ConstraintResult BeamConstraint::getConstraint() const {
@@ -298,9 +300,9 @@ ConstraintResult BeamConstraint::getConstraint() const {
     out.Crows = VectorXr::Zero(6);
     out.Arows = VectorXr::Zero(6);
 
-    // Effective stiffnesses (considering scaling factors)
-    Vector3r Ke_eff = m_springs.Ke(l_0, m_section).cwiseProduct(m_springs.scaleKe);
-    Vector3r Kf_eff = m_springs.Kf(l_0, m_section).cwiseProduct(m_springs.scaleKf);
+    // Stiffnesses (Ke()/Kf() include the scale factors scaleKe/scaleKf)
+    const Vector3r Ke_eff = m_springs.Ke(l_0, m_section);
+    const Vector3r Kf_eff = m_springs.Kf(l_0, m_section);
     Vector3r De_eff = Ke_eff * m_springs.dampingFactor;
     Vector3r Df_eff = Kf_eff * m_springs.dampingFactor;
 

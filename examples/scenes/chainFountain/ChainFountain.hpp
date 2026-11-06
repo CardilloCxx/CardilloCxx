@@ -211,8 +211,6 @@ public:
             const real_t elapsed = t - m_yeetStartTime;
 
             if (elapsed >= 0.0 && elapsed <= m_yeetUpTime + m_yeetArcTime + m_yeetDownTime) {
-                const real_t s = elapsed / (m_yeetUpTime + m_yeetArcTime + m_yeetDownTime);
-                
                 const real_t upS = std::clamp(elapsed / m_yeetUpTime, 0.0, 1.0);
                 const real_t arcS = std::clamp((elapsed - m_yeetUpTime) / m_yeetArcTime, 0.0, 1.0);
                 const real_t downS = std::clamp((elapsed - m_yeetUpTime - m_yeetArcTime) / m_yeetDownTime, 0.0, 1.0);

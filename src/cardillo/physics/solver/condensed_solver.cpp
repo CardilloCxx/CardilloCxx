@@ -1,13 +1,9 @@
 #include "condensed_solver.hpp"
 
 #include <algorithm>
-#include <atomic>
 #include <cmath>
-#include <cstdlib>
 #include <iostream>
 #include <limits>
-#include <numeric>
-#include <random>
 #include <unordered_map>
 
 #ifdef CARDILLO_HAVE_OPENMP
@@ -29,14 +25,7 @@ namespace {
 // Every RowBlock has dim <= 6 (1: frictionless contact, 3: frictional contact, up to 6: spring/
 // damper rows) and every body has dof <= 6 (3 for a point mass, 6 for a full rigid body). Buf6 is
 // a fixed-size, stack-allocated scratch buffer sized to the worst case, used with `.head(n)`
-// views for whichever n <= 6 actually applies. Unlike VectorXr, constructing one never touches the
-// heap -- this is what actually matters here: the per-block hot path (blockResidual/
-// computeBlockUpdate/scatterDelta and their call sites below) used to allocate several VectorXr
-// temporaries per block per sweep, which dominated wall-clock on scenes with many contacts (a
-// malloc/free per r/lamOld/lamNew/delta/dlam, times tens of thousands of blocks, times thousands
-// of sweeps). Switching those temporaries to Buf6 removes that allocation churn entirely; `Ja`/
-// `Jb`/`Gii`/`GiiInv` stay dynamically-sized MatrixXXr (built once per solve() call in
-// CondensedAssembler, not per sweep, so their allocation cost is amortized and not the bottleneck).
+// views for whichever n <= 6 actually applies; unlike VectorXr it never touches the heap.
 using Buf6 = Vector6r;
 
 // Local update of a block from step = rho * xi (already relaxed/scaled), see the theory manual,
@@ -267,125 +256,6 @@ void coloredSweep(const CondensedTopology& topo, const misc::Coloring& coloring,
     }
 }
 
-// Jacobi sweep: two passes, no shared-state races even when parallelized (see design note in
-// condensed_solver.hpp). Pass 1 updates each block's own impulse against a frozen snapshot of
-// du from the previous sweep. Pass 2 has each BODY gather corrections from only its own
-// incident blocks -- never a block scattering into shared state -- so the reduction needs no
-// synchronization at all, not even atomics.
-// `startBlock` skips the bilateral prefix under condensed.true_schur, same convention as
-// gaussSeidelSweep/buildBlockAdjacency above. Pass 2's gather is left iterating every body's full
-// incident list unchanged: dlambda for any skipped (bilateral) block stays at its zero-init value
-// from `VectorXr::Zero(lambda.size())` below, since pass 1 never touches that segment, so gathering
-// it contributes nothing -- restricting pass 2's range too would save a little work but isn't
-// needed for correctness.
-void jacobiSweep(const CondensedTopology& topo, const std::vector<int>& bodyVelOffsets, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
-                  const NewtonACParams& newtonParams, VectorXr& lambda, VectorXr& du, int startBlock = 0, bool linearOnly = false) {
-    const VectorXr u_read = du;
-    const int numBlocks = (int)topo.blocks.size();
-    const int numBodies = (int)topo.blocksOfBody.size();
-    VectorXr dlambda = VectorXr::Zero(lambda.size());
-    VectorXr u_write = u_read;
-
-    // Single team for both passes (one spawn/join per sweep, not two): each `#pragma omp for` has
-    // its own implicit barrier, so pass 2 still never starts until every thread has finished
-    // writing pass 1's dlambda -- the correctness argument is unchanged, only the team lifetime.
-#pragma omp parallel
-    {
-        // Pass 1: each thread handles a disjoint set of block indices, writing only to that
-        // block's own (non-overlapping) segment of lambda/dlambda -- no aliasing across threads.
-#pragma omp for schedule(static)
-        for (int i = startBlock; i < numBlocks; ++i) {
-            Buf6 r, lamOld, lamNew;
-            const auto& blk = topo.blocks[i];
-            blockResidual(blk, rhs, u_read, lambda, r);
-            lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
-            computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew, linearOnly);
-
-            dlambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
-            lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);
-        }
-        // implicit barrier here, before pass 2 starts
-
-        // Pass 2: each thread handles a disjoint set of BODIES, gathering only from that body's
-        // own incident blocks and writing only to that body's own segment of u_write -- again no
-        // aliasing across threads, and no atomics needed (gather, not scatter).
-#pragma omp for schedule(static)
-        for (int b = 0; b < numBodies; ++b) {
-            const auto& incident = topo.blocksOfBody[b];
-            if (incident.empty()) continue;
-            const int off = bodyVelOffsets[(size_t)b];
-            const int dof = bodyVelOffsets[(size_t)b + 1] - off;
-
-            Buf6 acc = Buf6::Zero(), d;
-            for (int blockIdx : incident) {
-                const auto& blk = topo.blocks[blockIdx];
-                d.head(blk.dim) = dlambda.segment(blk.offset, blk.dim);
-                if (blk.bodyIndexA == b) acc.head(dof).noalias() += blk.Ja.transpose() * d.head(blk.dim);
-                if (blk.bodyIndexB == b) acc.head(dof).noalias() += blk.Jb.transpose() * d.head(blk.dim);
-            }
-            if (const auto* gB = gyroBlockFor(b, topo.gyroMinvBlocks))
-                u_write.segment(off, dof) = u_read.segment(off, dof) + gB->topLeftCorner(dof, dof) * acc.head(dof);
-            else
-                u_write.segment(off, dof) = u_read.segment(off, dof) + MinvDiag.segment(off, dof).cwiseProduct(acc.head(dof));
-        }
-    }
-    du = std::move(u_write);
-}
-
-// Chaotic / randomized Gauss-Seidel: deliberately unsynchronized updates in (periodically
-// reshuffled) random order. `order` is a permutation of block indices, so within one call each
-// block index is touched by exactly one thread -- writes to `lambda` are race-free by the same
-// disjoint-segment argument as every other sweep. What's genuinely different here is `du`:
-// unlike Jacobi's frozen snapshot or colored's provably-disjoint writes, here two blocks sharing a
-// body CAN run concurrently and race on that body's accumulator -- that staleness is the point
-// (Chazan-Miranker chaotic relaxation), but it must be implemented with real atomics, not a data
-// race: plain-`double` unsynchronized read-modify-write is undefined behavior in C++, not just
-// imprecise. `real_t` is `double`; C++20 guarantees `std::atomic<double>::fetch_add`/`load` exist
-// (P0020R6), so no hand-rolled CAS loop is needed.
-void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
-                   const NewtonACParams& newtonParams, int reshuffleInterval, int iter, std::mt19937& rng, VectorXr& lambda, std::vector<std::atomic<real_t>>& du_atomic) {
-    if (iter % reshuffleInterval == 0) std::shuffle(order.begin(), order.end(), rng);
-
-    const int n = (int)order.size();
-#pragma omp parallel for schedule(dynamic)
-    for (int k = 0; k < n; ++k) {
-        Buf6 uA = Buf6::Zero(), uB = Buf6::Zero(), r, lamOld, lamNew, d, inc;
-        const int idx = order[(size_t)k];
-        const auto& blk = topo.blocks[(size_t)idx];
-
-        for (int dd = 0; dd < blk.aDof; ++dd) uA[dd] = du_atomic[(size_t)(blk.aOff + dd)].load(std::memory_order_relaxed);
-        for (int dd = 0; dd < blk.bDof; ++dd) uB[dd] = du_atomic[(size_t)(blk.bOff + dd)].load(std::memory_order_relaxed);
-
-        auto ro = r.head(blk.dim);
-        ro = rhs.segment(blk.offset, blk.dim);
-        if (blk.aDof > 0) ro.noalias() += blk.Ja * uA.head(blk.aDof);
-        if (blk.bDof > 0) ro.noalias() += blk.Jb * uB.head(blk.bDof);
-        ro.noalias() += blk.complianceDiag.cwiseProduct(lambda.segment(blk.offset, blk.dim));
-
-        lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
-        computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew);
-        lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);  // safe: `order` is a permutation this sweep
-
-        d.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
-        if (blk.aDof > 0) {
-            inc.head(blk.aDof).noalias() = blk.Ja.transpose() * d.head(blk.dim);
-            if (const auto* gA = gyroBlockFor(blk.bodyIndexA, topo.gyroMinvBlocks))
-                inc.head(blk.aDof) = gA->topLeftCorner(blk.aDof, blk.aDof) * inc.head(blk.aDof);
-            else
-                inc.head(blk.aDof) = MinvDiag.segment(blk.aOff, blk.aDof).cwiseProduct(inc.head(blk.aDof));
-            for (int dd = 0; dd < blk.aDof; ++dd) du_atomic[(size_t)(blk.aOff + dd)].fetch_add(inc[dd], std::memory_order_relaxed);
-        }
-        if (blk.bDof > 0) {
-            inc.head(blk.bDof).noalias() = blk.Jb.transpose() * d.head(blk.dim);
-            if (const auto* gB = gyroBlockFor(blk.bodyIndexB, topo.gyroMinvBlocks))
-                inc.head(blk.bDof) = gB->topLeftCorner(blk.bDof, blk.bDof) * inc.head(blk.bDof);
-            else
-                inc.head(blk.bDof) = MinvDiag.segment(blk.bOff, blk.bDof).cwiseProduct(inc.head(blk.bDof));
-            for (int dd = 0; dd < blk.bDof; ++dd) du_atomic[(size_t)(blk.bOff + dd)].fetch_add(inc[dd], std::memory_order_relaxed);
-        }
-    }
-}
-
 // Estimates the spectral radius of the LINEARIZED sweep operator (i.e. with projection/Newton
 // disabled -- exactly the nonlinearities that make a rigorous spectral-radius argument
 // inapplicable in the first place, same caveat as ProjectedJacobiSolver's own estimator), for
@@ -393,7 +263,7 @@ void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const 
 // ProjectedJacobiSolver's own estimateSpectralRadius(), adapted to condensed's matrix-free
 // block-sweep representation instead of a global sparse system: rather than needing an explicit
 // linear operator/solveS(), this runs the SAME sweep function the real iteration uses
-// (gaussSeidelSweep/jacobiSweep/coloredSweep, plus exactBilateralStep under true_schur) with
+// (gaussSeidelSweep/coloredSweep, plus exactBilateralStep under true_schur) with
 // projection/Newton disabled (linearOnly=true) and a ZERO rhs. With no projection and no rhs, one
 // sweep step is an EXACT linear map G(d) = A*d (no affine offset -- the rhs-dependent constant
 // term vanishes), so plain power iteration on a probe vector converges to |A|'s dominant
@@ -401,8 +271,8 @@ void chaoticSweep(const CondensedTopology& topo, std::vector<int>& order, const 
 // matrix-based) linearized operator. Uses a deterministic all-ones probe vector (matching PJ's own
 // choice) rather than a randomized one, so this doesn't introduce a new nondeterminism source into
 // the solver.
-real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, const std::string& sweepMode, const misc::Coloring& coloring,
-                               const std::vector<int>& bodyVelOffsets, int startBlock, bool useTrueSchur, const misc::BlockSparseLDLT& bilateralLdlt, int nV) {
+real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, const misc::Coloring* coloring, int startBlock, bool useTrueSchur,
+                              const misc::BlockSparseLDLT& bilateralLdlt, int nV) {
     constexpr int kPowerIterations = 8;
     const int numLambda = topo.numLambda;
     if (numLambda == 0) return (real_t)0;
@@ -423,35 +293,20 @@ real_t estimateSpectralRadius(const CondensedTopology& topo, const VectorXr& Min
     real_t rho = 0;
     for (int it = 0; it < kPowerIterations; ++it) {
         if (useTrueSchur) exactBilateralStep(topo, bilateralLdlt, zeroRhs, MinvDiag, d_lambda, d_du);
-        if (sweepMode == "jacobi") {
-            jacobiSweep(topo, bodyVelOffsets, zeroRhs, MinvDiag, relaxation, alpha, /*useNewton=*/false, unusedNewtonParams, d_lambda, d_du, startBlock, /*linearOnly=*/true);
-        } else if (sweepMode == "colored") {
-            coloredSweep(topo, coloring, zeroRhs, MinvDiag, relaxation, alpha, false, unusedNewtonParams, d_lambda, d_du, /*linearOnly=*/true);
+        if (coloring) {
+            coloredSweep(topo, *coloring, zeroRhs, MinvDiag, relaxation, alpha, false, unusedNewtonParams, d_lambda, d_du, /*linearOnly=*/true);
         } else {
             gaussSeidelSweep(topo, zeroRhs, MinvDiag, relaxation, alpha, false, unusedNewtonParams, d_lambda, d_du, startBlock, /*linearOnly=*/true);
         }
 
         const real_t n = d_lambda.norm();
-        // A genuine bug found by tracing this per-iteration on slinky's first (contact-free) step: when
-        // condensed.true_schur exactly solves the ENTIRE probe (e.g. no contacts at all, so the
-        // whole linear-only sweep is just exactBilateralStep on a homogeneous system), `n` collapses
-        // to floating-point noise (~1e-13, confirmed by direct trace), not a real small eigenvalue.
-        // The old `1e-300` threshold is nowhere near the actual FP noise floor for this
-        // O(1)-scale computation, so it let that noise get renormalized back to unit length and
-        // amplified ~10^12x every remaining iteration -- converging to a spurious rho close to 1
-        // (an artifact of amplified rounding error, not a real eigenvalue) instead of correctly
-        // reporting "this probe found nothing to accelerate". 1e-8 sits safely above realistic FP
-        // noise for this scale and well below any genuine eigenvalue magnitude worth resolving.
+        // When true_schur solves the whole probe exactly (no contacts), n is round-off of an O(1)
+        // computation, not an eigenvalue; renormalizing it would amplify noise to a spurious rho ~ 1.
         if (!(n > (real_t)1e-8)) return (real_t)0;
         rho = n;
         d_lambda /= n;
         d_du /= n;
     }
-    // Deliberately NOT clamped here -- callers need the raw value for different purposes (the
-    // Chebyshev omega recurrence needs it clamped strictly below 1; a caller deriving a safe `alpha`
-    // from this estimate needs the true, possibly-much-larger-than-1 magnitude to know how far past
-    // stability the current alpha/relaxation choice actually is). Clamp at each call site instead.
-    if (getenv("CARDILLO_DEBUG_RHO_RAW")) std::cout << "[Condensed] raw (unclamped) spectral radius estimate: " << rho << std::endl;
     return rho;
 }
 
@@ -506,10 +361,10 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     if (m_cfg.condensed_num_threads > 0) omp_set_num_threads(m_cfg.condensed_num_threads);
 #endif
 
-    sc_setup.~Scope();
+    sc_setup.stop();
     auto sc_solve = m_dyn.timings()->scope(misc::TimingManager::TimerId::Condensed);
 
-    real_t alpha = m_cfg.pj_alpha;
+    const real_t alpha = m_cfg.pj_alpha;
     const real_t relaxation = m_cfg.pj_relaxation;
 
     VectorXr res_v0(nV), res_v1(nV), res_diff(nV), res_q(nV);
@@ -529,20 +384,11 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         return res_norm;
     };
 
-    const auto& bodyVelOffsets = m_dyn.bodyVelOffsets();
-    const std::string& sweepMode = m_cfg.condensed_sweep_mode;
-
-    // condensed.true_schur only applies to gauss_seidel/jacobi/colored -- chaotic keeps its own
-    // atomic du representation and full block range unchanged (see the doSweep comment below
-    // for why chaotic is excluded from the generic wrapper in the first place; combining chaotic's
-    // deliberately-stale atomic updates with an exact joint bilateral solve raises questions not
-    // tackled here). `startBlock` is where contact blocks begin -- 0 (i.e. every block still swept
-    // together) unless true_schur is on, in which case it's topo.numBilateralBlocks.
-    const bool useTrueSchur = m_cfg.condensed_true_schur && sweepMode != "chaotic";
+    // condensed.true_schur eliminates the bilateral (spring+damper) blocks exactly in every sweep;
+    // the projected sweep then starts at the first contact block.
+    const bool useTrueSchur = m_cfg.condensed_true_schur;
     const int startBlock = useTrueSchur ? topo.numBilateralBlocks : 0;
-    if (m_cfg.condensed_true_schur && sweepMode == "chaotic" && m_cfg.debug_pj) {
-        std::cout << "[Condensed] condensed.true_schur has no effect on sweep_mode=chaotic; ignoring." << std::endl;
-    }
+    const bool colored = m_cfg.condensed_sweep_mode == "colored";
 
     misc::BlockSparseLDLT bilateralLdlt;
     if (useTrueSchur && topo.numBilateralBlocks > 0) {
@@ -551,7 +397,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     }
 
     misc::Coloring coloring;
-    if (sweepMode == "colored") {
+    if (colored) {
         auto sc_color = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedColoring);
         const auto adjacency = buildBlockAdjacency(topo, startBlock);
         coloring = misc::colorGreedyWelshPowell((int)topo.blocks.size() - startBlock, adjacency);
@@ -563,40 +409,10 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     const NewtonACParams newtonParams{m_cfg.condensed_newton_max_iters, m_cfg.condensed_newton_tol,
                                        (m_cfg.condensed_newton_rho_strategy == "full") ? NewtonRhoStrategy::FullSpectral : NewtonRhoStrategy::Split};
 
-    // condensed.auto_alpha (experimental, default off -- see config.hpp): derive `alpha` for THIS
-    // step from the same power-iteration estimator pj.chebyshev uses, instead of the fixed
-    // hand-tuned pj.alpha. Measures the raw spectral radius at alpha=1 (rho1), then picks alpha so
-    // the resulting operator's radius lands near condensed_auto_alpha_target_rho, using the
-    // empirically-confirmed linear relationship rho(alpha) ~= alpha*(rho1+1) - 1 for alpha large
-    // enough to be dominated by the largest eigenvalue. Overrides
-    // `alpha` for every use below, including the Chebyshev estimate itself if also enabled.
-    if (m_cfg.condensed_auto_alpha) {
-        auto sc_autoalpha = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSetup);
-        const real_t rho1 = estimateSpectralRadius(topo, MinvDiag, relaxation, (real_t)1.0, sweepMode, coloring, bodyVelOffsets, startBlock, useTrueSchur, bilateralLdlt, nV);
-        if (rho1 > 0) {
-            const real_t targetRho = m_cfg.condensed_auto_alpha_target_rho;
-            alpha = std::clamp((targetRho + (real_t)1.0) / (rho1 + (real_t)1.0), (real_t)1e-4, (real_t)1.0);
-        }
-        if (m_cfg.debug_pj) std::cout << "[Condensed] auto_alpha: raw rho(alpha=1)=" << rho1 << ", derived alpha=" << alpha << std::endl;
-    }
-
-    // condensed.pj_chebyshev reuses PJ's own config key (pj.chebyshev) and precedence rule --
-    // pj_nesterov takes priority if both are set (matching ProjectedJacobiSolver::solve()'s
-    // `useChebyshev = pj_chebyshev && !pj_nesterov`) -- rather than inventing a condensed-specific
-    // key or a new precedence order. Excluded on sweep_mode=chaotic, same reasoning as true_schur
-    // above: chaotic's atomic du representation isn't compatible with extrapolating a plain
-    // VectorXr state between calls.
-    const bool useChebyshev = m_cfg.pj_chebyshev && !m_cfg.pj_nesterov && sweepMode != "chaotic";
-    if (m_cfg.pj_chebyshev && !m_cfg.pj_nesterov && sweepMode == "chaotic" && m_cfg.debug_pj) {
-        std::cout << "[Condensed] pj.chebyshev has no effect on sweep_mode=chaotic; ignoring." << std::endl;
-    }
+    // pj.chebyshev and pj.nesterov are shared with PJ/PGS, with the same precedence (Nesterov wins).
+    const bool useChebyshev = m_cfg.pj_chebyshev && !m_cfg.pj_nesterov;
     real_t chebyshevRho = 0;
-    if (useChebyshev && !m_cfg.condensed_chebyshev_adaptive_rho) {
-        // Skipped entirely when condensed_chebyshev_adaptive_rho is set: that path derives rho from
-        // a warmup of real sweeps instead (see the Chebyshev branch below), making this upfront
-        // linearized power-iteration estimate redundant -- no point paying its cost just to
-        // immediately overwrite the result.
-        //
+    if (useChebyshev) {
         // Chebyshev's spectral-radius estimate is only rigorously meaningful when the linearized
         // sweep operator has a REAL eigenvalue spectrum -- guaranteed (via similarity to a
         // symmetric matrix) when Minv is symmetric, i.e. no active implicit-gyroscopic override
@@ -604,10 +420,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         // A non-symmetric Minv can give the operator complex eigenvalues, which the classical
         // 3-term Chebyshev recurrence isn't designed for -- not a guaranteed failure (the same
         // "heuristic on the full nonlinear problem" caveat already applies regardless), but worth
-        // surfacing rather than silently trusting the estimate. Warn only (debug_pj-gated, like
-        // every other diagnostic here) rather than auto-disabling: unlike true_schur+chaotic
-        // (a hard structural incompatibility), this is a theoretical-grounding caveat with no
-        // empirical evidence either way yet, so changing behavior here isn't justified.
+        // surfacing rather than silently trusting the estimate.
         if (m_cfg.debug_pj && !topo.gyroMinvBlocks.empty()) {
             std::cout << "[Condensed] Warning: pj.chebyshev's spectral-radius estimate assumes a real "
                          "eigenvalue spectrum (via symmetric Minv); an implicit-gyroscopic body is active, "
@@ -615,71 +428,30 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
                       << std::endl;
         }
         auto sc_cheb = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSetup);
-        const real_t rawRho = estimateSpectralRadius(topo, MinvDiag, relaxation, alpha, sweepMode, coloring, bodyVelOffsets, startBlock, useTrueSchur, bilateralLdlt, nV);
-        // Clamp strictly below 1: the omega recurrence divides by (1 - rho^2/4*omega), only
-        // well-defined/stable for rho < 1 (a converging basic iteration to begin with) -- same
-        // clamp PJ's own estimateSpectralRadius() uses. estimateSpectralRadius() itself returns the
-        // raw, unclamped value now (see its own comment) -- clamping is this call site's job.
+        const real_t rawRho = estimateSpectralRadius(topo, MinvDiag, relaxation, alpha, colored ? &coloring : nullptr, startBlock, useTrueSchur, bilateralLdlt, nV);
+        // Clamp strictly below 1: the omega recurrence divides by (1 - rho^2/4*omega).
         chebyshevRho = std::min(rawRho, (real_t)0.995);
         if (m_cfg.debug_pj) std::cout << "[Condensed] chebyshev spectral radius estimate: " << chebyshevRho << std::endl;
     }
 
-    // Chaotic mode keeps its own persistent atomic representation of du across sweeps (that's
-    // the whole point -- concurrent, unsynchronized-order updates to a shared running state); it's
-    // copied back into the plain `du` after every sweep purely for the (single-threaded)
-    // residual check and the final return value.
-    std::vector<std::atomic<real_t>> du_atomic;
-    std::vector<int> chaoticOrder;
-    std::mt19937 chaoticRng(m_cfg.condensed_chaotic_seed);
-    if (sweepMode == "chaotic") {
-        du_atomic = std::vector<std::atomic<real_t>>(nV);
-        for (int i = 0; i < nV; ++i) du_atomic[(size_t)i].store(du[i], std::memory_order_relaxed);
-        chaoticOrder.resize(topo.blocks.size());
-        std::iota(chaoticOrder.begin(), chaoticOrder.end(), 0);
-        if (m_cfg.debug_pj) std::cout << "Condensed chaotic: atomic<real_t>::is_always_lock_free=" << std::atomic<real_t>::is_always_lock_free << std::endl;
-    }
-
-    // `doSweep` is generic over sweep mode so Nesterov acceleration (below) can wrap any of
-    // gauss_seidel/jacobi/colored without knowing their internals -- it only ever touches the
-    // outer (lambda, du) state between calls, exactly like ProjectedGaussSeidelSolver's own
-    // Nesterov branch does around pgs_sweep(). `chaotic` is deliberately excluded: its state lives
-    // in `du_atomic`, not a plain VectorXr, and momentum-extrapolating a value that's already
-    // being intentionally kept stale by design is a separate question not tackled here.
-    //
-    // Under condensed.true_schur, every call first exactly solves the bilateral (spring+damper)
-    // rows given the sweep's current contact contribution to du, then runs the usual sweep
-    // restricted to the contact blocks (startBlock) -- the bilateral rows never enter the sweep
-    // itself. `useTrueSchur` is false (and startBlock is 0) whenever there's nothing to gain from
-    // this (no bilateral rows, or true_schur not requested), making doSweep identical to before.
+    // One sweep over (lambda, du); Nesterov and Chebyshev extrapolate between calls. Under
+    // condensed.true_schur every call first solves the bilateral rows exactly for the current
+    // contact contribution to du, then sweeps the contact blocks only.
     auto doSweep = [&](VectorXr& lam, VectorXr& ucorr) {
         if (useTrueSchur) exactBilateralStep(topo, bilateralLdlt, rhs, MinvDiag, lam, ucorr);
-        if (sweepMode == "jacobi") {
-            jacobiSweep(topo, bodyVelOffsets, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr, startBlock);
-        } else if (sweepMode == "colored") {
+        if (colored) {
             coloredSweep(topo, coloring, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr);
         } else {
             gaussSeidelSweep(topo, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr, startBlock);
         }
     };
 
-    if (sweepMode == "chaotic") {
-        VectorXr u_prev = du;
-        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-            auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
-            chaoticSweep(topo, chaoticOrder, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, m_cfg.condensed_chaotic_reshuffle_interval, iter, chaoticRng, lambda, du_atomic);
-            for (int i = 0; i < nV; ++i) du[i] = du_atomic[(size_t)i].load(std::memory_order_relaxed);
-            sc_sweep.~Scope();
-
-            m_last_iters = iter + 1;
-            if (checkResidual(u_prev, du, iter) < (real_t)1) break;
-            u_prev = du;
-        }
-    } else if (!m_cfg.pj_nesterov && !useChebyshev) {
+    if (!m_cfg.pj_nesterov && !useChebyshev) {
         VectorXr u_prev = du;
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
             auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
             doSweep(lambda, du);
-            sc_sweep.~Scope();
+            sc_sweep.stop();
 
             m_last_iters = iter + 1;
             if (checkResidual(u_prev, du, iter) < (real_t)1) break;
@@ -703,26 +475,13 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
             lambda = lambda_y;
             du = u_y;
             doSweep(lambda, du);
-            sc_sweep.~Scope();
+            sc_sweep.stop();
 
             const VectorXr lambda_k1 = lambda;
             const VectorXr u_k1 = du;
-            // Exactly one doSweep() happened this iteration -- same as the plain loop above and
-            // PJ's own nesterov_loop() (which uses iter+1) -- so this must match. (Previously
-            // iter+2, inherited verbatim from PGS's Nesterov branch, which had the same stray
-            // off-by-one with no second sweep anywhere to justify it -- see that fix. Purely
-            // cosmetic: only ever read by the progress-bar/log "iters=" display, never by any
-            // convergence or control-flow decision.)
             m_last_iters = iter + 1;
 
-            // Non-throwing here, deliberately -- matching PJ's own nesterov_loop() (see
-            // projected_jacobi.cpp), which never throws on a non-finite residual either: a NaN/Inf
-            // `err` is one of the restart triggers below, not an immediate hard failure. Throwing
-            // here (as an earlier version of this code did via checkResidual()) made that restart
-            // branch permanently dead code -- momentum could never recover from an overshoot because
-            // the exception fired before the restart logic ran at all. This was the actual cause of
-            // the jacobi+Nesterov divergence on slinky documented in condensed.rst/the solver report:
-            // not an unrecoverable instability, just a self-inflicted inability to ever try recovering.
+            // A non-finite err is a restart trigger below, not an immediate failure.
             const real_t err = residualNorm(u_y, u_k1);
             if (err <= (real_t)1) break;
 
@@ -799,80 +558,28 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         // spectral radius estimated once above via estimateSpectralRadius(). Mutually exclusive
         // with Nesterov (useChebyshev already required !pj_nesterov, matching
         // ProjectedJacobiSolver::solve()'s own precedence: pj_nesterov > pj_chebyshev).
-        real_t rho = chebyshevRho;
-        bool warmupConverged = false;
-        int warmupItersUsed = 0;
-        if (m_cfg.condensed_chebyshev_adaptive_rho) {
-            // Adaptive rho (the classical "adaptive SOR/Chebyshev" technique -- e.g. Manteuffel
-            // 1977/Ashby 1985's power-method-based adaptive parameter estimation): rather than a
-            // separate linearized, zero-rhs power-iteration pre-pass (measured earlier to be
-            // overly pessimistic for contact-rich scenes -- it ignores the stabilizing effect of
-            // the friction-cone projection entirely, treating every contact as permanently,
-            // fully coupled), run a few REAL (unaccelerated, actually-projected) sweeps first and
-            // estimate rho from the OBSERVED residual ratio: for a linearly-converging iteration,
-            // err_k/err_{k-1} -> rho asymptotically. These sweeps are real solve work, not thrown
-            // away (lambda/du end the warmup already partway converged), and the estimate
-            // reflects THIS step's actual active set, not a linearized approximation of it.
-            // NOTE: tracing this per-iteration on domino found the
-            // observed ratio does NOT settle to a stable value even over 20 iterations -- it drifts
-            // upward from ~0.3 to ~0.9 and transiently EXCEEDS 1 (residual growing) before this
-            // warmup budget runs out, for a genuinely nonsmooth reason (the active contact set is
-            // still resolving, not merely "not yet asymptotic"). This makes the observed-ratio
-            // estimate unreliable regardless of warmup length, not just too-short-a-warmup -- kept
-            // short (cheap) since a longer warmup measurably does NOT fix this.
-            constexpr int kWarmupIters = 4;
-            VectorXr u_prev = du;
-            real_t lastErr = -1, ratioEstimate = -1;
-            for (int w = 0; w < kWarmupIters; ++w) {
-                auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
-                doSweep(lambda, du);
-                sc_sweep.~Scope();
-                warmupItersUsed = w + 1;
-                const real_t err = residualNorm(u_prev, du);
-                if (getenv("CARDILLO_DEBUG_WARMUP_TRACE")) std::cout << "  [warmup] w=" << w << " err=" << err << " ratio=" << (lastErr > 0 ? err / lastErr : -1) << std::endl;
-                if (err <= (real_t)1) {
-                    warmupConverged = true;  // converged during warmup alone -- nothing left to accelerate
-                    break;
-                }
-                if (lastErr > (real_t)0 && std::isfinite(err) && std::isfinite(lastErr)) ratioEstimate = err / lastErr;
-                lastErr = err;
-                u_prev = du;
-            }
-            if (!warmupConverged && ratioEstimate > (real_t)0 && std::isfinite(ratioEstimate)) rho = std::min(ratioEstimate, (real_t)0.995);
-            if (m_cfg.debug_pj) {
-                std::cout << "[Condensed] chebyshev adaptive rho: warmup_iters=" << warmupItersUsed << " ratio_estimate=" << ratioEstimate << " using_rho=" << rho
-                          << (warmupConverged ? " (converged during warmup)" : "") << std::endl;
-            }
-        }
-
+        const real_t rho = chebyshevRho;
         VectorXr lambda_k = lambda, u_k = du, lambda_y = lambda, u_y = du;
         const double rho2 = (double)rho * (double)rho;
         double omega = 1.0;
 
-        for (int iter = 0; !warmupConverged && iter < m_cfg.pj_max_iterations; ++iter) {
+        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
             auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
             lambda = lambda_y;
             du = u_y;
             doSweep(lambda, du);
-            sc_sweep.~Scope();
+            sc_sweep.stop();
 
             const VectorXr lambda_k1 = lambda;
             const VectorXr u_k1 = du;
-            m_last_iters = warmupItersUsed + iter + 1;
+            m_last_iters = iter + 1;
 
             const real_t err = residualNorm(u_y, u_k1);
             if (m_cfg.debug_pj && iter % 1000 == 0) std::cout << "[Condensed] chebyshev iter " << iter << ", residual norm: " << err << std::endl;
             if (err <= (real_t)1) break;
 
             // If the RAW sweep output (lambda_k1/u_k1, before any extrapolation) is already
-            // non-finite, the underlying sweep itself has diverged (e.g. condensed.sweep_mode=
-            // jacobi at an alpha too high for its stability margin -- see condensed.rst's Nesterov
-            // warning, the same pre-existing instability, not something this acceleration method
-            // is expected to fix) -- there is nothing left to fall back to or extrapolate from, so
-            // this must throw here, exactly like the Nesterov branch above's identical check.
-            // Missing this check does NOT self-correct: falling back to lambda_y=lambda_k1 below
-            // would just keep feeding the same NaN state into doSweep() every remaining iteration,
-            // spinning silently for the rest of pj_max_iterations instead of failing fast.
+            // non-finite, the sweep itself has diverged and there is nothing to fall back to.
             if (!lambda_k1.allFinite() || !u_k1.allFinite()) checkResidual(u_y, u_k1, iter);  // throws
 
             const double omega_next = (iter == 0) ? (1.0 / (1.0 - rho2 * 0.5)) : (1.0 / (1.0 - (rho2 * 0.25) * omega));
@@ -904,11 +611,6 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
             lambda_k = lambda_k1;
             u_k = u_k1;
         }
-        // `lambda`/`du` already hold the latest post-sweep values from inside the loop above --
-        // no final reassignment needed, same fact the Nesterov branch above relies on. If the
-        // adaptive-rho warmup itself already converged, the loop above never ran (its condition is
-        // `!warmupConverged && ...`), so m_last_iters was never set by it -- set it here instead.
-        if (warmupConverged) m_last_iters = warmupItersUsed;
     }
 
     if (nSprings > 0) m_dyn.setLambda_g(lambda.head(nSprings));

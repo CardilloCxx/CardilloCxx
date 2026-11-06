@@ -50,20 +50,11 @@ inline bool isStatic(const entt::registry& reg, entt::entity e) {
     return !(reg.any_of<C_BodyIndex, C_PhysicsObject>(e));
 }
 
-/**
- * @brief Recomputes and caches entity @p e's RigidState component from its raw position/velocity
- * components, replacing any previously cached value.
- * @warning For `e == entt::null`, this returns a reference to a shared, mutable, function-local
- * static fallback object rather than a per-call value; callers must not write through it.
- */
-inline RigidState& updateState(entt::registry& reg, entt::entity e) {
-    if (e == entt::null) {
-        static RigidState inertial = RigidState::inertial();
-        return inertial;
-    }
-
-    RigidState state = detail::readStateFromComponents(reg, e);
-    return reg.emplace_or_replace<RigidState>(e, state);
+/// Recomputes and caches entity @p e's RigidState component from its raw position/velocity
+/// components, replacing any previously cached value. No-op for entt::null.
+inline void updateState(entt::registry& reg, entt::entity e) {
+    if (e == entt::null) return;
+    reg.emplace_or_replace<RigidState>(e, detail::readStateFromComponents(reg, e));
 }
 
 }  // namespace cardillo::RigidBody

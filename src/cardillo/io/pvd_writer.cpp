@@ -1,6 +1,8 @@
 #include "pvd_writer.hpp"
 
 #include <fstream>
+#include <iomanip>
+#include <limits>
 
 namespace cardillo::io {
 
@@ -11,6 +13,7 @@ void PvdWriter::addEntry(int step, real_t time, const std::string& fileName) {
 void PvdWriter::write(const std::string& path) const {
     std::ofstream out(path, std::ios::out | std::ios::trunc);
     if (!out) return;
+    out << std::setprecision(std::numeric_limits<real_t>::max_digits10);
 
     out << "<?xml version=\"1.0\"?>\n";
     out << "<VTKFile type=\"Collection\" version=\"0.1\" byte_order=\"LittleEndian\">\n";

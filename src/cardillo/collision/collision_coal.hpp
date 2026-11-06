@@ -41,6 +41,8 @@ class CollisionCoal {
     void ensureBroadphaseFromConfig_();
     ColliderKind inferKind_(entt::entity e) const;
     std::shared_ptr<coal::CollisionGeometry> makeGeometryFor_(ColliderKind kind, entt::entity e) const;
+    void computeAABB_(coal::CollisionObject& obj) const;
+    void syncPrimitiveSize_(ColliderKind kind, entt::entity e, coal::CollisionObject& obj) const;
     coal::Transform3s makeTransformFromQ_(const VectorXr& q) const;
 
     // Backrefs

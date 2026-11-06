@@ -35,14 +35,12 @@ class NaiveSchurSolver : public SolverBase {
     explicit NaiveSchurSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(dyn), m_assembler(dyn, cfg), m_cfg(cfg) {}
 
     VectorXr solve(real_t dt, real_t theta) override;
-    real_t lastError() const override { return m_lastError; }
     const char* name() const override { return "NaiveSchur"; }
 
    private:
     physics::DynamicsAssembler& m_dyn;
     physics::assembly::PjAssembler m_assembler;
     config::Config m_cfg;
-    real_t m_lastError{(real_t)0};
 };
 
 }  // namespace cardillo::solver

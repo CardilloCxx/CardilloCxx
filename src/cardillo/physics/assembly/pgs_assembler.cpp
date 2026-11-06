@@ -18,7 +18,6 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) cons
     const auto& M_inv = m_dyn->MinvDiag();
     const auto& restitution = m_dyn->restitutionVec();
 
-    const int totalV = m_dyn->numV();
     const int nSprings = m_dyn->numSprings();
     const int nDampers = m_dyn->numDampers();
     const int nContacts = m_dyn->numContactRows();
@@ -56,7 +55,7 @@ VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) cons
     return rhs;
 }
 
-VectorXr PgsAssembler::ufree(real_t dt, real_t theta) const {
+VectorXr PgsAssembler::ufree(real_t dt, real_t /*theta*/) const {
     const auto& vn = m_dyn->vVec();
     const auto& M_inv = m_dyn->MinvDiag();
 
@@ -86,119 +85,6 @@ Eigen::MatrixXd selectCols(const Eigen::MatrixXd& A, const std::vector<bool>& ma
     }
 
     return B;
-}
-
-BlockDiagonal PgsAssembler::Dinv(real_t dt, real_t theta) const {
-    std::vector<VectorXr> CrowsList;
-    std::vector<VectorXr> ArowsList;
-
-    std::vector<MatrixXXr> springBlocks;
-    std::vector<MatrixXXr> damperBlocks;
-
-    for (const auto& constraint : m_dyn->constraintResults()) {
-        const auto& Crows = constraint.Crows;
-        const auto& Arows = constraint.Arows;
-        const auto& c_used = constraint.c_used;
-        const auto& a_used = constraint.a_used;
-        const int nSprings = std::count(c_used.begin(), c_used.end(), true);
-        const int nDampers = std::count(a_used.begin(), a_used.end(), true);
-        const auto& reg = m_dyn->system().ecs();
-
-        const bool addA = !RigidBody::isStatic(reg, constraint.a);
-        const bool addB = !RigidBody::isStatic(reg, constraint.b);
-        if (!addA && !addB) continue;
-
-        if (nSprings > 0) {
-            MatrixXXr blockSpring = MatrixXXr::Zero(nSprings, nSprings);
-
-            if (addA) {
-                int b = reg.get<C_BodyIndex>(constraint.a).b;
-                int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
-                int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgA_sel = selectCols(constraint.WgA, c_used).topRows(nV);  // point masses: 3 of the 6 rows
-                blockSpring.noalias() += WgA_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgA_sel;
-            }
-
-            if (addB) {
-                int b = reg.get<C_BodyIndex>(constraint.b).b;
-                int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
-                int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgB_sel = selectCols(constraint.WgB, c_used).topRows(nV);  // point masses: 3 of the 6 rows
-                blockSpring.noalias() += WgB_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgB_sel;
-            }
-
-            for (int i = 0, j = 0; i < (int)c_used.size(); ++i) {
-                if (!c_used[i]) continue;
-
-                blockSpring(j, j) += Crows[(size_t)i] * DynamicsAssembler::springComplianceScale(dt, theta);
-                ++j;
-            }
-
-            springBlocks.push_back(blockSpring);
-        }
-
-        if (nDampers > 0) {
-            MatrixXXr blockDamper = MatrixXXr::Zero(nDampers, nDampers);
-
-            if (addA) {
-                int b = reg.get<C_BodyIndex>(constraint.a).b;
-                int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
-                int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgammaA_sel = selectCols(constraint.WgammaA, a_used).topRows(nV);  // point masses: 3 of the 6 rows
-                blockDamper.noalias() += WgammaA_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgammaA_sel;
-            }
-
-            if (addB) {
-                int b = reg.get<C_BodyIndex>(constraint.b).b;
-                int row0 = m_dyn->bodyVelOffsets()[(size_t)b];
-                int nV = m_dyn->bodyVelOffsets()[(size_t)b + 1] - row0;
-                const MatrixXXr WgammaB_sel = selectCols(constraint.WgammaB, a_used).topRows(nV);  // point masses: 3 of the 6 rows
-                blockDamper.noalias() += WgammaB_sel.transpose() * m_dyn->MinvDiag().segment(row0, nV).asDiagonal() * WgammaB_sel;
-            }
-
-            for (int i = 0, j = 0; i < (int)a_used.size(); ++i) {
-                if (!a_used[i]) continue;
-
-                blockDamper(j, j) += Arows[(size_t)i] * DynamicsAssembler::damperComplianceScale(dt, theta);
-                ++j;
-            }
-
-            damperBlocks.push_back(blockDamper);
-        }
-    }
-
-    BlockDiagonal D;
-    for (MatrixXXr& block : springBlocks) D.addBlock(block);
-    for (MatrixXXr& block : damperBlocks) D.addBlock(block);
-
-    if (m_dyn->numContacts() == 0) return D.calculateInverse();
-
-    // Frictionless contacts:
-    const Eigen::SparseMatrix<real_t, Eigen::RowMajor> W_contact = m_dyn->W().asSparse();
-    const int nFrictionless = m_dyn->numFrictionlessContacts();
-    if (nFrictionless > 0) {
-        for (int cid = 0; cid < nFrictionless; ++cid) {
-            real_t Dii = 0;
-            for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W_contact, cid); it; ++it) {
-                const real_t w = it.value();
-                Dii += w * w * m_dyn->MinvDiag()[it.col()];
-            }
-            D.addBlockDiag(VectorXr::Constant(1, Dii));
-        }
-    }
-
-    // Frictional contacts:
-    const int nFrictionalContacts = m_dyn->numFrictionalContacts();
-    const int nFrictionalRows = 3 * nFrictionalContacts;
-    if (nFrictionalContacts > 0) {
-        for (int cid = nFrictionless; cid < nFrictionless + nFrictionalRows; cid += 3) {
-            auto W_sel = W_contact.middleRows(cid, 3);
-            MatrixXXr blockContact = W_sel * m_dyn->MinvDiag().asDiagonal() * W_sel.transpose();
-            D.addBlock(blockContact);
-        }
-    }
-
-    return D.calculateInverse();
 }
 
 BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {

@@ -14,9 +14,8 @@ backends. It generalizes :doc:`projected_gauss_seidel` (PGS) along two
 independent axes:
 
 - **sweep strategy** -- how the outer iteration visits contact/constraint
-  blocks: sequential (``gauss_seidel``), embarrassingly parallel
-  (``jacobi``), graph-colored parallel (``colored``), or deliberately
-  unsynchronized parallel (``chaotic``);
+  blocks: sequential (``gauss_seidel``) or graph-colored parallel
+  (``colored``);
 - **local solve** -- how one frictional contact block is updated within a
   sweep: the usual linear-step-then-project (``projection``), or a guarded
   semismooth Newton solve (``newton``) that can converge a single contact to
@@ -34,11 +33,10 @@ touches a global system matrix after setup. Unlike PGS, it is not hardwired
 to one sequential order or one local-solve rule, so the sweep/local-solve
 choice can be tuned per scene, and the sweep loop can use OpenMP.
 
-**Acceleration:** ``gauss_seidel``, ``jacobi``, and ``colored`` support both Nesterov
-(``pj.nesterov``) and Chebyshev semi-iterative (``pj.chebyshev``) acceleration, the
-same config keys PJ and PGS already use (no new keys) -- see `Nesterov
-acceleration`_ and `Chebyshev acceleration`_ below. Anderson (PJ-only today) is
-not yet ported.
+**Acceleration:** both sweep modes support Nesterov (``pj.nesterov``) and
+Chebyshev semi-iterative (``pj.chebyshev``) acceleration, the same config keys
+PJ and PGS use -- see `Nesterov acceleration`_ and `Chebyshev acceleration`_
+below. Anderson acceleration is available in PJ and :doc:`naive_schur` only.
 
 From the Moreau system to condensed's row-blocks
 --------------------------------------------------
@@ -173,7 +171,7 @@ kinematic contact-velocity bias:
    bilateral rows and :math:`J\,u_\mathrm{free}` for contact rows; both coincide.
 
 Building :math:`\hat S`'s off-diagonal coupling (needed only by
-``condensed.true_schur``, since every sweep mode above only ever needs each
+``condensed.true_schur``, since both sweep modes only ever need each
 block's own :math:`G_i`, never a cross-block term) is described in
 `How Sbb's off-diagonal blocks are built`_ below.
 
@@ -205,14 +203,10 @@ damper, frictionless contact (1 row), or frictional contact (3 rows: normal +
 
 .. note::
    ``GiiInv`` is a **diagonal**-only approximation of :math:`G_i^{-1}`, matching
-   ``PgsAssembler::DinvDiag()`` -- the function PGS's own sweep loop actually
-   calls at runtime. ``PgsAssembler::Dinv()`` (the full dense block inverse)
-   is dead code for contacts in this codebase; only the bilateral-only
-   :doc:`conjugate_gradient` solver uses it. Using the full block inverse
-   here instead of the diagonal one changes the converged answer, not just
-   the convergence rate -- confirmed by direct comparison against PGS during
-   development (a divergent-looking-but-"converged" 2.8x kinetic energy
-   error on the domino scene). ``Gii`` itself is still stored as the full
+   ``PgsAssembler::DinvDiag()``, which PGS's own sweep loop uses. Using the
+   full block inverse here instead of the diagonal one changes the converged
+   answer, not just the convergence rate (a 2.8x kinetic energy error on the
+   domino scene in a direct comparison against PGS). ``Gii`` itself is still stored as the full
    3x3/6x6 matrix because the semismooth Newton local solve needs the true
    local coupling; only the *linear* local-solve path uses the diagonal
    approximation.
@@ -229,8 +223,8 @@ damper, frictionless contact (1 row), or frictional contact (3 rows: normal +
    gyroscopic forces (moreau.implicit_gyroscopy)`_.
 
 Two body-index maps fall out of the same block list for free: a per-body
-list of incident blocks (``CondensedTopology::blocksOfBody``, used by
-``jacobi``'s gather pass and to build ``colored``'s adjacency graph) and the
+list of incident blocks (``CondensedTopology::blocksOfBody``, used to build
+``colored``'s adjacency graph) and the
 packed row layout (springs, then dampers, then frictionless contacts, then
 frictional contacts -- identical to PGS's own layout, reusing
 ``DynamicsAssembler``'s own contact row ordering (``impulse_base_index``)
@@ -239,7 +233,7 @@ rather than recomputing it).
 Sweep modes
 -----------
 
-All four modes share the same per-block update
+Both modes share the same per-block update
 (:math:`\lambda^{(k+1)} = \mathrm{proj}\bigl(\lambda^{(k)} + \omega\,\alpha\,D_i^{-1}\,r_i\bigr)`,
 :math:`r_i` the block's local residual, :math:`D_i^{-1}` its ``GiiInv``) --
 they differ only in *when* each block reads/writes the shared
@@ -251,13 +245,9 @@ velocity-correction state ``du``.
        A[Build RowBlock topology + compliance] --> B[Warmstart lambda, gather initial du]
        B --> C{sweep_mode}
        C -- gauss_seidel --> D[Sequential: propagate du immediately after each block]
-       C -- jacobi --> E[Pass 1: update all blocks vs frozen du snapshot -- Pass 2: each body gathers from its own incident blocks]
        C -- colored --> F[Greedy-color the shared-body adjacency graph once -- parallel within a color, sequential across colors]
-       C -- chaotic --> G[Shuffle block order periodically -- parallel over the permutation, atomic du accumulator]
        D --> H{Converged?}
-       E --> H
        F --> H
-       G --> H
        H -- No --> C
        H -- Yes --> I[Store impulses for warmstart, return u_free + du]
 
@@ -267,16 +257,6 @@ velocity-correction state ``du``.
    own loop, just expressed over ``RowBlock`` s instead of a
    ``BlockDiagonal``/sparse ``W`` pair. Never parallelized (there is nothing
    embarrassingly parallel about a sequential update by construction).
-
-**jacobi**
-   Two OpenMP passes per sweep, run inside a single ``#pragma omp parallel``
-   region (one thread-team spawn per sweep, not two): pass 1 updates every
-   block's own impulse against a *frozen* snapshot of ``du`` from the
-   previous sweep, writing only to that block's own (disjoint) slice of
-   ``lambda``/``dlambda``; pass 2 has each *body* gather corrections from
-   only its own incident blocks (via ``blocksOfBody``) into its own slice of
-   the new ``du`` -- a gather, not a scatter, so this needs no atomics at
-   all, not even for the reduction.
 
 **colored**
    Greedy Welsh-Powell coloring (``src/cardillo/misc/graph_coloring.hpp``) of the
@@ -290,33 +270,15 @@ velocity-correction state ``du``.
    sweep. See `Graph coloring algorithm`_ below for exactly how the coloring
    is computed.
 
-**chaotic**
-   The experimental mode. Block processing order is a permutation, reshuffled
-   every ``condensed.chaotic_reshuffle_interval`` sweeps; the permutation
-   property means each block index is touched by exactly one thread per
-   sweep, so writes to ``lambda`` stay race-free. ``du`` is different: two
-   blocks sharing a body genuinely can update it concurrently, and that
-   staleness is the intended effect (Chazan-Miranker chaotic relaxation, not
-   a bug), implemented with a real
-   ``std::vector<std::atomic<real_t>>`` (relaxed loads/``fetch_add``) --
-   never a plain-``double`` data race, which would be undefined behavior in
-   C++, not just imprecise.
-
 .. warning::
-   ThreadSanitizer flags the OpenMP regions in ``jacobi``/``colored``/
-   ``chaotic``. This was tracked down to a documented, decade-old limitation:
-   GCC's ``libgomp`` is not itself TSan-instrumented, so TSan cannot see its
-   barrier/team-join synchronization and reports the (correctly
-   barrier-ordered) accesses on either side as a race. A minimal standalone
-   reproducer (two plain ``#pragma omp for`` loops in one
-   ``#pragma omp parallel``, disjoint writes, no other synchronization
-   primitive involved) triggers the identical report under this
-   GCC/``libgomp``/TSan combination, confirming this is not specific to this
-   solver's code. No Clang/``libomp`` toolchain was available in the
-   development environment to get a cleanly-instrumented run. Correctness
-   confidence instead rests on the disjoint-access arguments documented
-   inline in ``condensed_solver.cpp`` plus bit-identical results across 1,
-   4, and 16 threads on both benchmark scenes.
+   ThreadSanitizer flags the OpenMP regions in ``colored``. GCC's ``libgomp``
+   is not TSan-instrumented, so TSan cannot see its barrier/team-join
+   synchronization and reports the (correctly barrier-ordered) accesses on
+   either side as a race; a minimal standalone reproducer (two plain
+   ``#pragma omp for`` loops in one ``#pragma omp parallel``, disjoint writes)
+   triggers the identical report. Correctness rests on the disjoint-access
+   arguments documented inline in ``condensed_solver.cpp`` and on
+   bit-identical results across 1, 4, and 16 threads on both benchmark scenes.
 
 Graph coloring algorithm
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -324,7 +286,7 @@ Graph coloring algorithm
 ``colorGreedyWelshPowell()`` (``src/cardillo/misc/graph_coloring.hpp``/``.cpp``) is a
 standard greedy graph coloring, computed fresh every ``solve()`` call when
 ``condensed.sweep_mode=colored`` (unlike ``true_schur``'s elimination order,
-this is **not** cached across steps today -- see the performance note below):
+it is **not** cached across steps -- see the performance note below):
 
 1. **Adjacency**: two blocks are adjacent iff they share a body
    (``CondensedTopology::blocksOfBody``, restricted to the contact-block
@@ -350,8 +312,8 @@ number) coloring in general -- greedy Welsh-Powell is a well-known
 polynomial-time heuristic, not an exact minimum-coloring algorithm, which is
 NP-hard in general -- but is fast to compute (:math:`O(V\log V + E)`, the
 sort dominating) and good enough in practice: see the performance note in
-`Known performance characteristics`_ on why ``colored`` currently loses to
-``jacobi``/``gauss_seidel`` on ``domino`` despite being parallel (too many
+`Known performance characteristics`_ on why ``colored`` loses to
+``gauss_seidel`` on ``domino`` despite being parallel (too many
 colors relative to the per-color OpenMP barrier cost at that scene's
 contact density) -- caching this coloring across steps (like ``true_schur``'s
 elimination order already is) is the natural next step if that overhead
@@ -434,7 +396,7 @@ for that block -- ``newton`` never risks being *less* robust than
 True Schur-complement elimination of the compliant chain (``condensed.true_schur``)
 -------------------------------------------------------------------------------------
 
-**The problem this solves.** Every sweep mode above treats *every* row --
+**The problem this solves.** Both sweep modes above treat *every* row --
 spring, damper, frictionless contact, frictional contact -- as an
 independent ``RowBlock``, and lets the outer sweep loop implicitly diffuse
 information between rows that share a body. For a scene with a long
@@ -483,12 +445,9 @@ rhs()/blockResidual()/scatterDelta() changes.
 Each outer iteration therefore becomes: (1) **exact bilateral step** --
 solve :math:`S_{bb}\,\delta = -\xi_b` via a precomputed factorization
 and scatter the result, zeroing every bilateral row's residual in one shot;
-(2) **contact-only sweep** -- run the usual ``gauss_seidel``/``jacobi``/
+(2) **contact-only sweep** -- run the configured ``gauss_seidel`` or
 ``colored`` sweep restricted to just the contact blocks (bilateral rows never
-enter the sweep at all under ``true_schur``). ``chaotic`` is excluded (its
-state lives in an atomic array, and combining that with an exact joint solve
-raises questions not tackled here); setting ``condensed.true_schur=true``
-with ``condensed.sweep_mode=chaotic`` is silently ignored.
+enter the sweep at all under ``true_schur``).
 
 .. note::
    Because a direct linear solve of :math:`S_{bb}` always lands on the same
@@ -549,13 +508,11 @@ heuristic, not left to chance: at each step, eliminate whichever
 still-active node currently has the fewest active neighbors, then simulate
 the resulting fill-in (every pair of that node's still-active neighbors
 becomes connected, mirroring the real Schur update below) purely on
-adjacency, before ever touching a matrix block. An early version used
-natural (creation) order, which is exactly correct but **hung** on
-``hangbridge`` -- natural order is not fill-reducing for a branching graph,
-and the fill-in cascade made factorization impractically slow (confirmed by
-measurement, not just theory). Minimum-degree recovers exactly the chain
-order (zero fill-in) on every path-graph scene, so nothing is given up on
-the common case to fix the uncommon one; a synthetic 270-node stress test
+adjacency, before ever touching a matrix block. Natural (creation) order is
+not fill-reducing for a branching graph such as ``hangbridge``'s, where the
+fill-in cascade makes factorization impractically slow. Minimum-degree
+recovers exactly the chain order (zero fill-in) on every path-graph scene;
+a synthetic 270-node stress test
 mirroring ``hangbridge``'s rope+plank topology factors in under a
 millisecond with it. This order is also **cached** across steps (see the
 performance discussion further below).
@@ -687,21 +644,13 @@ every other call (98/100). Both match the theoretical expectation exactly --
 this isn't inferred from a wall-clock delta, it's counted directly.
 
 .. warning::
-   **This is not a free "always enable it" win, and its benefit is much
-   narrower than an earlier version of this note claimed -- measure before
-   trusting it on a new scene/config.** An earlier benchmark reported a
-   "~25x speedup, ~2000/step to ~2/step" finding for slinky; that was an
-   artifact of reading only a truncated tail of a longer run's log, which
-   happened to show just the *first* simulation step -- before ``slinky``'s
-   coiled chain has collapsed into self-contact. Re-measured properly (full
-   step-by-step logs, multiple independent runs, cross-checked against a
-   from-scratch build of the pre-``true_schur`` commit to rule out an
-   unrelated regression), the real picture is:
+   **This is not a free "always enable it" win -- measure before trusting it
+   on a new scene/config.** Measured with full step-by-step logs over
+   multiple independent runs:
 
    - **Domino** (no springs): ``true_schur`` is a verified no-op --
      bit-identical ``totalKE``/position fingerprint with it on vs off, as
-     required by construction (there is nothing to eliminate). This part of
-     the original claim still holds.
+     required by construction (there is nothing to eliminate).
    - **Slinky, step-by-step**: at ``gauss_seidel``, ``alpha=0.3``, no
      acceleration, tight tolerance (``1e-8``), the *first* step (zero
      contacts yet -- pure spring-chain relaxation) needs 2 outer iterations
@@ -725,14 +674,14 @@ this isn't inferred from a wall-clock delta, it's counted directly.
      the slinky finding above: this scene has contacts (and therefore the
      bottleneck ``true_schur`` doesn't address) from the very first step.
 
-   **Practical guidance, corrected**: ``condensed.true_schur=true`` is a
+   **Practical guidance**: ``condensed.true_schur=true`` is a
    real, large win specifically for the portion of a simulation with **no
    active contacts** -- e.g. a compliant structure settling under gravity
    before it touches anything, or between contact events. It is not a
    general contact-scene speedup, and for a scene that is in contact
    (self- or otherwise) for most of its runtime -- which includes ``slinky``
-   almost immediately -- expect it to be neutral-to-slower over a full run,
-   not the dramatic win the first version of this section claimed. Measure
+   almost immediately -- expect it to be neutral-to-slower over a full run.
+   Note that stiff rods need it for robustness rather than speed. Measure
    iteration counts *per step*, not just a run's total or its first entry,
    before trusting a number on a new scene.
 
@@ -740,12 +689,10 @@ Implicit gyroscopic forces (``moreau.implicit_gyroscopy``)
 ------------------------------------------------------------
 
 ``moreau.implicit_gyroscopy=true`` (a second-order, Kahan-consistent treatment of the Euler
-equations for a rotating rigid body) is now genuinely supported by ``condensed`` -- it was silently
-dropped before (the assembler printed a warning and applied nothing, giving wrong dynamics for any
-rigid body with the flag set, not just a missing optimization).
+equations for a rotating rigid body) is supported by ``condensed``.
 
 The correction makes a rigid body's effective mass non-symmetric: ``M_eff = M - dt*Grot`` where
-``Grot = 0.5*([I*omega]_x - [omega]_x*I)`` (the same formula ``projected_jacobi`` already used, and
+``Grot = 0.5*([I*omega]_x - [omega]_x*I)`` (the same formula ``projected_jacobi`` uses, and
 the same :math:`\mathbf M_\mathrm{eff}` that appears throughout `From the Moreau system to
 condensed's row-blocks`_ above). ``condensed``'s Schur-complement architecture needs this as an
 explicit per-body inverse-mass block rather than a system-matrix correction, so a body with the flag
@@ -769,83 +716,45 @@ gyroscopic bodies that never touch the compliant chain keeps the cheaper symmetr
    segments -- the standard textbook exercise for this exact effect): with
    ``condensed.true_schur=true`` and ``condensed.sweep_mode=colored``, kinetic energy after 1000
    steps agreed with PJ to ~10 significant figures, and the position fingerprint matched exactly to
-   every printed digit. Building that PJ reference surfaced an independent, pre-existing bug in
-   ``projected_jacobi`` itself -- its solver never passed ``moreau_implicit_gyroscopy``
-   through to the system-matrix assembly, so PJ's own implicit treatment was
-   also inactive until fixed.
+   every printed digit.
 
 Nesterov acceleration
 ----------------------
 
-``gauss_seidel``, ``jacobi``, and ``colored`` all support Nesterov (FISTA-style)
-momentum acceleration via the standard ``pj.nesterov`` / ``pj.nesterov_beta_threshold``
-/ ``pj.nesterov_restart_limit`` keys -- the exact same ones PJ and PGS already
-read, reused rather than duplicated. It's implemented once, generically: a
-``doSweep(lambda, du)`` closure dispatches to whichever sweep mode is
-configured, and the Nesterov loop only ever extrapolates/restarts the outer
-``(lambda, du)`` state between calls to it -- it has no knowledge of, and
-requires no changes to, the sweep internals. ``chaotic`` is excluded: its
-state lives in an atomic array rather than a plain vector, and
-momentum-extrapolating a value that is *already* being deliberately kept
-stale by design raises questions not addressed here.
+Both sweep modes support Nesterov (FISTA-style) momentum acceleration via the
+standard ``pj.nesterov`` / ``pj.nesterov_beta_threshold`` /
+``pj.nesterov_restart_limit`` keys, the same ones PJ and PGS read. It is
+implemented once, generically: a ``doSweep(lambda, du)`` closure dispatches to
+whichever sweep mode is configured, and the Nesterov loop only
+extrapolates/restarts the outer ``(lambda, du)`` state between calls to it --
+it has no knowledge of the sweep internals.
 
 .. note::
    The reported iteration count (``iters=`` in the progress bar/logs, backed
    by ``SolverBase::lastIterations()``) counts exactly one call to
-   ``doSweep()``/``exactBilateralStep()`` per unit -- this was previously
-   inflated by one for the Nesterov branch specifically (``iter+2`` instead
-   of ``iter+1``, inherited verbatim from ``ProjectedGaussSeidelSolver``'s
-   own Nesterov branch, which had the identical off-by-one). Neither branch
-   performs a second (e.g. forward+backward) sweep to justify a higher
-   count -- checked directly: every loop variant in this codebase (PGS's own
+   ``doSweep()``/``exactBilateralStep()`` per unit; every loop variant (PGS's
    plain/Nesterov branches, PJ's ``nesterov_loop``/``chebyshev_loop``/
-   ``anderson_loop``, ``condensed``'s own plain/chaotic branches) calls its
-   sweep function exactly once per outer iteration. Fixed in both PGS and
-   ``condensed``; purely cosmetic (only the progress-bar/log display was
-   affected, never any convergence or control-flow decision), but relevant
-   if you're using iteration counts to characterize how much work an exact
-   ``true_schur`` solve actually needs (see the note in `True
-   Schur-complement elimination of the compliant chain (condensed.true_schur)`_ above).
+   ``anderson_loop``, ``condensed``'s own branches) calls its sweep function
+   exactly once per outer iteration. This matters if you use iteration counts
+   to characterize how much work an exact ``true_schur`` solve needs (see the
+   note in `True Schur-complement elimination of the compliant chain
+   (condensed.true_schur)`_ above).
 
-.. warning::
-   ``jacobi`` + Nesterov is not robust on every scene, but **not for the reason
-   an earlier version of this note claimed**. It converges cleanly on
-   ``domino`` (reaching the same fixed point as PJ's own Nesterov-accelerated
-   run, in essentially the same sweep count), but diverges to `nan` on
-   ``slinky`` at that scene's default ``pj.alpha=0.3``. This is **not** Nesterov
-   shrinking Jacobi's stability margin -- a plain, unaccelerated ``jacobi``
-   sweep (Nesterov off entirely) diverges on ``slinky`` at the same alpha, so
-   momentum was never the cause. It is the same per-sweep-mode instability
-   already documented in ``domino``'s ``scene_condensed.config``: ``jacobi``
-   has a smaller stability margin than ``gauss_seidel``/``colored`` at a given
-   ``pj.alpha``, and ``slinky``'s default alpha is tuned for the latter.
-   Dropping ``pj.alpha`` to ``0.02`` makes ``jacobi`` + Nesterov stable on
-   ``slinky`` too (confirmed over 1000+ steps with no divergence). The fix for
-   a new scene's ``jacobi`` divergence is therefore to retune ``pj.alpha``
-   first, not to disable Nesterov.
-
-   Separately, the Nesterov loop's restart-on-non-finite-residual branch was
-   at one point dead code: an early implementation ran every residual check
-   through a throwing helper, so a `nan` fired an uncaught
-   ``std::runtime_error`` before the restart logic ever got a chance to run,
-   even though that logic exists precisely to recover from this case (ported
-   from PJ's own ``nesterov_loop()``, which never throws). This has been
-   fixed: the Nesterov loop now computes the residual without throwing, lets
-   the existing restart/momentum-disable logic react to a non-finite value
-   the same way it reacts to a merely-growing one, and only raises
-   ``std::runtime_error`` (matching PJ/PGS's inherited behavior) once
-   momentum has been fully disabled and the plain sweep output itself is
-   still non-finite -- i.e. once there is genuinely nothing left to restart
-   to. The extrapolation step also now checks the freshly-extrapolated state
-   for finiteness before it is ever fed into the next sweep (``betak1`` is
-   bounded to ``[0,1]``, but the extrapolated vector's magnitude is not, so
-   this is a distinct failure mode from a bad ``betak1``).
+.. note::
+   On a non-finite residual the Nesterov loop restarts and, if needed,
+   disables momentum, the same way it reacts to a growing residual (as PJ's
+   ``nesterov_loop()``). It raises ``std::runtime_error`` only once momentum is
+   fully disabled and the plain sweep output itself is still non-finite. The
+   freshly extrapolated state is also checked for finiteness before it is fed
+   into the next sweep (``betak1`` is bounded to ``[0,1]``, but the
+   extrapolated vector's magnitude is not). If a scene diverges, retune
+   ``pj.alpha`` first; Nesterov is not the cause of a sweep instability.
 
 Chebyshev acceleration
 ------------------------
 
-``gauss_seidel``, ``jacobi``, and ``colored`` also support Chebyshev semi-iterative
-acceleration via ``pj.chebyshev`` -- the same key ``projected_jacobi`` already uses
+Both sweep modes also support Chebyshev semi-iterative
+acceleration via ``pj.chebyshev`` -- the same key ``projected_jacobi`` uses
 (no condensed-specific key), with the same precedence rule: ``pj.nesterov`` takes
 priority if both are set (``useChebyshev = pj_chebyshev && !pj_nesterov``). Unlike
 Nesterov's residual-dependent momentum/restart logic, Chebyshev uses a **fixed**
@@ -867,7 +776,7 @@ becomes an *exact* linear map :math:`G(d) = A\,d` -- no affine offset, since the
 rhs-dependent constant vanishes -- so plain power iteration (8 rounds, a
 deterministic all-ones probe vector, matching PJ's own choice of a fixed rather
 than randomized start) on this zero-rhs, linear-only variant of the *actual
-configured sweep* (``gaussSeidelSweep``/``jacobiSweep``/``coloredSweep``, plus
+configured sweep* (``gaussSeidelSweep``/``coloredSweep``, plus
 ``exactBilateralStep`` under ``condensed.true_schur`` -- reusing the real sweep
 functions with a ``linearOnly`` flag threaded through, not a separate
 reimplementation) converges to :math:`|A|`'s dominant eigenvalue magnitude, exactly
@@ -889,30 +798,13 @@ divides by :math:`1-\tfrac14\rho^2\omega`, only well-defined for :math:`\rho<1`.
    two scenes) -- measure before trusting these specific numbers on a new scene,
    same discipline as everything else in this file.
 
-.. warning::
-   Chebyshev inherits the exact same ``jacobi``-at-too-high-``alpha`` instability
-   documented in the Nesterov warning above -- confirmed directly: ``jacobi`` +
-   Chebyshev diverges on ``domino`` at ``pj.alpha=1.0`` (tuned for
-   ``colored``/``gauss_seidel``), and so do plain ``jacobi`` and ``jacobi`` +
-   Nesterov at that same alpha on that same scene -- this is ``jacobi``'s own
-   stability margin, not something any acceleration method is expected to fix.
-   Retune ``pj.alpha`` down first (as the Nesterov warning already advises) if
-   ``jacobi`` diverges on a new scene, regardless of which acceleration (if any)
-   is enabled.
-
-   Getting this case to fail *cleanly* took one extra guard beyond porting PJ's
-   ``chebyshev_loop()`` directly: PJ/Nesterov both check whether the **raw sweep
-   output itself** (before any extrapolation) has gone non-finite, and throw
-   immediately if so -- there's nothing left to fall back to or extrapolate from
-   at that point, only an already-diverged sweep. An initial port of Chebyshev
-   only guarded the *extrapolation's own* output (matching the `nan`-safety
-   already needed for the linearization-breakdown case), which is not the same
-   check -- without it, once the raw sweep itself started producing `nan` (e.g.
-   from the ``jacobi``-instability case above), the fallback path kept feeding
-   that same non-finite state back into the sweep every remaining iteration,
-   spinning silently for the rest of ``pj.max_iterations`` instead of failing
-   fast. Fixed by adding the identical raw-output check the Nesterov branch
-   already had.
+.. note::
+   Besides the finiteness check on the extrapolation's output (needed for the
+   linearization-breakdown case), the Chebyshev loop checks whether the **raw
+   sweep output itself** has gone non-finite and throws immediately, as the
+   PJ and Nesterov loops do -- an already-diverged sweep leaves nothing to fall
+   back to. A sweep that diverges at too high a ``pj.alpha`` is not fixed by
+   any acceleration; retune ``pj.alpha`` first.
 
 Config keys
 -----------
@@ -930,21 +822,17 @@ Chebyshev are the same shared knobs PGS/PJ already reuse -- see
    * - Key
      - Effect
    * - ``condensed.sweep_mode``
-     - ``gauss_seidel`` (default) | ``jacobi`` | ``colored`` | ``chaotic``
+     - ``gauss_seidel`` (default) | ``colored``
    * - ``condensed.local_solve``
      - ``projection`` (default) | ``newton``
    * - ``condensed.num_threads``
-     - OpenMP thread count for ``jacobi``/``colored``/``chaotic`` (0 = OpenMP default). More threads is not always faster -- see below.
+     - OpenMP thread count for ``colored`` (0 = OpenMP default). More threads is not always faster -- see below.
    * - ``condensed.newton_max_iters``
      - Newton iteration cap per contact per call (default 8)
    * - ``condensed.newton_tol``
      - Newton convergence tolerance on :math:`\|\Phi\|` (default 1e-10)
-   * - ``condensed.chaotic_reshuffle_interval``
-     - Sweeps between block-order reshuffles in ``chaotic`` mode (default 50)
-   * - ``condensed.chaotic_seed``
-     - RNG seed for ``chaotic`` mode's shuffles
    * - ``condensed.true_schur``
-     - Exactly eliminate bilateral (spring+damper) rows every outer iteration instead of sweeping them (default ``false``). No effect with ``sweep_mode=chaotic``. See `True Schur-complement elimination of the compliant chain (condensed.true_schur)`_ above -- validated as a large win in one regime and a wash/regression in another, not a blind default-on.
+     - Exactly eliminate bilateral (spring+damper) rows every outer iteration instead of sweeping them (default ``false``). Works with both sweep modes. See `True Schur-complement elimination of the compliant chain (condensed.true_schur)`_ above -- validated as a large win in one regime and a wash/regression in another, not a blind default-on.
 
 Known performance characteristics
 -----------------------------------
@@ -956,32 +844,22 @@ These are specific, reproducible findings from that comparison, not general
 claims:
 
 - The per-block hot path (residual, update, scatter) uses fixed-size
-  ``Vector6r`` stack buffers, not dynamically-sized ``VectorXr`` -- an
-  earlier version allocated several small ``VectorXr`` temporaries per block
-  per sweep, which dominated wall-clock on scenes with many contacts. This
-  closed roughly a third of the wall-clock gap to PGS on ``gauss_seidel``
-  (domino: 19.16s to 13.64s for a 3-step run) and more on ``jacobi`` (8.37s
-  to 5.18s), with zero change in converged answer or sweep count (verified
-  bit-identical on the deterministic modes before/after).
-- **With Nesterov enabled, condensed can beat PJ**: on domino, ``jacobi`` +
-  Nesterov at 8 threads reaches ~1.8x PJ's speed (3.02s vs. PJ's 5.35s on a
-  clean sequential run); on slinky, ``gauss_seidel`` + Nesterov reaches ~1.4x
-  PJ's speed (8.39s vs. 12.04s). See the warning under `Nesterov
-  acceleration`_ above -- ``jacobi`` + Nesterov is not safe on every scene.
+  ``Vector6r`` stack buffers, not dynamically-sized ``VectorXr``; small heap
+  temporaries per block per sweep dominate wall-clock on scenes with many
+  contacts.
+- **With Nesterov enabled, condensed can beat PJ**: on slinky,
+  ``gauss_seidel`` + Nesterov reaches ~1.4x PJ's speed (8.39s vs. 12.04s).
 - ``newton`` cuts iteration count roughly 10x on slinky at a single
   well-converged step. Without Nesterov, it remains faster in wall-clock over
   a 200-step run despite the extra per-block cost; layered *on top of*
   Nesterov (which already gets sweep count very low), the extra per-contact
   Newton cost was not repaid in the one comparison run so far.
-- ``colored`` currently loses to ``jacobi``/``gauss_seidel`` on domino
-  despite being parallel: ~50 colors x thousands of sweeps means ~50x the
-  OpenMP barrier count of ``jacobi``'s 2-barriers-per-sweep, and that
-  overhead dominates at this scale. Not recommended as a default until the
-  coloring is cached across steps (see `Graph coloring algorithm`_ above)
+- ``colored`` loses to ``gauss_seidel`` on domino despite being parallel:
+  ~50 colors means ~50 OpenMP barriers per sweep over thousands of sweeps, and
+  that overhead dominates at this scale. Not recommended as a default until
+  the coloring is cached across steps (see `Graph coloring algorithm`_ above)
   and/or more work is amortized per barrier.
-- More threads is not always better, and the sweet spot can shift: on
-  domino's ``jacobi`` mode a full thread-count sweep (1/2/4/8/16, sequential
-  runs) found 8 threads fastest on this 16-core machine, with 16 threads
-  measurably *slower* than 8 -- parallelization/scheduling overhead exceeding
-  benefit at this per-thread work granularity. Tune ``condensed.num_threads``
-  per scene rather than leaving it at the default of 0.
+- More threads is not always better: parallelization/scheduling overhead can
+  exceed the benefit at small per-thread work granularity. Tune
+  ``condensed.num_threads`` per scene rather than leaving it at the default
+  of 0.

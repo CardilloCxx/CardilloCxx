@@ -93,7 +93,6 @@ private:
         if (layers <= 0) return;
         const real_t L = (real_t)2.0 * half.x(); // long edge (in-plane)
         const real_t W = (real_t)2.0 * half.y(); // thickness (in-plane)
-        const real_t H = (real_t)2.0 * half.z(); // height (upright)
         const real_t Offset = (real_t) 0.3 * W;
 
         // Grid spacing is domino length minus thickness, per specification

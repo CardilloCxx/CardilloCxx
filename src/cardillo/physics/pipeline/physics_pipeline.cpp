@@ -11,7 +11,6 @@
 #include "../assembly/dynamics_assembler.hpp"
 #include "../integration/moreau.hpp"
 #include "../solver/condensed_solver.hpp"
-#include "../solver/conjugate_gradient.hpp"
 #include "../solver/naive_schur_solver.hpp"
 #include "../solver/projected_gauss_seidel.hpp"
 #include "../solver/projected_jacobi.hpp"
@@ -43,11 +42,6 @@ PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::C
     // Create owned components
     m_dyn = std::make_unique<physics::DynamicsAssembler>(m_world, m_collision_mgr, m_timings, m_cfg);
 
-    if (cfg.moreau_theta <= (real_t)0.5)
-        std::cerr << "Warning: moreau.theta <= 0.5: violations of perfect constraints are not damped by the "
-                     "position-level force law and lead to growing velocity oscillations; use moreau.theta > 0.5."
-                  << std::endl;
-
     // Choose solver based on config
     using namespace solver;
     switch (cfg.solver) {
@@ -59,9 +53,6 @@ PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::C
             break;
         case config::SolverType::ProjectedGaussSeidel:
             m_solver = std::make_unique<ProjectedGaussSeidelSolver>(*m_dyn, m_cfg);
-            break;
-        case config::SolverType::ConjugateGradient:
-            m_solver = std::make_unique<ConjugateGradientSolver>(*m_dyn, m_cfg);
             break;
         case config::SolverType::NaiveSchur:
             m_solver = std::make_unique<NaiveSchurSolver>(*m_dyn, m_cfg);
