@@ -8,11 +8,6 @@ whether an item was fixed before re-investigating; remove items once they are re
 - **hangbride** (`hangbridge` target): diverges with the condensed solver under the position-level
   law; θ = 0.5 in its config cannot work for perfect constraints, θ = 0.7 finished once but with a
   suspicious kinetic energy (~8.6e4). With PGS it diverges near step 245 independently of recent fixes.
-- **3DPrinter**: very slow (5 ms simulated take > 15 min; ~2000 condensed iterations per step in the
-  first steps, the same before and after the rod stiffness fixes B1/B8). Since #77 (node-based
-  `InterSegmentHull` sampling) the belt needed ~800 iterations per step instead of ~150. About half comes from shear prestress at the pulleys (node
-  frames follow the spline tangent while `relaxedInStraightConfiguration()` zeroes the shear rest
-  strain); the rest from the node layout itself. Not caused by the pretension. Topic for the #77 author.
 - **ciliaWalker** (`cilia_walker`): the bidirectional and ring walkers (thin rectangular cilia, 12
   elements, h = 1e-4) diverge in the condensed Gauss-Seidel sweep after ~0.1 s unless
   `condensed.true_schur=true` (or h = 5e-5). The Coal crash that followed is fixed by the monotone-chain
