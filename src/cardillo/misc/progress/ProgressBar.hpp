@@ -36,12 +36,12 @@ class ProgressBar {
         maybeDraw();
     }
 
-    void refresh() { draw(false); }
+    void refresh() { draw(); }
 
     void close() {
         if (!m_enabled || m_closed) return;
         m_current = m_total;  // snap to total
-        draw(true);
+        draw();
         m_os << std::endl;
         m_closed = true;
     }
@@ -77,10 +77,10 @@ class ProgressBar {
         if (!m_enabled) return;
         auto now = clock::now();
         double sinceLast = std::chrono::duration<double>(now - m_lastDraw).count();
-        if (sinceLast >= m_minRefresh || m_current == m_total) draw(false);
+        if (sinceLast >= m_minRefresh || m_current == m_total) draw();
     }
 
-    void draw(bool force) {
+    void draw() {
         if (!m_enabled) return;
         auto now = clock::now();
         m_lastDraw = now;

@@ -99,7 +99,7 @@ class TennisScene : public SceneBase {
         const physics::RigidProps stringProps = physics::RigidProps::withDensity((real_t)1200.0);
         const physics::RigidState stringStateDefaults(Vector3r::Zero(), Vector3r::Zero(), Quaternion4r::Identity(), Vector3r::Zero());
 
-        auto buildPolylineBeam = [&](const std::vector<Vector3r>& pts, entt::entity attachA, entt::entity attachB, const std::string& tag) {
+        auto buildPolylineBeam = [&](const std::vector<Vector3r>& pts, entt::entity attachA, entt::entity attachB, const std::string& /*tag*/) {
             std::vector<std::unique_ptr<LinearSpline>> ownedParts;
             std::vector<const SplinePattern*> parts;
             ownedParts.reserve(pts.size());

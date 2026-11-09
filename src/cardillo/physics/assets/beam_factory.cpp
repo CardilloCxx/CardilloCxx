@@ -32,7 +32,7 @@ void appendSplineSamples(const BeamColliderMode& colliderMode, const misc::Splin
         const bool loop = spline.isLoop();
         const size_t sampleCount = loop ? segCount : segCount + 1;
         for (size_t i = 0; i < sampleCount; ++i) {
-            real_t alphaPrev = (real_t) (i - 1) / (real_t)segCount;
+            real_t alphaPrev = i > 0 ? (real_t)(i - 1) / (real_t)segCount : (real_t)0;
             real_t alpha = (real_t)i / (real_t)segCount;
             real_t alphaNext = (real_t)(i + 1) / (real_t)segCount;
             if (loop) {
@@ -184,8 +184,6 @@ std::pair<entt::entity, entt::entity> buildBeamFromSamples(World& sys, const std
                                                             BeamColliderMode colliderMode) {
 
     if (samples.empty()) return {entt::null, entt::null};
-
-    const auto& cfg = sys.config();
 
     real_t totalLen = (real_t)0;
     for (const auto& s : samples) totalLen += s.segLen;

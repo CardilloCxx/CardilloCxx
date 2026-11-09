@@ -55,6 +55,11 @@ endif()
 FetchContent_Declare(Eigen3 GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 5.0.1 FIND_PACKAGE_ARGS 5.0 NAMES Eigen3)
 FetchContent_Declare(EnTT GIT_REPOSITORY https://github.com/skypjack/entt.git GIT_TAG v3.13.2 FIND_PACKAGE_ARGS 3.13 NAMES EnTT)
 FetchContent_MakeAvailable(Eigen3 EnTT)
+# A fetched Eigen's headers are system headers (an installed one is already).
+if(TARGET eigen)
+    get_target_property(_eigen_include_dirs eigen INTERFACE_INCLUDE_DIRECTORIES)
+    set_target_properties(eigen PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_eigen_include_dirs}")
+endif()
 
 # --- Coal ---
 # The fork 41pha1/coal (branch beam-support-set-hook, on top of devel incl. coal-library/coal#908) adds

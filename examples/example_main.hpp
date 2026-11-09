@@ -19,16 +19,14 @@
 namespace cardillo::examples {
 
 namespace detail {
-inline physics::PhysicsEngine* g_engine = nullptr;
+// Set by SIGINT; the main loop then stops and prints the timings (the handler itself may only
+// touch this flag).
+inline volatile std::sig_atomic_t g_interrupted = 0;
 
 // Largest violation |g| over all perfect constraint rows (rows with zero compliance), evaluated at
 // the current state. Diagnostic for CARDILLO_DUMP_STATE; compliant rows are excluded since their
 // elongation is physical.
 inline real_t maxPerfectConstraintViolation(physics::PhysicsEngine& engine) {
-    // Constraints read the cached RigidState, which still holds the intermediate configuration of
-    // the last step; refresh it so that the violation is evaluated at the current configuration.
-    auto& reg = engine.ecs();
-    for (auto e : reg.view<const C_Position3>()) RigidBody::updateState(reg, e);
     real_t maxViolation = 0;
     for (const auto& pattern : engine.world().constraintPatterns()) {
         if (!pattern) continue;
@@ -40,15 +38,12 @@ inline real_t maxPerfectConstraintViolation(physics::PhysicsEngine& engine) {
     return maxViolation;
 }
 
-inline void printTimingsAtExit(int /*sig*/) {
-    if (g_engine) g_engine->timings().printBreakdown(std::cout);
-    std::exit(EXIT_FAILURE);
-}
+inline void onInterrupt(int /*sig*/) { g_interrupted = 1; }
 }  // namespace detail
 
 template <typename SceneType>
 int runExample(int argc, char** argv) {
-    std::signal(SIGINT, detail::printTimingsAtExit);
+    std::signal(SIGINT, detail::onInterrupt);
     Eigen::setNbThreads(1);
 
     config::Config cfg = (argc > 1) ? config::ConfigReader::fromFile(argv[1]) : config::Config{};
@@ -56,34 +51,29 @@ int runExample(int argc, char** argv) {
     if (argc <= 1) std::cout << "No config file provided, using defaults." << std::endl;
 
     SceneType scene;
-    cfg.scene_name = scene.sceneName();
-    cfg.output_filename_prefix = scene.sceneName();
+    // Config values win, so that config variants of one scene can write to different files.
+    if (cfg.scene_name == config::Config{}.scene_name) cfg.scene_name = scene.sceneName();
+    if (cfg.output_filename_prefix.empty()) cfg.output_filename_prefix = scene.sceneName();
 
     physics::PhysicsEngine engine(cfg);
-    detail::g_engine = &engine;
     scene.populate(engine);
 
     real_t t = 0.0;
     const real_t dt = cfg.sim_dt;
     const bool dumpState = std::getenv("CARDILLO_DUMP_STATE") != nullptr;
     real_t maxViolationOverRun = 0;
-    while (!engine.isFinished()) {
-        // Call through the deprecated overload so that scenes still overriding updateScene(engine,
-        // t, dt) keep working; its default forwards to updateScene(engine, t).
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-        static_cast<SceneBase&>(scene).updateScene(engine, t, dt);
-#pragma GCC diagnostic pop
+    while (!engine.isFinished() && !detail::g_interrupted) {
+        scene.updateScene(engine, t);
         engine.step();
         t += dt;
         if (dumpState) maxViolationOverRun = std::max(maxViolationOverRun, detail::maxPerfectConstraintViolation(engine));
     }
+    if (detail::g_interrupted) std::cout << "\nInterrupted at t = " << t << std::endl;
     engine.timings().printBreakdown(std::cout);
 
     if (std::getenv("CARDILLO_DUMP_STATE")) {
         real_t totalKE = 0;
         real_t posNormSum = 0;
-        real_t velNormSum = 0;
         int numBodies = 0;
         const auto& reg = engine.ecs();
         auto view = reg.view<C_BodyIndex>();
@@ -96,7 +86,7 @@ int runExample(int argc, char** argv) {
                   << " finalConstraintViolation=" << detail::maxPerfectConstraintViolation(engine) << std::endl;
     }
 
-    return 0;
+    return detail::g_interrupted ? EXIT_FAILURE : 0;
 }
 
 }  // namespace cardillo::examples

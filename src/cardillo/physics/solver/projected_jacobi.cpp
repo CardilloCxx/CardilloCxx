@@ -27,14 +27,13 @@ struct workspace {
     VectorXr x;
     VectorXr prev_x;
     VectorXr impulse;
-    VectorXr delta_impulse;
     VectorXr prev_impulse;
+    VectorXr delta_impulse;
     VectorXr rowVelocity;
     VectorXr previousRowVelocity;
     VectorXr rhs;  // reusable RHS buffer for solveS
 
     config::PjTerminationCriterion criterion;
-    real_t lastError{0};
     int iter = 0;
     misc::TimingManager* timer;
     physics::assembly::PjAssembler* assembler;
@@ -95,11 +94,8 @@ static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::Row
 // Exact per-contact local Delassus block preconditioner: R_block = alpha * D^{-1}, where D is the
 // contact's own (1x1, or 3x3 for a frictional contact) diagonal block of W*Minv*W^T -- as opposed
 // to rdiag_sparse() above, which only uses each row's own scalar diagonal entry and ignores the
-// normal/tangential cross-coupling within a frictional contact's 3 rows. See the design writeup
-// in the accompanying report for the theory; this reuses the same block-inversion machinery
-// (Cholesky, falling back to LDLT, falling back to a diagonal-only inverse) already used by
-// PgsAssembler::Dinv() for springs/dampers and (dead, for contacts, since ConjugateGradientSolver
-// never reaches it) frictional contacts.
+// normal/tangential cross-coupling within a frictional contact's 3 rows. Blocks are inverted by
+// misc/block_diagonal.hpp (Cholesky, falling back to LDLT, then to a diagonal-only inverse).
 // Nfc is the number of *frictional rows* (Nc - Nnfc, i.e. 3 per frictional contact), matching the
 // convention used by workspace::Nfc and project() above -- not the number of frictional contacts.
 static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, int Nnfc, int Nfc, real_t alpha, VectorXr& stepSize) {
@@ -169,13 +165,10 @@ static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
     ws->x += ws->assembler->solveS(ws->rhs);
 }
 
-static inline real_t iterationError(workspace& ws, const VectorXr& v, const VectorXr& v_prev, const config::Config& cfg) {
-    if (cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap) {
-        ws.lastError = termination::naturalMapError(ws.prev_impulse, ws.impulse, ws.stepSize, ws.rowVelocity, ws.previousRowVelocity, ws.Nnfc, cfg.pj_tol_abs, cfg.pj_tol_rel);
-    } else {
-        ws.lastError = termination::velocityRms(v, v_prev, cfg.pj_tol_abs, cfg.pj_tol_rel);
-    }
-    return ws.lastError;
+static inline real_t iterationError(const workspace& ws, const VectorXr& v, const VectorXr& v_prev, const config::Config& cfg) {
+    if (cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap)
+        return termination::naturalMapError(ws.prev_impulse, ws.impulse, ws.stepSize, ws.rowVelocity, ws.previousRowVelocity, ws.Nnfc, cfg.pj_tol_abs, cfg.pj_tol_rel);
+    return termination::velocityRms(v, v_prev, cfg.pj_tol_abs, cfg.pj_tol_rel);
 }
 
 // Estimates the spectral radius of the LINEAR part of the sweep map x -> M*x + c (i.e. ignoring
@@ -495,7 +488,6 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
 
     if (m_dyn.numContacts() == 0) {
         // No contacts: free solution only
-        m_lastError = 0;
         VectorXr rhs = m_assembler.rhs(dt, theta);
         VectorXr x_free = m_assembler.solveS(rhs);
         m_dyn.setLambda_g(x_free.segment(numV, numS));
@@ -526,7 +518,6 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
     }
 
     m_last_iters = ws->iter;
-    m_lastError = ws->lastError;
 
     solver::WarmstartProvider::storeImpulse(ws->impulse, m_dyn);
 

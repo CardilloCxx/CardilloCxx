@@ -31,7 +31,6 @@ class ScsSolver : public SolverBase {
 
     VectorXr solve(real_t dt, real_t theta) override;
 
-    real_t lastError() const override { return std::max(m_solver.info().res_pri, m_solver.info().res_dual); }
     const char* name() const override { return "ScsSolver"; }
 
    private:

@@ -31,6 +31,17 @@ contains the proofs and the closed-form benchmark. Notation: time step
 :math:`W_c`. Gyroscopic forces are explicit (:math:`f = f^\mathrm{ext} + f^\mathrm{gyr}(u_n)`),
 see :ref:`ip-limitations`.
 
+.. note::
+   The conic backends are optional and ``OFF`` by default. Each must be
+   enabled at configure time with its CMake option: ``CARDILLO_WITH_QOCO``,
+   ``CARDILLO_WITH_CLARABEL`` (needs Rust/cargo), ``CARDILLO_WITH_CONICXX``
+   and ``CARDILLO_WITH_SCS`` (an ADMM solver of the same cone program as
+   Clarabel; ``CARDILLO_SCS_OPENMP``, default ``ON``, parallelizes its cone
+   projections). Selecting a backend with ``solver.type`` that was not built
+   throws a runtime error naming the option. The sources live in
+   ``src/physics/solver/conic/<backend>/``; Clarabel and SCS share the
+   ``ConeProgramAssembler`` (``src/physics/solver/conic/cone_program_assembler.hpp``).
+
 The one-step problem
 --------------------
 
@@ -357,6 +368,10 @@ are in standard form, implementation, and build requirements.
      - **Yes** -- from its previous solution while the contact set is
        unchanged (``Solver::updateData()``), otherwise from the current
        velocities and the matched contact impulses
+   * - CMake option
+     - ``CARDILLO_WITH_QOCO``
+     - ``CARDILLO_WITH_CLARABEL`` (needs Rust/cargo)
+     - ``CARDILLO_WITH_CONICXX``
 
 MOSEK backend
 -------------
@@ -505,7 +520,7 @@ Config keys
    * - Key
      - Effect
    * - ``solver.type = qoco`` / ``clarabel`` / ``conicxx``
-     - Select backend
+     - Select backend (must be built, see the note at the top)
    * - ``solver.max_iterations``
      - Maximum interior-point iterations
    * - ``solver.tol_abs``, ``solver.tol_rel``

@@ -62,14 +62,19 @@ Configuration
 -------------
 
 No keys of its own; it reads the keys of the condensed and projected Jacobi
-solvers so that both can be compared by switching only ``solver.type``. The contacts are swept
-by block Gauss--Seidel:
+solvers so that both can be compared by switching only ``solver.type``:
 
+- ``condensed.sweep_mode``: ``gauss_seidel`` sweeps the contact blocks in
+  order; ``colored`` colors the coupling graph of :math:`G_{cc}` (two blocks
+  are coupled if their off-diagonal block is nonzero) and updates each color
+  class in parallel (``condensed.num_threads``).
 - ``condensed.local_solve``, ``condensed.newton_*``,
   ``condensed.projection_rho_strategy``.
 - ``pj.alpha``, ``pj.relaxation``, ``pj.tol_abs``, ``pj.tol_rel``,
   ``pj.max_iterations``, ``pj.warmstart``.
 - ``pj.nesterov`` (and ``pj.nesterov_*``): Nesterov momentum with adaptive restart.
+- ``pj.anderson``, ``pj.anderson_m``: Anderson acceleration of the sweep
+  (used when ``pj.nesterov`` is off). ``pj.chebyshev`` is not supported.
 
 The convergence criterion is the same as for the condensed solver (scaled
 change of the velocities between two sweeps).

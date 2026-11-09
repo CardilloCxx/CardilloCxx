@@ -1,6 +1,6 @@
 function(cardillo_add_test target source)
 	add_executable(${target} ${source})
-	target_link_libraries(${target} PRIVATE cardillo::cardillo)
+	target_link_libraries(${target} PRIVATE cardillo::cardillo cardillo_warnings)
 	add_test(NAME ${target} COMMAND ${target})
 endfunction()
 
@@ -12,6 +12,9 @@ cardillo_add_test(test_position_level test_position_level.cpp)
 cardillo_add_test(test_pj_termination test_pj_termination.cpp)
 cardillo_add_test(test_torsional_oscillator test_torsional_oscillator.cpp)
 cardillo_add_test(test_convexified_friction test_convexified_friction.cpp)
+cardillo_add_test(test_rod_stiffness test_rod_stiffness.cpp)
+cardillo_add_test(test_convex_hull test_convex_hull.cpp)
+cardillo_add_test(test_config test_config.cpp)
 
 # MOSEK backend tests (cone programs against Clarabel and QOCO) and benchmark; they need a MOSEK
 # license at run time and use the backends' private headers.
@@ -19,7 +22,7 @@ if(CARDILLO_WITH_MOSEK AND CARDILLO_WITH_CLARABEL AND CARDILLO_WITH_QOCO)
     get_property(_qoco_include GLOBAL PROPERTY QOCO_INCLUDE)
     foreach(_target mosek_tests mosek_benchmark)
         add_executable(${_target} ${_target}.cpp)
-        target_link_libraries(${_target} PRIVATE cardillo::cardillo libclarabel_c_shared $<TARGET_FILE:qoco> ${MOSEK_LIBRARY})
+        target_link_libraries(${_target} PRIVATE cardillo::cardillo cardillo_warnings libclarabel_c_shared $<TARGET_FILE:qoco> ${MOSEK_LIBRARY})
         add_dependencies(${_target} qoco)
         target_include_directories(${_target} SYSTEM PRIVATE ${_qoco_include} ${MOSEK_INCLUDE_DIR})
     endforeach()

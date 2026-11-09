@@ -145,7 +145,7 @@ CondensedTopology CondensedAssembler::buildTopology(real_t dt) const {
     contactBlocks.reserve(m_dyn->contacts().size());
     int offset = 0;
 
-    // Springs: one pass over all constraints' active spring rows, matching PgsAssembler::Dinv()'s
+    // Springs: one pass over all constraints' active spring rows, matching PgsAssembler::DinvDiag()'s
     // final block order (all springs first, in constraintResults() iteration order).
     for (const auto& constraint : m_dyn->constraintResults()) {
         const auto& c_used = constraint.c_used;
@@ -299,26 +299,12 @@ void CondensedAssembler::updateCompliance(CondensedTopology& topo, real_t dt, re
             blk.complianceDiag = VectorXr::Zero(blk.dim);
         }
 
-        // Match PgsAssembler::DinvDiag() -- the function PGS's own sweep loop actually calls at
-        // runtime (PgsAssembler::Dinv(), the full dense block inverse, is dead code for contacts;
-        // only ConjugateGradientSolver's bilateral-only path uses it). DinvDiag() is a per-row
-        // DIAGONAL-only local inverse, deliberately ignoring normal/tangential (or multi-DOF)
-        // coupling within a block. Using the full block inverse here changes the fixed point the
-        // Gauss-Seidel/Jacobi iteration converges to on strongly-coupled multi-contact systems --
-        // confirmed by direct comparison against PGS on the domino scene (diverging total contact
-        // impulse and kinetic energy despite both formally "converging" by their own residual
-        // check). `Gii` itself is kept as the full matrix -- the semismooth Newton local solve
-        // (local_contact_newton) needs the true local coupling, that's the point of it being
-        // better than this diagonal approximation.
+        // Per-row diagonal local inverse, as PgsAssembler::DinvDiag(). Gii itself stays the full block
+        // for the semismooth Newton local solve.
         const VectorXr diag = blk.Gii.diagonal() + blk.complianceDiag;
         blk.GiiInv = MatrixXXr::Zero(blk.dim, blk.dim);
         for (int i = 0; i < blk.dim; ++i) blk.GiiInv(i, i) = (diag[i] > 0) ? ((real_t)1 / diag[i]) : (real_t)0;
 
-        // // TODO: test full inversion here
-        // MatrixXXr tmp = blk.Gii;
-        // tmp.diagonal() += blk.complianceDiag;
-        // // TOOD: Use ldlt here if implicit gyroscopic terms are not used or we can ensure that this is symmetric!
-        // blk.GiiInv = tmp.partialPivLu().inverse();
 
         // Frictional contacts: the two tangential rows must share one step length, otherwise the
         // fixed point of the projection satisfies a distorted friction law (friction impulse not
@@ -341,7 +327,7 @@ void CondensedAssembler::updateCompliance(CondensedTopology& topo, real_t dt, re
     }
 }
 
-VectorXr CondensedAssembler::ufree(real_t dt, real_t theta, const CondensedTopology& topo) const {
+VectorXr CondensedAssembler::ufree(real_t dt, real_t /*theta*/, const CondensedTopology& topo) const {
     const auto& vn = m_dyn->vVec();
     const auto& MinvDiag = m_dyn->MinvDiag();
 

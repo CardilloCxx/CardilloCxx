@@ -30,7 +30,6 @@ class CableBunchScene : public SceneBase {
 
         // Beam / cable physical properties
         const real_t r_cable = (real_t)0.005;  // 5mm radius
-        const real_t d = (real_t)(2 * r_cable);
         const real_t E = (real_t)1e7;  // Softer material for cables
         const real_t nu = (real_t)0.30;
         const real_t rho = (real_t)1500.0;

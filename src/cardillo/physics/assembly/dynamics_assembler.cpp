@@ -460,6 +460,12 @@ void DynamicsAssembler::rebuildInteractionW_() {
         m_Cdiag[i] = Crows[(size_t)i];
         m_C_v_vec[i] = C_vel[(size_t)i];
     }
+    if (!m_warnedThetaPerfect && m_cfg.moreau_theta <= (real_t)0.5 && (m_Cdiag.array() == (real_t)0).any()) {
+        m_warnedThetaPerfect = true;
+        std::cerr << "Warning: moreau.theta <= 0.5 with perfect constraints: their violations are not damped by the "
+                     "position-level force law and lead to growing velocity oscillations; use moreau.theta > 0.5."
+                  << std::endl;
+    }
 
     m_Adiag = VectorXr::Zero((index_t)nDampers);
     m_A_v_vec = VectorXr::Zero((index_t)nDampers);

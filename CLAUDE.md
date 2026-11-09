@@ -42,7 +42,8 @@ cd docs && uv run make html               # Sphinx + Doxygen docs
 - Changing `config::Config` (or other headers used by `example_main.hpp`) requires rebuilding **all**
   scene executables; stale binaries crash with a Config layout mismatch that looks unrelated.
 - Formatting: `.clang-format` (Google based, 4 spaces, column limit 200). `.clang-tidy` checks unused
-  code only. A clean build has no compiler warnings; keep it that way.
+  code only. Project targets build with `-Wall -Wextra` (`cardillo_warnings`); a clean build has no
+  compiler warnings; keep it that way.
 
 ## Architecture
 
@@ -69,8 +70,9 @@ MOSEK share `ConeProgramAssembler`).
 **Solvers** (`src/cardillo/physics/solver`). The production solvers are **projected Jacobi** (`pj`: direct
 factorization of the bilateral saddle-point system, projected iteration on contacts) and
 **condensed** (block-sparse Schur complement; `condensed.true_schur=true` eliminates the bilateral
-subsystem exactly, needed for stiff rods). Test and validate mainly with these two. PGS, CG,
-naive Schur and the optional QOCO, Clarabel, ConicXX, SCS and MOSEK backends are reference/test backends.
+subsystem exactly, needed for stiff rods; sweep modes `gauss_seidel`, `colored`). Test and validate
+mainly with these two. PGS and naive Schur are small reference solvers; QOCO, Clarabel, ConicXX,
+SCS and MOSEK are optional convexified/test backends.
 
 **Constraints** (`src/cardillo/physics/constraints`): `getConstraint()` returns a `ConstraintResult`
 (Jacobian columns `WgA/WgB`, compliances `Crows/Arows`, `positionError`, prescribed rate). Main

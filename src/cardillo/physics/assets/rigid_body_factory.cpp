@@ -2,6 +2,7 @@
 
 #include <coal/shape/geometric_shapes.h>
 #include <algorithm>
+#include <stdexcept>
 #include <limits>
 #include <optional>
 #include <type_traits>
@@ -16,11 +17,8 @@ bool meshAabbFromAsset(const MeshAsset& asset, Vector3r& center_out, Vector3r& h
 
     Vector3r minv = Vector3r::Constant(std::numeric_limits<real_t>::max());
     Vector3r maxv = Vector3r::Constant(std::numeric_limits<real_t>::lowest());
-    const Matrix33r Rpa = asset.Rpa;
-
-    for (const auto& v : *asset.bvh->vertices) {
-        Vector3r vp((real_t)v[0], (real_t)v[1], (real_t)v[2]);
-        vp = Rpa.transpose() * vp;
+    // The asset's vertices are already in the body frame (principal axes for dynamic meshes).
+    for (const auto& vp : *asset.bvh->vertices) {
         minv.x() = std::min(minv.x(), vp.x());
         maxv.x() = std::max(maxv.x(), vp.x());
         minv.y() = std::min(minv.y(), vp.y());
@@ -239,7 +237,7 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
                     Vector3r center = Vector3r::Zero();
                     Vector3r he((real_t)0.05, (real_t)0.05, (real_t)0.05);
                     meshAabbFromAsset(asset, center, he);
-                    Quaternion4r q_local(asset.Rpa.transpose());
+                    const Quaternion4r q_local = Quaternion4r::Identity();
                     reg.emplace<C_Collider_Cube>(e, center, he, q_local);
 
                     if (s.show_collider) {
@@ -253,11 +251,11 @@ entt::entity RigidBodyFactory::create(World& system, const physics::RigidShape& 
 
             if (dynamic) {
                 const Quaternion4r q_new = state.orientation() * Quaternion4r(asset.Rpa);
-                const Vector3r pos_new = state.position + (state.orientation() * asset.com);
                 reg.get<C_Position3>(e).value = transform::point(asset.com, state, physics::RigidState::inertial());
                 reg.get<C_Orientation>(e).setValue(q_new.normalized());
 
-                if (asset.volume > 0) addRigidBodyFn(mass, getInertia(s, mass, &system));
+                if (!(asset.volume > 0)) throw std::runtime_error("Dynamic mesh body '" + s.path + "' has no positive volume (open or inverted mesh)");
+                addRigidBodyFn(mass, getInertia(s, mass, &system));
             }
         }
 

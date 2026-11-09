@@ -71,3 +71,13 @@ if(CARDILLO_WITH_MOSEK)
     find_package(MOSEK REQUIRED)
     message(STATUS "Using MOSEK ${MOSEK_VERSION} (${MOSEK_LIBRARY})")
 endif()
+
+# The backends' headers are included by our sources; their warnings are not ours to fix.
+foreach(_target libclarabel_c_shared conicxx scsdir)
+    if(TARGET ${_target})
+        get_target_property(_dirs ${_target} INTERFACE_INCLUDE_DIRECTORIES)
+        if(_dirs)
+            set_target_properties(${_target} PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_dirs}")
+        endif()
+    endif()
+endforeach()

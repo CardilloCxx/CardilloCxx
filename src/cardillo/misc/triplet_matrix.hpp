@@ -145,8 +145,9 @@ class TripletMatrix {
             for (const auto& t : *(b.data)) {
                 int r = effective_transpose ? t.col() : t.row();
                 int c = effective_transpose ? t.row() : t.col();
-                const int rr = r + b.row_offset;
-                const int cc = c + b.col_offset;
+                // A transpose of the whole matrix also swaps the block offsets.
+                const int rr = r + (transposed_ ? b.col_offset : b.row_offset);
+                const int cc = c + (transposed_ ? b.row_offset : b.col_offset);
 
                 real_t v = t.value() * b.scale * scale_;
                 if (!rowScales_.empty()) v *= rowScales_[(size_t)rr];

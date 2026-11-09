@@ -56,12 +56,12 @@ vtkSmartPointer<vtkIntArray> makeIntArray(const char* name) {
 VtkWriter::VtkWriter(const config::Config& cfg)
     : m_cfg(cfg),
       m_outputDir(cfg.output_folder),
-      m_baseName(cfg.output_filename_prefix),
+      m_baseName(cfg.outputPrefix()),
       m_frequency(cfg.output_interval_steps),
       m_writeSprings(true),
-      m_springsBase(cfg.output_filename_prefix + std::string("_springs")),
+      m_springsBase(cfg.outputPrefix() + std::string("_springs")),
       m_writeContactManifolds(cfg.output_write_contact_manifolds),
-      m_contactManifoldsBase(cfg.output_filename_prefix + std::string("_contact_manifolds")) {
+      m_contactManifoldsBase(cfg.outputPrefix() + std::string("_contact_manifolds")) {
     if (m_frequency < 1) m_frequency = 1;
     if (!m_outputDir.empty()) fs::create_directories(m_outputDir);
     m_worker = std::thread(&VtkWriter::workerLoop, this);

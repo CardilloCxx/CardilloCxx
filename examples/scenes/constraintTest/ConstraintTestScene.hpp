@@ -192,9 +192,6 @@ public:
             physics::RigidState(Vector3r(-1.5, 1.0, 0.2)),
             physics::RigidProps::withDensity(2500.0)
         );
-        real_t mass = engine.getMass(m_lever_1)(0,0);
-        real_t Iz_com = engine.getInertiaDiag(m_lever_1)(2);
-        real_t Iz_hinge_1 = Iz_com + mass * 0.4*0.4; // parallel axis theorem
 
         // Hinge at the left end of the lever, anchored in the world frame
         engine.addHingeConstraint(floor,  m_lever_1,
@@ -212,9 +209,6 @@ public:
             physics::RigidProps::withDensity(2500.0)
         );
 
-        mass = engine.getMass(m_lever_2)(0,0);
-        Iz_com = engine.getInertiaDiag(m_lever_2)(2);
-        real_t Iz_hinge_2 = Iz_com + mass * 0.4*0.4; // parallel axis theorem
 
         engine.addHingeConstraint(floor, m_lever_2,
             physics::JointFrame::fromAxis(
@@ -225,17 +219,12 @@ public:
             2e0
         );
 
-        // engine.track(m_lever_1, "lever_Iz=" + std::to_string(Iz_hinge_1) + "_k_=1");
-        // engine.track(m_lever_2, "lever_Iz=" + std::to_string(Iz_hinge_2) + "_k_=2");
 
                 // First lever: stiffer hinge
         m_lever_3 = engine.addRigidBody(            physics::CubeShape(Vector3r(0.4, 0.05, 0.02)),
             physics::RigidState(Vector3r(-1.5, 3.0, 0.2)),
             physics::RigidProps::withDensity(2500.0)
         );
-        mass = engine.getMass(m_lever_3)(0,0);
-        Iz_com = engine.getInertiaDiag(m_lever_3)(2);
-        real_t Iz_hinge_3 = Iz_com; // parallel axis theorem
 
         // Hinge at the left end of the lever, anchored in the world frame
         engine.addHingeConstraint(floor,  m_lever_3,
@@ -253,9 +242,6 @@ public:
             physics::RigidProps::withDensity(2500.0)
         );
 
-        mass = engine.getMass(m_lever_4)(0,0);
-        Iz_com = engine.getInertiaDiag(m_lever_4)(2);
-        real_t Iz_hinge_4 = Iz_com; // parallel axis theorem
 
         engine.addHingeConstraint(floor, m_lever_4,
             physics::JointFrame::fromAxis(
@@ -266,11 +252,9 @@ public:
             2e0
         );
 
-        // engine.track(m_lever_3, "lever_Iz=" + std::to_string(Iz_hinge_3) + "_k_=1");
-        // engine.track(m_lever_4, "lever_Iz=" + std::to_string(Iz_hinge_4) + "_k_=2");
     }
 
-    void updateScene(physics::PhysicsEngine& engine, real_t t) override {
+    void updateScene(physics::PhysicsEngine& engine, real_t /*t*/) override {
         const Vector3r torque(0.0, 0.0, 5.0);
 
         engine.applyForce(m_lever_1, Vector3r::Zero(), torque);

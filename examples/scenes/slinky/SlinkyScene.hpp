@@ -53,8 +53,6 @@ public:
         const real_t topZ = stairOrigin.z() + (real_t)(steps - 1) * rise;
         const real_t topX = stairOrigin.x() + (real_t)(steps - 1) * run + run * (real_t)0.5; // tread center
         Vector3r topStepCenter(topX, (real_t)0.0, topZ);
-        const real_t lift = (real_t)0.01; // small clearance above tread
-        Vector3r center0 = topStepCenter + Vector3r((real_t)0.0, (real_t)0.0, lift);
 
         misc::HelixSpline helix(Vector3r::Zero(), Vector3r::UnitZ(), radius, pitch, (real_t)turns, Vector3r::UnitX());
 

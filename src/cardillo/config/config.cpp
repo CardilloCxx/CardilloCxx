@@ -3,531 +3,342 @@
 #include <cctype>
 #include <cmath>
 #include <fstream>
+#include <functional>
+#include <initializer_list>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
+#include <vector>
 
 namespace cardillo::config {
 
-static inline std::string trim(const std::string& s) {
+namespace {
+
+std::string trim(const std::string& s) {
     size_t b = 0, e = s.size();
     while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
     while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
     return s.substr(b, e - b);
 }
 
-static inline bool iequals(const std::string& a, const std::string& b) {
-    return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](char c1, char c2) { return std::tolower(static_cast<unsigned char>(c1)) == std::tolower(static_cast<unsigned char>(c2)); });
+std::string lower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+    return s;
+}
+
+// Thrown by the value parsers; ConfigReader::fromFile() adds file:line and the key.
+struct BadValue : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+
+real_t parseReal(const std::string& val) {
+    std::size_t pos = 0;
+    double x = 0;
+    try {
+        x = std::stod(val, &pos);
+    } catch (const std::exception&) {
+        throw BadValue("expected a number, got '" + val + "'");
+    }
+    if (pos != val.size()) throw BadValue("expected a number, got '" + val + "'");
+    return static_cast<real_t>(x);
+}
+
+int parseInt(const std::string& val) {
+    std::size_t pos = 0;
+    int x = 0;
+    try {
+        x = std::stoi(val, &pos);
+    } catch (const std::exception&) {
+        throw BadValue("expected an integer, got '" + val + "'");
+    }
+    if (pos != val.size()) throw BadValue("expected an integer, got '" + val + "'");
+    return x;
+}
+
+bool parseBool(const std::string& val) {
+    const std::string v = lower(val);
+    if (v == "1" || v == "true" || v == "yes" || v == "on") return true;
+    if (v == "0" || v == "false" || v == "no" || v == "off") return false;
+    throw BadValue("expected a boolean (true/false, yes/no, on/off, 1/0), got '" + val + "'");
+}
+
+// Returns the lower-cased value if it is one of `allowed`.
+std::string parseChoice(const std::string& val, std::initializer_list<const char*> allowed) {
+    const std::string v = lower(val);
+    std::string list;
+    for (const char* a : allowed) {
+        if (v == a) return v;
+        list += (list.empty() ? "" : ", ") + std::string(a);
+    }
+    throw BadValue("expected one of [" + list + "], got '" + val + "'");
+}
+
+void requireAtLeast(real_t x, real_t min, const std::string& val) {
+    if (!(x >= min)) throw BadValue("value '" + val + "' must be >= " + std::to_string(min));
+}
+
+void requirePositive(real_t x, const std::string& val) {
+    if (!(x > 0) || !std::isfinite(x)) throw BadValue("value '" + val + "' must be finite and positive");
+}
+
+using Setter = std::function<void(Config&, const std::string&)>;
+
+// Every key (including its aliases) maps to the setter of its Config field.
+const std::unordered_map<std::string, Setter>& setters() {
+    static const std::unordered_map<std::string, Setter> table = [] {
+        std::unordered_map<std::string, Setter> t;
+        auto add = [&t](std::initializer_list<const char*> keys, Setter s) {
+            for (const char* k : keys) t.emplace(k, s);
+        };
+        auto real = [](real_t Config::* f) { return [f](Config& c, const std::string& v) { c.*f = parseReal(v); }; };
+        auto realMin = [](real_t Config::* f, real_t min) {
+            return [f, min](Config& c, const std::string& v) {
+                const real_t x = parseReal(v);
+                requireAtLeast(x, min, v);
+                c.*f = x;
+            };
+        };
+        auto realPos = [](real_t Config::* f) {
+            return [f](Config& c, const std::string& v) {
+                const real_t x = parseReal(v);
+                requirePositive(x, v);
+                c.*f = x;
+            };
+        };
+        auto intMin = [](int Config::* f, int min) {
+            return [f, min](Config& c, const std::string& v) {
+                const int x = parseInt(v);
+                requireAtLeast(x, min, v);
+                c.*f = x;
+            };
+        };
+        auto integer = [](int Config::* f) { return [f](Config& c, const std::string& v) { c.*f = parseInt(v); }; };
+        auto boolean = [](bool Config::* f) { return [f](Config& c, const std::string& v) { c.*f = parseBool(v); }; };
+        auto text = [](std::string Config::* f) { return [f](Config& c, const std::string& v) { c.*f = v; }; };
+        auto choice = [](std::string Config::* f, std::initializer_list<const char*> allowed) {
+            const std::vector<const char*> list(allowed);
+            return [f, list](Config& c, const std::string& v) {
+                const std::string l = lower(v);
+                std::string all;
+                for (const char* a : list) {
+                    if (l == a) {
+                        c.*f = l;
+                        return;
+                    }
+                    all += (all.empty() ? "" : ", ") + std::string(a);
+                }
+                throw BadValue("expected one of [" + all + "], got '" + v + "'");
+            };
+        };
+
+        // Projected solvers (PJ, PGS, condensed); `solver.` is accepted as prefix as well.
+        add({"pj.max_iterations", "solver.max_iterations"}, intMin(&Config::pj_max_iterations, 1));
+        add({"pj.tol_abs", "solver.tol_abs"}, realPos(&Config::pj_tol_abs));
+        add({"pj.tol_rel", "solver.tol_rel"}, realMin(&Config::pj_tol_rel, 0));
+        add({"pj.criterion", "solver.criterion"}, [](Config& c, const std::string& v) {
+            c.pj_criterion = parseChoice(v, {"velocity_rms", "natural_map"}) == "natural_map" ? PjTerminationCriterion::NaturalMap : PjTerminationCriterion::VelocityRms;
+        });
+        add({"pj.final_check", "solver.final_check"}, [](Config& c, const std::string& v) {
+            c.pj_final_check = parseChoice(v, {"none", "natural_map"}) == "natural_map" ? PjFinalCheck::NaturalMap : PjFinalCheck::None;
+        });
+        add({"pj.relaxation", "solver.relaxation"}, realPos(&Config::pj_relaxation));
+        add({"pj.alpha", "solver.alpha"}, realPos(&Config::pj_alpha));
+        add({"pj.nesterov", "solver.nesterov"}, boolean(&Config::pj_nesterov));
+        add({"pj.nesterov_beta_threshold", "solver.nesterov_beta_threshold"}, real(&Config::pj_nesterov_beta_threshold));
+        add({"pj.nesterov_restart_limit", "solver.nesterov_restart_limit"}, intMin(&Config::pj_nesterov_restart_limit, 0));
+        add({"pj.chebyshev", "solver.chebyshev"}, boolean(&Config::pj_chebyshev));
+        add({"pj.anderson", "solver.anderson"}, boolean(&Config::pj_anderson));
+        add({"pj.anderson_m", "solver.anderson_m"}, intMin(&Config::pj_anderson_m, 1));
+        add({"pj.warmstart", "solver.warmstart"}, boolean(&Config::pj_warmstart));
+        add({"pj.rdiag_true_delassus", "solver.rdiag_true_delassus"}, boolean(&Config::pj_rdiag_true_delassus));
+        add({"debug.rb"}, boolean(&Config::debug_rb));
+        add({"debug.pj"}, boolean(&Config::debug_pj));
+
+        add({"solver.name", "integrator"}, [](Config& c, const std::string& v) {
+            parseChoice(v, {"moreau", "first_order", "theta"});
+            c.integrator = IntegratorType::Moreau;
+        });
+        add({"solver.type"}, [](Config& c, const std::string& v) {
+            const std::string s = parseChoice(v, {"projected_jacobi", "pj", "condensed", "projected_gauss_seidel", "pgs", "naive_schur", "qoco", "clarabel", "conicxx", "scs", "mosek"});
+            if (s == "projected_jacobi" || s == "pj")
+                c.solver = SolverType::ProjectedJacobi;
+            else if (s == "condensed")
+                c.solver = SolverType::Condensed;
+            else if (s == "projected_gauss_seidel" || s == "pgs")
+                c.solver = SolverType::ProjectedGaussSeidel;
+            else if (s == "naive_schur")
+                c.solver = SolverType::NaiveSchur;
+            else if (s == "qoco")
+                c.solver = SolverType::Qoco;
+            else if (s == "clarabel")
+                c.solver = SolverType::Clarabel;
+            else if (s == "conicxx")
+                c.solver = SolverType::Conicxx;
+            else if (s == "scs")
+                c.solver = SolverType::Scs;
+            else
+                c.solver = SolverType::Mosek;
+        });
+
+        // Condensed solver
+        add({"condensed.sweep_mode"}, choice(&Config::condensed_sweep_mode, {"gauss_seidel", "colored"}));
+        add({"condensed.local_solve"}, choice(&Config::condensed_local_solve, {"projection", "newton"}));
+        add({"condensed.num_threads"}, intMin(&Config::condensed_num_threads, 0));
+        add({"condensed.newton_max_iters"}, intMin(&Config::condensed_newton_max_iters, 1));
+        add({"condensed.newton_tol"}, realPos(&Config::condensed_newton_tol));
+        add({"condensed.newton_rho_strategy"}, choice(&Config::condensed_newton_rho_strategy, {"split", "full"}));
+        add({"condensed.projection_rho_strategy"}, choice(&Config::condensed_projection_rho_strategy, {"diagonal", "split", "full"}));
+        add({"condensed.true_schur"}, boolean(&Config::condensed_true_schur));
+
+        // Interior-point backends (QOCO, Clarabel, ConicXX)
+        add({"solver.kkt_static_reg", "ip.kkt_static_reg", "qoco.kkt_static_reg", "clarabel.static_regularization_constant"}, realMin(&Config::ip_kkt_static_reg, 0));
+        add({"solver.kkt_dynamic_reg", "ip.kkt_dynamic_reg", "qoco.kkt_dynamic_reg", "clarabel.dynamic_regularization_delta"}, realMin(&Config::ip_kkt_dynamic_reg, 0));
+        add({"ip.tol_abs"}, realPos(&Config::ip_tol_abs));
+        add({"ip.tol_rel"}, realMin(&Config::ip_tol_rel, 0));
+        add({"solver.iter_ref_iters", "ip.iter_ref_iters", "qoco.iter_ref_iters", "clarabel.iterative_refinement_max_iter"}, intMin(&Config::ip_iter_ref_iters, 0));
+        add({"conicxx.warm_start"}, boolean(&Config::conicxx_warm_start));
+        add({"conicxx.warm_lambda"}, real(&Config::conicxx_warm_lambda));
+        add({"conicxx.warm_start_after_setup"}, boolean(&Config::conicxx_warm_start_after_setup));
+        add({"conicxx.compliant_rows"}, boolean(&Config::conicxx_compliant_rows));
+        add({"conicxx.verbose"}, intMin(&Config::conicxx_verbose, 0));
+        add({"conicxx.dynamic_reg_eps"}, real(&Config::conicxx_dynamic_reg_eps));
+        add({"conicxx.refine_tol"}, real(&Config::conicxx_refine_tol));
+        add({"conicxx.max_step_fraction"}, real(&Config::conicxx_max_step_fraction));
+        add({"conicxx.equilibrate"}, boolean(&Config::conicxx_equilibrate));
+        add({"conicxx.equilibrate_max_iter"}, intMin(&Config::conicxx_equilibrate_max_iter, 0));
+        add({"conicxx.equilibrate_min_scale"}, real(&Config::conicxx_equilibrate_min_scale));
+        add({"conicxx.equilibrate_max_scale"}, real(&Config::conicxx_equilibrate_max_scale));
+        add({"conicxx.validate_inputs"}, boolean(&Config::conicxx_validate_inputs));
+
+        // MOSEK backend (negative values and "default" keep MOSEK's own defaults)
+        add({"mosek.num_threads"}, intMin(&Config::mosek_num_threads, 0));
+        add({"mosek.tol_rel_gap"}, real(&Config::mosek_tol_rel_gap));
+        add({"mosek.tol_pfeas"}, real(&Config::mosek_tol_pfeas));
+        add({"mosek.tol_dfeas"}, real(&Config::mosek_tol_dfeas));
+        add({"mosek.max_iterations"}, integer(&Config::mosek_max_iterations));
+        add({"mosek.max_time"}, real(&Config::mosek_max_time));
+        add({"mosek.presolve"}, choice(&Config::mosek_presolve, {"default", "on", "off", "free"}));
+        add({"mosek.scaling"}, boolean(&Config::mosek_scaling));
+
+        // SCS backend (negative values keep SCS's own defaults)
+        add({"scs.eps_abs"}, real(&Config::scs_eps_abs));
+        add({"scs.eps_rel"}, real(&Config::scs_eps_rel));
+        add({"scs.eps_infeas"}, real(&Config::scs_eps_infeas));
+        add({"scs.time_limit_secs"}, real(&Config::scs_time_limit_secs));
+        add({"scs.alpha"}, real(&Config::scs_alpha));
+        add({"scs.scale"}, real(&Config::scs_scale));
+        add({"scs.rho_x"}, real(&Config::scs_rho_x));
+        add({"scs.max_iters"}, integer(&Config::scs_max_iters));
+        add({"scs.acceleration_lookback"}, integer(&Config::scs_acceleration_lookback));
+        add({"scs.acceleration_interval"}, integer(&Config::scs_acceleration_interval));
+        add({"scs.adaptive_scale"}, boolean(&Config::scs_adaptive_scale));
+        add({"scs.normalize"}, boolean(&Config::scs_normalize));
+        add({"scs.warm_start"}, boolean(&Config::scs_warm_start));
+        add({"scs.carry_scale"}, boolean(&Config::scs_carry_scale));
+        add({"scs.stats_csv"}, text(&Config::scs_stats_csv));
+        add({"scs.dump_dir"}, text(&Config::scs_dump_dir));
+        add({"scs.dump_every"}, intMin(&Config::scs_dump_every, 1));
+
+        // Time integration and simulation
+        add({"moreau.theta", "solver.theta"}, [](Config& c, const std::string& v) {
+            const real_t x = parseReal(v);
+            if (!(x > 0 && x <= 1)) throw BadValue("moreau.theta must lie in (0, 1], got '" + v + "'");
+            c.moreau_theta = x;
+        });
+        add({"moreau.implicit_gyroscopy", "solver.implicit_gyroscopy"}, boolean(&Config::moreau_implicit_gyroscopy));
+        add({"sim.T"}, realPos(&Config::sim_T));
+        add({"sim.dt"}, realPos(&Config::sim_dt));
+        add({"sim.gravity"}, [](Config& c, const std::string& v) {
+            std::string s = v;
+            std::replace(s.begin(), s.end(), ',', ' ');  // commas or spaces as separators
+            std::istringstream ss(s);
+            double g[3];
+            std::string rest;
+            if (!(ss >> g[0] >> g[1] >> g[2]) || (ss >> rest)) throw BadValue("expected three numbers, got '" + v + "'");
+            c.sim_gravity = Vector3r((real_t)g[0], (real_t)g[1], (real_t)g[2]);
+        });
+
+        // Output
+        add({"output.write_contact_manifolds"}, boolean(&Config::output_write_contact_manifolds));
+        add({"output.interval_steps"}, intMin(&Config::output_interval_steps, 0));
+        add({"output.folder"}, text(&Config::output_folder));
+        add({"output.filename_prefix"}, text(&Config::output_filename_prefix));
+
+        // Collision
+        add({"collision.broadphase"}, choice(&Config::collision_broadphase, {"dynamic_aabb", "daabb", "default", "dynamic_aabb_array", "daabb_array", "naive", "bruteforce", "sap", "ssap"}));
+        add({"collision.disable_all"}, boolean(&Config::collision_disable_all));
+        add({"collision.max_raw_contacts"}, intMin(&Config::collision_max_raw_contacts, 1));
+        add({"collision.max_patches"}, [](Config& c, const std::string& v) {
+            const int x = parseInt(v);
+            requireAtLeast(x, 0, v);
+            c.collision_max_patches = static_cast<std::size_t>(x);
+        });
+        add({"collision.patch_num_samples"}, [](Config& c, const std::string& v) {
+            const int x = parseInt(v);
+            requireAtLeast(x, 4, v);
+            c.collision_patch_num_samples = static_cast<std::size_t>(x);
+        });
+        add({"collision.patch_tolerance"}, realPos(&Config::collision_patch_tolerance));
+        add({"collision.use_patch_vertices"}, boolean(&Config::collision_use_patch_vertices));
+        add({"collision.match_max_dist"}, realMin(&Config::collision_match_max_dist, 0));
+        add({"collision.min_pair_contact_distance"}, realMin(&Config::collision_min_pair_contact_distance, 0));
+        add({"collision.security_margin"}, realMin(&Config::collision_security_margin, 0));
+
+        // Friction and restitution
+        add({"friction.enable"}, boolean(&Config::friction_enable));
+        add({"friction.combine"}, choice(&Config::friction_combine, {"min", "arith", "geom"}));
+        add({"friction.default_mu"}, realMin(&Config::friction_default_mu, 0));
+        add({"restitution.default_normal"}, realMin(&Config::restitution_default_normal, 0));
+        add({"restitution.default_tangential"}, real(&Config::restitution_default_tangential));
+
+        add({"scene.name"}, text(&Config::scene_name));
+        return t;
+    }();
+    return table;
+}
+
+}  // namespace
+
+real_t Config::sceneParam(const std::string& name, real_t fallback) const {
+    const auto it = scene_params.find(name);
+    if (it == scene_params.end()) return fallback;
+    try {
+        return parseReal(it->second);
+    } catch (const BadValue& e) {
+        throw std::runtime_error("scene." + name + ": " + e.what());
+    }
 }
 
 Config ConfigReader::fromFile(const std::string& path) {
     Config cfg;  // start with defaults from header
     std::ifstream f(path);
-    if (!f) return cfg;  // return defaults if file can't be opened
+    if (!f) throw std::runtime_error("Cannot open config file '" + path + "'");
+    const auto& table = setters();
     std::string line;
     int lineNo = 0;
     while (std::getline(f, line)) {
         ++lineNo;
-        std::string s = trim(line);
-        if (s.empty()) continue;
         // Strip inline comments starting with '#'
-        auto hashPos = s.find('#');
-        if (hashPos != std::string::npos) {
-            s = trim(s.substr(0, hashPos));
-        }
+        std::string s = line.substr(0, line.find('#'));
+        s = trim(s);
         if (s.empty()) continue;
-        auto pos = s.find('=');
-        if (pos == std::string::npos) continue;
-        std::string key = trim(s.substr(0, pos));
-        std::string val = trim(s.substr(pos + 1));
+        const auto where = path + ":" + std::to_string(lineNo);
+        const auto pos = s.find('=');
+        if (pos == std::string::npos) throw std::runtime_error(where + ": expected 'key = value', got '" + s + "'");
+        const std::string key = trim(s.substr(0, pos));
+        const std::string val = trim(s.substr(pos + 1));
 
-        // PJ / solver core parameters (accept both pj. and solver. prefix)
-        if (key == "pj.max_iterations" || key == "solver.max_iterations") {
+        if (const auto it = table.find(key); it != table.end()) {
             try {
-                cfg.pj_max_iterations = std::max(1, std::stoi(val));
-            } catch (...) {
+                it->second(cfg, val);
+            } catch (const BadValue& e) {
+                throw std::runtime_error(where + ": " + key + ": " + e.what());
             }
-        } else if (key == "pj.criterion" || key == "solver.criterion") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "velocity_rms")
-                cfg.pj_criterion = PjTerminationCriterion::VelocityRms;
-            else if (v == "natural_map")
-                cfg.pj_criterion = PjTerminationCriterion::NaturalMap;
-            else
-                std::cerr << "Warning: unrecognized PJ termination criterion '" << val << "'. Keeping the current value." << std::endl;
-        } else if (key == "pj.final_check" || key == "solver.final_check") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "none")
-                cfg.pj_final_check = PjFinalCheck::None;
-            else if (v == "natural_map")
-                cfg.pj_final_check = PjFinalCheck::NaturalMap;
-            else
-                std::cerr << "Warning: unrecognized PJ final check '" << val << "'. Keeping the current value." << std::endl;
-        } else if (key == "pj.tol_abs" || key == "solver.tol_abs") {
-            try {
-                cfg.pj_tol_abs = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "pj.tol_rel" || key == "solver.tol_rel") {
-            try {
-                cfg.pj_tol_rel = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "pj.relaxation" || key == "solver.relaxation") {
-            try {
-                cfg.pj_relaxation = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "pj.alpha" || key == "solver.alpha") {
-            try {
-                cfg.pj_alpha = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        }
-
-        else if (key == "pj.nesterov" || key == "solver.nesterov") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.pj_nesterov = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "pj.nesterov_beta_threshold" || key == "solver.nesterov_beta_threshold") {
-            try {
-                cfg.pj_nesterov_beta_threshold = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "pj.nesterov_restart_limit" || key == "solver.nesterov_restart_limit") {
-            try {
-                cfg.pj_nesterov_restart_limit = std::max(0, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "pj.chebyshev" || key == "solver.chebyshev") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.pj_chebyshev = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "pj.anderson" || key == "solver.anderson") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.pj_anderson = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "pj.anderson_m" || key == "solver.anderson_m") {
-            try {
-                cfg.pj_anderson_m = std::max(1, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "pj.warmstart" || key == "solver.warmstart") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.pj_warmstart = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "pj.rdiag_true_delassus" || key == "solver.rdiag_true_delassus") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.pj_rdiag_true_delassus = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "pj.convergence_csv_dir" || key == "solver.convergence_csv_dir") {
-            cfg.pj_convergence_csv_dir = val;
-        } else if (key == "debug.rb") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.debug_rb = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "debug.pj") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.debug_pj = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "solver.name" || key == "integrator") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "moreau" || v == "first_order" || v == "theta")
-                cfg.integrator = IntegratorType::Moreau;
-            else {
-                std::cerr << "Warning: unrecognized integrator '" << val << "'. Defaulting to Moreau." << std::endl;
-                cfg.integrator = IntegratorType::Moreau;
-            }
-        } else if (key == "solver.type") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "projected_jacobi" || v == "projectedjacobi" || v == "pj")
-                cfg.solver = SolverType::ProjectedJacobi;
-            else if (v == "projected_gauss_seidel" || v == "projectedgaussseidel" || v == "pgs")
-                cfg.solver = SolverType::ProjectedGaussSeidel;
-            else if (v == "ip" || v == "interior_point" || v == "interior point" || v == "qoco" || v == "qoco_solver")
-                cfg.solver = SolverType::Qoco;
-            else if (v == "clarabel" || v == "clarabel_solver" || v == "clarabelcpp")
-                cfg.solver = SolverType::Clarabel;
-            else if (v == "conicxx" || v == "conic_xx" || v == "conicxx_solver")
-                cfg.solver = SolverType::Conicxx;
-            else if (v == "scs" || v == "scs_solver")
-                cfg.solver = SolverType::Scs;
-            else if (v == "mosek" || v == "mosek_solver")
-                cfg.solver = SolverType::Mosek;
-            else if (v == "conjugate_gradient" || v == "conjugategradient" || v == "cg")
-                cfg.solver = SolverType::ConjugateGradient;
-            else if (v == "condensed" || v == "condensed_solver")
-                cfg.solver = SolverType::Condensed;
-            else if (v == "naive_schur" || v == "naiveschur")
-                cfg.solver = SolverType::NaiveSchur;
-            else {
-                std::cerr << "Warning: unrecognized solver.type '" << val << "'. Defaulting to ProjectedJacobi." << std::endl;
-                cfg.solver = SolverType::ProjectedJacobi;
-            }
-        } else if (key == "condensed.sweep_mode") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "jacobi" || v == "gauss_seidel" || v == "colored" || v == "chaotic")
-                cfg.condensed_sweep_mode = v;
-            else {
-                std::cerr << "Warning: unrecognized condensed.sweep_mode '" << val << "'. Defaulting to 'gauss_seidel'." << std::endl;
-                cfg.condensed_sweep_mode = "gauss_seidel";
-            }
-        } else if (key == "condensed.local_solve") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "projection" || v == "newton")
-                cfg.condensed_local_solve = v;
-            else {
-                std::cerr << "Warning: unrecognized condensed.local_solve '" << val << "'. Defaulting to 'projection'." << std::endl;
-                cfg.condensed_local_solve = "projection";
-            }
-        } else if (key == "condensed.num_threads") {
-            try {
-                cfg.condensed_num_threads = std::max(0, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "condensed.newton_max_iters") {
-            try {
-                cfg.condensed_newton_max_iters = std::max(1, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "condensed.newton_rho_strategy") {
-            cfg.condensed_newton_rho_strategy = val;
-        } else if (key == "condensed.projection_rho_strategy") {
-            cfg.condensed_projection_rho_strategy = val;
-        } else if (key == "condensed.newton_tol") {
-            try {
-                cfg.condensed_newton_tol = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "condensed.chaotic_reshuffle_interval") {
-            try {
-                cfg.condensed_chaotic_reshuffle_interval = std::max(1, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "condensed.chaotic_seed") {
-            try {
-                cfg.condensed_chaotic_seed = static_cast<unsigned>(std::stoul(val));
-            } catch (...) {
-            }
-        } else if (key == "condensed.true_schur") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.condensed_true_schur = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "condensed.auto_alpha") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.condensed_auto_alpha = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "condensed.auto_alpha_target_rho") {
-            try {
-                cfg.condensed_auto_alpha_target_rho = (real_t)std::stod(val);
-            } catch (...) {
-            }
-        } else if (key == "condensed.chebyshev_adaptive_rho") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.condensed_chebyshev_adaptive_rho = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "conicxx.warm_start") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.conicxx_warm_start = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "conicxx.warm_lambda") {
-            try {
-                cfg.conicxx_warm_lambda = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "conicxx.warm_start_after_setup") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.conicxx_warm_start_after_setup = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "conicxx.compliant_rows") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.conicxx_compliant_rows = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "conicxx.verbose") {
-            try {
-                cfg.conicxx_verbose = std::max(0, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "conicxx.dynamic_reg_eps") {
-            try {
-                cfg.conicxx_dynamic_reg_eps = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "conicxx.refine_tol") {
-            try {
-                cfg.conicxx_refine_tol = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "conicxx.max_step_fraction") {
-            try {
-                cfg.conicxx_max_step_fraction = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "conicxx.equilibrate") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.conicxx_equilibrate = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "conicxx.equilibrate_max_iter") {
-            try {
-                cfg.conicxx_equilibrate_max_iter = std::max(0, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "conicxx.equilibrate_min_scale") {
-            try {
-                cfg.conicxx_equilibrate_min_scale = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "conicxx.equilibrate_max_scale") {
-            try {
-                cfg.conicxx_equilibrate_max_scale = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "conicxx.validate_inputs") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.conicxx_validate_inputs = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "mosek.num_threads") {
-            try {
-                cfg.mosek_num_threads = std::max(0, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "mosek.tol_rel_gap") {
-            try {
-                cfg.mosek_tol_rel_gap = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "mosek.tol_pfeas") {
-            try {
-                cfg.mosek_tol_pfeas = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "mosek.tol_dfeas") {
-            try {
-                cfg.mosek_tol_dfeas = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "mosek.max_iterations") {
-            try {
-                cfg.mosek_max_iterations = std::stoi(val);
-            } catch (...) {
-            }
-        } else if (key == "mosek.max_time") {
-            try {
-                cfg.mosek_max_time = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "mosek.scaling") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.mosek_scaling = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "mosek.presolve") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "default" || v == "on" || v == "off" || v == "free")
-                cfg.mosek_presolve = v;
-            else
-                std::cerr << "Warning: unrecognized mosek.presolve '" << val << "'. Using MOSEK's default." << std::endl;
-        } else if (key == "scs.eps_abs" || key == "scs.eps_rel" || key == "scs.eps_infeas" || key == "scs.time_limit_secs" || key == "scs.alpha" || key == "scs.scale" ||
-                   key == "scs.rho_x") {
-            try {
-                const real_t x = static_cast<real_t>(std::stod(val));
-                if (key == "scs.eps_abs") cfg.scs_eps_abs = x;
-                else if (key == "scs.eps_rel") cfg.scs_eps_rel = x;
-                else if (key == "scs.eps_infeas") cfg.scs_eps_infeas = x;
-                else if (key == "scs.time_limit_secs") cfg.scs_time_limit_secs = x;
-                else if (key == "scs.alpha") cfg.scs_alpha = x;
-                else if (key == "scs.scale") cfg.scs_scale = x;
-                else cfg.scs_rho_x = x;
-            } catch (...) {
-            }
-        } else if (key == "scs.max_iters" || key == "scs.acceleration_lookback" || key == "scs.acceleration_interval") {
-            try {
-                const int x = std::stoi(val);
-                if (key == "scs.max_iters") cfg.scs_max_iters = x;
-                else if (key == "scs.acceleration_lookback") cfg.scs_acceleration_lookback = x;
-                else cfg.scs_acceleration_interval = x;
-            } catch (...) {
-            }
-        } else if (key == "scs.adaptive_scale" || key == "scs.normalize" || key == "scs.warm_start" || key == "scs.carry_scale") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            const bool on = (v == "1" || v == "true" || v == "yes" || v == "on");
-            if (key == "scs.adaptive_scale") cfg.scs_adaptive_scale = on;
-            else if (key == "scs.normalize") cfg.scs_normalize = on;
-            else if (key == "scs.warm_start") cfg.scs_warm_start = on;
-            else cfg.scs_carry_scale = on;
-        } else if (key == "scs.stats_csv") {
-            cfg.scs_stats_csv = val;
-        } else if (key == "scs.dump_dir") {
-            cfg.scs_dump_dir = val;
-        } else if (key == "scs.dump_every") {
-            try {
-                cfg.scs_dump_every = std::max(1, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "solver.kkt_static_reg" || key == "ip.kkt_static_reg" || key == "qoco.kkt_static_reg" || key == "clarabel.static_regularization_constant") {
-            try {
-                cfg.ip_kkt_static_reg = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "solver.kkt_dynamic_reg" || key == "ip.kkt_dynamic_reg" || key == "qoco.kkt_dynamic_reg" || key == "clarabel.dynamic_regularization_delta") {
-            try {
-                cfg.ip_kkt_dynamic_reg = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "ip.tol_abs") {
-            try {
-                cfg.ip_tol_abs = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "ip.tol_rel") {
-            try {
-                cfg.ip_tol_rel = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "solver.iter_ref_iters" || key == "ip.iter_ref_iters" || key == "qoco.iter_ref_iters" || key == "clarabel.iterative_refinement_max_iter") {
-            try {
-                cfg.ip_iter_ref_iters = std::max(0, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "moreau.theta" || key == "solver.theta") {
-            try {
-                cfg.moreau_theta = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "moreau.implicit_gyroscopy" || key == "solver.implicit_gyroscopy") {
-            cfg.moreau_implicit_gyroscopy = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
-        } else if (key == "sim.T") {
-            try {
-                const real_t v = static_cast<real_t>(std::stod(val));
-                if (v > (real_t)0)
-                    cfg.sim_T = v;
-                else
-                    std::cerr << "Warning: 'sim.T' must be positive; ignoring value '" << val << "'." << std::endl;
-            } catch (...) {
-            }
-        } else if (key == "sim.dt") {
-            try {
-                const real_t v = static_cast<real_t>(std::stod(val));
-                if (v > (real_t)0)
-                    cfg.sim_dt = v;
-                else
-                    std::cerr << "Warning: 'sim.dt' must be positive; ignoring value '" << val << "'." << std::endl;
-            } catch (...) {
-            }
-        } else if (key == "sim.gravity") {
-            std::string v = val;
-            // Allow commas or spaces as separators
-            std::replace(v.begin(), v.end(), ',', ' ');
-            std::istringstream ss(v);
-            double gx = 0, gy = 0, gz = -9.81;
-            if (ss >> gx >> gy >> gz) {
-                cfg.sim_gravity = Vector3r((real_t)gx, (real_t)gy, (real_t)gz);
-            }
-        } else if (key == "output.write_contact_manifolds") {
-            cfg.output_write_contact_manifolds = (iequals(val, "1") || iequals(val, "true") || iequals(val, "yes") || iequals(val, "on"));
-        } else if (key == "output.interval_steps") {
-            try {
-                cfg.output_interval_steps = std::max(0, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "output.folder") {
-            cfg.output_folder = val;
-        } else if (key == "output.filename_prefix") {
-            cfg.output_filename_prefix = val;
-        } else if (key == "collision.broadphase") {
-            cfg.collision_broadphase = val;
-        } else if (key == "collision.disable_all") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.collision_disable_all = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "collision.max_raw_contacts") {
-            try {
-                cfg.collision_max_raw_contacts = std::max(1, std::stoi(val));
-            } catch (...) {
-            }
-        } else if (key == "collision.max_patches") {
-            try {
-                int v = std::max(0, std::stoi(val));
-                cfg.collision_max_patches = static_cast<std::size_t>(v);
-            } catch (...) {
-            }
-        } else if (key == "collision.patch_num_samples") {
-            try {
-                const int v = std::stoi(val);
-                if (v >= 4) {
-                    cfg.collision_patch_num_samples = static_cast<std::size_t>(v);
-                } else {
-                    std::cerr << "Warning: 'collision.patch_num_samples' must be at least 4; ignoring value '" << val << "'." << std::endl;
-                }
-            } catch (...) {
-            }
-        } else if (key == "collision.patch_tolerance") {
-            try {
-                const real_t v = static_cast<real_t>(std::stod(val));
-                if (std::isfinite(v) && v > (real_t)0) {
-                    cfg.collision_patch_tolerance = v;
-                } else {
-                    std::cerr << "Warning: 'collision.patch_tolerance' must be finite and positive; ignoring value '" << val << "'." << std::endl;
-                }
-            } catch (...) {
-            }
-        } else if (key == "collision.use_patch_vertices") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.collision_use_patch_vertices = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "collision.match_max_dist") {
-            try {
-                cfg.collision_match_max_dist = static_cast<real_t>(std::stod(val));
-                if (cfg.collision_match_max_dist < (real_t)0) cfg.collision_match_max_dist = (real_t)0;
-            } catch (...) {
-            }
-        } else if (key == "collision.min_pair_contact_distance") {
-            try {
-                cfg.collision_min_pair_contact_distance = static_cast<real_t>(std::stod(val));
-                if (cfg.collision_min_pair_contact_distance < (real_t)0) cfg.collision_min_pair_contact_distance = (real_t)0;
-            } catch (...) {
-            }
-        } else if (key == "collision.security_margin") {
-            try {
-                cfg.collision_security_margin = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "friction.enable") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            cfg.friction_enable = (v == "1" || v == "true" || v == "yes" || v == "on");
-        } else if (key == "friction.combine") {
-            std::string v = val;
-            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
-            if (v == "min" || v == "arith" || v == "geom") cfg.friction_combine = v;
-        } else if (key == "friction.default_mu") {
-            try {
-                cfg.friction_default_mu = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "restitution.default_normal") {
-            try {
-                cfg.restitution_default_normal = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "restitution.default_tangential") {
-            try {
-                cfg.restitution_default_tangential = static_cast<real_t>(std::stod(val));
-            } catch (...) {
-            }
-        } else if (key == "scene.name") {
-            cfg.scene_name = val;
         } else if (key.rfind("scene.", 0) == 0) {
             cfg.scene_params[key.substr(6)] = val;
         } else {
-            std::cerr << "Warning: " << path << ":" << lineNo << ": unrecognized config key '" << key << "' is ignored." << std::endl;
+            std::cerr << "Warning: " << where << ": unrecognized config key '" << key << "' is ignored." << std::endl;
         }
     }
     return cfg;

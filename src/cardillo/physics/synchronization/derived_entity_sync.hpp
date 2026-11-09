@@ -12,6 +12,8 @@ class DerivedEntitySync {
     static void updateBeamElementEntity(World& world, entt::entity e);
     // evalOffset: see Trajectory::update().
     static void updateEntities(World& world, real_t dt, real_t evalOffset = 0);
+    // Refreshes the cached RigidState of all entities from their position/velocity components.
+    static void refreshRigidStates(World& world);
 };
 
 }  // namespace physics

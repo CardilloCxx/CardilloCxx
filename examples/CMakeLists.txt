@@ -5,7 +5,7 @@ function(cardillo_add_scene_example target scene_header scene_type)
 		CARDILLO_EXAMPLE_SCENE_TYPE=${scene_type}
 		CARDILLO_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 	)
-	target_link_libraries(${target} PRIVATE cardillo::cardillo)
+	target_link_libraries(${target} PRIVATE cardillo::cardillo cardillo_warnings)
 endfunction()
 
 cardillo_add_scene_example(stacked_spheres "scenes/stacked_spheres/StackedSpheresScene.hpp" StackedSpheresScene)
@@ -14,6 +14,7 @@ cardillo_add_scene_example(cardhouse "scenes/cardhouse/CardhouseScene.hpp" Cardh
 cardillo_add_scene_example(spring_test "scenes/springTest/SpringTestScene.hpp" SpringTestScene)
 cardillo_add_scene_example(rod_assembly "scenes/rodAssembly/RodAssemblyScene.hpp" RodAssemblyScene)
 cardillo_add_scene_example(net "scenes/net/NetScene.hpp" NetScene)
+cardillo_add_scene_example(net_detailed "scenes/net_detailed/NetDetailedScene.hpp" NetDetailedScene)
 cardillo_add_scene_example(wilberforce "scenes/wilberforce/WilberforcePendulum.hpp" WilberforcePendulumScene)
 cardillo_add_scene_example(hangbridge "scenes/hangbride/HangbrideScene.hpp" HangbrideScene)
 cardillo_add_scene_example(softbody "scenes/softbody/SoftbodyTestScene.hpp" SoftbodyTestScene)
