@@ -77,9 +77,8 @@ Run simulate(config::SolverType solver, real_t dt, real_t T, real_t z0, real_t v
     cfg.restitution_default_normal = e;
     cfg.restitution_default_tangential = 0.0;
     // Projected Jacobi to round-off; the interior-point methods stall for much tighter tolerances.
-    const bool conic = solver != config::SolverType::ProjectedJacobi;
-    cfg.pj_tol_abs = conic ? 1e-10 : 1e-12;
-    cfg.pj_tol_rel = conic ? 1e-10 : 1e-12;
+    cfg.pj_tol_abs = cfg.pj_tol_rel = 1e-12;
+    cfg.ip_tol_abs = cfg.ip_tol_rel = 1e-10;
     cfg.pj_max_iterations = 100000;
     cfg.mosek_tol_rel_gap = cfg.mosek_tol_pfeas = cfg.mosek_tol_dfeas = 1e-10;  // MOSEK has its own tolerances
 

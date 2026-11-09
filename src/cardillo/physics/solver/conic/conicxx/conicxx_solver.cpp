@@ -22,11 +22,11 @@ ConicxxSolver::~ConicxxSolver() = default;
 
 conicxx::Settings ConicxxSolver::makeSettings() const {
     conicxx::Settings settings;
-    settings.tol_feas = static_cast<conicxx::Scalar>(m_cfg.pj_tol_abs);
-    settings.tol_gap_abs = static_cast<conicxx::Scalar>(m_cfg.pj_tol_abs);
-    settings.tol_gap_rel = static_cast<conicxx::Scalar>(m_cfg.pj_tol_rel);
-    settings.tol_infeas_abs = static_cast<conicxx::Scalar>(m_cfg.pj_tol_abs);
-    settings.tol_infeas_rel = static_cast<conicxx::Scalar>(m_cfg.pj_tol_rel);
+    settings.tol_feas = static_cast<conicxx::Scalar>(m_cfg.ip_tol_abs);
+    settings.tol_gap_abs = static_cast<conicxx::Scalar>(m_cfg.ip_tol_abs);
+    settings.tol_gap_rel = static_cast<conicxx::Scalar>(m_cfg.ip_tol_rel);
+    settings.tol_infeas_abs = static_cast<conicxx::Scalar>(m_cfg.ip_tol_abs);
+    settings.tol_infeas_rel = static_cast<conicxx::Scalar>(m_cfg.ip_tol_rel);
     settings.max_iter = m_cfg.pj_max_iterations;
     const auto static_reg = static_cast<conicxx::Scalar>(m_cfg.ip_kkt_static_reg);
     settings.regularization.static_P = static_reg;

@@ -56,6 +56,15 @@ Config ConfigReader::fromFile(const std::string& path) {
                 cfg.pj_criterion = PjTerminationCriterion::NaturalMap;
             else
                 std::cerr << "Warning: unrecognized PJ termination criterion '" << val << "'. Keeping the current value." << std::endl;
+        } else if (key == "pj.final_check" || key == "solver.final_check") {
+            std::string v = val;
+            std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            if (v == "none")
+                cfg.pj_final_check = PjFinalCheck::None;
+            else if (v == "natural_map")
+                cfg.pj_final_check = PjFinalCheck::NaturalMap;
+            else
+                std::cerr << "Warning: unrecognized PJ final check '" << val << "'. Keeping the current value." << std::endl;
         } else if (key == "pj.tol_abs" || key == "solver.tol_abs") {
             try {
                 cfg.pj_tol_abs = static_cast<real_t>(std::stod(val));
@@ -370,6 +379,16 @@ Config ConfigReader::fromFile(const std::string& path) {
         } else if (key == "solver.kkt_dynamic_reg" || key == "ip.kkt_dynamic_reg" || key == "qoco.kkt_dynamic_reg" || key == "clarabel.dynamic_regularization_delta") {
             try {
                 cfg.ip_kkt_dynamic_reg = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "ip.tol_abs") {
+            try {
+                cfg.ip_tol_abs = static_cast<real_t>(std::stod(val));
+            } catch (...) {
+            }
+        } else if (key == "ip.tol_rel") {
+            try {
+                cfg.ip_tol_rel = static_cast<real_t>(std::stod(val));
             } catch (...) {
             }
         } else if (key == "solver.iter_ref_iters" || key == "ip.iter_ref_iters" || key == "qoco.iter_ref_iters" || key == "clarabel.iterative_refinement_max_iter") {

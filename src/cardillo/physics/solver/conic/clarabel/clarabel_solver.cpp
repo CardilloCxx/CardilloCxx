@@ -49,11 +49,11 @@ void ClarabelSolver::initSolver(real_t dt, real_t theta, bool first_init) {
     clarabel::DefaultSettings<double> settings = clarabel::DefaultSettings<double>::default_settings();
     settings.verbose = m_cfg.debug_pj;
     settings.max_iter = static_cast<uint32_t>(m_cfg.pj_max_iterations);
-    settings.tol_gap_abs = static_cast<double>(m_cfg.pj_tol_abs);
-    settings.tol_gap_rel = static_cast<double>(m_cfg.pj_tol_rel);
-    settings.tol_feas = static_cast<double>(m_cfg.pj_tol_abs);
-    settings.tol_infeas_abs = static_cast<double>(m_cfg.pj_tol_abs);
-    settings.tol_infeas_rel = static_cast<double>(m_cfg.pj_tol_rel);
+    settings.tol_gap_abs = static_cast<double>(m_cfg.ip_tol_abs);
+    settings.tol_gap_rel = static_cast<double>(m_cfg.ip_tol_rel);
+    settings.tol_feas = static_cast<double>(m_cfg.ip_tol_abs);
+    settings.tol_infeas_abs = static_cast<double>(m_cfg.ip_tol_abs);
+    settings.tol_infeas_rel = static_cast<double>(m_cfg.ip_tol_rel);
     settings.static_regularization_constant = static_cast<double>(m_cfg.ip_kkt_static_reg);
     settings.dynamic_regularization_delta = static_cast<double>(m_cfg.ip_kkt_dynamic_reg);
     settings.iterative_refinement_max_iter = static_cast<uint32_t>(m_cfg.ip_iter_ref_iters);

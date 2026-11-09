@@ -172,6 +172,10 @@ The criterion is evaluated in every accelerated loop and at PJ's existing
 check interval in the standard loop. ``pj.tol_abs`` and ``pj.tol_rel`` control
 both criteria.
 
+The accuracy of the result can be checked independently of the solver with
+``pj.final_check = natural_map``; this check is part of the time integrator and
+works for every solver backend (see :doc:`../using_the_engine/setup`).
+
 Config keys
 -----------
 
@@ -187,6 +191,8 @@ Config keys
      - Convergence tolerances on the velocity residual
    * - ``pj.criterion`` (alias ``solver.criterion``)
      - ``velocity_rms`` (default) or ``natural_map``; select the legacy velocity increment or the blockwise contact natural-map residual
+   * - ``pj.final_check`` (alias ``solver.final_check``)
+     - ``none`` (default) or ``natural_map``; solver-independent contact residual after every step (all backends)
    * - ``solver.alpha``
      - Step-size multiplier for each Jacobi sweep (default 0.3)
    * - ``solver.nesterov``

@@ -221,6 +221,10 @@ Solver selection and parameters
      - ``pj.criterion``, alias: ``solver.criterion``
      - ``velocity_rms``
      - PJ stopping measure: ``velocity_rms`` (legacy) or ``natural_map`` (blockwise contact natural-map residual).
+   * - ``pj_final_check``
+     - ``pj.final_check``, alias: ``solver.final_check``
+     - ``none``
+     - Solver-independent contact accuracy check after every step (all solvers). ``natural_map`` evaluates the blockwise natural-map residual of the stored contact percussions with contact-local step sizes from the Delassus blocks and ``pj.tol_abs``/``pj.tol_rel`` as scales (≤ 1: within tolerance). With ``tol_abs = tol_rel = t`` the product residual · t is independent of t. Printed with ``debug.pj``.
    * - ``pj_tol_abs``
      - ``solver.tol_abs``
      - ``1e-4``
@@ -301,6 +305,10 @@ prefixes as shown:
      - ``solver.kkt_dynamic_reg``
      - ``1e-8``
      - Dynamic regularization parameter for the KKT system.
+   * - ``ip_tol_abs``, ``ip_tol_rel``
+     - ``ip.tol_abs``, ``ip.tol_rel``
+     - ``1e-8``
+     - Gap/feasibility tolerances of the interior-point backends (Clarabel, QOCO, ConicXX); independent of ``pj.tol_*``.
    * - ``ip_iter_ref_iters``
      - ``solver.iter_ref_iters``
      - ``0``
