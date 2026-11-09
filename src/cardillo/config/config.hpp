@@ -18,6 +18,8 @@ enum class IntegratorType { Moreau };
 // No initial multipliers, no drift, no stabilization parameter; perfect constraints require
 // theta > 1/2.
 enum class SolverType { ProjectedJacobi, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx, Scs, Mosek };
+enum class PjTerminationCriterion { VelocityRms, NaturalMap };
+enum class PjFinalCheck { None, NaturalMap };
 
 struct Config {
     // Simulation settings
@@ -73,6 +75,8 @@ struct Config {
     // Solver selection
     SolverType solver{SolverType::ProjectedJacobi};
     int pj_max_iterations{200000};                     // pj.max_iterations
+    PjTerminationCriterion pj_criterion{PjTerminationCriterion::VelocityRms};  // pj.criterion
+    PjFinalCheck pj_final_check{PjFinalCheck::None};    // pj.final_check
     real_t pj_tol_abs{(real_t)1e-5};                   // pj.tol_abs
     real_t pj_tol_rel{(real_t)1e-5};                   // pj.tol_rel
     // Step-length factors. PGS/condensed: dlambda = relaxation * GiiInv * r on every row, with an
@@ -125,6 +129,8 @@ struct Config {
     // Interior-point solver settings shared across QOCO, Clarabel and ConicXX
     real_t ip_kkt_static_reg{(real_t)1e-8};   // solver.kkt_static_reg
     real_t ip_kkt_dynamic_reg{(real_t)1e-8};  // solver.kkt_dynamic_reg
+    real_t ip_tol_abs{(real_t)1e-8};          // ip.tol_abs
+    real_t ip_tol_rel{(real_t)1e-8};          // ip.tol_rel
     int ip_iter_ref_iters{2};                 // solver.iter_ref_iters
 
     // MOSEK-only (solver.type = mosek, requires -DCARDILLO_WITH_MOSEK=ON). Negative values and

@@ -136,6 +136,12 @@ const std::unordered_map<std::string, Setter>& setters() {
         add({"pj.max_iterations", "solver.max_iterations"}, intMin(&Config::pj_max_iterations, 1));
         add({"pj.tol_abs", "solver.tol_abs"}, realPos(&Config::pj_tol_abs));
         add({"pj.tol_rel", "solver.tol_rel"}, realMin(&Config::pj_tol_rel, 0));
+        add({"pj.criterion", "solver.criterion"}, [](Config& c, const std::string& v) {
+            c.pj_criterion = parseChoice(v, {"velocity_rms", "natural_map"}) == "natural_map" ? PjTerminationCriterion::NaturalMap : PjTerminationCriterion::VelocityRms;
+        });
+        add({"pj.final_check", "solver.final_check"}, [](Config& c, const std::string& v) {
+            c.pj_final_check = parseChoice(v, {"none", "natural_map"}) == "natural_map" ? PjFinalCheck::NaturalMap : PjFinalCheck::None;
+        });
         add({"pj.relaxation", "solver.relaxation"}, realPos(&Config::pj_relaxation));
         add({"pj.alpha", "solver.alpha"}, realPos(&Config::pj_alpha));
         add({"pj.nesterov", "solver.nesterov"}, boolean(&Config::pj_nesterov));
@@ -188,6 +194,8 @@ const std::unordered_map<std::string, Setter>& setters() {
         // Interior-point backends (QOCO, Clarabel, ConicXX)
         add({"solver.kkt_static_reg", "ip.kkt_static_reg", "qoco.kkt_static_reg", "clarabel.static_regularization_constant"}, realMin(&Config::ip_kkt_static_reg, 0));
         add({"solver.kkt_dynamic_reg", "ip.kkt_dynamic_reg", "qoco.kkt_dynamic_reg", "clarabel.dynamic_regularization_delta"}, realMin(&Config::ip_kkt_dynamic_reg, 0));
+        add({"ip.tol_abs"}, realPos(&Config::ip_tol_abs));
+        add({"ip.tol_rel"}, realMin(&Config::ip_tol_rel, 0));
         add({"solver.iter_ref_iters", "ip.iter_ref_iters", "qoco.iter_ref_iters", "clarabel.iterative_refinement_max_iter"}, intMin(&Config::ip_iter_ref_iters, 0));
         add({"conicxx.warm_start"}, boolean(&Config::conicxx_warm_start));
         add({"conicxx.warm_lambda"}, real(&Config::conicxx_warm_lambda));
