@@ -2,6 +2,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
+#include <string>
 
 #include <cardillo/config/config.hpp>
 #include <cardillo/physics/assembly/dynamics_assembler.hpp>
@@ -75,6 +77,8 @@ void testTangentFrameInvariance() {
 void testNaturalMapContactSolve(bool blockPreconditioner) {
     config::Config cfg;
     cfg.pj_criterion = config::PjTerminationCriterion::NaturalMap;
+    cfg.pj_final_check = config::PjFinalCheck::NaturalMap;
+    cfg.debug_pj = true;
     cfg.pj_rdiag_true_delassus = blockPreconditioner;
     cfg.pj_tol_abs = 1e-10;
     cfg.pj_tol_rel = 1e-10;
@@ -87,12 +91,24 @@ void testNaturalMapContactSolve(bool blockPreconditioner) {
     physics::PhysicsEngine engine(cfg);
     engine.addStaticBody(physics::PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), 5, 5), physics::RigidState{});
     const auto ball = engine.addRigidBody(physics::SphereShape(0.5), physics::RigidState(Vector3r(0, 0, 0.49)), physics::RigidProps(1));
+    std::ostringstream output;
+    std::streambuf* previousOutput = std::cout.rdbuf(output.rdbuf());
     engine.step();
+    std::cout.rdbuf(previousOutput);
 
     const auto& contacts = engine.dynamicsAssembler().contacts();
     check(!contacts.empty(), "natural-map PJ contact test generated a contact");
     if (!contacts.empty()) check(contacts.front().last_impulse[0] > 0, "natural-map PJ solve produced a positive normal impulse");
     check(engine.getLinearVelocity(ball).allFinite(), "natural-map PJ contact solve returned finite velocity");
+    const std::string reportPrefix = "Final natural-map error: ";
+    const std::size_t reportPos = output.str().find(reportPrefix);
+    check(reportPos != std::string::npos, "enabled final check reports separately from the iteration error");
+    if (reportPos != std::string::npos) {
+        real_t finalError = 0;
+        std::istringstream report(output.str().substr(reportPos + reportPrefix.size()));
+        report >> finalError;
+        check(report && std::isfinite(finalError), "final natural-map report is finite");
+    }
 }
 
 void testConfigParsing() {
@@ -100,6 +116,7 @@ void testConfigParsing() {
     {
         std::ofstream configFile(path);
         configFile << "solver.criterion = NaTuRaL_MaP\n";
+        configFile << "pj.final_check = Natural_Map\n";
         check((bool)configFile, "write temporary PJ config");
     }
 
@@ -107,7 +124,9 @@ void testConfigParsing() {
     std::error_code error;
     std::filesystem::remove(path, error);
     check(cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap, "criterion config accepts solver alias and case-insensitive value");
+    check(cfg.pj_final_check == config::PjFinalCheck::NaturalMap, "final-check config accepts case-insensitive value");
     check(config::Config{}.pj_criterion == config::PjTerminationCriterion::VelocityRms, "legacy RMS remains the default criterion");
+    check(config::Config{}.pj_final_check == config::PjFinalCheck::None, "final-check defaults to disabled");
 }
 
 }  // namespace
