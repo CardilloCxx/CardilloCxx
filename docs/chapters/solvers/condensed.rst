@@ -447,7 +447,11 @@ solve :math:`S_{bb}\,\delta = -\xi_b` via a precomputed factorization
 and scatter the result, zeroing every bilateral row's residual in one shot;
 (2) **contact-only sweep** -- run the configured ``gauss_seidel`` or
 ``colored`` sweep restricted to just the contact blocks (bilateral rows never
-enter the sweep at all under ``true_schur``).
+enter the sweep at all under ``true_schur``). The contact sweep of the last
+iteration changes the velocities after its exact bilateral step, so the solver
+ends with one more exact bilateral step: the returned velocities satisfy the
+bilateral rows exactly for the final contact percussions, like those of
+:doc:`projected_jacobi`.
 
 .. note::
    Because a direct linear solve of :math:`S_{bb}` always lands on the same
