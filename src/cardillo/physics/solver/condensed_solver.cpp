@@ -613,6 +613,11 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         }
     }
 
+    // The contact sweep of the last iteration changed du after its exact bilateral step. One more
+    // step makes the returned velocities satisfy the bilateral rows exactly for the final contact
+    // percussions, like those of projected Jacobi.
+    if (useTrueSchur && nContacts > 0) exactBilateralStep(topo, bilateralLdlt, rhs, MinvDiag, lambda, du);
+
     if (nSprings > 0) m_dyn.setLambda_g(lambda.head(nSprings));
     if (nDampers > 0) m_dyn.setLambda_gamma(lambda.segment(nSprings, nDampers));
     if (nContacts > 0) WarmstartProvider::storeImpulse(lambda.segment(nSprings + nDampers, nContacts), m_dyn);
