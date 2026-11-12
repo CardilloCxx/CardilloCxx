@@ -227,6 +227,13 @@ QOCO solves
    \mathsf{A}_\mathrm{eq} x = \mathsf{b}_\mathrm{eq}, \quad
    \mathsf{h} - \mathsf{G} x = s \in \mathcal{K} .
 
+For a perfect row (:math:`\hat C_i = 0`), :math:`\pi_i` enters no constraint, and
+its column of :math:`\mathsf{P}`, :math:`\mathsf{A}_\mathrm{eq}` and :math:`\mathsf{G}` is
+zero; its percussion is the multiplier :math:`-y_i` (see below). QOCO's Ruiz
+equilibration cannot scale a zero column (Clarabel and SCS leave such columns
+unscaled), so the QOCO assembler sets :math:`\mathsf{P}_{ii} = 1` for these rows. This
+fixes :math:`\pi_i = 0` and changes nothing else.
+
 Clarabel and ConicXX stack the equality rows as a zero cone on top:
 :math:`\mathsf{A} = (\mathsf{A}_\mathrm{eq}; \mathsf{G})`,
 :math:`\mathsf{b} = (\mathsf{b}_\mathrm{eq}; \mathsf{h})`, cone
