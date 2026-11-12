@@ -15,6 +15,10 @@ set(EIGEN_BUILD_TESTING OFF)
 # Eigen >= 5.0 installs its CMake package only when this is on (default: top-level project only);
 # Coal's and cardillo's exported targets need it.
 set(EIGEN_BUILD_CMAKE_PACKAGE ON)
+# Eigen enables the user package registry unless this is defined; its entry (~/.cmake/packages/Eigen3)
+# would point every later find_package(Eigen3) on this machine into our build tree, even before
+# Eigen3Targets.cmake has been generated there.
+set(CMAKE_EXPORT_PACKAGE_REGISTRY OFF)
 
 find_package(OpenMP QUIET)
 
