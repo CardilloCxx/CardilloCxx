@@ -33,6 +33,11 @@ QOCOCscMatrix* QocoAssembler::P(real_t dt, real_t theta) {
 
     Eigen::VectorX<real_t> diag(M.size() + C.size() + A.size());
     diag << M, C, A;
+    // The percussion of a perfect row (compliance 0) enters no constraint; it is read from the
+    // multiplier y. A positive weight keeps it at zero without changing the solution, and keeps its
+    // column of P nonzero, which QOCO's Ruiz equilibration needs (it scales a zero column by 1/0).
+    for (Eigen::Index i = M.size(); i < diag.size(); ++i)
+        if (diag[i] == (real_t)0) diag[i] = (real_t)1;
 
     TripletMatrix P = TripletMatrix::fromDiag(diag);
     m_P_cache = P.asSparse();
