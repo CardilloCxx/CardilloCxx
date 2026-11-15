@@ -29,6 +29,9 @@
 #ifdef CARDILLO_HAVE_MOSEK
 #include "../solver/conic/mosek/mosek_solver.hpp"
 #endif
+#ifdef CARDILLO_HAVE_CUOPT
+#include "../solver/conic/cuopt/cuopt_solver.hpp"
+#endif
 
 namespace cardillo {
 namespace physics {
@@ -91,6 +94,13 @@ PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::C
             break;
 #else
             throw std::runtime_error("solver.type = mosek, but CardilloCxx was built without it (configure with -DCARDILLO_WITH_MOSEK=ON)");
+#endif
+        case config::SolverType::Cuopt:
+#ifdef CARDILLO_HAVE_CUOPT
+            m_solver = std::make_unique<CuoptSolver>(*m_dyn, m_cfg);
+            break;
+#else
+            throw std::runtime_error("solver.type = cuopt, but CardilloCxx was built without it (configure with -DCARDILLO_WITH_CUOPT=ON)");
 #endif
     }
 

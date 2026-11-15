@@ -16,6 +16,9 @@
 #include <cardillo/physics/api/physics_engine.hpp>
 #include <cardillo/physics/assembly/dynamics_assembler.hpp>
 #include <cardillo/rigid_body/rigid_body.hpp>
+#ifdef CARDILLO_HAVE_CUOPT
+#include "cuopt_gpu.hpp"
+#endif
 
 using namespace cardillo;
 using namespace cardillo::physics;
@@ -116,6 +119,12 @@ int main() {
 #endif
 #ifdef CARDILLO_HAVE_SCS
     solvers.emplace_back(SolverType::Scs, "scs");
+#endif
+#ifdef CARDILLO_HAVE_CUOPT
+    if (cuopt_test::gpuAvailable("test_position_level"))
+        solvers.emplace_back(SolverType::Cuopt, "cuopt");
+    else if (cuopt_test::gpuRequired())
+        ++g_failures;
 #endif
     // Bilateral percussions of projected Jacobi (first solver) as reference for all solvers, in
     // particular for the perfect constraint, whose percussion is a multiplier in the conic solvers.

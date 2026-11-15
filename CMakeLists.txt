@@ -30,7 +30,7 @@ option(CARDILLO_ENABLE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSa
 # Use an installed Coal instead of fetching the fork; it must be built from the fork (custom shapes).
 option(CARDILLO_USE_SYSTEM_COAL "Use an installed Coal built from the 41pha1/coal fork" OFF)
 
-# Optional conic solver backends (solver.type = clarabel | qoco | conicxx | scs | mosek). The production
+# Optional conic solver backends (solver.type = clarabel | qoco | conicxx | scs | mosek | cuopt). The production
 # solvers (projected Jacobi, condensed) and the reference solvers are always built.
 option(CARDILLO_WITH_CLARABEL "Clarabel interior-point backend (needs Rust/cargo)" OFF)
 option(CARDILLO_WITH_QOCO "QOCO interior-point backend" OFF)
@@ -38,6 +38,9 @@ option(CARDILLO_WITH_CONICXX "ConicXX interior-point backend" OFF)
 option(CARDILLO_WITH_SCS "SCS ADMM backend" OFF)
 # MOSEK is not fetched: it needs an installation and a license (cmake/FindMOSEK.cmake, MOSEK_ROOT).
 option(CARDILLO_WITH_MOSEK "MOSEK interior-point backend (needs a MOSEK installation and license)" OFF)
+# cuOpt is not fetched: it needs an installation of cuOpt >= 26.10.1 (cmake/FindCUOPT.cmake, CUOPT_ROOT), Linux
+# and, at run time, an NVIDIA GPU.
+option(CARDILLO_WITH_CUOPT "cuOpt GPU barrier backend (needs a cuOpt installation; NVIDIA GPU at run time)" OFF)
 option(CARDILLO_SCS_OPENMP "Build SCS with its OpenMP-parallel cone projections" ON)
 
 # --- Compile flags of this project and of the dependencies it fetches ---
@@ -88,4 +91,4 @@ if(CARDILLO_INSTALL)
     include(cmake/Install.cmake)
 endif()
 
-message(STATUS "CardilloCxx ${PROJECT_VERSION}: Clarabel=${CARDILLO_WITH_CLARABEL} QOCO=${CARDILLO_WITH_QOCO} ConicXX=${CARDILLO_WITH_CONICXX} SCS=${CARDILLO_WITH_SCS} MOSEK=${CARDILLO_WITH_MOSEK}")
+message(STATUS "CardilloCxx ${PROJECT_VERSION}: Clarabel=${CARDILLO_WITH_CLARABEL} QOCO=${CARDILLO_WITH_QOCO} ConicXX=${CARDILLO_WITH_CONICXX} SCS=${CARDILLO_WITH_SCS} MOSEK=${CARDILLO_WITH_MOSEK} cuOpt=${CARDILLO_WITH_CUOPT}")

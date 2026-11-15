@@ -52,6 +52,10 @@ class TimingManager {
         ScsSetup,
         ScsSolve,
         ScsExtract,
+        CuoptAssembly,
+        CuoptSetup,
+        CuoptSolve,
+        CuoptExtract,
         OutputWrite,
         DynamicsAssembler_RefreshState,
         CondensedSetup,
@@ -317,6 +321,14 @@ class TimingManager {
                 return "SCS Solve";
             case TimerId::ScsExtract:
                 return "SCS Extract";
+            case TimerId::CuoptAssembly:
+                return "cuOpt Assembly";
+            case TimerId::CuoptSetup:
+                return "cuOpt Setup (model + problem)";
+            case TimerId::CuoptSolve:
+                return "cuOpt Solve";
+            case TimerId::CuoptExtract:
+                return "cuOpt Extract";
             case TimerId::DisableCollisionPairs:
                 return "Disable Collision Pairs";
             case TimerId::DynamicsAssembler_RefreshState:

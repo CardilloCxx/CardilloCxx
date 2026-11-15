@@ -1,5 +1,5 @@
-Interior-Point Solvers (QOCO, Clarabel, ConicXX and MOSEK)
-==========================================================
+Interior-Point Solvers (QOCO, Clarabel, ConicXX, MOSEK and cuOpt)
+=================================================================
 
 .. contents:: On this page
    :local:
@@ -16,7 +16,8 @@ the change of its sliding speed within the step.
 
 The backends are optional: build them with ``-DCARDILLO_WITH_QOCO=ON``,
 ``-DCARDILLO_WITH_CLARABEL=ON`` (needs Rust/cargo), ``-DCARDILLO_WITH_CONICXX=ON`` and
-``-DCARDILLO_WITH_MOSEK=ON`` (needs a MOSEK installation and license). Clarabel, SCS and MOSEK share the
+``-DCARDILLO_WITH_MOSEK=ON`` (needs a MOSEK installation and license) and ``-DCARDILLO_WITH_CUOPT=ON``
+(needs a cuOpt installation and, at run time, an NVIDIA GPU). Clarabel, SCS, MOSEK and cuOpt share the
 cone program assembled by ``ConeProgramAssembler``.
 
 The derivation below follows the theory manual (``LaTeX/theory_doc.tex``,
@@ -438,6 +439,74 @@ All parameters default to MOSEK's own defaults:
 ``MOSEK Assembly/Setup/Update/Solve/Extract`` separate problem assembly, task
 construction, numerical update, optimization and solution extraction.
 
+cuOpt backend (GPU)
+-------------------
+
+``solver.type = cuopt`` (:cpp:class:`CuoptSolver <cardillo::solver::CuoptSolver>`)
+solves exactly the problem Clarabel solves -- same assembler, same stacked form --
+with the barrier method of NVIDIA cuOpt (26.10.1 or newer) on the GPU. It is only
+compiled with ``-DCARDILLO_WITH_CUOPT=ON`` (see :doc:`../getting_started`) and needs
+an NVIDIA GPU at run time; without one, the constructor of the solver throws.
+
+cuOpt has no cone API: a second-order cone is the quadratic constraint
+:math:`z_1^2 + \dots + z_{d-1}^2 - z_0^2 \le 0` with the head bounded below by zero,
+and cuOpt returns no dual variables for problems with quadratic constraints. The
+backend therefore hands cuOpt the Wolfe dual of the standard form,
+
+.. math::
+
+   \min_{x,\,z}\ \tfrac12 x^\top P x + b^\top z
+   \quad\text{s.t.}\quad P x + A^\top z = -q,\qquad z \in \mathcal K^*,
+
+whose stationarity conditions are the KKT conditions above. The multipliers
+:math:`z` -- the scaled contact percussions and the negated bilateral percussions --
+are primal variables of the cuOpt problem, :math:`s = b - Ax` is computed
+afterwards, and the optimal value is minus that of the standard form.
+
+* cuOpt's objective :math:`x^\top Q x + c^\top x` has no factor :math:`\tfrac12`,
+  so :math:`Q = P/2`.
+* Zero columns of :math:`P` belong to the percussions of perfect constraints
+  (:math:`\hat C_{ii} = 0`). They enter neither :math:`A` nor the cost and are left
+  out. A variable without curvature that enters :math:`A` is rejected, because the
+  dual does not determine it. The mass block of :math:`P` is positive, so the
+  velocities are unique.
+* The problem is assembled on the CPU, copied to the GPU and solved cold every step:
+  cuOpt warm-starts only PDLP, and its C API has no in-place update. The constructor
+  runs a tiny solve, which takes the start-up cost of CUDA and cuDSS out of the
+  first step.
+
+``OPTIMAL`` is accepted. ``ITERATION_LIMIT``, ``TIME_LIMIT``, ``NUMERICAL_ERROR``
+and ``PRIMAL_FEASIBLE`` are accepted as inaccurate and counted (the count is
+printed at the end); every other status throws. Since cuOpt solves the dual, its
+``UNBOUNDED`` means that the contact problem is infeasible. With
+``debug.pj = true``, cuOpt's log is printed and every step reports the KKT residuals
+of the recovered solution (cone violations of :math:`s` and :math:`z`,
+stationarity, complementarity).
+
+The tolerances are ``ip.tol_abs`` and ``ip.tol_rel``; they set cuOpt's absolute and
+relative primal, dual and gap tolerances. Further keys, defaulting to cuOpt's own
+settings:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Key
+     - Meaning
+   * - ``cuopt.time_limit``
+     - Time limit per solve in seconds (``<= 0``: none)
+   * - ``cuopt.iteration_limit``
+     - Barrier iteration limit (``< 0``: cuOpt's default)
+   * - ``cuopt.presolve``
+     - ``default``, ``off``, ``papilo`` or ``pslp`` (``CUOPT_PRESOLVE``)
+   * - ``cuopt.deterministic``
+     - Deterministic cuDSS factorization (default ``off``)
+   * - ``cuopt.dump_dir``
+     - Directory for an MPS file of every failed solve (empty: off)
+
+The timers ``cuOpt Assembly/Setup/Solve/Extract`` separate problem assembly, the
+construction of the cuOpt problem, the GPU solve and the recovery of the solution.
+
 ConicXX compliant rows
 ----------------------
 
@@ -513,6 +582,9 @@ Limitations
   ConicXX does not have this limitation: it reuses its solver while the
   contact set is unchanged and warm-starts from velocities and matched impulses
   otherwise (see above).
+- **cuOpt: GPU only, cold starts.** cuOpt needs an NVIDIA GPU, runs on Linux
+  only, and its second-order cones are a beta feature; every solve starts cold and
+  pays for the transfer to the GPU, so small problems are faster on the CPU.
 - **No implicit gyroscopy** (``moreau.implicit_gyroscopy``). This setting is
   silently ignored by all three interior-point backends (the QP needs a
   symmetric mass matrix); use PJ or the condensed solver if you need it.

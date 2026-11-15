@@ -1,6 +1,7 @@
 # The engine library. Users include its headers as <cardillo/...>. Sources of the optional conic
 # backends (cardillo/physics/solver/conic/) are added only when their CARDILLO_WITH_<NAME> option is on;
-# their headers are private to the library.
+# their headers are private to the library. The translation of cone programs into cuOpt's form needs
+# no cuOpt and is always built, so that its tests run on every machine.
 set(CARDILLO_CONIC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cardillo/physics/solver/conic")
 
 file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cardillo/*.cpp")
@@ -8,17 +9,19 @@ file(GLOB_RECURSE CARDILLO_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 list(FILTER CARDILLO_SOURCES EXCLUDE REGEX "/physics/solver/conic/")
 list(FILTER CARDILLO_HEADERS EXCLUDE REGEX "/physics/solver/conic/")
 
-if(CARDILLO_WITH_CLARABEL OR CARDILLO_WITH_SCS)
-    # Cone program shared by Clarabel and SCS.
+list(APPEND CARDILLO_SOURCES "${CARDILLO_CONIC_DIR}/cuopt/cuopt_model.cpp")
+if(CARDILLO_WITH_CLARABEL OR CARDILLO_WITH_SCS OR CARDILLO_WITH_CUOPT)
+    # Cone program shared by Clarabel, SCS and cuOpt.
     list(APPEND CARDILLO_SOURCES "${CARDILLO_CONIC_DIR}/cone_program_assembler.cpp")
 endif()
-foreach(_backend CLARABEL QOCO CONICXX SCS MOSEK)
+foreach(_backend CLARABEL QOCO CONICXX SCS MOSEK CUOPT)
     if(CARDILLO_WITH_${_backend})
         string(TOLOWER ${_backend} _dir)
         file(GLOB _backend_sources CONFIGURE_DEPENDS "${CARDILLO_CONIC_DIR}/${_dir}/*.cpp")
         list(APPEND CARDILLO_SOURCES ${_backend_sources})
     endif()
 endforeach()
+list(REMOVE_DUPLICATES CARDILLO_SOURCES)
 
 add_library(cardillo SHARED ${CARDILLO_SOURCES})
 add_library(cardillo::cardillo ALIAS cardillo)
@@ -78,4 +81,13 @@ if(CARDILLO_WITH_MOSEK)
     get_filename_component(_mosek_lib_dir "${MOSEK_LIBRARY}" DIRECTORY)
     set_property(TARGET cardillo APPEND PROPERTY INSTALL_RPATH "${_mosek_lib_dir}")
     target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_MOSEK=1)
+endif()
+if(CARDILLO_WITH_CUOPT)
+    # Linked by file like MOSEK. Executables find libcuopt_mathopt through the RUNPATH of libcardillo,
+    # and it finds its CUDA libraries through its own RPATH.
+    target_link_libraries(cardillo PRIVATE $<BUILD_INTERFACE:${CUOPT_LIBRARY}>)
+    target_include_directories(cardillo SYSTEM PRIVATE ${CUOPT_INCLUDE_DIRS})
+    get_filename_component(_cuopt_lib_dir "${CUOPT_LIBRARY}" DIRECTORY)
+    set_property(TARGET cardillo APPEND PROPERTY INSTALL_RPATH "${_cuopt_lib_dir}")
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_CUOPT=1)
 endif()

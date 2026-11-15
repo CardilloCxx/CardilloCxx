@@ -1,4 +1,4 @@
-// Error of the convexified Coulomb law of the conic solvers (QOCO, Clarabel, ConicXX) for a solid
+// Error of the convexified Coulomb law of the conic solvers (QOCO, Clarabel, ConicXX, MOSEK, cuOpt) for a solid
 // sphere on a horizontal plane, against closed-form solutions of the discrete scheme (theory manual,
 // section "Second-order cone formulation of the one-step problem"). In every step with an active
 // contact, the conic solvers satisfy
@@ -22,6 +22,9 @@
 
 #include <cardillo/physics/api/physics_engine.hpp>
 #include <cardillo/physics/assembly/dynamics_assembler.hpp>
+#ifdef CARDILLO_HAVE_CUOPT
+#include "cuopt_gpu.hpp"
+#endif
 
 using namespace cardillo;
 using namespace cardillo::physics;
@@ -117,6 +120,8 @@ const char* name(config::SolverType s) {
             return "clarabel";
         case config::SolverType::Mosek:
             return "mosek";
+        case config::SolverType::Cuopt:
+            return "cuopt";
         default:
             return "conicxx";
     }
@@ -230,6 +235,12 @@ int main() {
 #endif
 #ifdef CARDILLO_HAVE_MOSEK
     solvers.push_back(SolverType::Mosek);
+#endif
+#ifdef CARDILLO_HAVE_CUOPT
+    if (cuopt_test::gpuAvailable("test_convexified_friction"))
+        solvers.push_back(SolverType::Cuopt);
+    else if (cuopt_test::gpuRequired())
+        ++g_failures;
 #endif
     for (SolverType solver : solvers) {
         try {

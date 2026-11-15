@@ -15,6 +15,14 @@ cardillo_add_test(test_convexified_friction test_convexified_friction.cpp)
 cardillo_add_test(test_rod_stiffness test_rod_stiffness.cpp)
 cardillo_add_test(test_convex_hull test_convex_hull.cpp)
 cardillo_add_test(test_config test_config.cpp)
+cardillo_add_test(test_cuopt_model test_cuopt_model.cpp)
+
+# cuOpt backend on small cone programs: needs an NVIDIA GPU and exits with 77 (skipped) without one,
+# unless CARDILLO_REQUIRE_GPU=1. `ctest -L gpu` runs only the GPU tests.
+if(CARDILLO_WITH_CUOPT)
+    cardillo_add_test(test_cuopt_solver test_cuopt_solver.cpp)
+    set_tests_properties(test_cuopt_solver PROPERTIES LABELS gpu SKIP_RETURN_CODE 77)
+endif()
 
 # MOSEK backend tests (cone programs against Clarabel and QOCO) and benchmark; they need a MOSEK
 # license at run time and use the backends' private headers.

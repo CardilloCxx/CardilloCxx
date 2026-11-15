@@ -17,7 +17,7 @@ enum class IntegratorType { Moreau };
 // with free bodies, kinematic drivers and prescribed rates all at t_{n+theta} = t_n + (1 - theta) h.
 // No initial multipliers, no drift, no stabilization parameter; perfect constraints require
 // theta > 1/2.
-enum class SolverType { ProjectedJacobi, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx, Scs, Mosek };
+enum class SolverType { ProjectedJacobi, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx, Scs, Mosek, Cuopt };
 enum class PjTerminationCriterion { VelocityRms, NaturalMap };
 enum class PjFinalCheck { None, NaturalMap };
 
@@ -185,6 +185,14 @@ struct Config {
     std::string scs_stats_csv{""};               // scs.stats_csv -- per-step SCS statistics (empty = off)
     std::string scs_dump_dir{""};                // scs.dump_dir -- write each step's cone program + warm start (see tests/conic_replay.cpp)
     int scs_dump_every{1};                       // scs.dump_every -- dump every N-th step
+
+    // cuOpt-only (solver.type = cuopt, requires -DCARDILLO_WITH_CUOPT=ON and an NVIDIA GPU). The
+    // tolerances are ip.tol_abs/ip.tol_rel; negative limits keep cuOpt's defaults.
+    real_t cuopt_time_limit{(real_t)-1};    // cuopt.time_limit [s] per solve
+    int cuopt_iteration_limit{-1};          // cuopt.iteration_limit
+    std::string cuopt_presolve{"default"};  // cuopt.presolve [default, off, papilo, pslp]
+    bool cuopt_deterministic{false};        // cuopt.deterministic -- deterministic cuDSS factorization
+    std::string cuopt_dump_dir{""};         // cuopt.dump_dir -- MPS file of every failed solve (empty = off)
 
     // Integrator selection
     IntegratorType integrator{IntegratorType::Moreau};

@@ -52,6 +52,9 @@ The conic solver backends are optional and off by default:
    * - ``CARDILLO_WITH_MOSEK``
      - OFF
      - MOSEK backend; needs a MOSEK installation and license (below)
+   * - ``CARDILLO_WITH_CUOPT``
+     - OFF
+     - cuOpt GPU backend; needs a cuOpt installation, and an NVIDIA GPU at run time (below)
    * - ``CARDILLO_BUILD_EXAMPLES``, ``CARDILLO_BUILD_TESTS``
      - ON when top level
      - Scene executables, tests
@@ -77,6 +80,21 @@ MOSEK is commercial and not fetched. Install it and its license, then configure 
 	curl -LO https://download.mosek.com/stable/11.2.5/mosektoolslinux64x86.tar.bz2
 	tar -xjf mosektoolslinux64x86.tar.bz2 -C ~
 	cp /path/to/mosek.lic ~/mosek/mosek.lic        # or set MOSEKLM_LICENSE_FILE
+
+NVIDIA cuOpt (26.10.1 or newer, Linux only) is not fetched either. Install its C API, e.g. with pip into a
+virtual environment (building needs no CUDA toolkit), and pass its location with ``-DCUOPT_ROOT=<dir>``
+(a virtual environment, its ``site-packages`` or a conda prefix; an activated environment is found
+without it):
+
+.. code-block:: bash
+
+	python3 -m venv ~/venvs/cuopt
+	~/venvs/cuopt/bin/pip install "libcuopt-mathopt-cu12==26.10.*"   # -cu13 for CUDA 13 drivers
+	cmake -S . -B build -DCARDILLO_WITH_CUOPT=ON -DCUOPT_ROOT=$HOME/venvs/cuopt
+
+Without a GPU everything builds and the tests skip their cuOpt checks (``CARDILLO_REQUIRE_GPU=1`` makes
+that a failure); ``solver.type = cuopt`` needs an NVIDIA GPU at run time. See
+:doc:`solvers/interior_point` for the formulation.
 
 Run an example
 --------------

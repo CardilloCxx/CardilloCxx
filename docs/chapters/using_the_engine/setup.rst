@@ -209,7 +209,7 @@ Solver selection and parameters
      - ``solver.type``
      - ``ProjectedJacobi``
      - Which contact solver to use (``pj``, ``condensed``, ``pgs``, ``naive_schur``,
-       ``qoco`` (alias ``ip``), ``clarabel``, ``conicxx``, ``scs``). The conic
+       ``qoco`` (alias ``ip``), ``clarabel``, ``conicxx``, ``scs``, ``cuopt``). The conic
        backends must be enabled with their CMake option
        (``CARDILLO_WITH_<NAME>``); selecting one that was not built throws.
    * - ``integrator``
@@ -368,6 +368,26 @@ prefixes as shown:
      - ``conicxx.validate_inputs``
      - ``true``
      - ConicXX: reject non-finite problem data.
+   * - ``cuopt_time_limit``
+     - ``cuopt.time_limit``
+     - ``-1``
+     - cuOpt: time limit per solve in seconds (``<= 0``: none).
+   * - ``cuopt_iteration_limit``
+     - ``cuopt.iteration_limit``
+     - ``-1``
+     - cuOpt: barrier iteration limit (``< 0``: cuOpt's default).
+   * - ``cuopt_presolve``
+     - ``cuopt.presolve``
+     - ``default``
+     - cuOpt: presolve, ``default``, ``off``, ``papilo`` or ``pslp``.
+   * - ``cuopt_deterministic``
+     - ``cuopt.deterministic``
+     - ``false``
+     - cuOpt: deterministic cuDSS factorization.
+   * - ``cuopt_dump_dir``
+     - ``cuopt.dump_dir``
+     - (empty)
+     - cuOpt: directory for an MPS file of every failed solve (empty: off).
 
 Scene selection
 ~~~~~~~~~~~~~~~

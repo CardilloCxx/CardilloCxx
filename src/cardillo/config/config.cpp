@@ -160,7 +160,7 @@ const std::unordered_map<std::string, Setter>& setters() {
             c.integrator = IntegratorType::Moreau;
         });
         add({"solver.type"}, [](Config& c, const std::string& v) {
-            const std::string s = parseChoice(v, {"projected_jacobi", "pj", "condensed", "projected_gauss_seidel", "pgs", "naive_schur", "qoco", "clarabel", "conicxx", "scs", "mosek"});
+            const std::string s = parseChoice(v, {"projected_jacobi", "pj", "condensed", "projected_gauss_seidel", "pgs", "naive_schur", "qoco", "clarabel", "conicxx", "scs", "mosek", "cuopt"});
             if (s == "projected_jacobi" || s == "pj")
                 c.solver = SolverType::ProjectedJacobi;
             else if (s == "condensed")
@@ -177,8 +177,10 @@ const std::unordered_map<std::string, Setter>& setters() {
                 c.solver = SolverType::Conicxx;
             else if (s == "scs")
                 c.solver = SolverType::Scs;
-            else
+            else if (s == "mosek")
                 c.solver = SolverType::Mosek;
+            else
+                c.solver = SolverType::Cuopt;
         });
 
         // Condensed solver
@@ -239,6 +241,13 @@ const std::unordered_map<std::string, Setter>& setters() {
         add({"scs.stats_csv"}, text(&Config::scs_stats_csv));
         add({"scs.dump_dir"}, text(&Config::scs_dump_dir));
         add({"scs.dump_every"}, intMin(&Config::scs_dump_every, 1));
+
+        // cuOpt backend (negative limits keep cuOpt's own defaults)
+        add({"cuopt.time_limit"}, real(&Config::cuopt_time_limit));
+        add({"cuopt.iteration_limit"}, integer(&Config::cuopt_iteration_limit));
+        add({"cuopt.presolve"}, choice(&Config::cuopt_presolve, {"default", "off", "papilo", "pslp"}));
+        add({"cuopt.deterministic"}, boolean(&Config::cuopt_deterministic));
+        add({"cuopt.dump_dir"}, text(&Config::cuopt_dump_dir));
 
         // Time integration and simulation
         add({"moreau.theta", "solver.theta"}, [](Config& c, const std::string& v) {

@@ -8,8 +8,8 @@ bodies with frictional contact, integrated by a Moreau-θ time-stepping scheme w
 </p>
 
 The build produces the shared library `libcardillo` (headers included as `<cardillo/...>`), one
-executable per example scene and the tests. The conic solver backends QOCO, Clarabel, ConicXX, SCS and
-MOSEK are optional.
+executable per example scene and the tests. The conic solver backends QOCO, Clarabel, ConicXX, SCS,
+MOSEK and cuOpt are optional.
 
 ## Prerequisites
 
@@ -18,7 +18,8 @@ MOSEK are optional.
   ParaView package that ships its own VTK also works and conflicts with `libvtk9-dev`)
 - Boost, Assimp and Octomap development packages (needed by Coal)
 - OpenMP (optional)
-- Rust/cargo, only for the Clarabel backend; a MOSEK installation and license, only for MOSEK
+- Rust/cargo, only for the Clarabel backend; a MOSEK installation and license, only for MOSEK; a cuOpt
+  installation (and an NVIDIA GPU to run it), only for cuOpt
 
 Eigen 5 and EnTT are used from an installation if CMake finds them, otherwise they are fetched. Coal
 is fetched from the fork [41pha1/coal](https://github.com/41pha1/coal), which adds the custom shapes
@@ -52,6 +53,7 @@ Selecting a backend in a scene config that was not built throws a runtime error 
 | `CARDILLO_WITH_CONICXX` | OFF | ConicXX interior-point backend |
 | `CARDILLO_WITH_SCS` | OFF | SCS ADMM backend |
 | `CARDILLO_WITH_MOSEK` | OFF | MOSEK interior-point backend (needs MOSEK and a license, see below) |
+| `CARDILLO_WITH_CUOPT` | OFF | cuOpt GPU barrier backend (needs cuOpt; an NVIDIA GPU at run time, see below) |
 | `CARDILLO_SCS_OPENMP` | ON | Build SCS with OpenMP-parallel cone projections |
 | `CARDILLO_BUILD_EXAMPLES` | ON if top level | Build the scene executables |
 | `CARDILLO_BUILD_TESTS` | ON if top level | Build the tests |
@@ -74,6 +76,26 @@ cmake -S . -B build -DCARDILLO_WITH_MOSEK=ON   # add -DMOSEK_ROOT=<dir> for othe
 
 With Clarabel and QOCO also enabled, `mosek_tests` (ctest) and `build/tests/mosek_benchmark` compare
 MOSEK on cone programs against them.
+
+### cuOpt
+
+NVIDIA cuOpt (26.10.1 or newer) solves the cone program with its barrier method on the GPU (Linux only).
+It is not fetched; install its C API, e.g. with pip into a virtual environment. Building needs no CUDA
+toolkit:
+
+```bash
+python3 -m venv ~/venvs/cuopt
+~/venvs/cuopt/bin/pip install "libcuopt-mathopt-cu12==26.10.*"   # libcuopt-mathopt-cu13 for CUDA 13 drivers
+cmake -S . -B build -DCARDILLO_WITH_CUOPT=ON -DCUOPT_ROOT=$HOME/venvs/cuopt
+```
+
+`CUOPT_ROOT` may also be a conda prefix (package `libcuopt-mathopt` from the `nvidia` and `rapidsai`
+channels); an activated virtual or conda environment is found without it. Building and testing work
+without a GPU: `test_cuopt_solver` (ctest label `gpu`) is then skipped and the physics tests skip their
+cuOpt runs; `CARDILLO_REQUIRE_GPU=1` turns a missing GPU into a test failure. Running `solver.type = cuopt`
+needs an NVIDIA GPU (compute capability ≥ 7.0) with a driver for the package's CUDA major version.
+Limits: second-order cones are a beta feature of cuOpt, every solve starts cold, and the problem is copied
+to the GPU each step, so small scenes are faster with the CPU solvers.
 
 ## Run a scene
 

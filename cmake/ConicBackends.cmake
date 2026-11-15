@@ -72,6 +72,16 @@ if(CARDILLO_WITH_MOSEK)
     message(STATUS "Using MOSEK ${MOSEK_VERSION} (${MOSEK_LIBRARY})")
 endif()
 
+# cuOpt: only the C API of the mathematical-optimization component is used. Its header needs no CUDA
+# toolkit; libcuopt_mathopt finds its CUDA libraries itself (RPATH of the pip package, conda prefix).
+if(CARDILLO_WITH_CUOPT)
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        message(FATAL_ERROR "CARDILLO_WITH_CUOPT: cuOpt is only available for Linux")
+    endif()
+    find_package(CUOPT 26.10.1 REQUIRED)
+    message(STATUS "Using cuOpt ${CUOPT_VERSION} (${CUOPT_LIBRARY})")
+endif()
+
 # The backends' headers are included by our sources; their warnings are not ours to fix.
 foreach(_target libclarabel_c_shared conicxx scsdir)
     if(TARGET ${_target})
