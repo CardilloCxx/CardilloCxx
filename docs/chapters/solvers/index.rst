@@ -111,15 +111,22 @@ spurious percussion on a separating contact the velocity
 :math:`\lambda_b/\rho_b` it would cause with the step :math:`\rho_b`. The
 natural map is used in two places.
 
-**Stopping test** (``solver.criterion = natural_map``, projected Jacobi). A
-projection step of the solver, :math:`\lambda_b^+ = -\mathrm{proj}_C(\rho_b\xi_b - \lambda_b)`
-with its own step :math:`\rho_b = \alpha R_b`, already evaluates the natural map
-at its input in the Alart–Curnier form, which has the same zeros:
+**Stopping test** (``solver.criterion = natural_map``; projected Jacobi,
+projected Gauss-Seidel, condensed). A projection step of the solver,
+:math:`\lambda_b^+ = -\mathrm{proj}_C(\rho_b\xi_b - \lambda_b)` with its own
+step :math:`\rho_b` (PJ: :math:`\alpha R_b`, PGS and condensed:
+:math:`\sigma\alpha P_b`), already evaluates the natural map at its input in
+the Alart–Curnier form, which has the same zeros:
 :math:`r_b = (\lambda_b - \lambda_b^+)/\rho_b` (both tangential rows need the
 same step). The test costs a few operations per contact inside the projection
-loop (``misc::naturalMapError2``) and is evaluated in every sweep. It scales
-the normal and the tangential part separately, so that a normal error is not
-hidden behind a large slip:
+loop (``misc::naturalMapError2``) and is evaluated in every sweep. The
+Gauss-Seidel sweeps of PGS and condensed measure each block at the state of
+its own update, which already contains the updates of the blocks before it;
+the measure is zero exactly at the fixed point. A block solved by the local
+Newton method (``condensed.local_solve = newton``) has no step and is measured
+by :math:`G_{bb}(\lambda_b - \lambda_b^+)`, the velocity change of its update.
+The test scales the normal and the tangential part separately, so that a
+normal error is not hidden behind a large slip:
 
 .. math::
 
@@ -128,7 +135,14 @@ hidden behind a large slip:
    \frac{\lVert r_{b,T}\rVert}{\varepsilon_\mathrm{abs} + \varepsilon_\mathrm{rel}\lVert\xi_{b,T}\rVert}
    \right) \le 1 ,
 
-with ``pj.tol_abs`` and ``pj.tol_rel`` in velocity units.
+with ``pj.tol_abs`` and ``pj.tol_rel`` in velocity units. PGS and condensed
+without ``condensed.true_schur`` also iterate the spring and damper rows. For
+them the increment divided by the step is the row residual
+:math:`r_i = W_i^\top u + b_i + c_i\lambda_i`, scaled with the row velocity
+:math:`|W_i^\top u + b_i|` in place of :math:`|\xi_{b,N}|` (for a perfect
+constraint, :math:`c_i = 0`, this is the residual itself, so the absolute
+tolerance dominates). Naive Schur and the conic backends stop on their own
+criterion and warn if ``natural_map`` is selected.
 
 **Final check** (``solver.final_check = natural_map``, every solver). After every
 step, the time integrator evaluates the natural map of the stored percussions

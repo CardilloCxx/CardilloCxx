@@ -1,7 +1,8 @@
 // Natural map of the contact law: the common measure of the final check (solver/natural_map.hpp),
 // zero exactly at solutions of Coulomb's and of the convexified law, its values for known
 // violations and invariances; the stopping test of the projection solvers with their own step
-// (misc::naturalMapError2); projected Jacobi stopping on it, checked by the final check.
+// (misc::naturalMapError2); projected Jacobi, projected Gauss-Seidel and the condensed solver
+// stopping on it, checked by the final check.
 
 #include <cmath>
 #include <filesystem>
@@ -179,6 +180,66 @@ void testProjectedJacobiNaturalMap(bool blockPreconditioner, real_t alpha, bool 
     }
 }
 
+// The ball of testProjectedJacobiNaturalMap() with projected Gauss-Seidel and the condensed solver:
+// they stop on the natural map of each block update (with the solver's step, or G_ii times the
+// increment after a Newton local solve), at the state of that update.
+void testBlockSolverNaturalMap(config::SolverType solver, bool nesterov, const std::string& sweepMode, const std::string& localSolve) {
+    const std::string tag = std::string(solver == config::SolverType::ProjectedGaussSeidel ? "PGS" : "condensed " + sweepMode + " " + localSolve) + (nesterov ? ", Nesterov" : ", standard loop");
+    config::Config cfg = ballConfig();
+    cfg.solver = solver;
+    cfg.solver_criterion = config::TerminationCriterion::NaturalMap;
+    cfg.solver_final_check = config::FinalCheck::NaturalMap;
+    cfg.pj_nesterov = nesterov;
+    cfg.condensed_sweep_mode = sweepMode;
+    cfg.condensed_local_solve = localSolve;
+    cfg.pj_tol_abs = 1e-9;
+    cfg.pj_tol_rel = 1e-9;
+
+    physics::PhysicsEngine engine(cfg);
+    engine.addStaticBody(physics::PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), 5, 5), physics::RigidState{});
+    engine.addRigidBody(physics::SphereShape(0.5), physics::RigidState(Vector3r(0, 0, 0.5 - 1e-6), Vector3r(1, 0, 0)), physics::RigidProps(1));
+    while (!engine.isFinished()) {
+        engine.step();
+        const auto& result = engine.lastStepResidual();
+        check(result.has_value() && !engine.dynamicsAssembler().contacts().empty(), tag + ": active contact, final check evaluated");
+        if (!result) return;
+        std::ostringstream value;
+        value << result->contact;
+        check(result->contact < 2e-9, tag + ": final natural map within the tolerance (" + value.str() + " m/s)");
+    }
+}
+
+// Double pendulum on perfect distance constraints, no contacts: projected Gauss-Seidel and the
+// condensed solver without true_schur iterate the constraint rows, so the natural-map stop must
+// cover them (their residual W^T u + b, scaled with W^T u + b), or it would stop after one sweep.
+void testBilateralRowsNaturalMap(config::SolverType solver) {
+    const std::string tag = solver == config::SolverType::ProjectedGaussSeidel ? "PGS double pendulum" : "condensed double pendulum";
+    config::Config cfg = ballConfig();
+    cfg.solver = solver;
+    cfg.condensed_true_schur = false;
+    cfg.collision_disable_all = true;
+    cfg.solver_criterion = config::TerminationCriterion::NaturalMap;
+    cfg.solver_final_check = config::FinalCheck::NaturalMap;
+    cfg.pj_tol_abs = 1e-9;
+    cfg.pj_tol_rel = 1e-9;
+
+    physics::PhysicsEngine engine(cfg);
+    const auto anchor = engine.addStaticBody(physics::SphereShape(0.01), physics::RigidState{});
+    const auto first = engine.addPointMass(1.0, Vector3r(1, 0, 0), Vector3r::Zero(), 0.01);
+    const auto second = engine.addPointMass(2.0, Vector3r(2, 0, 0), Vector3r::Zero(), 0.01);
+    engine.addLinearDistanceConstraint(anchor, first, Vector3r::Zero(), Vector3r::Zero(), std::numeric_limits<real_t>::infinity(), 0.0, 1.0);
+    engine.addLinearDistanceConstraint(first, second, Vector3r::Zero(), Vector3r::Zero(), std::numeric_limits<real_t>::infinity(), 0.0, 1.0);
+    while (!engine.isFinished()) {
+        engine.step();
+        const auto& result = engine.lastStepResidual();
+        check(result.has_value(), tag + ": final check evaluated");
+        if (!result) return;
+        std::ostringstream value;
+        value << result->bilateral;
+        check(result->bilateral < 1e-8, tag + ": constraint rows converged (" + value.str() + " m/s)");
+    }
+}
+
 // Final check disabled: nothing is stored. Enabled on a pendulum (perfect distance constraint, no
 // contacts): the bilateral rows are solved exactly by PJ.
 void testFinalCheckOptions() {
@@ -233,6 +294,14 @@ int main() {
     testProjectedJacobiNaturalMap(true, 0.3, true);
     testProjectedJacobiNaturalMap(false, 0.02, true);
     testProjectedJacobiNaturalMap(false, 0.02, false);
+    for (bool nesterov : {true, false}) {
+        testBlockSolverNaturalMap(config::SolverType::ProjectedGaussSeidel, nesterov, "gauss_seidel", "projection");
+        testBlockSolverNaturalMap(config::SolverType::Condensed, nesterov, "gauss_seidel", "projection");
+    }
+    testBlockSolverNaturalMap(config::SolverType::Condensed, true, "colored", "projection");
+    testBlockSolverNaturalMap(config::SolverType::Condensed, true, "gauss_seidel", "newton");
+    testBilateralRowsNaturalMap(config::SolverType::ProjectedGaussSeidel);
+    testBilateralRowsNaturalMap(config::SolverType::Condensed);
     testFinalCheckOptions();
     testConfigParsing();
     if (failures == 0) std::cout << "test_natural_map: all checks passed\n";

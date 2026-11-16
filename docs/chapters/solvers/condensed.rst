@@ -727,32 +727,34 @@ Nesterov acceleration
 
 Both sweep modes support Nesterov (FISTA-style) momentum acceleration via the
 standard ``pj.nesterov`` / ``pj.nesterov_beta_threshold`` /
-``pj.nesterov_restart_limit`` keys, the same ones PJ and PGS read. It is
-implemented once, generically: a ``doSweep(lambda, du)`` closure dispatches to
-whichever sweep mode is configured, and the Nesterov loop only
-extrapolates/restarts the outer ``(lambda, du)`` state between calls to it --
-it has no knowledge of the sweep internals.
+``pj.nesterov_restart_limit`` keys, the same ones PJ and PGS read. PJ, PGS and
+condensed share one implementation, ``solver::nesterovIterate()``
+(``solver/nesterov.hpp``): a ``sweep()`` closure dispatches to whichever sweep
+mode is configured, and the loop only extrapolates/restarts the outer
+``(du, lambda)`` state between calls to it, rotating its buffers by swapping.
+With ``solver.criterion = natural_map`` the sweeps measure the natural map of
+every block update (see :doc:`index`, section *Accuracy measure*); under
+``condensed.true_schur`` only the contact blocks, whose bilateral rows are
+solved exactly.
 
 .. note::
    The reported iteration count (``iters=`` in the progress bar/logs, backed
    by ``SolverBase::lastIterations()``) counts exactly one call to
-   ``doSweep()``/``exactBilateralStep()`` per unit; every loop variant (PGS's
-   plain/Nesterov branches, PJ's ``nesterov_loop``/``chebyshev_loop``/
-   ``anderson_loop``, ``condensed``'s own branches) calls its sweep function
-   exactly once per outer iteration. This matters if you use iteration counts
+   ``sweep()``/``exactBilateralStep()`` per unit; every loop variant (the shared
+   Nesterov loop, PJ's ``chebyshev_loop``/``anderson_loop``, the plain and
+   Chebyshev loops of PGS and condensed) calls its sweep function exactly once
+   per outer iteration. This matters if you use iteration counts
    to characterize how much work an exact ``true_schur`` solve needs (see the
    note in `True Schur-complement elimination of the compliant chain
    (condensed.true_schur)`_ above).
 
 .. note::
-   On a non-finite residual the Nesterov loop restarts and, if needed,
-   disables momentum, the same way it reacts to a growing residual (as PJ's
-   ``nesterov_loop()``). It raises ``std::runtime_error`` only once momentum is
-   fully disabled and the plain sweep output itself is still non-finite. The
-   freshly extrapolated state is also checked for finiteness before it is fed
-   into the next sweep (``betak1`` is bounded to ``[0,1]``, but the
-   extrapolated vector's magnitude is not). If a scene diverges, retune
-   ``pj.alpha`` first; Nesterov is not the cause of a sweep instability.
+   If a sweep from an extrapolated point gives non-finite values (``beta`` is
+   bounded to ``[0,1]``, but the extrapolated vector's magnitude is not), the
+   Nesterov loop continues from the last iterate without momentum. It raises
+   ``std::runtime_error`` only when a sweep from a non-extrapolated point is
+   non-finite. If a scene diverges, retune ``pj.alpha`` first; Nesterov is not
+   the cause of a sweep instability.
 
 Chebyshev acceleration
 ------------------------

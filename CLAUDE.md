@@ -80,11 +80,12 @@ factorization of the bilateral saddle-point system, projected iteration on conta
 subsystem exactly, needed for stiff rods; sweep modes `gauss_seidel`, `colored`). Test and validate
 mainly with these two. PGS and naive Schur are small reference solvers; QOCO, Clarabel, ConicXX,
 SCS and MOSEK are optional convexified/test backends. Accuracy is measured with the natural map of the
-contact law (velocity units): PJ stops on it with its own step inside the projection loop
+contact law (velocity units): PJ, PGS and condensed stop on it with their own step inside the projection loops
 (`solver.criterion = natural_map`, `misc::naturalMapError2`); `solver.final_check = natural_map` evaluates it
 after every step for any solver with a common step (`solver/natural_map.hpp`, De Saxcé form, the conic
 backends against their convexified law) and reports raw residuals. Solvers read and store contact
-percussions with `DynamicsAssembler::contactPercussions()`/`setContactPercussions()`.
+percussions with `DynamicsAssembler::contactPercussions()`/`setContactPercussions()`. PJ, PGS and condensed
+share one Nesterov loop, `solver::nesterovIterate()` (`solver/nesterov.hpp`).
 
 **Constraints** (`src/cardillo/physics/constraints`): `getConstraint()` returns a `ConstraintResult`
 (Jacobian columns `WgA/WgB`, compliances `Crows/Arows`, `positionError`, prescribed rate). Main
@@ -110,7 +111,7 @@ registered with `cardillo_add_scene_example(...)` in `examples/CMakeLists.txt`; 
 `test_beam_rest_configuration`, `test_position_level` (all solvers), `test_torsional_oscillator`
 (closed-form solution, convergence order), `test_condensed_true_schur` (condensed vs. PJ),
 `test_convexified_friction` (convexified Coulomb law of the conic solvers vs. closed form),
-`test_natural_map` (natural map of the contact law, PJ stopping on it, final check).
+`test_natural_map` (natural map of the contact law, PJ/PGS/condensed stopping on it, final check).
 
 ## Design decisions (do not undo without discussion)
 

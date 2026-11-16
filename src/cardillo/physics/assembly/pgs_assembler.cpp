@@ -149,8 +149,12 @@ BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
         Dinv.addBlockDiag(VectorXr::Constant(1, Dii > 0 ? 1.0 / Dii : 0));
     }
 
+    // Both tangential rows of a frictional contact get the same step 1/mean(D_t1t1, D_t2t2): with
+    // different tangential steps the fixed point of the projection satisfies a distorted friction law
+    // (see misc/contact_rho.hpp).
     for (int cid = nFrictionless; cid < nFrictionless + 3 * m_dyn->numFrictionalContacts(); cid += 3) {
-        VectorXr Dii = D_diag.segment(offset + cid, 3);
+        Vector3r Dii = D_diag.segment<3>(offset + cid);
+        Dii[1] = Dii[2] = (real_t)0.5 * (Dii[1] + Dii[2]);
         Dinv.addBlockDiag(Dii.cwiseInverse());
     }
     Dinv.calcDiag();

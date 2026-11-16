@@ -226,7 +226,7 @@ Solver selection and parameters
    * - ``solver_criterion``
      - ``solver.criterion``
      - ``velocity_rms``
-     - Stopping measure: ``velocity_rms`` (increment of the velocities) or ``natural_map`` (natural map of the contact law, see the solver overview). ``natural_map`` is supported by projected Jacobi; the other solvers warn and stop on their own criterion.
+     - Stopping measure: ``velocity_rms`` (increment of the velocities) or ``natural_map`` (natural map of the contact law, see the solver overview). ``natural_map`` is supported by projected Jacobi, projected Gauss-Seidel and condensed; the other solvers warn and stop on their own criterion.
    * - ``solver_final_check``
      - ``solver.final_check``
      - ``none``
@@ -234,7 +234,7 @@ Solver selection and parameters
    * - ``pj_tol_abs``
      - ``solver.tol_abs``
      - ``1e-5``
-     - Absolute convergence tolerance for the selected PJ criterion (``natural_map``: m/s).
+     - Absolute convergence tolerance for the selected criterion (``natural_map``: m/s).
    * - ``pj_tol_rel``
      - ``solver.tol_rel``
      - ``1e-5``

@@ -19,6 +19,7 @@ class CondensedSolver : public SolverBase {
 
     VectorXr solve(real_t dt, real_t theta) override;
     const char* name() const override { return "Condensed"; }
+    bool stopsOnNaturalMap() const override { return true; }
 
    private:
     physics::DynamicsAssembler& m_dyn;

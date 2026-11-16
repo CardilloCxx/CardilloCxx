@@ -23,6 +23,7 @@ class ProjectedGaussSeidelSolver : public SolverBase {
 
     /// Solver name used in diagnostics and logs.
     const char* name() const override { return "ProjectedGaussSeidel"; }
+    bool stopsOnNaturalMap() const override { return true; }
 
    private:
     physics::DynamicsAssembler& m_dyn;
