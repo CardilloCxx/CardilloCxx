@@ -94,9 +94,14 @@ How it solves
        I -- Yes --> J[Store impulses for warmstart, return v]
 
 **Free-motion solve**
-   S is assembled once and factorised with a sparse LU. The free-motion velocity
-   is the solution when no contacts are active. If there are no contacts the
-   solver returns immediately.
+   S is assembled once per step and factorised with a sparse LU. Its sparsity
+   pattern, and with it the symbolic analysis of the factorization
+   (``analyzePattern``), is kept between steps: only the values change, until an
+   entry becomes nonzero for the first time or bodies, constraints or used rows
+   change (``misc::FixedPatternMatrix``, also used for the spring and damper rows
+   :math:`W_g`, :math:`W_\gamma` of the ``DynamicsAssembler``). The free-motion
+   velocity is the solution when no contacts are active. If there are no contacts
+   the solver returns immediately.
 
 **Jacobi sweep**
    Each iteration updates all impulse components simultaneously (in parallel,

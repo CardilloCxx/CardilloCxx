@@ -1,7 +1,5 @@
 #include "pj_assembler.hpp"
 
-#include <algorithm>
-#include <cstdlib>
 #include <iostream>
 
 namespace cardillo::physics::assembly {
@@ -10,24 +8,26 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro) {
     auto sc = m_dyn->timings()->scope(misc::TimingManager::TimerId::BuildAndFactorS);
 
     const int totalV = (m_dyn->bodyVelOffsets().empty() ? 0 : m_dyn->bodyVelOffsets().back());
-    const int nSprings = m_dyn->Wg().nRows();
-    const int nDampers = m_dyn->Wgamma().nRows();
+    const CscMatrix& Wg = m_dyn->Wg();
+    const CscMatrix& Wgamma = m_dyn->Wgamma();
+    const int nSprings = (int)Wg.rows();
+    const int nDampers = (int)Wgamma.rows();
     const int extV = totalV + nSprings + nDampers;
 
     if (extV == 0) {
         m_S_sparse_lu.reset();
-        m_S = TripletMatrix::zero(0, 0);
         return true;
     }
 
-    std::vector<Eigen::Triplet<real_t>> mTrips;
-    mTrips.reserve(static_cast<std::size_t>(totalV) + 64);
-
-    // Top-left: M diagonal
-    for (int i = 0; i < totalV; ++i) {
-        real_t mval = m_dyn->MDiag()[i];
-        if (mval != (real_t)0) mTrips.emplace_back(i, i, mval);
-    }
+    // Saddle-point matrix of the theory manual (eq:saddle_point) in (u, pi_g, pi_gamma), pi = h*lambda:
+    //   [ M_eff  -W_g          -W_gamma        ]
+    //   [ -W_g^T -C/(th^2 h^2)  0              ]
+    //   [ -W_gamma^T  0        -A/(th h)       ]
+    // The entries are added in the same order every step, zeros included; the pattern of S, and with
+    // it the analysis of its factorization, changes only when an entry becomes nonzero for the first
+    // time or the structure changes (see misc::FixedPatternMatrix).
+    m_S.begin(extV);
+    for (int i = 0; i < totalV; ++i) m_S.add(i, i, m_dyn->MDiag()[i]);
 
     // Optionally include linearized gyroscopic term in the system matrix.
     // This adds -dt * G(omega_n) to each rigid body's rotational 3x3 block and breaks symmetry.
@@ -50,56 +50,44 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro) {
             // G_rot = 0.5 * ( [I*omega]_x - [omega]_x * I )
             const Matrix33r Grot = (real_t)0.5 * (IomegaSkew - omegaSkew * I.asDiagonal());
             const Matrix33r corr = -dt * Grot;  // M_eff = M - dt*G
+            for (int r = 0; r < 3; ++r)
+                for (int c = 0; c < 3; ++c) m_S.add(off + 3 + r, off + 3 + c, corr(r, c));
+        }
+    }
 
-            for (int r = 0; r < 3; ++r) {
-                for (int c = 0; c < 3; ++c) {
-                    const real_t val = corr(r, c);
-                    if (val != (real_t)0) mTrips.emplace_back(off + 3 + r, off + 3 + c, val);
-                }
+    // -W_g / -W_gamma below and their transposes beside the mass block
+    auto addRows = [&](const CscMatrix& rows, int rowOffset) {
+        for (int col = 0; col < rows.outerSize(); ++col) {
+            for (CscMatrix::InnerIterator it(rows, col); it; ++it) {
+                m_S.add(rowOffset + it.row(), col, -it.value());
+                m_S.add(col, rowOffset + it.row(), -it.value());
             }
         }
-    }
-
-    const TripletMatrix Mblk(totalV, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(mTrips)));
+    };
+    addRows(Wg, totalV);
+    addRows(Wgamma, totalV + nSprings);
     const real_t cScale = -DynamicsAssembler::springComplianceScale(dt, theta);
     const real_t aScale = -DynamicsAssembler::damperComplianceScale(dt, theta);
+    for (int i = 0; i < nSprings; ++i) m_S.add(totalV + i, totalV + i, cScale * m_dyn->Cdiag()[i]);
+    for (int i = 0; i < nDampers; ++i) m_S.add(totalV + nSprings + i, totalV + nSprings + i, aScale * m_dyn->Adiag()[i]);
+    const bool patternChanged = m_S.finish(extV);
+    const CscMatrix& S = m_S.matrix();
 
-    // Saddle-point matrix of the theory manual (eq:saddle_point) in (u, pi_g, pi_gamma), pi = h*lambda:
-    //   [ M_eff  -W_g          -W_gamma        ]
-    //   [ -W_g^T -C/(th^2 h^2)  0              ]
-    //   [ -W_gamma^T  0        -A/(th h)       ]
-    const TripletMatrix top = Mblk | (m_dyn->Wg().T() * (real_t)-1) | (m_dyn->Wgamma().T() * (real_t)-1);
-    const TripletMatrix mid = (m_dyn->Wg() * (real_t)-1) | (TripletMatrix::fromDiag(m_dyn->Cdiag()) * cScale) | TripletMatrix::zero(nSprings, nDampers);
-    const TripletMatrix bot = (m_dyn->Wgamma() * (real_t)-1) | TripletMatrix::zero(nDampers, nSprings) | (TripletMatrix::fromDiag(m_dyn->Adiag()) * aScale);
-
-    m_S = top.vConcat(mid).vConcat(bot);
-    const auto& S_sparse = m_S.asSparse();
-
+    // Factorize using SparseLU; analyzePattern() (fill-reducing ordering, symbolic elimination) only
+    // after a change of the pattern.
     const bool wantSymmetric = !implicitGyro;
-    // S_sparse is compressed (asSparse() calls makeCompressed()), so outer/inner index arrays fully
-    // describe its nonzero pattern -- comparing them is O(nnz), far cheaper than re-running
-    // analyzePattern's fill-reducing ordering + symbolic elimination.
-    const bool patternMatches = m_hasCachedPattern && m_S_sparse_lu.has_value() && wantSymmetric == m_cachedIsSymmetric && S_sparse.rows() == m_cachedRows && S_sparse.cols() == m_cachedCols &&
-                                 std::equal(S_sparse.outerIndexPtr(), S_sparse.outerIndexPtr() + S_sparse.outerSize() + 1, m_cachedOuterIndex.begin(), m_cachedOuterIndex.end()) &&
-                                 std::equal(S_sparse.innerIndexPtr(), S_sparse.innerIndexPtr() + S_sparse.nonZeros(), m_cachedInnerIndex.begin(), m_cachedInnerIndex.end());
-
-    if (getenv("CARDILLO_DEBUG_PJ_PATTERN_CACHE")) {
-        static int hits = 0, misses = 0;
-        (patternMatches ? hits : misses)++;
-        std::cout << "[PjPatternCache] " << (patternMatches ? "HIT" : "MISS") << " hits=" << hits << " misses=" << misses << std::endl;
-    }
-
-    // Factorize using SparseLU
+    const bool analyze = patternChanged || !m_S_sparse_lu.has_value() || wantSymmetric != m_analyzedSymmetric;
+    if (analyze && m_cfg.solver_verbosity >= 2) std::cout << "[PJ] analyzing the pattern of S: n = " << S.rows() << ", nnz = " << S.nonZeros() << std::endl;
     try {
-        if (!patternMatches) {
+        if (analyze) {
             m_S_sparse_lu.emplace();
             m_S_sparse_lu->isSymmetric(wantSymmetric);
-            m_S_sparse_lu->analyzePattern(S_sparse);
+            m_S_sparse_lu->analyzePattern(S);
+            m_analyzedSymmetric = wantSymmetric;
         }
-        m_S_sparse_lu->factorize(S_sparse);
+        m_S_sparse_lu->factorize(S);
         if (m_S_sparse_lu->info() != Eigen::Success) {
             m_S_sparse_lu.reset();
-            m_hasCachedPattern = false;
             std::cout << "PjAssembler::buildAndFactorS: SparseLU factorization failed\n";
             return false;
         } else if (m_cfg.debug_rb) {
@@ -110,17 +98,7 @@ bool PjAssembler::buildAndFactorS(real_t dt, real_t theta, bool implicitGyro) {
             std::cout << "[PjAssembler] Exception during SparseLU: " << ex.what() << '\n';
         }
         m_S_sparse_lu.reset();
-        m_hasCachedPattern = false;
         return false;
-    }
-
-    if (!patternMatches) {
-        m_cachedIsSymmetric = wantSymmetric;
-        m_cachedRows = S_sparse.rows();
-        m_cachedCols = S_sparse.cols();
-        m_cachedOuterIndex.assign(S_sparse.outerIndexPtr(), S_sparse.outerIndexPtr() + S_sparse.outerSize() + 1);
-        m_cachedInnerIndex.assign(S_sparse.innerIndexPtr(), S_sparse.innerIndexPtr() + S_sparse.nonZeros());
-        m_hasCachedPattern = true;
     }
     return true;
 }
