@@ -4,8 +4,6 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "../../warmstart.hpp"
-
 namespace cardillo::solver {
 
 ScsSolver::ScsSolver(physics::DynamicsAssembler& dyn, const config::Config& cfg) : m_dyn(dyn), m_assembler(m_dyn), m_cfg(cfg) {
@@ -64,9 +62,7 @@ void ScsSolver::fillWarmStart(const SparseMatrix<Eigen::ColMajor>& A, const Vect
         y.segment(nS, nD) = -m_dyn.Lambda_gamma();
     }
 
-    VectorXr impulse = VectorXr::Zero(nC);
-    WarmstartProvider::applyWarmstart(impulse, m_dyn);
-    y.tail(nC) = impulse.cwiseQuotient(Smu);
+    y.tail(nC) = m_dyn.contactPercussions().cwiseQuotient(Smu);
     scs::projectOntoCones(y, m_dims);
 
     s = b - A * x;
@@ -163,7 +159,7 @@ VectorXr ScsSolver::solve(real_t dt, real_t theta) {
     const VectorXr& x = m_solver.x();
     const int nC = m_dyn.numContactRows();
     VectorXr impulse = m_solver.y().tail(nC).cwiseProduct(Smu);
-    WarmstartProvider::storeImpulse(impulse, m_dyn);
+    m_dyn.setContactPercussions(impulse);
 
     const int nV = static_cast<int>(m_dyn.numV());
     const int nSprings = m_dyn.numSprings();

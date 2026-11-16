@@ -8,7 +8,6 @@
 #include "assets/assets.hpp"
 #include "constraints/constraint_factory.hpp"
 #include "constraints/constraints.hpp"
-#include "solver/warmstart.hpp"
 #include "synchronization/derived_entity_sync.hpp"
 
 namespace cardillo {

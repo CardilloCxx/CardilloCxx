@@ -115,8 +115,14 @@ class DynamicsAssembler {
     void setLambda_g(const VectorXr& lam);
     void setLambda_gamma(const VectorXr& lam) { m_Lambda_gamma = lam; }
 
+    // Contact percussions in the row order of W(): Contact::last_impulse = (pn, pt1, pt2) of every
+    // contact with rows (pn only for frictionless contacts). Before the solve of a step they are the
+    // percussions of the previous step for the contacts the tracker matched (zero for new contacts),
+    // the warm start; every solver stores its result with setContactPercussions().
+    VectorXr contactPercussions() const;
+    void setContactPercussions(const VectorXr& percussions);
+
     std::vector<collision::Contact>* m_contacts_ptr{nullptr};
-    void setContactLastImpulse(int global_out_index, const Vector3r& imp);
 
     // Cached sizes
     index_t m_numQ{0};

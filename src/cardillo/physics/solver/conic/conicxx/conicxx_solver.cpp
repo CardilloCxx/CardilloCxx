@@ -62,10 +62,8 @@ void ConicxxSolver::setWarmStartFromState(const SparseMatrix<Eigen::ColMajor>& A
     x.head(nV) = m_dyn.vVec();
     if (x.size() > nV) x.tail(nE) = pi;
 
-    VectorXr impulse = VectorXr::Zero(m_dyn.numContactRows());
-    solver::WarmstartProvider::applyWarmstart(impulse, m_dyn);
     VectorXr z(A.rows());
-    z << -pi, impulse.cwiseQuotient(m_assembler.computeSmu());
+    z << -pi, m_dyn.contactPercussions().cwiseQuotient(m_assembler.computeSmu());
 
     VectorXr s = b - A * x;
     s.head(nE) += compliance.cwiseProduct(z.head(nE));
@@ -150,7 +148,7 @@ VectorXr ConicxxSolver::solve(real_t dt, real_t theta) {
             impulse[i] = static_cast<real_t>(solution->z[dual_index]) * Smu[i];
         }
     }
-    solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
+    m_dyn.setContactPercussions(impulse);
 
     const int nV = static_cast<int>(m_dyn.numV());
     const int nSprings = static_cast<int>(m_dyn.numSprings());

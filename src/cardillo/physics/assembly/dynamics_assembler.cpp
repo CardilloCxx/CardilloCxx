@@ -340,10 +340,20 @@ void DynamicsAssembler::rebuildW_() {
 }
 
 
-void DynamicsAssembler::setContactLastImpulse(int global_out_index, const Vector3r& imp) {
+VectorXr DynamicsAssembler::contactPercussions() const {
+    VectorXr percussions = VectorXr::Zero(numContactRows());
+    for (const auto& c : contacts())
+        if (c.impulse_base_index >= 0) percussions.segment(c.impulse_base_index, c.impulse_size) = c.last_impulse.head(c.impulse_size);
+    return percussions;
+}
+
+void DynamicsAssembler::setContactPercussions(const VectorXr& percussions) {
     if (!m_contacts_ptr) return;
-    if (global_out_index < 0 || global_out_index >= (int)m_contacts_ptr->size()) return;
-    (*m_contacts_ptr)[(size_t)global_out_index].last_impulse = imp;
+    for (auto& c : *m_contacts_ptr) {
+        if (c.impulse_base_index < 0) continue;
+        c.last_impulse.setZero();
+        c.last_impulse.head(c.impulse_size) = percussions.segment(c.impulse_base_index, c.impulse_size);
+    }
 }
 
 // Rebuild auxiliary block matrices derived from W and current contacts/state.

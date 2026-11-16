@@ -110,7 +110,9 @@ How it solves
    - **frictional**: :math:`\|\Lambda_{T}\| \leq \mu\,\Lambda_{N}`
 
 **Convergence**
-   Checked every 10 iterations on the relative velocity residual. Controlled by
+   Checked every 10 iterations on the relative velocity residual
+   (``velocity_rms``), or in every sweep on the natural map of the contact law
+   (``pj.criterion = natural_map``), see *Convergence check* below. Controlled by
    ``solver.tol_abs``, ``solver.tol_rel``, and ``solver.max_iterations``.
 
 Optional Nesterov acceleration
@@ -150,31 +152,28 @@ We use a mixed absolute/relative residual:
             {\varepsilon_\mathrm{abs}\,\mathbf{1} + \varepsilon_\mathrm{rel}\,\max(|u^{(k+1)}|,|u^{(k)}|)}
      \right\rVert_2 \leq 1
 
-This is the legacy ``velocity_rms`` criterion and remains the default. To use
-``pj.criterion = natural_map``, PJ instead evaluates the contact natural-map
-residual for each projection block:
+This ``velocity_rms`` criterion is the default. It measures an increment, not
+an error: averaged over all degrees of freedom, a single contact far from
+convergence barely changes it, and with a small step ``solver.alpha`` the
+increment is much smaller than the remaining error. Its tolerance therefore
+does not bound the accuracy of the contacts.
+
+With ``pj.criterion = natural_map``, PJ stops on the natural map of the contact
+law with its own step :math:`\alpha R` (see :doc:`index`, section *Accuracy
+measure*). The increment of the projection divided by the step,
 
 .. math::
 
-   r_b = P_b^{-1}(\Lambda_b^{(k)} - \Lambda_b^{(k+1)}),
-   \qquad
-   e = \max_b \max\!\left(
-   \frac{|r_N|}{\varepsilon_\mathrm{abs} + \varepsilon_\mathrm{rel}|\gamma_N|},
-   \frac{\lVert r_T\rVert_2}{\varepsilon_\mathrm{abs} + \varepsilon_\mathrm{rel}\lVert\gamma_T\rVert_2}
-   \right).
+   r_b = (\alpha R_b)^{-1}\bigl(\Lambda_b^{(k)} - \Lambda_b^{(k+1)}\bigr),
 
-Here :math:`P_b` is the same contact step used by the projection. Frictional
-blocks scale the normal and tangential components separately, using a 2-norm
-for the tangential pair; frictionless blocks contain only the normal component.
-Each relative scale uses the larger corresponding row-velocity magnitude from
-the current and previous sweeps.
-The criterion is evaluated in every accelerated loop and at PJ's existing
-check interval in the standard loop. ``pj.tol_abs`` and ``pj.tol_rel`` control
-both criteria.
-
-The accuracy of the result can be checked independently of the solver with
-``pj.final_check = natural_map``; this check is part of the time integrator and
-works for every solver backend (see :doc:`../using_the_engine/setup`).
+is the natural map at the input of the sweep, a velocity error, and PJ stops
+when :math:`e \le 1` with ``pj.tol_abs`` and ``pj.tol_rel`` in velocity units.
+Divided by the full step, it does not shrink with ``solver.alpha`` as the
+increment does: for a sticking contact it is the velocity error for any
+:math:`\alpha`. It is computed inside the projection loop at a few operations
+per contact, so it is evaluated in every sweep, also in the standard loop. The
+final check (``pj.final_check = natural_map``) measures the result with the
+common step of all solvers instead; near convergence the two agree.
 
 Config keys
 -----------
@@ -188,11 +187,11 @@ Config keys
    * - ``solver.max_iterations``
      - Hard iteration cap (default 200000)
    * - ``solver.tol_abs``, ``solver.tol_rel``
-     - Convergence tolerances on the velocity residual
+     - Tolerances of the selected criterion (``natural_map``: m/s)
    * - ``pj.criterion`` (alias ``solver.criterion``)
-     - ``velocity_rms`` (default) or ``natural_map``; select the legacy velocity increment or the blockwise contact natural-map residual
+     - ``velocity_rms`` (default) or ``natural_map``: stop on the velocity increment or on the natural map of the contact law
    * - ``pj.final_check`` (alias ``solver.final_check``)
-     - ``none`` (default) or ``natural_map``; solver-independent contact residual after every step (all backends)
+     - ``none`` (default) or ``natural_map``: natural map of the result after every step (all solvers)
    * - ``solver.alpha``
      - Step-size multiplier for each Jacobi sweep (default 0.3)
    * - ``solver.nesterov``

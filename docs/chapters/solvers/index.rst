@@ -85,6 +85,76 @@ Select a solver via ``solver.type`` in the config file (see :cpp:struct:`Config 
        as ``clarabel``. Optional (``CARDILLO_WITH_MOSEK``), needs a MOSEK
        installation and license.
 
+Accuracy measure: the natural map
+---------------------------------
+
+Accuracy is measured with the natural map of the contact law. For a contact
+:math:`b` with percussion :math:`\lambda_b`, contact velocity :math:`\xi_b`
+(restitution included) and a step :math:`\rho_b > 0`,
+
+.. math::
+
+   r_b = \rho_b^{-1}\Bigl(\lambda_b - \Pi_{K_\mu}\bigl(\lambda_b - \rho_b\,(\xi_b + s_b\,e_N)\bigr)\Bigr),
+
+with the Coulomb cone :math:`K_\mu = \{\lVert\lambda_T\rVert \le \mu\lambda_N\}`
+(frictionless contacts: :math:`\lambda_N \ge 0`) and the De Saxcé shift
+:math:`s_b`:
+
+- :math:`s_b = \mu\lVert\xi_{T}\rVert`: Coulomb's law, solved by all projection-based solvers.
+- :math:`s_b = \mu\lVert\gamma_T^-\rVert`, frozen at the pre-step slip: the
+  convexified law of the conic backends (:doc:`interior_point`).
+
+:math:`r_b = 0` exactly when the contact satisfies its law, for any step and
+also for non-unique (hyperstatic) percussions. :math:`r_b` is a velocity: for a
+sticking contact it is the velocity error itself, whatever the step, for a
+spurious percussion on a separating contact the velocity
+:math:`\lambda_b/\rho_b` it would cause with the step :math:`\rho_b`. The
+natural map is used in two places.
+
+**Stopping test** (``pj.criterion = natural_map``, projected Jacobi). A
+projection step of the solver, :math:`\lambda_b^+ = -\mathrm{proj}_C(\rho_b\xi_b - \lambda_b)`
+with its own step :math:`\rho_b = \alpha R_b`, already evaluates the natural map
+at its input in the Alart–Curnier form, which has the same zeros:
+:math:`r_b = (\lambda_b - \lambda_b^+)/\rho_b` (both tangential rows need the
+same step). The test costs a few operations per contact inside the projection
+loop (``misc::naturalMapError2``) and is evaluated in every sweep. It scales
+the normal and the tangential part separately, so that a normal error is not
+hidden behind a large slip:
+
+.. math::
+
+   e = \max_b \max\!\left(
+   \frac{|r_{b,N}|}{\varepsilon_\mathrm{abs} + \varepsilon_\mathrm{rel}|\xi_{b,N}|},
+   \frac{\lVert r_{b,T}\rVert}{\varepsilon_\mathrm{abs} + \varepsilon_\mathrm{rel}\lVert\xi_{b,T}\rVert}
+   \right) \le 1 ,
+
+with ``pj.tol_abs`` and ``pj.tol_rel`` in velocity units.
+
+**Final check** (``pj.final_check = natural_map``, every solver). After every
+step, the time integrator evaluates the natural map of the stored percussions
+at the returned velocities (``solver/natural_map.hpp``), with one step per
+contact that does not depend on the solver, :math:`\rho_b = 1/\lambda_\mathrm{max}(G_b)`
+from the contact's Delassus block :math:`G_b = W_b M^{-1} W_b^\top` (diagonal
+mass); the conic backends have no step of their own. It reports raw residuals
+in velocity units, independent of the tolerances: :math:`\max_b \max(|r_{b,N}|, \lVert r_{b,T}\rVert)`
+for the solver's own law, the same for Coulomb's law, and the largest residual
+:math:`W_i^\top u + b_i + c_i\Lambda_i` of the spring and damper rows. The
+result is printed with ``debug.pj`` and available as
+``PhysicsEngine::lastStepResidual()``. Near convergence the stopping test and
+the final check agree; far from it the stopping test can be larger by up to
+:math:`1/\alpha` (a spurious percussion counts with PJ's step
+:math:`\alpha R_b`).
+
+Comparing solvers:
+
+- **Convergence** (work against accuracy): use the natural map of each
+  solver's own law. It is zero at the solution of the solver's problem, so it
+  measures how far each solver is from its solution with the same function.
+  Coulomb's law is a harder problem than the convex convexified one.
+- **Physics**: use the natural map of Coulomb's law. For the conic backends it
+  contains the error of the convexified law, which does not decrease with the
+  solver tolerance.
+
 .. toctree::
    :hidden:
 

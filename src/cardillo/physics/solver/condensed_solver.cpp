@@ -13,7 +13,6 @@
 #include "../../misc/contact_projection.hpp"
 #include "../../misc/graph_coloring.hpp"
 #include "local_contact_newton.hpp"
-#include "warmstart.hpp"
 
 namespace cardillo::solver {
 
@@ -334,7 +333,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     const auto& MinvDiag = m_dyn.MinvDiag();
 
     // Warmstart -- identical boundary behavior to PGS (contact multipliers are the canonical
-    // percussions, see warmstart.hpp).
+    // percussions, see DynamicsAssembler::contactPercussions()).
     VectorXr lambda = VectorXr::Zero(topo.numLambda);
     {
         VectorXr Lambda_g = m_dyn.Lambda_g();
@@ -342,11 +341,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         VectorXr Lambda_gamma = m_dyn.Lambda_gamma();
         if ((int)Lambda_gamma.size() == nDampers) lambda.segment(nSprings, nDampers) = Lambda_gamma;
     }
-    if (m_cfg.pj_warmstart && nContacts > 0) {
-        VectorXr l_contact = VectorXr::Zero(nContacts);
-        WarmstartProvider::applyWarmstart(l_contact, m_dyn);
-        lambda.segment(nSprings + nDampers, nContacts) = l_contact;
-    }
+    if (m_cfg.pj_warmstart && nContacts > 0) lambda.segment(nSprings + nDampers, nContacts) = m_dyn.contactPercussions();
 
     VectorXr du = VectorXr::Zero(nV);
     {
@@ -620,7 +615,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
 
     if (nSprings > 0) m_dyn.setLambda_g(lambda.head(nSprings));
     if (nDampers > 0) m_dyn.setLambda_gamma(lambda.segment(nSprings, nDampers));
-    if (nContacts > 0) WarmstartProvider::storeImpulse(lambda.segment(nSprings + nDampers, nContacts), m_dyn);
+    if (nContacts > 0) m_dyn.setContactPercussions(lambda.segment(nSprings + nDampers, nContacts));
 
     return u_free + du;
 }

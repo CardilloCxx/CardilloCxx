@@ -7,7 +7,6 @@
 #include "../cone_program_assembler.hpp"
 #include "../../../assembly/dynamics_assembler.hpp"
 #include "../../solver_base.hpp"
-#include "../../warmstart.hpp"
 
 #include <clarabel.hpp>
 
@@ -21,6 +20,7 @@ class ClarabelSolver : public SolverBase {
     VectorXr solve(real_t dt, real_t theta) override;
 
     const char* name() const override { return "ClarabelSolver"; }
+    ContactLaw contactLaw() const override { return ContactLaw::Convexified; }
 
    private:
     void initSolver(real_t dt, real_t theta, bool first_init = true);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include "../solver/projected_jacobi.hpp"
 #include "../solver/solver_base.hpp"
 #include "cardillo/misc/types.hpp"
@@ -21,12 +22,16 @@ class IntegrationBase {
     void explicitPositionUpdate(World& world, real_t h);
     void linearImplicitPositionUpdate(World& world, real_t h);
 
+    /// Final check of the last step (pj.final_check = natural_map); empty if disabled.
+    const std::optional<solver::StepResidual>& lastResidual() const { return m_lastResidual; }
+
    protected:
     World& m_world;
     physics::DynamicsAssembler& m_dyn;
     misc::TimingManager& m_timings;
     solver::SolverBase& m_solver;
     config::Config& m_config;
+    std::optional<solver::StepResidual> m_lastResidual;
 };
 
 }  // namespace cardillo::integration

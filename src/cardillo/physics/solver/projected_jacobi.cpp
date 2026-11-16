@@ -14,10 +14,10 @@ namespace cardillo::solver {
 struct workspace {
     const int Nv, Ns, Nd, Nnfc, Nfc, Nc;
     const VectorXr mu;
-    const VectorXr stepSize;
+    const VectorXr invStepSize;  // per row 1 / R_ii (R includes alpha; R_block is diagonal as well), 0 for rows without a dynamic body
     const VectorXr biasImpulse;  // dyn.contactVVec(), constant (scaled by Rdiag unless block preconditioning is used)
-    const Eigen::SparseMatrix<real_t, Eigen::RowMajor> W;
-    const Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW;  // Rdiag-scaled W, or plain W when using the block preconditioner
+    const CsrMatrix W;
+    const CsrMatrix RW;  // Rdiag-scaled W, or plain W when using the block preconditioner
 
     // Present only when cfg.pj_rdiag_true_delassus is enabled: the exact per-contact local
     // Delassus block (3x3 for frictional contacts, 1x1 otherwise), applied as a second stage
@@ -28,19 +28,20 @@ struct workspace {
     VectorXr prev_x;
     VectorXr impulse;
     VectorXr prev_impulse;
+    VectorXr Rxi;  // R xi of the last sweep's input, the projection argument without the impulse
     VectorXr delta_impulse;
-    VectorXr rowVelocity;
-    VectorXr previousRowVelocity;
     VectorXr rhs;  // reusable RHS buffer for solveS
 
-    config::PjTerminationCriterion criterion;
+    // pj.criterion = natural_map: e^2 of the natural map with PJ's own step at the input of the last
+    // sweep (misc::naturalMapError2), computed by project().
+    real_t naturalMapError2 = 0;
+
     int iter = 0;
     misc::TimingManager* timer;
     physics::assembly::PjAssembler* assembler;
 
-    workspace(int nv, int ns, int nd, int nnfc, int nfc, int nc, Eigen::SparseMatrix<real_t, Eigen::RowMajor> W, Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW, VectorXr biasImpulse, VectorXr mu,
-              VectorXr stepSize, config::PjTerminationCriterion criterion, std::optional<BlockDiagonal> R_block, VectorXr p_init, VectorXr x_init, misc::TimingManager* timer,
-              physics::assembly::PjAssembler* assembler)
+    workspace(int nv, int ns, int nd, int nnfc, int nfc, int nc, CsrMatrix W, CsrMatrix RW, VectorXr biasImpulse, VectorXr mu, VectorXr invStepSize, std::optional<BlockDiagonal> R_block,
+              VectorXr p_init, VectorXr x_init, misc::TimingManager* timer, physics::assembly::PjAssembler* assembler)
         : Nv(nv),
           Ns(ns),
           Nd(nd),
@@ -48,7 +49,7 @@ struct workspace {
           Nfc(nfc),
           Nc(nc),
           mu(std::move(mu)),
-          stepSize(std::move(stepSize)),
+          invStepSize(std::move(invStepSize)),
           biasImpulse(std::move(biasImpulse)),
           W(std::move(W)),
           RW(std::move(RW)),
@@ -57,11 +58,9 @@ struct workspace {
           prev_x(x),
           impulse(std::move(p_init)),
           prev_impulse(impulse),
-          delta_impulse(VectorXr::Zero(nv + ns + nd)),
-          rowVelocity(VectorXr::Zero(nc)),
-          previousRowVelocity(VectorXr::Zero(nc)),
+          Rxi(VectorXr::Zero(nc)),
+          delta_impulse(VectorXr::Zero(nc)),
           rhs(VectorXr::Zero(nv + ns + nd)),
-          criterion(criterion),
           timer(timer),
           assembler(assembler) {}
 };
@@ -70,12 +69,12 @@ struct workspace {
 // per contact, after the Nnfc frictionless rows) both tangential rows get the same step length
 // alpha / mean(D_t1t1, D_t2t2): with different tangential step lengths the fixed point of the
 // projection would satisfy a distorted friction law (see misc/contact_rho.hpp).
-static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, real_t alpha, int Nnfc) {
+static inline VectorXr rdiag_sparse(const CsrMatrix& W, const VectorXr& MinvDiag, real_t alpha, int Nnfc) {
     const int C = (int)W.rows();
     VectorXr D = VectorXr::Zero(C);
     for (int cid = 0; cid < C; ++cid) {
         real_t Dii = 0;
-        for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) {
+        for (CsrMatrix::InnerIterator it(W, cid); it; ++it) {
             const real_t w = it.value();
             Dii += w * w * MinvDiag[it.col()];
         }
@@ -98,14 +97,14 @@ static inline VectorXr rdiag_sparse(const Eigen::SparseMatrix<real_t, Eigen::Row
 // misc/block_diagonal.hpp (Cholesky, falling back to LDLT, then to a diagonal-only inverse).
 // Nfc is the number of *frictional rows* (Nc - Nnfc, i.e. 3 per frictional contact), matching the
 // convention used by workspace::Nfc and project() above -- not the number of frictional contacts.
-static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const VectorXr& MinvDiag, int Nnfc, int Nfc, real_t alpha, VectorXr& stepSize) {
+static inline BlockDiagonal buildBlockPreconditioner(const CsrMatrix& W, const VectorXr& MinvDiag, int Nnfc, int Nfc, real_t alpha, VectorXr& stepSize) {
     BlockDiagonal D_scaled;  // holds D/alpha per block, so calculateInverse() yields alpha*D^{-1} directly
     stepSize = VectorXr::Zero(W.rows());
     const real_t invAlpha = (alpha > (real_t)0) ? ((real_t)1 / alpha) : (real_t)0;
 
     for (int cid = 0; cid < Nnfc; ++cid) {
         real_t Dii = 0;
-        for (Eigen::SparseMatrix<real_t, Eigen::RowMajor>::InnerIterator it(W, cid); it; ++it) Dii += it.value() * it.value() * MinvDiag[it.col()];
+        for (CsrMatrix::InnerIterator it(W, cid); it; ++it) Dii += it.value() * it.value() * MinvDiag[it.col()];
         D_scaled.addBlockDiag(VectorXr::Constant(1, Dii * invAlpha));
         stepSize[cid] = (Dii > (real_t)0) ? (alpha / Dii) : (real_t)0;
     }
@@ -130,44 +129,63 @@ static inline BlockDiagonal buildBlockPreconditioner(const Eigen::SparseMatrix<r
 }
 
 // Contact update in the negative variant lambda = -proj_C(rho*xi - lambda) (misc/contact_projection.hpp),
-// with rho*xi = R*(W*u + bias) already in ws->delta_impulse.
-static inline void project(std::unique_ptr<workspace>& ws) {
+// with rho*xi = R*(W*u + bias) already in ws->Rxi and the input lambda in ws->prev_impulse. With
+// pj.criterion = natural_map, the increments divided by the steps give the stopping test.
+static inline void project(std::unique_ptr<workspace>& ws, const config::Config& cfg) {
+    const bool measure = cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap;
+    const real_t tolAbs = cfg.pj_tol_abs, tolRel = cfg.pj_tol_rel;
+    real_t error2 = 0;
+
     // Frictionless contacts
-    for (int i = 0; i < ws->Nnfc; ++i) ws->impulse[i] = misc::proxNormal(ws->delta_impulse[i] - ws->impulse[i]);
+    for (int i = 0; i < ws->Nnfc; ++i) {
+        ws->impulse[i] = misc::proxNormal(ws->Rxi[i] - ws->impulse[i]);
+        if (measure) {
+            const real_t invStep = ws->invStepSize[i];
+            error2 = std::max(error2, misc::naturalMapError2((ws->prev_impulse[i] - ws->impulse[i]) * invStep, ws->Rxi[i] * invStep, tolAbs, tolRel));
+        }
+    }
 
     // Frictional contacts: normal clamp + Coulomb disk projection. Each iteration only reads/writes
     // its own contact's 3 impulse rows (i, i+1, i+2), so this is embarrassingly parallel across
     // contacts -- the same reasoning CondensedSolver's sweep loops already rely on for their own
     // #pragma omp for (see condensed_solver.cpp). This loop runs once per PJ sweep, i.e. up to
     // cfg.pj_max_iterations times per timestep, so it's the hot per-iteration loop in this file.
-#pragma omp parallel for schedule(static)
-    for (int i = ws->Nnfc; i < ws->Nc; i += 3) misc::proxCoulomb(ws->delta_impulse.segment<3>(i) - ws->impulse.segment<3>(i), ws->mu[i], ws->impulse.segment<3>(i));
+#pragma omp parallel for schedule(static) reduction(max : error2)
+    for (int i = ws->Nnfc; i < ws->Nc; i += 3) {
+        misc::proxCoulomb(ws->Rxi.segment<3>(i) - ws->impulse.segment<3>(i), ws->mu[i], ws->impulse.segment<3>(i));
+        if (measure) {
+            // Both tangential rows share one step.
+            const VectorXr &in = ws->prev_impulse, &out = ws->impulse, &Rxi = ws->Rxi;
+            const real_t invN = ws->invStepSize[i], invT = ws->invStepSize[i + 1];
+            error2 = std::max(error2, misc::naturalMapError2((in[i] - out[i]) * invN, (in[i + 1] - out[i + 1]) * invT, (in[i + 2] - out[i + 2]) * invT, Rxi[i] * invN, Rxi[i + 1] * invT,
+                                                             Rxi[i + 2] * invT, tolAbs, tolRel));
+        }
+    }
+    ws->naturalMapError2 = error2;
 }
 
-static inline void pj_sweep(std::unique_ptr<workspace>& ws) {
+static inline void pj_sweep(std::unique_ptr<workspace>& ws, const config::Config& cfg) {
     auto scope = ws->timer->scope(misc::TimingManager::TimerId::ProjectedJacobiSweep);
 
     ws->prev_x = ws->x;
     ws->prev_impulse = ws->impulse;
 
-    ws->delta_impulse.noalias() = ws->RW * ws->x.head(ws->Nv);
-    ws->delta_impulse += ws->biasImpulse;
-    if (ws->R_block) ws->R_block->applyTo(ws->delta_impulse, ws->delta_impulse);
-    if (ws->criterion == config::PjTerminationCriterion::NaturalMap) {
-        ws->previousRowVelocity = ws->rowVelocity;
-        ws->rowVelocity = ws->delta_impulse.cwiseQuotient(ws->stepSize);
-    }
+    ws->Rxi.noalias() = ws->RW * ws->x.head(ws->Nv);
+    ws->Rxi += ws->biasImpulse;
+    if (ws->R_block) ws->R_block->applyTo(ws->Rxi, ws->Rxi);
 
-    project(ws);
+    project(ws, cfg);
     ws->delta_impulse = ws->impulse - ws->prev_impulse;
 
     ws->rhs.segment(0, ws->Nv).noalias() = ws->W.transpose() * ws->delta_impulse;
     ws->x += ws->assembler->solveS(ws->rhs);
 }
 
+// Stopping measure after a sweep, <= 1: converged. velocity_rms compares the velocities v and
+// v_prev; natural_map is the natural map with PJ's own step at the input of the sweep, computed by
+// project() (infinite for non-finite iterates).
 static inline real_t iterationError(const workspace& ws, const VectorXr& v, const VectorXr& v_prev, const config::Config& cfg) {
-    if (cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap)
-        return termination::naturalMapError(ws.prev_impulse, ws.impulse, ws.stepSize, ws.rowVelocity, ws.previousRowVelocity, ws.Nnfc, cfg.pj_tol_abs, cfg.pj_tol_rel);
+    if (cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap) return std::sqrt(ws.naturalMapError2);
     return termination::velocityRms(v, v_prev, cfg.pj_tol_abs, cfg.pj_tol_rel);
 }
 
@@ -180,8 +198,7 @@ static inline real_t iterationError(const workspace& ws, const VectorXr& v, cons
 // this same nonsmooth (projected) iteration: rigorously justified only for the linear sub-problem,
 // used in practice on the full nonlinear one, with a restart safeguard in chebyshev_loop() for
 // when that approximation breaks down.
-static inline real_t estimateSpectralRadius(const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& W, const Eigen::SparseMatrix<real_t, Eigen::RowMajor>& RW,
-                                            const std::optional<BlockDiagonal>& R_block, physics::assembly::PjAssembler& assembler, int fullSize, int Nv) {
+static inline real_t estimateSpectralRadius(const CsrMatrix& W, const CsrMatrix& RW, const std::optional<BlockDiagonal>& R_block, physics::assembly::PjAssembler& assembler, int fullSize, int Nv) {
     constexpr int kPowerIterations = 8;
     if (Nv <= 0 || fullSize <= 0) return (real_t)0;
 
@@ -216,7 +233,7 @@ static inline void chebyshev_loop(std::unique_ptr<workspace>& ws, config::Config
     for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
         ws->x = xk1;
         ws->impulse = pk1;
-        pj_sweep(ws);
+        pj_sweep(ws, cfg);
         ws->iter = iter + 1;
 
         const real_t err = iterationError(*ws, ws->x.head(ws->Nv), xk1.head(ws->Nv), cfg);
@@ -290,7 +307,7 @@ static inline void anderson_loop(std::unique_ptr<workspace>& ws, config::Config&
         ws->impulse = z.tail(Nc);
         const VectorXr x_prev = ws->x;
 
-        pj_sweep(ws);
+        pj_sweep(ws, cfg);
         const VectorXr w = concat(ws->x, ws->impulse);  // g(z)
         const VectorXr f = w - z;
 
@@ -360,7 +377,7 @@ static inline std::unique_ptr<workspace> build_workspace(physics::DynamicsAssemb
     // sweep needs only a single sparse matvec; the exact-block mode (cfg.pj_rdiag_true_delassus)
     // cannot be folded that way (block multiplication mixes a contact's 3 rows together), so it
     // keeps W/contactBias unscaled and applies R_block as a separate step in pj_sweep().
-    Eigen::SparseMatrix<real_t, Eigen::RowMajor> RW;
+    CsrMatrix RW;
     VectorXr stepSize;
 
     VectorXr v_prev = W * dyn.vVec() + contactBias;   // Previous contact-relative velocity
@@ -384,24 +401,27 @@ static inline std::unique_ptr<workspace> build_workspace(physics::DynamicsAssemb
     VectorXr rhs_free = assembler.rhs(dt, theta);
 
     // Warm-start impulse
-    VectorXr p = VectorXr::Zero(Nc);
-    if (cfg.pj_warmstart) solver::WarmstartProvider::applyWarmstart(p, dyn);
+    VectorXr p = cfg.pj_warmstart ? dyn.contactPercussions() : VectorXr::Zero(Nc);
 
     VectorXr rhs_init = rhs_free;
     rhs_init.segment(0, Nv).noalias() += W.transpose() * p;
     VectorXr x_init = assembler.solveS(rhs_init);
 
     VectorXr mus = dyn.muVec();
+    VectorXr invStepSize = stepSize.unaryExpr([](real_t step) { return step > (real_t)0 ? (real_t)1 / step : (real_t)0; });
 
-    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, W, std::move(RW), std::move(biasImpulse), std::move(mus), std::move(stepSize), cfg.pj_criterion,
-                                       std::move(R_block), std::move(p), std::move(x_init), dyn.timings(), &assembler);
+    return std::make_unique<workspace>(Nv, Ns, Nd, Nnfc, Nfc, Nc, W, std::move(RW), std::move(biasImpulse), std::move(mus), std::move(invStepSize), std::move(R_block), std::move(p), std::move(x_init),
+                                       dyn.timings(), &assembler);
 }
 
 static inline void standard_loop(std::unique_ptr<workspace>& ws, config::Config& cfg) {
     for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
-        pj_sweep(ws);
+        pj_sweep(ws, cfg);
         ws->iter = iter + 1;
-        if (iter % 10 == 0 && iterationError(*ws, ws->x.head(ws->Nv), ws->prev_x.head(ws->Nv), cfg) <= 1) break;
+        // velocity_rms costs a pass over the velocities and is checked every 10 sweeps; the natural
+        // map comes with every sweep.
+        const bool checkNow = cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap || iter % 10 == 0;
+        if (checkNow && iterationError(*ws, ws->x.head(ws->Nv), ws->prev_x.head(ws->Nv), cfg) <= 1) break;
     }
 }
 
@@ -421,7 +441,7 @@ static inline void nesterov_loop(std::unique_ptr<workspace>& ws, config::Config&
     for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
         ws->x = xy;
         ws->impulse = py;
-        pj_sweep(ws);
+        pj_sweep(ws, cfg);
         xk1 = ws->x;
         pk1 = ws->impulse;
         ws->iter = iter + 1;
@@ -519,7 +539,7 @@ VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
 
     m_last_iters = ws->iter;
 
-    solver::WarmstartProvider::storeImpulse(ws->impulse, m_dyn);
+    m_dyn.setContactPercussions(ws->impulse);
 
     // ws->x is the absolute solution; update lambdas with contact correction included
     m_dyn.setLambda_g(ws->x.segment(numV, numS));

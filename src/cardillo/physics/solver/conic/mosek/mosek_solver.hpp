@@ -5,7 +5,6 @@
 #include "../../../assembly/dynamics_assembler.hpp"
 #include "mosek_backend.hpp"
 #include "../../solver_base.hpp"
-#include "../../warmstart.hpp"
 
 namespace cardillo::solver {
 
@@ -28,6 +27,7 @@ class MosekSolver : public SolverBase {
     VectorXr solve(real_t dt, real_t theta) override;
 
     const char* name() const override { return "MosekSolver"; }
+    ContactLaw contactLaw() const override { return ContactLaw::Convexified; }
 
    private:
     physics::DynamicsAssembler& m_dyn;

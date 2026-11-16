@@ -49,6 +49,8 @@ struct Step {
     Vector3r vNew{Vector3r::Zero()}, omegaNew{Vector3r::Zero()};                 // velocities at the end of the step
     bool active{false};                                                          // contact with percussion in this step
     Vector3r point{Vector3r::Zero()};                                            // contact point of the step
+    real_t naturalMap{0};                                                        // final check: natural map of the solver's own law
+    real_t naturalMapCoulomb{0};                                                 // final check: natural map of Coulomb's law
 
     // Velocity of the material point of the ball at the contact point. The spin is about the world
     // y-axis, so body-fixed and spatial angular velocities coincide.
@@ -81,6 +83,7 @@ Run simulate(config::SolverType solver, real_t dt, real_t T, real_t z0, real_t v
     cfg.ip_tol_abs = cfg.ip_tol_rel = 1e-10;
     cfg.pj_max_iterations = 100000;
     cfg.mosek_tol_rel_gap = cfg.mosek_tol_pfeas = cfg.mosek_tol_dfeas = 1e-10;  // MOSEK has its own tolerances
+    cfg.pj_final_check = config::PjFinalCheck::NaturalMap;
 
     PhysicsEngine engine(cfg);
     engine.addStaticBody(PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), 5, 5), RigidState{});
@@ -100,6 +103,10 @@ Run simulate(config::SolverType solver, real_t dt, real_t T, real_t z0, real_t v
         if (!contacts.empty() && contacts.front().last_impulse(0) > kActive) {
             s.active = true;
             s.point = contacts.front().point;
+        }
+        if (const auto& residual = engine.lastStepResidual()) {
+            s.naturalMap = residual->contact;
+            s.naturalMapCoulomb = residual->coulomb;
         }
         run.steps.push_back(s);
     }
@@ -122,13 +129,17 @@ const char* name(config::SolverType s) {
     }
 }
 
-// Largest residual of the exact law xi_N = 0 and of the convexified law (*) over all active steps.
+// Largest residual of the exact law xi_N = 0 and of the convexified law (*) over all active steps, and
+// the largest natural maps of the final check over all steps.
 struct Residuals {
     real_t exact{0}, convexified{0};
+    real_t naturalMap{0}, naturalMapCoulomb{0};
 };
 Residuals lawResiduals(const Run& run, real_t e) {
     Residuals res;
     for (const Step& s : run.steps) {
+        res.naturalMap = std::max(res.naturalMap, s.naturalMap);
+        res.naturalMapCoulomb = std::max(res.naturalMapCoulomb, s.naturalMapCoulomb);
         if (!s.active) continue;
         const real_t xiN = s.gammaN(true) + e * s.gammaN(false);
         res.exact = std::max(res.exact, std::abs(xiN));
@@ -152,16 +163,22 @@ void slidingBall(config::SolverType solver, real_t dt) {
     const real_t vzConvex = -kmu2 * kGravity * dt * (1 - std::pow(kmu2 / (1 + kmu2), k));
     const real_t depth = -run.finalHeight;
     const real_t vxEnd = run.steps.back().vNew.x();
-    std::cout << tag << ": max|xi_N| " << res.exact << ", max|xi_N - mu dslip| " << res.convexified << ", v_z(0.1 s) " << s.vNew.z() << " (convexified " << vzConvex << "), penetration " << depth
-              << " (mu h v0 = " << kMu * dt * v0 << "), v_x(end) " << vxEnd << " (5/7 v0 = " << 5.0 / 7.0 * v0 << ")" << std::endl;
+    std::cout << tag << ": max|xi_N| " << res.exact << ", max|xi_N - mu dslip| " << res.convexified << ", natural map " << res.naturalMap << " (Coulomb " << res.naturalMapCoulomb << "), v_z(0.1 s) "
+              << s.vNew.z() << " (convexified " << vzConvex << "), penetration " << depth << " (mu h v0 = " << kMu * dt * v0 << "), v_x(end) " << vxEnd << " (5/7 v0 = " << 5.0 / 7.0 * v0 << ")"
+              << std::endl;
 
     if (solver != config::SolverType::ProjectedJacobi) {
         check(res.convexified < 1e-7, tag + ": convexified law (*) holds in every step");
+        // The interior-point methods stop on gap and feasibility of their scaled cone program
+        // (ip.tol = 1e-10), which leaves a natural map of up to about 2e-7 m/s here.
+        check(res.naturalMap < 1e-6, tag + ": final check, natural map of the convexified law");
+        check(res.naturalMapCoulomb > 0.5 * res.exact, tag + ": final check, Coulomb's law violated by the sinking velocity");
         check(std::abs(s.vNew.z() - vzConvex) < 1e-3 * std::abs(vzConvex), tag + ": sinking velocity -kappa mu^2 g h (1 - a^k)");
         check(std::abs(depth - kMu * dt * v0) < 1e-2 * kMu * dt * v0, tag + ": final penetration mu h v0");
         check(std::abs(vxEnd - 5.0 / 7.0 * v0) < depth / kRadius * v0, tag + ": rolling velocity 5/7 v0 up to the lever arm R - depth/2");
     } else {
         check(res.exact < 1e-9, tag + ": exact Signorini law, v_z = 0");
+        check(res.naturalMap < 1e-9 && res.naturalMapCoulomb == res.naturalMap, tag + ": final check, natural map of Coulomb's law");
         check(depth < 1e-7, tag + ": no penetration");
         check(std::abs(vxEnd - 5.0 / 7.0 * v0) < 1e-7, tag + ": rolling velocity 5/7 v0");
     }

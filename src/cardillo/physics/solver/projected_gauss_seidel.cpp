@@ -69,11 +69,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     if (nSprings > 0) lambda.head(nSprings) = m_dyn.Lambda_g();
     if (nDampers > 0) lambda.segment(nSprings, nDampers) = m_dyn.Lambda_gamma();
 
-    if (m_cfg.pj_warmstart && nContacts > 0) {
-        VectorXr l_contact = VectorXr::Zero(nContacts);
-        WarmstartProvider::applyWarmstart(l_contact, m_dyn);
-        lambda.segment(nSprings + nDampers, nContacts) = l_contact;
-    }
+    if (m_cfg.pj_warmstart && nContacts > 0) lambda.segment(nSprings + nDampers, nContacts) = m_dyn.contactPercussions();
 
     auto sc_solve = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedGaussSeidel);
 
@@ -217,7 +213,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
 
     if (nSprings > 0) m_dyn.setLambda_g(lambda.head(nSprings));
     if (nDampers > 0) m_dyn.setLambda_gamma(lambda.segment(nSprings, nDampers));
-    if (nContacts > 0) WarmstartProvider::storeImpulse(lambda.segment(nSprings + nDampers, nContacts), m_dyn);
+    if (nContacts > 0) m_dyn.setContactPercussions(lambda.segment(nSprings + nDampers, nContacts));
 
     return u_free + du;
 }

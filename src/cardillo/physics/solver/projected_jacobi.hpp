@@ -9,7 +9,6 @@
 #include "../assembly/dynamics_assembler.hpp"
 #include "../assembly/pj_assembler.hpp"
 #include "solver_base.hpp"
-#include "warmstart.hpp"
 
 namespace cardillo::solver {
 
