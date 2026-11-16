@@ -33,13 +33,13 @@ const SparseMatrix<Eigen::ColMajor>& ConicxxAssembler::A(real_t dt, real_t theta
     const int n_contact = m_dyn->numContactRows();
     const TripletMatrix contact = m_dyn->W().scaleRows(computeSmu()) * -1.0;
     if (m_compliant_rows) {
-        m_A_cache = m_dyn->Wg().vConcat(m_dyn->Wgamma()).vConcat(contact).asSparse();
+        m_A_cache = TripletMatrix::fromSparse(m_dyn->Wg()).vConcat(TripletMatrix::fromSparse(m_dyn->Wgamma())).vConcat(contact).asSparse();
         return m_A_cache;
     }
     TripletMatrix C = TripletMatrix::fromDiag(m_dyn->Cdiag() * DynamicsAssembler::springComplianceScale(dt, theta));
     TripletMatrix A_diag = TripletMatrix::fromDiag(m_dyn->Adiag() * DynamicsAssembler::damperComplianceScale(dt, theta));
-    TripletMatrix A = (m_dyn->Wg() | C | TripletMatrix::zero(C.nRows(), A_diag.nCols()))
-                          .vConcat(m_dyn->Wgamma() | TripletMatrix::zero(A_diag.nRows(), C.nCols()) | A_diag)
+    TripletMatrix A = (TripletMatrix::fromSparse(m_dyn->Wg()) | C | TripletMatrix::zero(C.nRows(), A_diag.nCols()))
+                          .vConcat(TripletMatrix::fromSparse(m_dyn->Wgamma()) | TripletMatrix::zero(A_diag.nRows(), C.nCols()) | A_diag)
                           .vConcat(contact | TripletMatrix::zero(n_contact, m_dyn->numSprings() + m_dyn->numDampers()));
     m_A_cache = A.asSparse();
     return m_A_cache;

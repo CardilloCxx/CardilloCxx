@@ -70,7 +70,9 @@ velocity vector with per-body offsets (`m_body_vel_offsets`; rigid bodies 6 dofs
 contact rows (each contact side may have several weighted attachments, used by beam hulls),
 spring/damper rows from all `ConstraintPattern`s, and the Moreau-θ terms `springBias()`,
 `damperBias()`, `springComplianceScale()`, `damperComplianceScale()`. Every solver must use these
-instead of its own copies. Each solver has a matching assembler (`pj_`, `condensed_`, `pgs_assembler`
+instead of its own copies. `Wg`/`Wγ` and PJ's saddle-point matrix S keep their sparsity pattern between
+steps (`misc::FixedPatternMatrix`): only the values are written, until an entry becomes nonzero for the
+first time or bodies, constraints or used rows change, so S's symbolic analysis is reused. Each solver has a matching assembler (`pj_`, `condensed_`, `pgs_assembler`
 in `src/cardillo/physics/assembly`; the conic backends keep theirs in `solver/conic/`, Clarabel, SCS and
 MOSEK share `ConeProgramAssembler`).
 
@@ -111,7 +113,8 @@ registered with `cardillo_add_scene_example(...)` in `examples/CMakeLists.txt`; 
 `test_beam_rest_configuration`, `test_position_level` (all solvers), `test_torsional_oscillator`
 (closed-form solution, convergence order), `test_condensed_true_schur` (condensed vs. PJ),
 `test_convexified_friction` (convexified Coulomb law of the conic solvers vs. closed form),
-`test_natural_map` (natural map of the contact law, PJ/PGS/condensed stopping on it, final check).
+`test_natural_map` (natural map of the contact law, PJ/PGS/condensed stopping on it, final check),
+`test_fixed_pattern_matrix` (pattern rules of `misc::FixedPatternMatrix`).
 
 ## Design decisions (do not undo without discussion)
 

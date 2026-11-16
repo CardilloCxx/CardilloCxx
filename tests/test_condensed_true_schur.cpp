@@ -49,8 +49,8 @@ real_t bilateralResidual(physics::PhysicsEngine& engine) {
     const real_t cSpring = physics::DynamicsAssembler::springComplianceScale(dt, theta);
     const real_t cDamper = physics::DynamicsAssembler::damperComplianceScale(dt, theta);
     real_t r = 0;
-    if (dyn.Cdiag().size() > 0) r = std::max(r, (dyn.Wg().asSparse() * u + dyn.springBias(dt, theta) + cSpring * dyn.Cdiag().cwiseProduct(dyn.Lambda_g())).cwiseAbs().maxCoeff());
-    if (dyn.Adiag().size() > 0) r = std::max(r, (dyn.Wgamma().asSparse() * u + dyn.damperBias(dt, theta) + cDamper * dyn.Adiag().cwiseProduct(dyn.Lambda_gamma())).cwiseAbs().maxCoeff());
+    if (dyn.Cdiag().size() > 0) r = std::max(r, (dyn.Wg() * u + dyn.springBias(dt, theta) + cSpring * dyn.Cdiag().cwiseProduct(dyn.Lambda_g())).cwiseAbs().maxCoeff());
+    if (dyn.Adiag().size() > 0) r = std::max(r, (dyn.Wgamma() * u + dyn.damperBias(dt, theta) + cDamper * dyn.Adiag().cwiseProduct(dyn.Lambda_gamma())).cwiseAbs().maxCoeff());
     return r;
 }
 

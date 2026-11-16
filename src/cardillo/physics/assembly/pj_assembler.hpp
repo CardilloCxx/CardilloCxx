@@ -5,7 +5,7 @@
 
 #include <optional>
 #include "../../config/config.hpp"
-#include "../../misc/triplet_matrix.hpp"
+#include "../../misc/fixed_pattern_matrix.hpp"
 #include "../../misc/types.hpp"
 #include "dynamics_assembler.hpp"
 
@@ -22,23 +22,15 @@ class PjAssembler
     VectorXr solveS(const VectorXr& rhs_ext) const;
     // Solves S X = B for all columns of B at once (one factorization, many right-hand sides).
     MatrixXXr solveSColumns(const MatrixXXr& B) const;
-    const TripletMatrix& S() const { return m_S; }
 
    private:
-    TripletMatrix m_S;
+    // Saddle-point matrix S with a fixed pattern (see buildAndFactorS()) and its factorization;
+    // m_analyzedSymmetric is the symmetry flag of the last analyzePattern().
+    misc::FixedPatternMatrix m_S;
     std::optional<Eigen::SparseLU<CscMatrix>> m_S_sparse_lu;
+    bool m_analyzedSymmetric{false};
     physics::DynamicsAssembler* m_dyn{nullptr};
     config::Config m_cfg;
-
-    // Structural sparsity-pattern cache: SparseLU::analyzePattern() (fill-reducing column ordering +
-    // symbolic elimination) is far more expensive than factorize() and only needs to be redone when
-    // S's nonzero *pattern* changes, not merely its values (which change every step via dt/state).
-    // Mirrors CondensedAssembler's bilateral-order cache (see condensed_assembler.cpp).
-    bool m_hasCachedPattern{false};
-    bool m_cachedIsSymmetric{false};
-    Eigen::Index m_cachedRows{0}, m_cachedCols{0};
-    std::vector<CscMatrix::StorageIndex> m_cachedOuterIndex;
-    std::vector<CscMatrix::StorageIndex> m_cachedInnerIndex;
 };
 
 }  // namespace cardillo::physics::assembly

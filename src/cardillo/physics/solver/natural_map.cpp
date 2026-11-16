@@ -129,10 +129,10 @@ StepResidual stepResidual(physics::DynamicsAssembler& dyn, const VectorXr& u, Co
     };
     const int Ns = dyn.numSprings();
     if (Ns > 0 && dyn.Lambda_g().size() == Ns)
-        rowResidual(dyn.Wg().asSparse() * u + dyn.springBias(dt, theta) + (physics::DynamicsAssembler::springComplianceScale(dt, theta) * dyn.Cdiag()).cwiseProduct(dyn.Lambda_g()));
+        rowResidual(dyn.Wg() * u + dyn.springBias(dt, theta) + (physics::DynamicsAssembler::springComplianceScale(dt, theta) * dyn.Cdiag()).cwiseProduct(dyn.Lambda_g()));
     const int Nd = dyn.numDampers();
     if (Nd > 0 && dyn.Lambda_gamma().size() == Nd)
-        rowResidual(dyn.Wgamma().asSparse() * u + dyn.damperBias(dt, theta) + (physics::DynamicsAssembler::damperComplianceScale(dt, theta) * dyn.Adiag()).cwiseProduct(dyn.Lambda_gamma()));
+        rowResidual(dyn.Wgamma() * u + dyn.damperBias(dt, theta) + (physics::DynamicsAssembler::damperComplianceScale(dt, theta) * dyn.Adiag()).cwiseProduct(dyn.Lambda_gamma()));
 
     return result;
 }

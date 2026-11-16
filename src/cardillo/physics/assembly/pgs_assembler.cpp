@@ -11,8 +11,8 @@ namespace cardillo::physics::assembly {
 
 VectorXr PgsAssembler::rhs(real_t dt, real_t theta, const VectorXr& u_free) const {
     const auto& vn = m_dyn->vVec();
-    const auto& Wg = m_dyn->Wg().asSparse();
-    const auto& Wgamma = m_dyn->Wgamma().asSparse();
+    const auto& Wg = m_dyn->Wg();
+    const auto& Wgamma = m_dyn->Wgamma();
     const auto& Wcontact = m_dyn->W().asSparse();
     const auto& M_diag = m_dyn->MDiag();
     const auto& M_inv = m_dyn->MinvDiag();
@@ -108,10 +108,10 @@ BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
     };
 
     VectorXr D_diag = VectorXr::Zero(nSprings + nDampers + nContacts);
-    D_diag.head(nSprings) = diag_sparse(m_dyn->Wg().asSparse(), m_dyn->MinvDiag());
+    D_diag.head(nSprings) = diag_sparse(m_dyn->Wg(), m_dyn->MinvDiag());
     D_diag.head(nSprings) += m_dyn->Cdiag() * DynamicsAssembler::springComplianceScale(dt, theta);
 
-    D_diag.segment(nSprings, nDampers) = diag_sparse(m_dyn->Wgamma().asSparse(), m_dyn->MinvDiag());
+    D_diag.segment(nSprings, nDampers) = diag_sparse(m_dyn->Wgamma(), m_dyn->MinvDiag());
     D_diag.segment(nSprings, nDampers) += m_dyn->Adiag() * DynamicsAssembler::damperComplianceScale(dt, theta);
 
     D_diag.segment(nSprings + nDampers, nContacts) = diag_sparse(m_dyn->W().asSparse(), m_dyn->MinvDiag());
@@ -162,7 +162,7 @@ BlockDiagonal PgsAssembler::DinvDiag(real_t dt, real_t theta) const {
 }
 
 Eigen::SparseMatrix<real_t> PgsAssembler::W() const {
-    return m_dyn->Wg().vConcat(m_dyn->Wgamma()).vConcat(m_dyn->W()).asSparse();
+    return TripletMatrix::fromSparse(m_dyn->Wg()).vConcat(TripletMatrix::fromSparse(m_dyn->Wgamma())).vConcat(m_dyn->W()).asSparse();
 }
 
 VectorXr PgsAssembler::C(real_t dt, real_t theta) const {

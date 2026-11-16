@@ -364,10 +364,8 @@ void DynamicsAssembler::rebuildInteractionW_() {
     const int totalV = (m_body_vel_offsets.empty() ? 0 : m_body_vel_offsets.back());
     const auto& reg = m_world.ecs();
 
-    std::vector<Eigen::Triplet<real_t>> tripsWg;
-    std::vector<Eigen::Triplet<real_t>> tripsWgamma;
-    tripsWg.reserve(1024);
-    tripsWgamma.reserve(1024);
+    m_Wg.begin(totalV);
+    m_Wgamma.begin(totalV);
 
     // Per-row diagonals for C and A
     std::vector<real_t> Crows;
@@ -381,8 +379,9 @@ void DynamicsAssembler::rebuildInteractionW_() {
     int springRowCounter = 0;
     int damperRowCounter = 0;
 
-    // Emit a single 1xN row into W triplets without temporaries
-    auto emitColRef = [&](std::vector<Eigen::Triplet<real_t>>& trg, int rowIndex, entt::entity ent, const Eigen::Ref<const VectorXr>& col) {
+    // Adds the entries of one body to a row, zeros included: the sequence of entries is the structure
+    // of the rows (see misc::FixedPatternMatrix)
+    auto emitColRef = [&](misc::FixedPatternMatrix& trg, int rowIndex, entt::entity ent, const Eigen::Ref<const VectorXr>& col) {
         if (!reg.any_of<C_BodyIndex>(ent)) return false;
         int b = reg.get<C_BodyIndex>(ent).b;
         if (b < 0 || b >= (int)m_body_vel_offsets.size() - 1) return false;
@@ -390,10 +389,7 @@ void DynamicsAssembler::rebuildInteractionW_() {
         int nV = m_body_vel_offsets[(size_t)b + 1] - row0;
         int rows = (int)col.rows();
         int nCopy = std::min(rows, nV);
-        for (int j = 0; j < nCopy; ++j) {
-            real_t v = col(j);
-            if (v != (real_t)0) trg.emplace_back(rowIndex, row0 + j, v);
-        }
+        for (int j = 0; j < nCopy; ++j) trg.add(rowIndex, row0 + j, col(j));
         return true;
     };
 
@@ -438,8 +434,8 @@ void DynamicsAssembler::rebuildInteractionW_() {
                 g_error_vec.push_back(posError[i]);
                 const int row = springRowCounter++;
                 constraint.c_used[i] = true;
-                if (addA && i < constraint.WgA.cols()) emitColRef(tripsWg, row, constraint.a, constraint.WgA.col(i));
-                if (addB && i < constraint.WgB.cols()) emitColRef(tripsWg, row, constraint.b, constraint.WgB.col(i));
+                if (addA && i < constraint.WgA.cols()) emitColRef(m_Wg, row, constraint.a, constraint.WgA.col(i));
+                if (addB && i < constraint.WgB.cols()) emitColRef(m_Wg, row, constraint.b, constraint.WgB.col(i));
             }
         }
         // Damper rows
@@ -451,17 +447,16 @@ void DynamicsAssembler::rebuildInteractionW_() {
                 A_vel.push_back(velDamper[i]);
                 const int row = damperRowCounter++;
                 constraint.a_used[i] = true;
-                if (addA && i < constraint.WgammaA.cols()) emitColRef(tripsWgamma, row, constraint.a, constraint.WgammaA.col(i));
-                if (addB && i < constraint.WgammaB.cols()) emitColRef(tripsWgamma, row, constraint.b, constraint.WgammaB.col(i));
+                if (addA && i < constraint.WgammaA.cols()) emitColRef(m_Wgamma, row, constraint.a, constraint.WgammaA.col(i));
+                if (addB && i < constraint.WgammaB.cols()) emitColRef(m_Wgamma, row, constraint.b, constraint.WgammaB.col(i));
             }
         }
     }
 
-    // Build sparse matrices from accumulated triplets
     const int nSprings = (int)Crows.size();
     const int nDampers = (int)Arows.size();
-    m_Wg = TripletMatrix(nSprings, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(tripsWg)));
-    m_Wgamma = TripletMatrix(nDampers, totalV, std::make_shared<std::vector<Eigen::Triplet<real_t>>>(std::move(tripsWgamma)));
+    m_Wg.finish(nSprings);
+    m_Wgamma.finish(nDampers);
 
     // Store C (per-spring) and A (per-damper) diagonals
     m_Cdiag = VectorXr::Zero((index_t)nSprings);
@@ -538,7 +533,7 @@ void DynamicsAssembler::refreshState() {
 
 VectorXr DynamicsAssembler::springBias(real_t dt, real_t theta) const {
     if (m_Cdiag.size() == 0) return VectorXr();
-    const VectorXr Wvn = m_Wg.asSparse() * m_v_vec;
+    const VectorXr Wvn = m_Wg.matrix() * m_v_vec;
     // C lambda_theta + g(t_{n+theta}, q_{n+theta}) + h (theta^2 W^T u_{n+1} - (1-theta)^2 W^T u_n)
     // + (2 theta - 1) h chi = 0, scaled by 1/(theta^2 h); free bodies, kinematic drivers and
     // prescribed rates are all evaluated at t_{n+theta} = t_n + (1-theta) h.
@@ -549,7 +544,7 @@ VectorXr DynamicsAssembler::springBias(real_t dt, real_t theta) const {
 VectorXr DynamicsAssembler::damperBias(real_t /*dt*/, real_t theta) const {
     if (m_Adiag.size() == 0) return VectorXr();
     // A lambda_{gamma,theta} + W^T u_theta + chi = 0, scaled by 1/theta.
-    return ((1 - theta) / theta) * (m_Wgamma.asSparse() * m_v_vec) + ((real_t)1 / theta) * m_A_v_vec;
+    return ((1 - theta) / theta) * (m_Wgamma.matrix() * m_v_vec) + ((real_t)1 / theta) * m_A_v_vec;
 }
 
 void DynamicsAssembler::advancePrescribedMotion(real_t dt) {

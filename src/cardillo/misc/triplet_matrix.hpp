@@ -34,6 +34,15 @@ class TripletMatrix {
         return TripletMatrix((int)diag.size(), (int)diag.size(), std::make_shared<std::vector<Triplet>>(std::move(trips)));
     }
 
+    // Entries of a compressed sparse matrix, stored zeros included.
+    static TripletMatrix fromSparse(const ColSparse& m) {
+        std::vector<Triplet> trips;
+        trips.reserve((size_t)m.nonZeros());
+        for (int c = 0; c < m.outerSize(); ++c)
+            for (ColSparse::InnerIterator it(m, c); it; ++it) trips.emplace_back((int)it.row(), (int)it.col(), it.value());
+        return TripletMatrix((int)m.rows(), (int)m.cols(), std::make_shared<std::vector<Triplet>>(std::move(trips)));
+    }
+
     TripletMatrix zeroLike() const { return TripletMatrix(n_rows_, n_cols_); }
 
     // Horizontal concatenation

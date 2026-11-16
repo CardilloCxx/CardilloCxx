@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../../collision/types.hpp"
+#include "../../misc/fixed_pattern_matrix.hpp"
 #include "../../misc/math_helper.hpp"
 #include "../../misc/triplet_matrix.hpp"
 #include "../../misc/types.hpp"
@@ -76,9 +77,11 @@ class DynamicsAssembler {
     misc::TimingManager* timings() const { return m_timings; }
     collision::CollisionCoal* collisionManager() const { return m_collision_mgr; }
 
-    // Accessors for newly added matrices
-    const TripletMatrix& Wg() const { return m_Wg; }
-    const TripletMatrix& Wgamma() const { return m_Wgamma; }
+    // Spring and damper rows (numSprings x numV, numDampers x numV) with a sparsity pattern that only
+    // changes when an entry becomes nonzero for the first time or the structure changes (bodies,
+    // constraints, used rows); otherwise only the values are updated (misc::FixedPatternMatrix).
+    const CscMatrix& Wg() const { return m_Wg.matrix(); }
+    const CscMatrix& Wgamma() const { return m_Wgamma.matrix(); }
 
     // Per-spring diagonal C/A
     const VectorXr& Cdiag() const { return m_Cdiag; }
@@ -164,9 +167,9 @@ class DynamicsAssembler {
     VectorXr m_Minv_diag;                 // size totalV, diagonal of Minv
     VectorXr m_M_diag;                    // size totalV, diagonal of M (non-inverted)
 
-    // per-contact/block matrices used by solvers
-    TripletMatrix m_Wg;
-    TripletMatrix m_Wgamma;
+    // Spring and damper rows, see Wg()
+    misc::FixedPatternMatrix m_Wg;
+    misc::FixedPatternMatrix m_Wgamma;
 
     VectorXr m_Cdiag;        // Per-spring diagonal C = K^{-1} (scalar) (size = numSprings)
     VectorXr m_Adiag;        // Per-damper diagonal A = D^{-1} (scalar) (size = numDampers)
