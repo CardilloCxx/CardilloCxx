@@ -22,8 +22,10 @@ class IntegrationBase {
     void explicitPositionUpdate(World& world, real_t h);
     void linearImplicitPositionUpdate(World& world, real_t h);
 
-    /// Final check of the last step (pj.final_check = natural_map); empty if disabled.
+    /// Final check of the last step (solver.final_check = natural_map); empty if disabled.
     const std::optional<solver::StepResidual>& lastResidual() const { return m_lastResidual; }
+    /// Wall-clock time of the solver in the last step (s).
+    real_t lastSolveSeconds() const { return m_lastSolveSeconds; }
 
    protected:
     World& m_world;
@@ -32,6 +34,7 @@ class IntegrationBase {
     solver::SolverBase& m_solver;
     config::Config& m_config;
     std::optional<solver::StepResidual> m_lastResidual;
+    real_t m_lastSolveSeconds{0};
 };
 
 }  // namespace cardillo::integration

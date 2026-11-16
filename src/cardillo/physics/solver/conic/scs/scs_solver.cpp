@@ -32,7 +32,7 @@ scs::Settings ScsSolver::makeSettings() const {
     s.acceleration_interval = m_cfg.scs_acceleration_interval;
     s.adaptive_scale = m_cfg.scs_adaptive_scale;
     s.normalize = m_cfg.scs_normalize;
-    s.verbose = m_cfg.debug_pj;
+    s.verbose = m_cfg.solver_verbosity >= 3;
     return s;
 }
 
@@ -127,7 +127,7 @@ VectorXr ScsSolver::solve(real_t dt, real_t theta) {
         const std::string path = m_cfg.scs_dump_dir + "/step_" + std::to_string(m_steps) + ".bin";
         if (!scs::writeDump(path, d)) std::cerr << "SCS: could not write problem dump '" << path << "'\n";
     }
-    if (m_steps == 0) {
+    if (m_steps == 0 && m_cfg.solver_verbosity >= 2) {
         std::cout << "Initializing SCS solver (direct, AMD + QDLDL) with settings:\n";
         std::cout << "  eps_abs / eps_rel: " << settings.eps_abs << " / " << settings.eps_rel << "\n";
         std::cout << "  normalize: " << (settings.normalize ? "on" : "off") << ", adaptive scale: " << (settings.adaptive_scale ? "on" : "off")
@@ -147,7 +147,7 @@ VectorXr ScsSolver::solve(real_t dt, real_t theta) {
 
     if (status != scs::Status::Solved) {
         if (status == scs::Status::SolvedInaccurate) ++m_inaccurate_steps;
-        if (!scs::isAcceptable(status) || m_cfg.debug_pj) {
+        if (!scs::isAcceptable(status) || m_cfg.solver_verbosity >= 2) {
             std::cerr << "\nSCS: " << scs::toString(status) << " (iterations " << info.iterations << ", res_pri " << info.res_pri << ", res_dual " << info.res_dual << ", gap " << info.gap
                       << ")\n";
         }

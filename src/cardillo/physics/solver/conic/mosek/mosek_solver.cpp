@@ -22,7 +22,7 @@ mosek::Options makeOptions(const config::Config& cfg) {
     else if (cfg.mosek_presolve == "free")
         o.presolve = mosek::Options::Presolve::Free;
     o.scaling = cfg.mosek_scaling;
-    o.verbose = cfg.debug_pj;
+    o.verbose = cfg.solver_verbosity >= 3;
     return o;
 }
 
@@ -54,7 +54,7 @@ VectorXr MosekSolver::solve(real_t dt, real_t theta) {
     } else {
         auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::MosekSetup);
         m_solver.setup(*P, *q, *A, *b, m_dims);
-        if (m_first_setup) {
+        if (m_first_setup && m_cfg.solver_verbosity >= 2) {
             const auto& o = m_solver.options();
             std::cout << "Initializing MOSEK solver with settings:\n";
             std::cout << "  Threads: " << (o.num_threads > 0 ? std::to_string(o.num_threads) : std::string("auto")) << "\n";

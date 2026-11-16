@@ -43,7 +43,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
     const int nV = u_free.size();
     const int numLambda = nSprings + nDampers + nContacts;
 
-    if (m_cfg.debug_pj) {
+    if (m_cfg.solver_verbosity >= 2) {
         std::cout << "PGS solve: nSprings = " << nSprings << ", nDampers = " << nDampers << ", nContacts = " << nContacts << ", numLambda = " << numLambda << std::endl;
     }
 
@@ -107,7 +107,7 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
             std::cerr << "[ProjectedGaussSeidel] Divergence detected after " << iter << " iterations. Residual norm: " << res_norm << std::endl;
             throw std::runtime_error("Projected Gauss-Seidel diverged");
         }
-        if (m_cfg.debug_pj && iter % 1000 == 0) std::cout << "PGS iter " << iter << ", residual norm: " << res_norm << std::endl;
+        if (m_cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "PGS iter " << iter << ", error " << res_norm << std::endl;
         return res_norm;
     };
 

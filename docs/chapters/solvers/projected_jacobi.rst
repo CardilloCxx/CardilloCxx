@@ -112,7 +112,7 @@ How it solves
 **Convergence**
    Checked every 10 iterations on the relative velocity residual
    (``velocity_rms``), or in every sweep on the natural map of the contact law
-   (``pj.criterion = natural_map``), see *Convergence check* below. Controlled by
+   (``solver.criterion = natural_map``), see *Convergence check* below. Controlled by
    ``solver.tol_abs``, ``solver.tol_rel``, and ``solver.max_iterations``.
 
 Optional Nesterov acceleration
@@ -158,7 +158,7 @@ convergence barely changes it, and with a small step ``solver.alpha`` the
 increment is much smaller than the remaining error. Its tolerance therefore
 does not bound the accuracy of the contacts.
 
-With ``pj.criterion = natural_map``, PJ stops on the natural map of the contact
+With ``solver.criterion = natural_map``, PJ stops on the natural map of the contact
 law with its own step :math:`\alpha R` (see :doc:`index`, section *Accuracy
 measure*). The increment of the projection divided by the step,
 
@@ -172,7 +172,7 @@ Divided by the full step, it does not shrink with ``solver.alpha`` as the
 increment does: for a sticking contact it is the velocity error for any
 :math:`\alpha`. It is computed inside the projection loop at a few operations
 per contact, so it is evaluated in every sweep, also in the standard loop. The
-final check (``pj.final_check = natural_map``) measures the result with the
+final check (``solver.final_check = natural_map``) measures the result with the
 common step of all solvers instead; near convergence the two agree.
 
 Config keys
@@ -188,9 +188,9 @@ Config keys
      - Hard iteration cap (default 200000)
    * - ``solver.tol_abs``, ``solver.tol_rel``
      - Tolerances of the selected criterion (``natural_map``: m/s)
-   * - ``pj.criterion`` (alias ``solver.criterion``)
+   * - ``solver.criterion``
      - ``velocity_rms`` (default) or ``natural_map``: stop on the velocity increment or on the natural map of the contact law
-   * - ``pj.final_check`` (alias ``solver.final_check``)
+   * - ``solver.final_check``
      - ``none`` (default) or ``natural_map``: natural map of the result after every step (all solvers)
    * - ``solver.alpha``
      - Step-size multiplier for each Jacobi sweep (default 0.3)

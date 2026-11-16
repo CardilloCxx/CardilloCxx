@@ -29,8 +29,12 @@ class SolverBase {
     virtual int lastIterations() const { return m_last_iters; }
 
     // Contact law of the one-step problem the solver solves; the final check
-    // (pj.final_check = natural_map) measures the solver against this law.
+    // (solver.final_check = natural_map) measures the solver against this law.
     virtual ContactLaw contactLaw() const { return ContactLaw::Coulomb; }
+
+    // Whether the solver can stop on solver.criterion = natural_map; the others stop on their own
+    // criterion (velocity_rms, or the tolerances of the conic backends).
+    virtual bool stopsOnNaturalMap() const { return false; }
 
     virtual const char* name() const { return "SolverBase"; }
 

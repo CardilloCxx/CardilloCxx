@@ -189,10 +189,13 @@ Debug / diagnostics
      - ``false``
      - Enable rigid-body contact / W diagnostics in the Moreau integrator.
        Accepts ``true/1/yes/on``.
-   * - ``debug_pj``
-     - ``debug.pj``
-     - ``false``
-     - Enable Projected Jacobi iteration logging. Accepts ``true/1/yes/on``.
+   * - ``solver_verbosity``
+     - ``solver.verbosity``
+     - ``0``
+     - Console output of the solvers; warnings and errors are always printed. ``0``: progress bar.
+       ``1``: one line per step instead (iterations, solve time and, with ``solver.final_check``, the natural map).
+       ``2``: also the solver setup and the iteration logs of the projected solvers (every 1000 sweeps).
+       ``3``: also the output of the external libraries (Clarabel, QOCO, SCS, MOSEK, ConicXX).
 
 Solver selection and parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -220,14 +223,14 @@ Solver selection and parameters
      - ``solver.max_iterations``
      - ``200000``
      - Hard iteration cap for Projected Jacobi (minimum 1). Clamped to ≥ 1.
-   * - ``pj_criterion``
-     - ``pj.criterion``, alias: ``solver.criterion``
+   * - ``solver_criterion``
+     - ``solver.criterion``
      - ``velocity_rms``
-     - PJ stopping measure: ``velocity_rms`` (increment of the velocities) or ``natural_map`` (natural map of the contact law, see the solver overview).
-   * - ``pj_final_check``
-     - ``pj.final_check``, alias: ``solver.final_check``
+     - Stopping measure: ``velocity_rms`` (increment of the velocities) or ``natural_map`` (natural map of the contact law, see the solver overview). ``natural_map`` is supported by projected Jacobi; the other solvers warn and stop on their own criterion.
+   * - ``solver_final_check``
+     - ``solver.final_check``
      - ``none``
-     - Accuracy check after every step, the same for all solvers. ``natural_map`` evaluates the natural map of the result for the solver's own contact law and for Coulomb's law, and the residual of the spring and damper rows, as raw residuals in velocity units (independent of the tolerances). Printed with ``debug.pj``, available as ``PhysicsEngine::lastStepResidual()``.
+     - Accuracy check after every step, the same for all solvers. ``natural_map`` evaluates the natural map of the result for the solver's own contact law and for Coulomb's law, and the residual of the spring and damper rows, as raw residuals in velocity units (independent of the tolerances). Printed with ``solver.verbosity`` ≥ 1, available as ``PhysicsEngine::lastStepResidual()``.
    * - ``pj_tol_abs``
      - ``solver.tol_abs``
      - ``1e-5``
@@ -332,10 +335,6 @@ prefixes as shown:
      - ``conicxx.compliant_rows``
      - ``true``
      - ConicXX: springs and dampers as compliant zero-cone rows; ``false`` keeps their percussions as primal variables.
-   * - ``conicxx_verbose``
-     - ``conicxx.verbose``
-     - ``0``
-     - ConicXX: 0 silent, 1 summary, 2 iteration table per solve.
    * - ``conicxx_dynamic_reg_eps``
      - ``conicxx.dynamic_reg_eps``
      - ``1e-13``

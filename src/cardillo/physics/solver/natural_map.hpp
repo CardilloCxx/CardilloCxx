@@ -14,7 +14,7 @@ namespace cardillo::solver {
 enum class ContactLaw { Coulomb, Convexified };
 
 // Natural map of the contact law, the accuracy measure of the final check after every step, the
-// same for every solver (pj.final_check = natural_map). For contact b with percussion lambda_b and
+// same for every solver (solver.final_check = natural_map). For contact b with percussion lambda_b and
 // velocity xi_b (rows of DynamicsAssembler::W(), restitution included):
 //
 //   r_b = (lambda_b - proj_K(lambda_b - rho_b (xi_b + s_b e_N))) / rho_b,
@@ -48,7 +48,7 @@ class ContactNaturalMap {
     VectorXr m_invRho;  // 1 / m_rho (lambda_max(G_b)), 0 for skipped contacts
 };
 
-// Final check of a step, the same for every solver (pj.final_check = natural_map): the natural map
+// Final check of a step, the same for every solver (solver.final_check = natural_map): the natural map
 // of the stored contact percussions (DynamicsAssembler::contactPercussions()) at the velocities u
 // returned by the solver, and the residual W_i^T u + b_i + c_i Lambda_i of the spring and damper
 // rows (DynamicsAssembler::springBias()). All values are raw residuals in velocity units (m/s or

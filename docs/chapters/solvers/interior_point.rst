@@ -293,7 +293,7 @@ The backends stop on the gap and feasibility of their (equilibrated) cone
 program, which cannot be replaced by the natural map of the projected solvers:
 the external libraries offer no access to their iterates, and the
 interior-point iterates are strictly interior, so complementarity only holds
-in the limit. Afterwards, ``pj.final_check = natural_map`` measures the result
+in the limit. Afterwards, ``solver.final_check = natural_map`` measures the result
 with the common natural map (see :doc:`index`, section *Accuracy measure*):
 for the convexified law, i.e. with the shift :math:`\mu\|\gamma_T^-\|` frozen,
 as a measure of the solver's accuracy, and for Coulomb's law, which contains
@@ -444,7 +444,7 @@ All parameters default to MOSEK's own defaults:
    * - ``mosek.presolve``
      - ``default``, ``on``, ``off`` or ``free`` (``MSK_IPAR_PRESOLVE_USE``)
 
-``debug.pj = true`` forwards MOSEK's log to ``stdout``. The timers
+``solver.verbosity = 3`` forwards MOSEK's log to ``stdout``. The timers
 ``MOSEK Assembly/Setup/Update/Solve/Extract`` separate problem assembly, task
 construction, numerical update, optimization and solution extraction.
 
@@ -503,9 +503,9 @@ nonzero pattern unchanged. ``ConicxxSolver`` guards against this explicitly by
 also comparing the freshly computed ``ConeSpec`` against the one used at the
 last ``setup()``, and forcing a full re-setup if it differs.
 
-With ``debug.pj = on`` ``ConicxxSolver`` prints one line per step (setup or
+With ``solver.verbosity = 2`` ``ConicxxSolver`` prints one line per step (setup or
 update, cone sizes, iterations, factorizations, dynamically regularized
-pivots, setup and solve time); ``conicxx.verbose = 2`` prints ConicXX's
+pivots, setup and solve time); ``solver.verbosity = 3`` also prints ConicXX's
 iteration table.
 
 .. _ip-limitations:
@@ -560,9 +560,6 @@ Config keys
    * - ``conicxx.compliant_rows``
      - Springs and dampers as compliant zero-cone rows (``on``, default) or
        with their percussions as primal variables (``off``) (ConicXX only)
-   * - ``conicxx.verbose``
-     - ``0`` silent, ``1`` summary, ``2`` iteration table per solve (ConicXX
-       only)
    * - ``conicxx.dynamic_reg_eps``
      - Pivots with :math:`D_{ii}\,\mathrm{sign}_i` below this are replaced by
        :math:`\pm` ``solver.kkt_dynamic_reg`` (ConicXX only, default ``1e-13``)

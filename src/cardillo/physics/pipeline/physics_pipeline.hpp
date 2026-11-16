@@ -66,6 +66,8 @@ class PhysicsPipeline {
     ~PhysicsPipeline();
 
    private:
+    void printStep() const;
+
     World& m_world;
     config::Config& m_cfg;
     collision::CollisionCoal* m_collision_mgr{nullptr};

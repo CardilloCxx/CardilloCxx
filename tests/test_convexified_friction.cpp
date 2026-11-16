@@ -83,7 +83,7 @@ Run simulate(config::SolverType solver, real_t dt, real_t T, real_t z0, real_t v
     cfg.ip_tol_abs = cfg.ip_tol_rel = 1e-10;
     cfg.pj_max_iterations = 100000;
     cfg.mosek_tol_rel_gap = cfg.mosek_tol_pfeas = cfg.mosek_tol_dfeas = 1e-10;  // MOSEK has its own tolerances
-    cfg.pj_final_check = config::PjFinalCheck::NaturalMap;
+    cfg.solver_final_check = config::FinalCheck::NaturalMap;
 
     PhysicsEngine engine(cfg);
     engine.addStaticBody(PlaneShape(Vector3r(0, 0, 1), Vector3r(0, 1, 0), 5, 5), RigidState{});

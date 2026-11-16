@@ -48,6 +48,7 @@ int main() {
         "sim.gravity = 0, 0, -1.5\n"
         "condensed.sweep_mode = Colored\n"
         "output.interval_steps = 0\n"
+        "solver.verbosity = 2\n"
         "scene.height = 0.25\n");
     check(cfg.solver == config::SolverType::Condensed, "solver.type");
     check(cfg.pj_max_iterations == 42, "solver. alias of pj.max_iterations");
@@ -56,6 +57,10 @@ int main() {
     check(cfg.sim_gravity.isApprox(Vector3r(0, 0, -1.5)), "sim.gravity");
     check(cfg.condensed_sweep_mode == "colored", "choices are case-insensitive");
     check(cfg.output_interval_steps == 0, "output.interval_steps = 0 disables VTK output");
+    check(cfg.solver_verbosity == 2 && config::Config{}.solver_verbosity == 0, "solver.verbosity, default 0");
+    const auto pjKeys = parse("pj.criterion = natural_map\npj.final_check = natural_map\n");
+    check(pjKeys.solver_criterion == config::TerminationCriterion::VelocityRms && pjKeys.solver_final_check == config::FinalCheck::None,
+          "criterion and final check apply to every solver: no pj. keys");
     check(cfg.sceneParam("height", 1) == (real_t)0.25 && cfg.sceneParam("missing", 1) == 1, "scene parameters");
 
     check(throws("pj.max_iterations = 10x\n"), "trailing garbage in a number");
@@ -63,6 +68,7 @@ int main() {
     check(throws("solver.type = cg\n"), "unknown solver type");
     check(throws("moreau.theta = 1.5\n"), "theta outside (0, 1]");
     check(throws("friction.combine = max\n"), "invalid choice");
+    check(throws("solver.verbosity = 4\n") && throws("solver.verbosity = -1\n"), "solver.verbosity outside 0..3");
     check(throws("just text\n"), "line without '='");
     check(!throws("some.unknown_key = 1\n"), "unknown keys only warn");
     bool missing = false;

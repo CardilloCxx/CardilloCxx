@@ -323,7 +323,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
     const int nContacts = topo.frictionlessRows + topo.frictionalRows;
     const int nV = (int)u_free.size();
 
-    if (m_cfg.debug_pj) {
+    if (m_cfg.solver_verbosity >= 2) {
         std::cout << "Condensed solve: nSprings = " << nSprings << ", nDampers = " << nDampers << ", nContacts = " << nContacts << ", numLambda = " << topo.numLambda << std::endl;
     }
 
@@ -416,7 +416,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         // 3-term Chebyshev recurrence isn't designed for -- not a guaranteed failure (the same
         // "heuristic on the full nonlinear problem" caveat already applies regardless), but worth
         // surfacing rather than silently trusting the estimate.
-        if (m_cfg.debug_pj && !topo.gyroMinvBlocks.empty()) {
+        if (m_cfg.solver_verbosity >= 2 && !topo.gyroMinvBlocks.empty()) {
             std::cout << "[Condensed] Warning: pj.chebyshev's spectral-radius estimate assumes a real "
                          "eigenvalue spectrum (via symmetric Minv); an implicit-gyroscopic body is active, "
                          "making Minv non-symmetric -- the estimate may not be reliable here."
@@ -426,7 +426,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         const real_t rawRho = estimateSpectralRadius(topo, MinvDiag, relaxation, alpha, colored ? &coloring : nullptr, startBlock, useTrueSchur, bilateralLdlt, nV);
         // Clamp strictly below 1: the omega recurrence divides by (1 - rho^2/4*omega).
         chebyshevRho = std::min(rawRho, (real_t)0.995);
-        if (m_cfg.debug_pj) std::cout << "[Condensed] chebyshev spectral radius estimate: " << chebyshevRho << std::endl;
+        if (m_cfg.solver_verbosity >= 2) std::cout << "[Condensed] chebyshev spectral radius estimate: " << chebyshevRho << std::endl;
     }
 
     // One sweep over (lambda, du); Nesterov and Chebyshev extrapolate between calls. Under
@@ -570,7 +570,7 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
             m_last_iters = iter + 1;
 
             const real_t err = residualNorm(u_y, u_k1);
-            if (m_cfg.debug_pj && iter % 1000 == 0) std::cout << "[Condensed] chebyshev iter " << iter << ", residual norm: " << err << std::endl;
+            if (m_cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "[Condensed] chebyshev iter " << iter << ", error " << err << std::endl;
             if (err <= (real_t)1) break;
 
             // If the RAW sweep output (lambda_k1/u_k1, before any extrapolation) is already

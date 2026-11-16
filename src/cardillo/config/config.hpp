@@ -18,8 +18,8 @@ enum class IntegratorType { Moreau };
 // No initial multipliers, no drift, no stabilization parameter; perfect constraints require
 // theta > 1/2.
 enum class SolverType { ProjectedJacobi, ProjectedGaussSeidel, Condensed, NaiveSchur, Qoco, Clarabel, Conicxx, Scs, Mosek };
-enum class PjTerminationCriterion { VelocityRms, NaturalMap };
-enum class PjFinalCheck { None, NaturalMap };
+enum class TerminationCriterion { VelocityRms, NaturalMap };
+enum class FinalCheck { None, NaturalMap };
 
 struct Config {
     // Simulation settings
@@ -69,14 +69,17 @@ struct Config {
     real_t restitution_default_tangential{(real_t)0.0};  // restitution.default_tangential
 
     // Debug/diagnostics
-    bool debug_rb{false};    // debug.rb  - enable rigid-body contact/W diagnostics in Moreau
-    bool debug_pj{false};    // debug.pj  - enable ProjectedJacobi iteration logging
+    bool debug_rb{false};  // debug.rb  - enable rigid-body contact/W diagnostics in Moreau
+    // solver.verbosity: 0 progress bar only (warnings and errors are always printed), 1 one line per
+    // step instead (iterations, solve time, final check), 2 solver setup and iteration logs of the
+    // projected solvers, 3 the output of the external libraries (Clarabel, QOCO, SCS, MOSEK, ConicXX).
+    int solver_verbosity{0};
 
     // Solver selection
     SolverType solver{SolverType::ProjectedJacobi};
     int pj_max_iterations{200000};                     // pj.max_iterations
-    PjTerminationCriterion pj_criterion{PjTerminationCriterion::VelocityRms};  // pj.criterion
-    PjFinalCheck pj_final_check{PjFinalCheck::None};    // pj.final_check
+    TerminationCriterion solver_criterion{TerminationCriterion::VelocityRms};  // solver.criterion
+    FinalCheck solver_final_check{FinalCheck::None};                            // solver.final_check
     real_t pj_tol_abs{(real_t)1e-5};                   // pj.tol_abs
     real_t pj_tol_rel{(real_t)1e-5};                   // pj.tol_rel
     // Step-length factors. PGS/condensed: dlambda = relaxation * GiiInv * r on every row, with an
@@ -101,8 +104,8 @@ struct Config {
     bool pj_rdiag_true_delassus{false};                // pj.rdiag_true_delassus
 
     // Condensed (matrix-free block-relaxation) solver settings. Iteration/tolerance/relaxation/
-    // warmstart/debug knobs are shared with PJ/PGS -- see pj_max_iterations, pj_tol_abs,
-    // pj_tol_rel, pj_relaxation, pj_alpha, pj_warmstart, debug_pj above.
+    // warmstart knobs are shared with PJ/PGS -- see pj_max_iterations, pj_tol_abs, pj_tol_rel,
+    // pj_relaxation, pj_alpha, pj_warmstart above.
     std::string condensed_sweep_mode{"gauss_seidel"};    // condensed.sweep_mode: gauss_seidel | colored
     std::string condensed_local_solve{"projection"};     // condensed.local_solve: projection | newton
     int condensed_num_threads{0};                        // condensed.num_threads (0 = OpenMP default)
@@ -151,7 +154,6 @@ struct Config {
     real_t conicxx_warm_lambda{(real_t)0.99};    // conicxx.warm_lambda -- weight of the previous solution in the warm start
     bool conicxx_warm_start_after_setup{true};   // conicxx.warm_start_after_setup -- warm start from velocities and matched impulses when the contact set changed
     bool conicxx_compliant_rows{true};           // conicxx.compliant_rows -- springs/dampers as compliant zero-cone rows (off: percussions as primal variables)
-    int conicxx_verbose{0};                      // conicxx.verbose -- 0 silent, 1 summary, 2 iteration table per solve
 
     // ConicXX-only: remaining conicxx::Settings fields not already covered by
     // the shared ip_kkt_*/pj_tol_*/pj_max_iterations fields above.

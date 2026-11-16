@@ -111,7 +111,7 @@ spurious percussion on a separating contact the velocity
 :math:`\lambda_b/\rho_b` it would cause with the step :math:`\rho_b`. The
 natural map is used in two places.
 
-**Stopping test** (``pj.criterion = natural_map``, projected Jacobi). A
+**Stopping test** (``solver.criterion = natural_map``, projected Jacobi). A
 projection step of the solver, :math:`\lambda_b^+ = -\mathrm{proj}_C(\rho_b\xi_b - \lambda_b)`
 with its own step :math:`\rho_b = \alpha R_b`, already evaluates the natural map
 at its input in the Alart–Curnier form, which has the same zeros:
@@ -130,7 +130,7 @@ hidden behind a large slip:
 
 with ``pj.tol_abs`` and ``pj.tol_rel`` in velocity units.
 
-**Final check** (``pj.final_check = natural_map``, every solver). After every
+**Final check** (``solver.final_check = natural_map``, every solver). After every
 step, the time integrator evaluates the natural map of the stored percussions
 at the returned velocities (``solver/natural_map.hpp``), with one step per
 contact that does not depend on the solver, :math:`\rho_b = 1/\lambda_\mathrm{max}(G_b)`
@@ -139,7 +139,7 @@ mass); the conic backends have no step of their own. It reports raw residuals
 in velocity units, independent of the tolerances: :math:`\max_b \max(|r_{b,N}|, \lVert r_{b,T}\rVert)`
 for the solver's own law, the same for Coulomb's law, and the largest residual
 :math:`W_i^\top u + b_i + c_i\Lambda_i` of the spring and damper rows. The
-result is printed with ``debug.pj`` and available as
+result is printed with ``solver.verbosity`` ≥ 1 and available as
 ``PhysicsEngine::lastStepResidual()``. Near convergence the stopping test and
 the final check agree; far from it the stopping test can be larger by up to
 :math:`1/\alpha` (a spurious percussion counts with PJ's step

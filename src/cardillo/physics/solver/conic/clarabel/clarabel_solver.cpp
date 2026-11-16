@@ -47,7 +47,7 @@ ClarabelSolver::~ClarabelSolver() = default;
 
 void ClarabelSolver::initSolver(real_t dt, real_t theta, bool first_init) {
     clarabel::DefaultSettings<double> settings = clarabel::DefaultSettings<double>::default_settings();
-    settings.verbose = m_cfg.debug_pj;
+    settings.verbose = m_cfg.solver_verbosity >= 3;
     settings.max_iter = static_cast<uint32_t>(m_cfg.pj_max_iterations);
     settings.tol_gap_abs = static_cast<double>(m_cfg.ip_tol_abs);
     settings.tol_gap_rel = static_cast<double>(m_cfg.ip_tol_rel);
@@ -74,7 +74,7 @@ void ClarabelSolver::initSolver(real_t dt, real_t theta, bool first_init) {
     if (const auto l = static_cast<uintptr_t>(m_dyn.numFrictionlessContacts())) m_cones.push_back(clarabel::NonnegativeConeT<double>(l));
     for (int i = 0; i < m_dyn.numFrictionalContacts(); ++i) m_cones.push_back(clarabel::SecondOrderConeT<double>((uintptr_t)3));
 
-    if (first_init) {
+    if (first_init && m_cfg.solver_verbosity >= 2) {
         std::cout << "Initializing Clarabel solver with settings:\n";
         std::cout << "  Absolute tolerance: " << settings.tol_gap_abs << "\n";
         std::cout << "  Relative tolerance: " << settings.tol_gap_rel << "\n";

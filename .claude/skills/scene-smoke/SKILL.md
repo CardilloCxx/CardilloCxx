@@ -6,7 +6,9 @@ description: Check a change against the example scenes with short runs (reduced 
 # Scene smoke runs
 
 1. Build first: `cmake --build build -j$(nproc)` (after changes to `config::Config` or other shared
-   headers, all scene executables must be rebuilt) and run `cd build && ctest`.
+   headers, all scene executables must be rebuilt) and run `cd build && OMP_NUM_THREADS=1 ctest`.
+   Tests and scenes always run with one OpenMP thread (see CLAUDE.md); `run_scenes.sh` takes care of
+   it for scenes. Run one scene at a time, not several in parallel.
 2. Pick the scenes the change can affect and run them briefly:
 
    ```bash

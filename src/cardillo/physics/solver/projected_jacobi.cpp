@@ -32,7 +32,7 @@ struct workspace {
     VectorXr delta_impulse;
     VectorXr rhs;  // reusable RHS buffer for solveS
 
-    // pj.criterion = natural_map: e^2 of the natural map with PJ's own step at the input of the last
+    // solver.criterion = natural_map: e^2 of the natural map with PJ's own step at the input of the last
     // sweep (misc::naturalMapError2), computed by project().
     real_t naturalMapError2 = 0;
 
@@ -130,9 +130,9 @@ static inline BlockDiagonal buildBlockPreconditioner(const CsrMatrix& W, const V
 
 // Contact update in the negative variant lambda = -proj_C(rho*xi - lambda) (misc/contact_projection.hpp),
 // with rho*xi = R*(W*u + bias) already in ws->Rxi and the input lambda in ws->prev_impulse. With
-// pj.criterion = natural_map, the increments divided by the steps give the stopping test.
+// solver.criterion = natural_map, the increments divided by the steps give the stopping test.
 static inline void project(std::unique_ptr<workspace>& ws, const config::Config& cfg) {
-    const bool measure = cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap;
+    const bool measure = cfg.solver_criterion == config::TerminationCriterion::NaturalMap;
     const real_t tolAbs = cfg.pj_tol_abs, tolRel = cfg.pj_tol_rel;
     real_t error2 = 0;
 
@@ -185,7 +185,7 @@ static inline void pj_sweep(std::unique_ptr<workspace>& ws, const config::Config
 // v_prev; natural_map is the natural map with PJ's own step at the input of the sweep, computed by
 // project() (infinite for non-finite iterates).
 static inline real_t iterationError(const workspace& ws, const VectorXr& v, const VectorXr& v_prev, const config::Config& cfg) {
-    if (cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap) return std::sqrt(ws.naturalMapError2);
+    if (cfg.solver_criterion == config::TerminationCriterion::NaturalMap) return std::sqrt(ws.naturalMapError2);
     return termination::velocityRms(v, v_prev, cfg.pj_tol_abs, cfg.pj_tol_rel);
 }
 
@@ -237,7 +237,7 @@ static inline void chebyshev_loop(std::unique_ptr<workspace>& ws, config::Config
         ws->iter = iter + 1;
 
         const real_t err = iterationError(*ws, ws->x.head(ws->Nv), xk1.head(ws->Nv), cfg);
-        if (cfg.debug_pj && iter % 1000 == 0) std::cout << "PJ cheb iter " << iter << ", residual norm: " << err << std::endl;
+        if (cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "PJ cheb iter " << iter << ", error " << err << std::endl;
         if (err <= (real_t)1) break;
 
         double omega_next = (iter == 0) ? (1.0 / (1.0 - rho2 * 0.5)) : (1.0 / (1.0 - (rho2 * 0.25) * omega));
@@ -312,7 +312,7 @@ static inline void anderson_loop(std::unique_ptr<workspace>& ws, config::Config&
         const VectorXr f = w - z;
 
         const real_t err = iterationError(*ws, ws->x.head(ws->Nv), x_prev.head(ws->Nv), cfg);
-        if (cfg.debug_pj && iter % 1000 == 0) std::cout << "PJ AA iter " << iter << ", residual norm: " << err << std::endl;
+        if (cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "PJ AA iter " << iter << ", error " << err << std::endl;
         ws->iter = iter + 1;
         if (err <= (real_t)1) {
             z = w;
@@ -420,7 +420,7 @@ static inline void standard_loop(std::unique_ptr<workspace>& ws, config::Config&
         ws->iter = iter + 1;
         // velocity_rms costs a pass over the velocities and is checked every 10 sweeps; the natural
         // map comes with every sweep.
-        const bool checkNow = cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap || iter % 10 == 0;
+        const bool checkNow = cfg.solver_criterion == config::TerminationCriterion::NaturalMap || iter % 10 == 0;
         if (checkNow && iterationError(*ws, ws->x.head(ws->Nv), ws->prev_x.head(ws->Nv), cfg) <= 1) break;
     }
 }
@@ -448,7 +448,7 @@ static inline void nesterov_loop(std::unique_ptr<workspace>& ws, config::Config&
 
         const real_t err = iterationError(*ws, xk1.head(ws->Nv), xy.head(ws->Nv), cfg);
 
-        if (cfg.debug_pj && iter % 1000 == 0) std::cout << "PJ nes iter " << iter << ", residual norm: " << err << std::endl;
+        if (cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "PJ nes iter " << iter << ", error " << err << std::endl;
         if (err <= (real_t)1) break;
 
         const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
