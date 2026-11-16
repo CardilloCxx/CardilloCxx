@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../../misc/contact_projection.hpp"
+#include "nesterov.hpp"
 
 namespace cardillo::solver {
 
@@ -101,26 +102,31 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
         return (real_t)(1.0 / std::sqrt((double)Nv) * res_diff.cwiseQuotient(res_q).norm());
     };
 
-    auto check_residual = [&](const VectorXr& u_k, const VectorXr& u_k1, int iter) -> real_t {
-        const real_t res_norm = residual(u_k1, u_k);
-        if (std::isnan(res_norm) || std::isinf(res_norm)) {
-            std::cerr << "[ProjectedGaussSeidel] Divergence detected after " << iter << " iterations. Residual norm: " << res_norm << std::endl;
-            throw std::runtime_error("Projected Gauss-Seidel diverged");
+    // solver.criterion = natural_map: the increment of each block update divided by its step is the
+    // natural map of the row at the state of that update (misc::naturalMapError2); for a spring or
+    // damper row it is the row residual xi = W^T u + b + c lambda, scaled with W^T u + b. The steps
+    // relaxation * alpha * Dinv of the contact rows are inverted once (0: no dynamic body).
+    const bool naturalMap = m_cfg.solver_criterion == config::TerminationCriterion::NaturalMap;
+    const real_t tolAbs = m_cfg.pj_tol_abs, tolRel = m_cfg.pj_tol_rel;
+    VectorXr invStep = VectorXr::Zero(naturalMap ? numLambda : 0);
+    if (naturalMap) {
+        for (int i = 0; i < nBlocks; ++i) {
+            if (offsets[i] < nSprings + nDampers) continue;
+            for (int j = 0; j < DinvBlocks[i].rows(); ++j) {
+                const real_t step = m_cfg.pj_relaxation * alpha * DinvBlocks[i](j, j);
+                invStep[offsets[i] + j] = (step > (real_t)0 && std::isfinite(step)) ? (real_t)1 / step : (real_t)0;
+            }
         }
-        if (m_cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "PGS iter " << iter << ", error " << res_norm << std::endl;
-        return res_norm;
-    };
+    }
+    real_t sweepError2 = 0;
 
     // Single sweep callable used by both standard and Nesterov loops
     auto pgs_sweep = [&]() -> void {
         auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::ProjectedGaussSeidelSweep);
-        // real_t res_norm_sq = 0;
-        const bool backward = false;
-
-        for (int bi = 0; bi < nBlocks; ++bi) {
-            int i = backward ? (nBlocks - 1 - bi) : bi;
-            int blockSize = DinvBlocks[i].rows();
-            int offset = offsets[i];
+        sweepError2 = 0;
+        for (int i = 0; i < nBlocks; ++i) {
+            const int blockSize = DinvBlocks[i].rows();
+            const int offset = offsets[i];
 
             // Row velocity xi = xi^free + W^T du + C lambda of this block
             res.segment(offset, blockSize).noalias() = rhs.segment(offset, blockSize);
@@ -128,87 +134,48 @@ VectorXr ProjectedGaussSeidelSolver::solve(real_t dt, real_t theta) {
             res.segment(offset, blockSize).noalias() += C_vec.segment(offset, blockSize).cwiseProduct(lambda.segment(offset, blockSize));
 
             const bool isContact = offset >= nSprings + nDampers;
+            if (naturalMap && !isContact) {
+                for (int j = offset; j < offset + blockSize; ++j) sweepError2 = std::max(sweepError2, misc::naturalMapError2(res[j], res[j] - C_vec[j] * lambda[j], tolAbs, tolRel));
+            }
             dlambda.segment(offset, blockSize).noalias() = (DinvBlocks[i] * res.segment(offset, blockSize)) * m_cfg.pj_relaxation;
             if (isContact) dlambda.segment(offset, blockSize) *= alpha;
             updateBlock(lambda, dlambda, isContact, isContact ? mus[offset - nSprings - nDampers] : (real_t)0, offset, blockSize);
+            if (naturalMap && isContact) {
+                const real_t invN = invStep[offset];
+                if (blockSize == 1) {
+                    sweepError2 = std::max(sweepError2, misc::naturalMapError2(dlambda[offset] * invN, res[offset], tolAbs, tolRel));
+                } else {
+                    const real_t invT = invStep[offset + 1];  // both tangential rows share one step
+                    sweepError2 = std::max(sweepError2, misc::naturalMapError2(dlambda[offset] * invN, dlambda[offset + 1] * invT, dlambda[offset + 2] * invT, res[offset], res[offset + 1],
+                                                                               res[offset + 2], tolAbs, tolRel));
+                }
+            }
 
             du.noalias() += MiW_T.middleCols(offset, blockSize) * dlambda.segment(offset, blockSize);
-
-            // res_norm_sq += dlambda.segment(offset, blockSize).squaredNorm() / (DinvBlocks[i].diagonal().squaredNorm());
         }
     };
 
-    if (!m_cfg.pj_nesterov) {
-        VectorXr u_k = du;
+    // Stopping measure after a sweep from the velocity correction duIn, <= 1: converged.
+    auto error = [&](const VectorXr& duIn) -> real_t { return naturalMap ? std::sqrt(sweepError2) : residual(duIn, du); };
 
+    if (!m_cfg.pj_nesterov) {
+        VectorXr du_k = du;
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
             pgs_sweep();
             m_last_iters = iter + 1;
 
-            if (check_residual(u_k, du, iter) < 1.0) break;
-            u_k = du;
+            const real_t err = error(du_k);
+            if (!std::isfinite(err)) {
+                std::cerr << "[ProjectedGaussSeidel] Divergence detected after " << iter << " iterations. Error: " << err << std::endl;
+                throw std::runtime_error("Projected Gauss-Seidel diverged");
+            }
+            if (m_cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "PGS iter " << iter << ", error " << err << std::endl;
+            if (err < (real_t)1) break;
+            if (!naturalMap) du_k = du;
         }
     } else {
-        // Nesterov acceleration outer loop
-        VectorXr lambda_k = lambda;
-        VectorXr u_k = du;
-        VectorXr lambda_y = lambda;
-        VectorXr u_y = du;
-
-        double thk = 1.0;
-        real_t err_prev = std::numeric_limits<real_t>::infinity();
-        int restarts = 0;
-        bool momentum_disabled = false;
-
-        for (int iter = 0; iter < m_cfg.pj_max_iterations; iter++) {
-            lambda = lambda_y;
-            du = u_y;
-
-            pgs_sweep();
-            const VectorXr lambda_k1 = lambda;
-            const VectorXr u_k1 = du;
-            m_last_iters = iter + 1;
-
-            const real_t err = check_residual(u_y, u_k1, iter);
-            if (err <= (real_t)1) break;
-
-            const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
-            const double betak1 = (thk - 1.0) / thk1;
-
-            bool restart = false;
-            if (!std::isfinite((double)err)) {
-                restart = true;
-            } else if (err_prev < std::numeric_limits<real_t>::infinity() && err > (real_t)1.05 * err_prev) {
-                restart = true;
-            } else if (betak1 > (double)m_cfg.pj_nesterov_beta_threshold) {
-                restart = true;
-            } else if (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0) {
-                restart = true;
-            } else if ((u_y - u_k1).dot(u_k1 - u_k) > 0.0) {
-                restart = true;
-            }
-
-            if (restart) {
-                lambda_y = lambda_k1;
-                u_y = u_k1;
-                lambda_k = lambda_k1;
-                thk = 1.0;
-                if (++restarts >= m_cfg.pj_nesterov_restart_limit) momentum_disabled = true;
-            } else {
-                if (momentum_disabled) {
-                    lambda_y = lambda_k1;
-                    u_y = u_k1;
-                    thk = 1.0;
-                } else {
-                    lambda_y = lambda_k1 + (real_t)betak1 * (lambda_k1 - lambda_k);
-                    u_y = u_k1 + (real_t)betak1 * (u_k1 - u_k);
-                    thk = thk1;
-                }
-            }
-            lambda_k = lambda_k1;
-            u_k = u_k1;
-            err_prev = err;
-        }
+        const NesterovSettings settings{m_cfg.pj_max_iterations, m_cfg.pj_nesterov_beta_threshold, m_cfg.pj_nesterov_restart_limit, m_cfg.solver_verbosity, "PGS"};
+        m_last_iters = nesterovIterate(du, lambda, nV, settings, pgs_sweep, error);
     }
 
     if (nSprings > 0) m_dyn.setLambda_g(lambda.head(nSprings));

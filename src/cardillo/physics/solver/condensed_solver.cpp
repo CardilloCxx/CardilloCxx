@@ -13,6 +13,7 @@
 #include "../../misc/contact_projection.hpp"
 #include "../../misc/graph_coloring.hpp"
 #include "local_contact_newton.hpp"
+#include "nesterov.hpp"
 
 namespace cardillo::solver {
 
@@ -138,21 +139,21 @@ bool isContactKind(RowBlock::Kind kind) { return kind == RowBlock::Kind::Contact
 // iterations, or reports failure (singular Jacobian, non-finite step, non-decreasing residual, or
 // no convergence within its iteration cap), in which case we fall through to the always-available
 // linear step + projection below. Writes the new (projected/converged) impulse into
-// out.head(blk.dim); caller computes the delta.
+// out.head(blk.dim) and returns whether the Newton solve produced it; caller computes the delta.
 // `linearOnly` (default false, so every existing call site is unaffected): skips both the Newton
 // branch and the projection in updateBlock(), making this update a pure linear relaxation step
 // (o = lamOld - relaxation*alpha_i*GiiInv*xi, nothing else). Used only by estimateSpectralRadius()
 // below, which needs the *linear* part of the sweep operator in isolation -- Newton/projection are
 // exactly the nonlinearities that make a rigorous spectral-radius argument inapplicable in the
 // first place (see that function's own comment).
-void computeBlockUpdate(const RowBlock& blk, const Buf6& xi, real_t relaxation, real_t alpha, const Buf6& lamOld, bool useNewton, const NewtonACParams& newtonParams, Buf6& out,
-                         bool linearOnly = false) {
+bool computeBlockUpdate(const RowBlock& blk, const Buf6& xi, real_t relaxation, real_t alpha, const Buf6& lamOld, bool useNewton, const NewtonACParams& newtonParams, Buf6& out,
+                        bool linearOnly = false) {
     if (useNewton && !linearOnly && blk.kind == RowBlock::Kind::ContactFrictional) {
         Vector3r lam3 = lamOld.head<3>();
         const Vector3r xi3 = xi.head<3>();
         if (solveContactBlockNewtonAC(blk.Gii, xi3, blk.mu, lam3, newtonParams)) {
             out.head<3>() = lam3;
-            return;
+            return true;
         }
     }
 
@@ -164,6 +165,40 @@ void computeBlockUpdate(const RowBlock& blk, const Buf6& xi, real_t relaxation, 
         o = lamOld.head(blk.dim) - o;  // updateBlock() without projection
     else
         updateBlock(blk.kind, blk.mu, lamOld.head(blk.dim), o);
+    return false;
+}
+
+// solver.criterion = natural_map: tolerances and the inverse steps 1 / (relaxation alpha GiiInv_jj)
+// of the contact rows (0: no dynamic body), indexed like lambda.
+struct NaturalMapStop {
+    real_t tolAbs{0};
+    real_t tolRel{0};
+    VectorXr invStep;
+};
+
+// e^2 of the natural map of one block update from lamOld to lamNew at the block residual xi
+// (misc::naturalMapError2): for spring and damper rows the residual itself, scaled with
+// W^T u + b = xi - c lambda; for contact rows the increment divided by the step, or G_ii times the
+// increment after a Newton local solve, which has no step. Scalar arithmetic: this runs per block
+// in every sweep.
+real_t blockError2(const RowBlock& blk, const Buf6& xi, const Buf6& lamOld, const Buf6& lamNew, bool newton, const NaturalMapStop& stop) {
+    if (!isContactKind(blk.kind)) {
+        real_t e2 = 0;
+        for (int j = 0; j < blk.dim; ++j) e2 = std::max(e2, misc::naturalMapError2(xi[j], xi[j] - blk.complianceDiag[j] * lamOld[j], stop.tolAbs, stop.tolRel));
+        return e2;
+    }
+    if (blk.dim == 1) return misc::naturalMapError2((lamOld[0] - lamNew[0]) * stop.invStep[blk.offset], xi[0], stop.tolAbs, stop.tolRel);
+    real_t r[3];
+    const real_t d[3] = {lamOld[0] - lamNew[0], lamOld[1] - lamNew[1], lamOld[2] - lamNew[2]};
+    if (newton) {
+        for (int i = 0; i < 3; ++i) r[i] = blk.Gii(i, 0) * d[0] + blk.Gii(i, 1) * d[1] + blk.Gii(i, 2) * d[2];
+    } else {
+        const real_t invN = stop.invStep[blk.offset], invT = stop.invStep[blk.offset + 1];  // both tangential rows share one step
+        r[0] = d[0] * invN;
+        r[1] = d[1] * invT;
+        r[2] = d[2] * invT;
+    }
+    return misc::naturalMapError2(r[0], r[1], r[2], xi[0], xi[1], xi[2], stop.tolAbs, stop.tolRel);
 }
 
 // Sequential block-Gauss-Seidel sweep: propagates du immediately after each block, matching
@@ -171,19 +206,23 @@ void computeBlockUpdate(const RowBlock& blk, const Buf6& xi, real_t relaxation, 
 // `startBlock` skips the bilateral (spring+damper) prefix when condensed.true_schur handles those
 // exactly instead (0 -- i.e. every block -- otherwise); contact blocks are always a contiguous
 // suffix of topo.blocks, so a single start index is enough, no separate index list needed.
-void gaussSeidelSweep(const CondensedTopology& topo, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton, const NewtonACParams& newtonParams,
-                       VectorXr& lambda, VectorXr& du, int startBlock = 0, bool linearOnly = false) {
+// With `stop`, returns e^2 of the natural map, the maximum of blockError2() over the swept blocks.
+real_t gaussSeidelSweep(const CondensedTopology& topo, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton, const NewtonACParams& newtonParams,
+                        VectorXr& lambda, VectorXr& du, int startBlock = 0, bool linearOnly = false, const NaturalMapStop* stop = nullptr) {
+    real_t error2 = 0;
     Buf6 r, lamOld, lamNew, delta, tmp;
     for (size_t bi = (size_t)startBlock; bi < topo.blocks.size(); ++bi) {
         const auto& blk = topo.blocks[bi];
         blockResidual(blk, rhs, du, lambda, r);
         lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
-        computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew, linearOnly);
+        const bool newton = computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew, linearOnly);
+        if (stop) error2 = std::max(error2, blockError2(blk, r, lamOld, lamNew, newton, *stop));
 
         delta.head(blk.dim) = lamNew.head(blk.dim) - lamOld.head(blk.dim);
         scatterDelta(blk, MinvDiag, topo.gyroMinvBlocks, delta, du, tmp);
         lambda.segment(blk.offset, blk.dim) = lamNew.head(blk.dim);
     }
+    return error2;
 }
 
 // Builds the block adjacency graph for coloring: two blocks are adjacent iff they share a body
@@ -222,15 +261,17 @@ std::vector<std::vector<int>> buildBlockAdjacency(const CondensedTopology& topo,
 // Graph-colored Gauss-Seidel: sequential across colors, (eventually) parallel within a color.
 // Safe by construction -- no two blocks in the same color class share a body, so their reads/
 // writes of du touch disjoint index ranges.
-void coloredSweep(const CondensedTopology& topo, const misc::Coloring& coloring, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
-                   const NewtonACParams& newtonParams, VectorXr& lambda, VectorXr& du, bool linearOnly = false) {
+// With `stop`, returns e^2 of the natural map, the maximum of blockError2() over the swept blocks.
+real_t coloredSweep(const CondensedTopology& topo, const misc::Coloring& coloring, const VectorXr& rhs, const VectorXr& MinvDiag, real_t relaxation, real_t alpha, bool useNewton,
+                    const NewtonACParams& newtonParams, VectorXr& lambda, VectorXr& du, bool linearOnly = false, const NaturalMapStop* stop = nullptr) {
     const int numColors = coloring.numColors;
+    real_t error2 = 0;
     // Single team for the whole sweep (all colors), not one team per color: spawning/joining an
     // OpenMP team has real overhead, and a sweep can have dozens of colors -- doing that per color,
     // every sweep, every solve() call, dominates wall-clock on scenes with many contacts. Each
     // `#pragma omp for` still has its own implicit barrier, so the color-sequencing invariant
     // (no color starts until the previous one's writes are all visible) is unchanged.
-#pragma omp parallel
+#pragma omp parallel reduction(max : error2)
     for (int c = 0; c < numColors; ++c) {
         const auto& cls = coloring.colorClasses[(size_t)c];
         const int n = (int)cls.size();
@@ -243,7 +284,8 @@ void coloredSweep(const CondensedTopology& topo, const misc::Coloring& coloring,
             const auto& blk = topo.blocks[(size_t)idx];
             blockResidual(blk, rhs, du, lambda, r);
             lamOld.head(blk.dim) = lambda.segment(blk.offset, blk.dim);
-            computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew, linearOnly);
+            const bool newton = computeBlockUpdate(blk, r, relaxation, alpha, lamOld, useNewton, newtonParams, lamNew, linearOnly);
+            if (stop) error2 = std::max(error2, blockError2(blk, r, lamOld, lamNew, newton, *stop));
 
             // Safe: no two blocks in `cls` share a body (that's the coloring invariant), so these
             // writes land in disjoint slices of du/lambda across threads -- no race, no atomics.
@@ -253,6 +295,7 @@ void coloredSweep(const CondensedTopology& topo, const misc::Coloring& coloring,
         }
         // implicit barrier at the end of `omp for` here, before the next color starts
     }
+    return error2;
 }
 
 // Estimates the spectral radius of the LINEARIZED sweep operator (i.e. with projection/Newton
@@ -370,13 +413,9 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         res_q.array() = res_v0.cwiseAbs().cwiseMax(res_v1.cwiseAbs()).array() * m_cfg.pj_tol_rel + m_cfg.pj_tol_abs;
         return (real_t)(1.0 / std::sqrt((double)nV) * res_diff.cwiseQuotient(res_q).norm());
     };
-    auto checkResidual = [&](const VectorXr& uA, const VectorXr& uB, int iter) -> real_t {
-        const real_t res_norm = residualNorm(uA, uB);
-        if (std::isnan(res_norm) || std::isinf(res_norm)) {
-            std::cerr << "[Condensed] Divergence detected after " << iter << " iterations. Residual norm: " << res_norm << std::endl;
-            throw std::runtime_error("Condensed solver diverged");
-        }
-        return res_norm;
+    auto diverged = [](int iter) {
+        std::cerr << "[Condensed] Divergence detected after " << iter << " iterations." << std::endl;
+        throw std::runtime_error("Condensed diverged");
     };
 
     // condensed.true_schur eliminates the bilateral (spring+damper) blocks exactly in every sweep;
@@ -429,120 +468,52 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         if (m_cfg.solver_verbosity >= 2) std::cout << "[Condensed] chebyshev spectral radius estimate: " << chebyshevRho << std::endl;
     }
 
+    // solver.criterion = natural_map: the sweeps measure the natural map of every block update
+    // (blockError2()); under true_schur only the contact blocks, as the bilateral rows are exact.
+    const bool naturalMap = m_cfg.solver_criterion == config::TerminationCriterion::NaturalMap;
+    NaturalMapStop stop{m_cfg.pj_tol_abs, m_cfg.pj_tol_rel, VectorXr::Zero(naturalMap ? topo.numLambda : 0)};
+    if (naturalMap) {
+        for (const auto& blk : topo.blocks) {
+            if (!isContactKind(blk.kind)) continue;
+            for (int j = 0; j < blk.dim; ++j) {
+                const real_t step = relaxation * alpha * blk.GiiInv(j, j);
+                stop.invStep[blk.offset + j] = (step > (real_t)0 && std::isfinite(step)) ? (real_t)1 / step : (real_t)0;
+            }
+        }
+    }
+    real_t sweepError2 = 0;
+
     // One sweep over (lambda, du); Nesterov and Chebyshev extrapolate between calls. Under
     // condensed.true_schur every call first solves the bilateral rows exactly for the current
     // contact contribution to du, then sweeps the contact blocks only.
-    auto doSweep = [&](VectorXr& lam, VectorXr& ucorr) {
-        if (useTrueSchur) exactBilateralStep(topo, bilateralLdlt, rhs, MinvDiag, lam, ucorr);
+    auto sweep = [&]() {
+        auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
+        if (useTrueSchur) exactBilateralStep(topo, bilateralLdlt, rhs, MinvDiag, lambda, du);
+        const NaturalMapStop* measure = naturalMap ? &stop : nullptr;
         if (colored) {
-            coloredSweep(topo, coloring, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr);
+            sweepError2 = coloredSweep(topo, coloring, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lambda, du, false, measure);
         } else {
-            gaussSeidelSweep(topo, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lam, ucorr, startBlock);
+            sweepError2 = gaussSeidelSweep(topo, rhs, MinvDiag, relaxation, alpha, useNewton, newtonParams, lambda, du, startBlock, false, measure);
         }
     };
 
-    if (!m_cfg.pj_nesterov && !useChebyshev) {
-        VectorXr u_prev = du;
-        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-            auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
-            doSweep(lambda, du);
-            sc_sweep.stop();
+    // Stopping measure after a sweep from the velocity correction duIn, <= 1: converged.
+    auto error = [&](const VectorXr& duIn) -> real_t { return naturalMap ? std::sqrt(sweepError2) : residualNorm(duIn, du); };
 
+    if (!m_cfg.pj_nesterov && !useChebyshev) {
+        VectorXr du_prev = du;
+        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
+            sweep();
             m_last_iters = iter + 1;
-            if (checkResidual(u_prev, du, iter) < (real_t)1) break;
-            u_prev = du;
+            const real_t err = error(du_prev);
+            if (!std::isfinite(err)) diverged(iter);
+            if (m_cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "[Condensed] iter " << iter << ", error " << err << std::endl;
+            if (err < (real_t)1) break;
+            if (!naturalMap) du_prev = du;
         }
     } else if (m_cfg.pj_nesterov) {
-        // Nesterov (FISTA-style) acceleration, ported verbatim from
-        // ProjectedGaussSeidelSolver::solve()'s Nesterov branch: momentum-extrapolate between
-        // sweeps, with adaptive restart when the residual grows, the momentum coefficient gets too
-        // large, or the update direction reverses. Reuses the same shared config keys PJ/PGS
-        // already use (pj.nesterov, pj.nesterov_beta_threshold, pj.nesterov_restart_limit) rather
-        // than inventing condensed-specific ones.
-        VectorXr lambda_k = lambda, u_k = du, lambda_y = lambda, u_y = du;
-        double thk = 1.0;
-        real_t err_prev = std::numeric_limits<real_t>::infinity();
-        int restarts = 0;
-        bool momentum_disabled = false;
-
-        for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-            auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
-            lambda = lambda_y;
-            du = u_y;
-            doSweep(lambda, du);
-            sc_sweep.stop();
-
-            const VectorXr lambda_k1 = lambda;
-            const VectorXr u_k1 = du;
-            m_last_iters = iter + 1;
-
-            // A non-finite err is a restart trigger below, not an immediate failure.
-            const real_t err = residualNorm(u_y, u_k1);
-            if (err <= (real_t)1) break;
-
-            const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
-            const double betak1 = (thk - 1.0) / thk1;
-
-            bool restart = false;
-            if (!std::isfinite((double)err)) {
-                restart = true;
-            } else if (err_prev < std::numeric_limits<real_t>::infinity() && err > (real_t)1.05 * err_prev) {
-                restart = true;
-            } else if (betak1 > (double)m_cfg.pj_nesterov_beta_threshold) {
-                restart = true;
-            } else if (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0) {
-                restart = true;
-            } else if ((u_y - u_k1).dot(u_k1 - u_k) > 0.0) {
-                restart = true;
-            }
-
-            // A restart only ever resets to lambda_k1/u_k1 -- the plain (unaccelerated) sweep
-            // output. If that itself is already non-finite (the corruption happened one iteration
-            // earlier, inside the extrapolation below, and propagated through doSweep), no restart
-            // can recover it: momentum is permanently disabled and the loop's exit condition is a
-            // hard failure at the bottom, exactly like the plain (non-Nesterov) path's checkResidual.
-            if (!lambda_k1.allFinite() || !u_k1.allFinite()) {
-                momentum_disabled = true;
-                restarts = m_cfg.pj_nesterov_restart_limit;
-                checkResidual(u_y, u_k1, iter);  // throws: nothing left to fall back to
-            }
-
-            if (restart) {
-                lambda_y = lambda_k1;
-                u_y = u_k1;
-                lambda_k = lambda_k1;
-                thk = 1.0;
-                if (++restarts >= m_cfg.pj_nesterov_restart_limit) momentum_disabled = true;
-            } else if (momentum_disabled) {
-                lambda_y = lambda_k1;
-                u_y = u_k1;
-                thk = 1.0;
-            } else {
-                // Guard the extrapolation itself, not just its aftermath: betak1 in [0,1] bounds the
-                // *coefficient*, not the extrapolated magnitude -- (lambda_k1 - lambda_k) can still be
-                // large enough to overflow. Catching that here, before it is ever fed into the next
-                // doSweep(), is what actually prevents the corruption from entering the state at all;
-                // the `allFinite()` check above is only a last-resort backstop for anything that slips
-                // past this guard some other way.
-                VectorXr trial_lambda_y = lambda_k1 + (real_t)betak1 * (lambda_k1 - lambda_k);
-                VectorXr trial_u_y = u_k1 + (real_t)betak1 * (u_k1 - u_k);
-                if (trial_lambda_y.allFinite() && trial_u_y.allFinite()) {
-                    lambda_y = std::move(trial_lambda_y);
-                    u_y = std::move(trial_u_y);
-                    thk = thk1;
-                } else {
-                    lambda_y = lambda_k1;
-                    u_y = u_k1;
-                    thk = thk1;
-                }
-            }
-            lambda_k = lambda_k1;
-            u_k = u_k1;
-            err_prev = err;
-        }
-        // `lambda`/`du` already hold the latest post-sweep values from inside the loop above
-        // (doSweep mutates them by reference) -- no final reassignment needed, matching
-        // ProjectedGaussSeidelSolver's own Nesterov branch, which relies on the same fact.
+        const NesterovSettings settings{m_cfg.pj_max_iterations, m_cfg.pj_nesterov_beta_threshold, m_cfg.pj_nesterov_restart_limit, m_cfg.solver_verbosity, "Condensed"};
+        m_last_iters = nesterovIterate(du, lambda, nV, settings, sweep, error);
     } else {
         // useChebyshev is the only remaining possibility here (the first branch above excluded
         // !pj_nesterov && !useChebyshev, the second excluded pj_nesterov).
@@ -559,23 +530,21 @@ VectorXr CondensedSolver::solve(real_t dt, real_t theta) {
         double omega = 1.0;
 
         for (int iter = 0; iter < m_cfg.pj_max_iterations; ++iter) {
-            auto sc_sweep = m_dyn.timings()->scope(misc::TimingManager::TimerId::CondensedSweep);
             lambda = lambda_y;
             du = u_y;
-            doSweep(lambda, du);
-            sc_sweep.stop();
+            sweep();
 
             const VectorXr lambda_k1 = lambda;
             const VectorXr u_k1 = du;
             m_last_iters = iter + 1;
 
-            const real_t err = residualNorm(u_y, u_k1);
+            const real_t err = error(u_y);
             if (m_cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "[Condensed] chebyshev iter " << iter << ", error " << err << std::endl;
             if (err <= (real_t)1) break;
 
             // If the RAW sweep output (lambda_k1/u_k1, before any extrapolation) is already
             // non-finite, the sweep itself has diverged and there is nothing to fall back to.
-            if (!lambda_k1.allFinite() || !u_k1.allFinite()) checkResidual(u_y, u_k1, iter);  // throws
+            if (!lambda_k1.allFinite() || !u_k1.allFinite()) diverged(iter);
 
             const double omega_next = (iter == 0) ? (1.0 / (1.0 - rho2 * 0.5)) : (1.0 / (1.0 - (rho2 * 0.25) * omega));
 

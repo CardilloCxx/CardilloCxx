@@ -109,8 +109,15 @@ The same mixed absolute/relative residual is used as for Projected Jacobi:
             {\varepsilon_\mathrm{abs}\,\mathbf{1} + \varepsilon_\mathrm{rel}\,\max(|u^{(k+1)}|,|u^{(k)}|)}
      \right\rVert_2 \leq 1
 
-Nesterov acceleration and warmstart are supported with the same behaviour as
-Projected Jacobi (see :doc:`projected_jacobi`).
+With ``solver.criterion = natural_map``, PGS stops on the natural map of each
+block update instead, at the state of that update (see :doc:`index`, section
+*Accuracy measure*); the spring and damper rows enter with their residual. Both
+tangential rows of a frictional contact use the step
+:math:`\alpha/\mathrm{mean}(D_{t_1t_1}, D_{t_2t_2})`; different tangential steps
+would make the fixed point satisfy a distorted friction law.
+
+Nesterov acceleration (the loop shared with PJ and condensed) and warmstart are
+supported with the same behaviour as Projected Jacobi (see :doc:`projected_jacobi`).
 
 Difference from Projected Jacobi
 ---------------------------------
@@ -139,7 +146,7 @@ Config keys
    * - ``solver.max_iterations``
      - Hard iteration cap (default 200000)
    * - ``solver.tol_abs``, ``solver.tol_rel``
-     - Convergence tolerances on the velocity residual
+     - Tolerances of ``solver.criterion`` (``natural_map``: m/s)
    * - ``solver.relaxation``
      - Over-relaxation factor on all solver updates
    * - ``solver.alpha``

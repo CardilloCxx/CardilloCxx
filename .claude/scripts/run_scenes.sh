@@ -7,8 +7,11 @@
 # Runs from the repository root (scenes load meshes relative to the cwd), with build/ in the root.
 # Prints one line per scene: exit code, last solver iteration count and the first error message.
 # Timeout per scene: SCENE_TIMEOUT seconds (default 900). Build directory: BUILD_DIR (default build).
+# Runs single-threaded (OMP_NUM_THREADS=1 and the thread keys of the condensed and MOSEK solvers, which
+# would override it), see CLAUDE.md.
 
 set -u
+export OMP_NUM_THREADS=1
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 OUT=$1
 shift
@@ -19,7 +22,7 @@ for sc in "$@"; do
     [ -x "$bin" ] || { echo "== $target: no binary $bin"; continue; }
     copy="$OUT/$target.config"
     cp "$ROOT/examples/scenes/$dir/$cfg" "$copy"
-    printf "\nsim.T=%s\noutput.interval_steps=0\n" "$T" >> "$copy"
+    printf "\nsim.T=%s\noutput.interval_steps=0\ncondensed.num_threads=1\nmosek.num_threads=1\n" "$T" >> "$copy"
     (cd "$ROOT" && timeout "${SCENE_TIMEOUT:-900}" "$bin" "$copy" > "$OUT/$target.log" 2>&1; echo "exit $?" >> "$OUT/$target.log")
     iters=$(tr '\r' '\n' < "$OUT/$target.log" | grep -o 'iters=[0-9]*' | tail -1)
     err=$(grep -m1 -o 'what():.*\|unrecognized config key.*\|Divergence detected.*' "$OUT/$target.log")

@@ -7,6 +7,7 @@
 #include "../../misc/block_diagonal.hpp"
 #include "../../misc/contact_projection.hpp"
 #include "../../misc/contact_rho.hpp"
+#include "nesterov.hpp"
 #include "termination.hpp"
 
 namespace cardillo::solver {
@@ -25,7 +26,6 @@ struct workspace {
     const std::optional<BlockDiagonal> R_block;
 
     VectorXr x;
-    VectorXr prev_x;
     VectorXr impulse;
     VectorXr prev_impulse;
     VectorXr Rxi;  // R xi of the last sweep's input, the projection argument without the impulse
@@ -55,7 +55,6 @@ struct workspace {
           RW(std::move(RW)),
           R_block(std::move(R_block)),
           x(std::move(x_init)),
-          prev_x(x),
           impulse(std::move(p_init)),
           prev_impulse(impulse),
           Rxi(VectorXr::Zero(nc)),
@@ -167,7 +166,6 @@ static inline void project(std::unique_ptr<workspace>& ws, const config::Config&
 static inline void pj_sweep(std::unique_ptr<workspace>& ws, const config::Config& cfg) {
     auto scope = ws->timer->scope(misc::TimingManager::TimerId::ProjectedJacobiSweep);
 
-    ws->prev_x = ws->x;
     ws->prev_impulse = ws->impulse;
 
     ws->Rxi.noalias() = ws->RW * ws->x.head(ws->Nv);
@@ -183,8 +181,9 @@ static inline void pj_sweep(std::unique_ptr<workspace>& ws, const config::Config
 
 // Stopping measure after a sweep, <= 1: converged. velocity_rms compares the velocities v and
 // v_prev; natural_map is the natural map with PJ's own step at the input of the sweep, computed by
-// project() (infinite for non-finite iterates).
-static inline real_t iterationError(const workspace& ws, const VectorXr& v, const VectorXr& v_prev, const config::Config& cfg) {
+// project() (infinite for non-finite iterates). Called in every sweep with velocity segments, which
+// the Refs take without copying.
+static inline real_t iterationError(const workspace& ws, const Eigen::Ref<const VectorXr>& v, const Eigen::Ref<const VectorXr>& v_prev, const config::Config& cfg) {
     if (cfg.solver_criterion == config::TerminationCriterion::NaturalMap) return std::sqrt(ws.naturalMapError2);
     return termination::velocityRms(v, v_prev, cfg.pj_tol_abs, cfg.pj_tol_rel);
 }
@@ -415,86 +414,22 @@ static inline std::unique_ptr<workspace> build_workspace(physics::DynamicsAssemb
 }
 
 static inline void standard_loop(std::unique_ptr<workspace>& ws, config::Config& cfg) {
+    const bool naturalMap = cfg.solver_criterion == config::TerminationCriterion::NaturalMap;
+    VectorXr vPrev(naturalMap ? 0 : ws->Nv);
     for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
+        // velocity_rms costs two passes over the velocities and is checked every 10 sweeps; the
+        // natural map comes with every sweep.
+        const bool checkNow = naturalMap || iter % 10 == 0;
+        if (checkNow && !naturalMap) vPrev = ws->x.head(ws->Nv);
         pj_sweep(ws, cfg);
         ws->iter = iter + 1;
-        // velocity_rms costs a pass over the velocities and is checked every 10 sweeps; the natural
-        // map comes with every sweep.
-        const bool checkNow = cfg.solver_criterion == config::TerminationCriterion::NaturalMap || iter % 10 == 0;
-        if (checkNow && iterationError(*ws, ws->x.head(ws->Nv), ws->prev_x.head(ws->Nv), cfg) <= 1) break;
+        if (checkNow && iterationError(*ws, ws->x.head(ws->Nv), vPrev, cfg) <= 1) break;
     }
 }
 
 static inline void nesterov_loop(std::unique_ptr<workspace>& ws, config::Config& cfg) {
-    VectorXr xk = ws->x;
-    VectorXr pk = ws->impulse;
-    VectorXr xk1 = ws->x;
-    VectorXr pk1 = ws->impulse;
-    VectorXr xy = ws->x;
-    VectorXr py = ws->impulse;
-
-    double thk = 1.0;
-    real_t err_prev = std::numeric_limits<real_t>::infinity();
-    int restarts = 0;
-    bool momentum_disabled = false;
-
-    for (int iter = 0; iter < cfg.pj_max_iterations; ++iter) {
-        ws->x = xy;
-        ws->impulse = py;
-        pj_sweep(ws, cfg);
-        xk1 = ws->x;
-        pk1 = ws->impulse;
-        ws->iter = iter + 1;
-
-        const real_t err = iterationError(*ws, xk1.head(ws->Nv), xy.head(ws->Nv), cfg);
-
-        if (cfg.solver_verbosity >= 2 && iter % 1000 == 0) std::cout << "PJ nes iter " << iter << ", error " << err << std::endl;
-        if (err <= (real_t)1) break;
-
-        const double thk1 = 0.5 * (1.0 + std::sqrt(4.0 * thk * thk + 1.0));
-        const double betak1 = (thk - 1.0) / thk1;
-
-        bool restart = false;
-        if (!std::isfinite((double)err)) {
-            restart = true;
-        } else if (err_prev < std::numeric_limits<real_t>::infinity() && err > (real_t)1.05 * err_prev) {
-            restart = true;
-        } else if (betak1 > (double)cfg.pj_nesterov_beta_threshold) {
-            restart = true;
-        } else if (!std::isfinite(betak1) || betak1 < 0.0 || betak1 > 1.0) {
-            restart = true;
-        } else {
-            const VectorXr vy = xy.head(ws->Nv);
-            const VectorXr vk1 = xk1.head(ws->Nv);
-            const VectorXr vk = xk.head(ws->Nv);
-            if ((vy - vk1).dot(vk1 - vk) > 0.0) restart = true;
-        }
-
-        if (restart) {
-            xy = xk1;
-            py = pk1;
-            xk = xk1;
-            pk = pk1;
-            thk = 1.0;
-            if (++restarts >= cfg.pj_nesterov_restart_limit) momentum_disabled = true;
-        } else {
-            if (momentum_disabled) {
-                xy = xk1;
-                py = pk1;
-                thk = 1.0;
-            } else {
-                xy = xk1 + (real_t)betak1 * (xk1 - xk);
-                py = pk1 + (real_t)betak1 * (pk1 - pk);
-                thk = thk1;
-            }
-            xk = xk1;
-            pk = pk1;
-        }
-        err_prev = err;
-    }
-
-    ws->x = xk1;
-    ws->impulse = pk1;
+    const NesterovSettings settings{cfg.pj_max_iterations, cfg.pj_nesterov_beta_threshold, cfg.pj_nesterov_restart_limit, cfg.solver_verbosity, "PJ nes"};
+    ws->iter = nesterovIterate(ws->x, ws->impulse, ws->Nv, settings, [&] { pj_sweep(ws, cfg); }, [&](const VectorXr& vIn) { return iterationError(*ws, ws->x.head(ws->Nv), vIn, cfg); });
 }
 
 VectorXr ProjectedJacobiSolver::solve(real_t dt, real_t theta) {
