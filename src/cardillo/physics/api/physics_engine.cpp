@@ -2,6 +2,7 @@
 
 #include "../../collision/collision_coal.hpp"
 #include "../../misc/timings/TimingManager.hpp"
+#include "../integration/integration_base.hpp"
 #include "../pipeline/physics_pipeline.hpp"
 
 namespace cardillo {
@@ -48,6 +49,11 @@ bool PhysicsEngine::isFinished() const {
 const physics::DynamicsAssembler& PhysicsEngine::dynamicsAssembler() const {
     if (!m_pipeline) throw std::runtime_error("PhysicsEngine::dynamicsAssembler: no pipeline");
     return m_pipeline->dynamicsAssembler();
+}
+
+const std::optional<solver::StepResidual>& PhysicsEngine::lastStepResidual() const {
+    if (!m_pipeline) throw std::runtime_error("PhysicsEngine::lastStepResidual: no pipeline");
+    return m_pipeline->integrator().lastResidual();
 }
 
 World& PhysicsEngine::world() {

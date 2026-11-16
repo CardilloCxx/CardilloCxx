@@ -4,7 +4,6 @@
 #include "../../../assembly/dynamics_assembler.hpp"
 #include "qoco_assembler.hpp"
 #include "../../solver_base.hpp"
-#include "../../warmstart.hpp"
 
 namespace cardillo::solver {
 
@@ -16,6 +15,7 @@ class QocoSolver : public SolverBase {
     VectorXr solve(real_t dt, real_t theta) override;
 
     const char* name() const override { return "QocoSolver"; }
+    ContactLaw contactLaw() const override { return ContactLaw::Convexified; }
 
    private:
     void initQocoSolver(real_t dt, real_t theta, bool first_init = true);

@@ -223,18 +223,18 @@ Solver selection and parameters
    * - ``pj_criterion``
      - ``pj.criterion``, alias: ``solver.criterion``
      - ``velocity_rms``
-     - PJ stopping measure: ``velocity_rms`` (legacy) or ``natural_map`` (blockwise contact natural-map residual).
+     - PJ stopping measure: ``velocity_rms`` (increment of the velocities) or ``natural_map`` (natural map of the contact law, see the solver overview).
    * - ``pj_final_check``
      - ``pj.final_check``, alias: ``solver.final_check``
      - ``none``
-     - Solver-independent contact accuracy check after every step (all solvers). ``natural_map`` evaluates the blockwise natural-map residual of the stored contact percussions with contact-local step sizes from the Delassus blocks and ``pj.tol_abs``/``pj.tol_rel`` as scales (≤ 1: within tolerance). With ``tol_abs = tol_rel = t`` the product residual · t is independent of t. Printed with ``debug.pj``.
+     - Accuracy check after every step, the same for all solvers. ``natural_map`` evaluates the natural map of the result for the solver's own contact law and for Coulomb's law, and the residual of the spring and damper rows, as raw residuals in velocity units (independent of the tolerances). Printed with ``debug.pj``, available as ``PhysicsEngine::lastStepResidual()``.
    * - ``pj_tol_abs``
      - ``solver.tol_abs``
-     - ``1e-4``
-     - Absolute convergence tolerance for the selected PJ criterion.
+     - ``1e-5``
+     - Absolute convergence tolerance for the selected PJ criterion (``natural_map``: m/s).
    * - ``pj_tol_rel``
      - ``solver.tol_rel``
-     - ``1e-4``
+     - ``1e-5``
      - Relative convergence tolerance.
    * - ``pj_relaxation``
      - ``solver.relaxation``

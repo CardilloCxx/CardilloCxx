@@ -24,11 +24,6 @@
 #include "cardillo/misc/types.hpp"
 
 namespace cardillo {
-namespace solver {
-class WarmstartProvider;
-}
-}  // namespace cardillo
-namespace cardillo {
 namespace collision {
 class CollisionCoal;
 }

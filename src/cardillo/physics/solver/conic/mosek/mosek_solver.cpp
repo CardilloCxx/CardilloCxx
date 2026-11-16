@@ -87,7 +87,7 @@ VectorXr MosekSolver::solve(real_t dt, real_t theta) {
     const auto x = m_solver.x();
     VectorXr Smu = m_assembler.computeSmu();
     VectorXr impulse = z.cwiseProduct(Smu);
-    solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
+    m_dyn.setContactPercussions(impulse);
 
     const int nV = static_cast<int>(m_dyn.numV());
     const int nSprings = static_cast<int>(m_dyn.numSprings());

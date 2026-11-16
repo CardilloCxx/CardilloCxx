@@ -32,6 +32,7 @@ class ScsSolver : public SolverBase {
     VectorXr solve(real_t dt, real_t theta) override;
 
     const char* name() const override { return "ScsSolver"; }
+    ContactLaw contactLaw() const override { return ContactLaw::Convexified; }
 
    private:
     scs::Settings makeSettings() const;

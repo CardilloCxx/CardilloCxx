@@ -32,7 +32,9 @@ struct Contact {
     Vector3r tangent2;  // second tangent (world)
     real_t penetration;       // overlap distance (> 0 means interpenetration)
     real_t friction_mu{0};    // combined friction coefficient for the pair at this contact
-    // Last solved impulse for this contact (pn, pt1, pt2) stored in contact for warmstarting
+    // Percussion (pn, pt1, pt2) of the last solve, the warm start of the next step: it acts on body B
+    // as pn * normal + pt1 * tangent1 + pt2 * tangent2 (normal from A to B), pn >= 0, in every solver
+    // and in the VTK contact output. Solvers access it through DynamicsAssembler::contactPercussions().
     Vector3r last_impulse{Vector3r::Zero()};
     // Base index into dynamic solver rows for this contact (-1 if not dynamic)
     int impulse_base_index{-1};

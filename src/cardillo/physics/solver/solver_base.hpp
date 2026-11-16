@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 #include "../../misc/types.hpp"
+#include "natural_map.hpp"
 
 namespace cardillo {
 namespace solver {
@@ -26,6 +27,10 @@ class SolverBase {
 
     // Diagnostics
     virtual int lastIterations() const { return m_last_iters; }
+
+    // Contact law of the one-step problem the solver solves; the final check
+    // (pj.final_check = natural_map) measures the solver against this law.
+    virtual ContactLaw contactLaw() const { return ContactLaw::Coulomb; }
 
     virtual const char* name() const { return "SolverBase"; }
 

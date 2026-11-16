@@ -34,7 +34,8 @@ struct Run {
     real_t maxViolation{0};  // max |g| over the run (distance constraint / spring elongation)
     real_t energyDrift{0};   // relative change of the total energy
     Vector3r finalPosition{Vector3r::Zero()};
-    real_t percussion{0};    // bilateral percussion of the last step
+    real_t percussion{0};   // bilateral percussion of the last step
+    real_t rowResidual{0};  // max residual W^T u + b + c Lambda of the bilateral row (final check)
 };
 
 // Point mass m = 1 attached to a static anchor at the origin by a distance law with rest length 1.
@@ -50,7 +51,7 @@ Run simulate(config::SolverType solver, real_t theta, real_t stiffness) {
         if (std::string(ex.what()).find("Failed to load QOCO runtime backend") != std::string::npos) throw;  // environment, not the scheme
         std::cerr << "exception (theta=" << theta << ", stiffness=" << stiffness << "): " << ex.what() << std::endl;
         Run r;
-        r.maxViolation = r.energyDrift = r.percussion = std::numeric_limits<real_t>::quiet_NaN();
+        r.maxViolation = r.energyDrift = r.percussion = r.rowResidual = std::numeric_limits<real_t>::quiet_NaN();
         r.finalPosition.setConstant(std::numeric_limits<real_t>::quiet_NaN());
         return r;
     }
@@ -68,6 +69,7 @@ Run simulateImpl(config::SolverType solver, real_t theta, real_t stiffness) {
     cfg.pj_tol_rel = 1e-12;
     cfg.pj_max_iterations = 100000;
     cfg.condensed_true_schur = true;  // pure DAE: exact bilateral solve
+    cfg.pj_final_check = config::PjFinalCheck::NaturalMap;
     const bool spring = std::isfinite(stiffness);
     cfg.sim_gravity = spring ? Vector3r::Zero() : Vector3r(0, 0, -9.81);
 
@@ -92,6 +94,7 @@ Run simulateImpl(config::SolverType solver, real_t theta, real_t stiffness) {
         engine.step();
         RigidBody::updateState(reg, mass);  // constraints read the cached pose
         r.maxViolation = std::max(r.maxViolation, std::abs(constraint.getConstraint().positionError[0]));
+        if (const auto& residual = engine.lastStepResidual()) r.rowResidual = std::max(r.rowResidual, residual->bilateral);
     }
     r.energyDrift = (energy() - E0) / Escale;
     r.finalPosition = reg.get<C_Position3>(mass).value;
@@ -131,16 +134,18 @@ int main() {
             for (int i = 0; i < 2; ++i) {
                 const real_t theta = i == 0 ? 0.6 : 1.0;
                 const Run r = simulate(solver, theta, INFINITY);
-                std::cout << sname << " pendulum theta=" << theta << ": max|g| " << r.maxViolation << ", percussion " << r.percussion << std::endl;
+                std::cout << sname << " pendulum theta=" << theta << ": max|g| " << r.maxViolation << ", percussion " << r.percussion << ", row residual " << r.rowResidual << std::endl;
                 check(r.maxViolation < 2e-3, sname + ": pendulum violation bounded (theta=" + std::to_string(theta) + ")");
+                check(r.rowResidual < 1e-6, sname + ": final check, residual of the constraint row (theta=" + std::to_string(theta) + ")");
                 checkPercussion(i, r, "pendulum (theta=" + std::to_string(theta) + ")");
             }
 
             // 2) linear spring, theta = 1/2: energy conservation (trapezoidal rule)
             {
                 const Run r = simulate(solver, 0.5, 100.0);
-                std::cout << sname << " spring theta=0.5: rel. energy change " << r.energyDrift << std::endl;
+                std::cout << sname << " spring theta=0.5: rel. energy change " << r.energyDrift << ", row residual " << r.rowResidual << std::endl;
                 check(std::abs(r.energyDrift) < 1e-6, sname + ": spring conserves energy at theta=1/2");
+                check(r.rowResidual < 1e-6, sname + ": final check, residual of the spring row");
                 checkPercussion(2, r, "spring");
             }
         } catch (const std::exception& ex) {

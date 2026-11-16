@@ -289,6 +289,16 @@ covers perfect constraints.
 Error of the convexified friction law
 -------------------------------------
 
+The backends stop on the gap and feasibility of their (equilibrated) cone
+program, which cannot be replaced by the natural map of the projected solvers:
+the external libraries offer no access to their iterates, and the
+interior-point iterates are strictly interior, so complementarity only holds
+in the limit. Afterwards, ``pj.final_check = natural_map`` measures the result
+with the common natural map (see :doc:`index`, section *Accuracy measure*):
+for the convexified law, i.e. with the shift :math:`\mu\|\gamma_T^-\|` frozen,
+as a measure of the solver's accuracy, and for Coulomb's law, which contains
+the error of the convexification described here.
+
 Every active frictional contact (:math:`\pi \ne 0`) of the conic solvers
 satisfies
 
@@ -530,8 +540,8 @@ Config keys
      - Select backend (must be built, see the note at the top)
    * - ``solver.max_iterations``
      - Maximum interior-point iterations
-   * - ``solver.tol_abs``, ``solver.tol_rel``
-     - Primal/dual feasibility and gap tolerances
+   * - ``ip.tol_abs``, ``ip.tol_rel``
+     - Primal/dual feasibility and gap tolerances (default ``1e-8``; independent of ``pj.tol_*``)
    * - ``solver.kkt_static_reg``
      - Static KKT regularisation constant (all three)
    * - ``solver.kkt_dynamic_reg``

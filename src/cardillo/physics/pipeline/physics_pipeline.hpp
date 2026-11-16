@@ -20,7 +20,6 @@ class IntegrationBase;
 namespace cardillo {
 namespace solver {
 class SolverBase;
-class WarmstartProvider;
 }  // namespace solver
 }  // namespace cardillo
 namespace cardillo {

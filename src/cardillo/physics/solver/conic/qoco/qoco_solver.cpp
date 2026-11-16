@@ -130,7 +130,7 @@ VectorXr QocoSolver::solve(real_t dt, real_t theta) {
     VectorXr Smu = m_assembler.computeSmu();
     VectorXr impulse = VectorXr::Zero(m_dyn.numContactRows());
     for (int i = 0; i < impulse.size(); ++i) impulse[i] = sol->z[i] * Smu[i];
-    solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
+    m_dyn.setContactPercussions(impulse);
 
     // Solution vector x contains stacked [v, lambda_g, lambda_gamma]
     VectorXr x_vec = VectorXr::Zero(m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers());

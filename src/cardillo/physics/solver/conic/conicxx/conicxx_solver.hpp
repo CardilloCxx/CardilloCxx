@@ -7,7 +7,6 @@
 #include "conicxx_assembler.hpp"
 #include "../../../assembly/dynamics_assembler.hpp"
 #include "../../solver_base.hpp"
-#include "../../warmstart.hpp"
 
 #include <conicxx/solver.h>
 
@@ -26,6 +25,7 @@ class ConicxxSolver : public SolverBase {
     VectorXr solve(real_t dt, real_t theta) override;
 
     const char* name() const override { return "ConicxxSolver"; }
+    ContactLaw contactLaw() const override { return ContactLaw::Convexified; }
 
    private:
     conicxx::Settings makeSettings() const;

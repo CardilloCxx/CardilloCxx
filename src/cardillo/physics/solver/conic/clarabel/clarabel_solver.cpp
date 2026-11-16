@@ -126,7 +126,7 @@ VectorXr ClarabelSolver::solve(real_t dt, real_t theta) {
             impulse[i] = static_cast<real_t>(solution.z[dual_index]) * Smu[i];
         }
     }
-    solver::WarmstartProvider::storeImpulse(impulse, m_dyn);
+    m_dyn.setContactPercussions(impulse);
 
     VectorXr x_vec = VectorXr::Zero(m_dyn.numV() + m_dyn.numSprings() + m_dyn.numDampers());
     const int x_copy_len = std::min<int>(x_vec.size(), static_cast<int>(solution.x.size()));

@@ -15,7 +15,6 @@
 #include "../../misc/contact_rho.hpp"
 #include "../../misc/graph_coloring.hpp"
 #include "local_contact_newton.hpp"
-#include "warmstart.hpp"
 
 namespace cardillo::solver {
 
@@ -188,8 +187,7 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
     p.newton =
         NewtonACParams{m_cfg.condensed_newton_max_iters, m_cfg.condensed_newton_tol, (m_cfg.condensed_newton_rho_strategy == "full") ? NewtonRhoStrategy::FullSpectral : NewtonRhoStrategy::Split};
 
-    VectorXr pi = VectorXr::Zero(nC);
-    if (m_cfg.pj_warmstart) WarmstartProvider::applyWarmstart(pi, m_dyn);
+    VectorXr pi = m_cfg.pj_warmstart ? m_dyn.contactPercussions() : VectorXr::Zero(nC);
 
 #ifdef CARDILLO_HAVE_OPENMP
     if (m_cfg.condensed_num_threads > 0) omp_set_num_threads(m_cfg.condensed_num_threads);
@@ -318,7 +316,7 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
     const VectorXr x = xFree + X * pi;
     m_dyn.setLambda_g(x.segment(nV, nS));
     m_dyn.setLambda_gamma(x.segment(nV + nS, nD));
-    WarmstartProvider::storeImpulse(pi, m_dyn);
+    m_dyn.setContactPercussions(pi);
     return x.head(nV);
 }
 

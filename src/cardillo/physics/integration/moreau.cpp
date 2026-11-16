@@ -1,6 +1,6 @@
 #include "moreau.hpp"
 #include <iostream>
-#include "../solver/contact_residual.hpp"
+#include "../solver/natural_map.hpp"
 #include "../synchronization/derived_entity_sync.hpp"
 
 namespace cardillo::integration {
@@ -16,8 +16,13 @@ void MoreauIntegrator::step(real_t dt) {
     m_dyn.updateStateDependentTerms(dt);
     const VectorXr u = m_solver.solve(dt, m_config.moreau_theta);
     if (m_config.pj_final_check == config::PjFinalCheck::NaturalMap) {
-        const real_t error = solver::contactNaturalMapResidual(m_dyn, u, m_config.pj_tol_abs, m_config.pj_tol_rel);
-        if (m_config.debug_pj) std::cout << "Final natural-map error: " << error << std::endl;
+        const solver::ContactLaw law = m_solver.contactLaw();
+        m_lastResidual = solver::stepResidual(m_dyn, u, law, dt, m_config.moreau_theta);
+        if (m_config.debug_pj) {
+            std::cout << "Natural map: contact " << m_lastResidual->contact;
+            if (law == solver::ContactLaw::Convexified) std::cout << ", Coulomb law " << m_lastResidual->coulomb;
+            std::cout << ", bilateral " << m_lastResidual->bilateral << ", iterations " << m_solver.lastIterations() << std::endl;
+        }
     }
     m_dyn.writeVelocityToSystem(u, dt);
     explicitPositionUpdate(m_world, m_config.moreau_theta * dt);

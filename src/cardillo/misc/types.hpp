@@ -42,5 +42,6 @@ using MatrixXXr = Eigen::Matrix<real_t, Eigen::Dynamic, Eigen::Dynamic>;
 template <int StorageLayout>
 using SparseMatrix = Eigen::SparseMatrix<real_t, StorageLayout>;
 using CscMatrix = SparseMatrix<Eigen::ColMajor>;
+using CsrMatrix = SparseMatrix<Eigen::RowMajor>;
 
 }  // namespace cardillo

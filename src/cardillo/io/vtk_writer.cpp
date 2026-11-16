@@ -419,7 +419,7 @@ vtkSmartPointer<vtkPolyData> VtkWriter::contactManifoldsToPolyData(const std::ve
     auto idBArr = makeIntArray("id_b");
     auto patchIdArr = makeIntArray("patch_id");
     // Percussion (impulse over the step) acting on body B (id_b) at each contact point:
-    // pn * normal + pt1 * tangent1 + pt2 * tangent2, normal from A to B (see warmstart.hpp).
+    // pn * normal + pt1 * tangent1 + pt2 * tangent2, normal from A to B (see Contact::last_impulse).
     auto pnArr = makeFloatArray("pn", 1);
     auto pt1Arr = makeFloatArray("pt1", 1);
     auto pt2Arr = makeFloatArray("pt2", 1);

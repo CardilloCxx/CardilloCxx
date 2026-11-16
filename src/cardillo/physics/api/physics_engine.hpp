@@ -3,6 +3,7 @@
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -11,6 +12,7 @@
 #include "../../config/config.hpp"
 #include "../assets/body_factory.hpp"
 #include "../constraints/constraint_factory.hpp"
+#include "../solver/natural_map.hpp"
 #include "../world.hpp"
 #include "physics_types.hpp"
 
@@ -220,6 +222,9 @@ class CARDILLO_API PhysicsEngine {
     /// Read-only access to the dynamics assembler of the last step (contacts, Jacobians, impulses);
     /// intended for diagnostics and tests.
     const physics::DynamicsAssembler& dynamicsAssembler() const;
+    /// Natural-map check of the last step (pj.final_check = natural_map, see solver/natural_map.hpp);
+    /// empty if the check is disabled or no step was taken.
+    const std::optional<solver::StepResidual>& lastStepResidual() const;
 
    private:
     std::unique_ptr<World> m_world;
