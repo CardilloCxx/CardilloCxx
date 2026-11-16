@@ -69,7 +69,7 @@ Run simulateImpl(config::SolverType solver, real_t theta, real_t stiffness) {
     cfg.pj_tol_rel = 1e-12;
     cfg.pj_max_iterations = 100000;
     cfg.condensed_true_schur = true;  // pure DAE: exact bilateral solve
-    cfg.pj_final_check = config::PjFinalCheck::NaturalMap;
+    cfg.solver_final_check = config::FinalCheck::NaturalMap;
     const bool spring = std::isfinite(stiffness);
     cfg.sim_gravity = spring ? Vector3r::Zero() : Vector3r(0, 0, -9.81);
 

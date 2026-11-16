@@ -43,7 +43,7 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
 
     QOCOSettings* settings = (QOCOSettings*)malloc(sizeof(QOCOSettings));
     set_default_settings(settings);
-    settings->verbose = m_cfg.debug_pj ? 1 : 0;
+    settings->verbose = m_cfg.solver_verbosity >= 3 ? 1 : 0;
     settings->abstol = m_cfg.ip_tol_abs;
     settings->reltol = m_cfg.ip_tol_rel;
     settings->abstol_inacc = m_cfg.ip_tol_abs;
@@ -61,7 +61,7 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
     settings->max_iters = m_cfg.pj_max_iterations;
     settings->ruiz_iters = 2;  // default 0
 
-    if (first_init) {
+    if (first_init && m_cfg.solver_verbosity >= 2) {
         std::cout << "Initializing QOCO solver with settings:\n";
         std::cout << "  Absolute tolerance: " << settings->abstol << "\n";
         std::cout << "  Relative tolerance: " << settings->reltol << "\n";
@@ -71,11 +71,10 @@ void QocoSolver::initQocoSolver(real_t dt, real_t theta, bool first_init) {
         std::cout << "  KKT static regularization G: " << settings->kkt_static_reg_G << "\n";
         std::cout << "  KKT dynamic regularization: " << settings->kkt_dynamic_reg << "\n";
         std::cout << "  Problem dimensions: n=" << n << ", m=" << m << ", p=" << p << ", l=" << l << ", nsoc=" << nsoc << "\n";
-
-        if (m_cfg.moreau_implicit_gyroscopy)
-            std::cerr << "Warning: QOCO solver does not support implicit gyroscopic forces; "
-                         "ignoring config setting.\n";
     }
+    if (first_init && m_cfg.moreau_implicit_gyroscopy)
+        std::cerr << "Warning: QOCO solver does not support implicit gyroscopic forces; "
+                     "ignoring config setting.\n";
 
     auto sc = m_dyn.timings()->scope(misc::TimingManager::TimerId::QocoSetup);
 

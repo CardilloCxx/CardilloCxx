@@ -17,13 +17,20 @@ cmake -S . -B build                       # RelWithDebInfo, -march=native, examp
 cmake -S . -B build -DCARDILLO_WITH_CLARABEL=ON -DCARDILLO_WITH_QOCO=ON -DCARDILLO_WITH_CONICXX=ON -DCARDILLO_WITH_SCS=ON  # + _MOSEK
 cmake --build build -j$(nproc)            # library, all scene executables, tests
 cmake --build build --target chain        # a single scene (target names: examples/CMakeLists.txt)
-cd build && ctest                         # all tests; single test: ctest -R test_torsional_oscillator
-build/tests/test_position_level           # tests are plain executables, run them directly for output
+cd build && OMP_NUM_THREADS=1 ctest       # all tests; single test: ctest -R test_torsional_oscillator
+OMP_NUM_THREADS=1 build/tests/test_position_level  # tests are plain executables, run them directly for output
 cd docs && uv run make html               # Sphinx + Doxygen docs
 ```
 
+- Run tests and scenes with **one OpenMP thread**: `OMP_NUM_THREADS=1`, and `condensed.num_threads=1`
+  in scene configs (a value > 0 there calls `omp_set_num_threads` and overrides the environment; MOSEK:
+  `mosek.num_threads=1`). The machine is shared with other runs; multithreaded runs oversubscribe it,
+  OpenMP barriers then stall (sweeps 1000× slower), results take forever and timings mean nothing.
+  `.claude/scripts/run_scenes.sh` sets all three.
+- Console output: `solver.verbosity` (0 progress bar, 1 one line per step with iterations, solve time and
+  the final check, 2 solver setup and iteration logs, 3 the conic libraries' own output).
 - Run scenes **from the repository root** (mesh paths like `res/meshes/...` are relative to the cwd):
-  `build/examples/<target> examples/scenes/<dir>/scene.config`.
+  `OMP_NUM_THREADS=1 build/examples/<target> examples/scenes/<dir>/scene.config`.
 - Short runs: copy the config and append overrides; a key given later wins, e.g.
   `printf "\nsim.T=0.05\noutput.interval_steps=0\n" >> copy.config`. `.claude/scripts/run_scenes.sh`
   automates this for several scenes (see the `scene-smoke` skill). Full scenes can take minutes to hours.
@@ -72,7 +79,12 @@ factorization of the bilateral saddle-point system, projected iteration on conta
 **condensed** (block-sparse Schur complement; `condensed.true_schur=true` eliminates the bilateral
 subsystem exactly, needed for stiff rods; sweep modes `gauss_seidel`, `colored`). Test and validate
 mainly with these two. PGS and naive Schur are small reference solvers; QOCO, Clarabel, ConicXX,
-SCS and MOSEK are optional convexified/test backends.
+SCS and MOSEK are optional convexified/test backends. Accuracy is measured with the natural map of the
+contact law (velocity units): PJ stops on it with its own step inside the projection loop
+(`solver.criterion = natural_map`, `misc::naturalMapError2`); `solver.final_check = natural_map` evaluates it
+after every step for any solver with a common step (`solver/natural_map.hpp`, De Saxcé form, the conic
+backends against their convexified law) and reports raw residuals. Solvers read and store contact
+percussions with `DynamicsAssembler::contactPercussions()`/`setContactPercussions()`.
 
 **Constraints** (`src/cardillo/physics/constraints`): `getConstraint()` returns a `ConstraintResult`
 (Jacobian columns `WgA/WgB`, compliances `Crows/Arows`, `positionError`, prescribed rate). Main
@@ -97,7 +109,8 @@ registered with `cardillo_add_scene_example(...)` in `examples/CMakeLists.txt`; 
 **Tests** (`tests/`, ctest): `test_joint_jacobian`, `test_beam_jacobian` (W vs. d/dt g),
 `test_beam_rest_configuration`, `test_position_level` (all solvers), `test_torsional_oscillator`
 (closed-form solution, convergence order), `test_condensed_true_schur` (condensed vs. PJ),
-`test_convexified_friction` (convexified Coulomb law of the conic solvers vs. closed form).
+`test_convexified_friction` (convexified Coulomb law of the conic solvers vs. closed form),
+`test_natural_map` (natural map of the contact law, PJ stopping on it, final check).
 
 ## Design decisions (do not undo without discussion)
 

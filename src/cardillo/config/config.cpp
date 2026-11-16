@@ -136,11 +136,16 @@ const std::unordered_map<std::string, Setter>& setters() {
         add({"pj.max_iterations", "solver.max_iterations"}, intMin(&Config::pj_max_iterations, 1));
         add({"pj.tol_abs", "solver.tol_abs"}, realPos(&Config::pj_tol_abs));
         add({"pj.tol_rel", "solver.tol_rel"}, realMin(&Config::pj_tol_rel, 0));
-        add({"pj.criterion", "solver.criterion"}, [](Config& c, const std::string& v) {
-            c.pj_criterion = parseChoice(v, {"velocity_rms", "natural_map"}) == "natural_map" ? PjTerminationCriterion::NaturalMap : PjTerminationCriterion::VelocityRms;
+        add({"solver.criterion"}, [](Config& c, const std::string& v) {
+            c.solver_criterion = parseChoice(v, {"velocity_rms", "natural_map"}) == "natural_map" ? TerminationCriterion::NaturalMap : TerminationCriterion::VelocityRms;
         });
-        add({"pj.final_check", "solver.final_check"}, [](Config& c, const std::string& v) {
-            c.pj_final_check = parseChoice(v, {"none", "natural_map"}) == "natural_map" ? PjFinalCheck::NaturalMap : PjFinalCheck::None;
+        add({"solver.final_check"}, [](Config& c, const std::string& v) {
+            c.solver_final_check = parseChoice(v, {"none", "natural_map"}) == "natural_map" ? FinalCheck::NaturalMap : FinalCheck::None;
+        });
+        add({"solver.verbosity"}, [](Config& c, const std::string& v) {
+            const int x = parseInt(v);
+            if (x < 0 || x > 3) throw BadValue("solver.verbosity must be 0, 1, 2 or 3, got '" + v + "'");
+            c.solver_verbosity = x;
         });
         add({"pj.relaxation", "solver.relaxation"}, realPos(&Config::pj_relaxation));
         add({"pj.alpha", "solver.alpha"}, realPos(&Config::pj_alpha));
@@ -153,7 +158,6 @@ const std::unordered_map<std::string, Setter>& setters() {
         add({"pj.warmstart", "solver.warmstart"}, boolean(&Config::pj_warmstart));
         add({"pj.rdiag_true_delassus", "solver.rdiag_true_delassus"}, boolean(&Config::pj_rdiag_true_delassus));
         add({"debug.rb"}, boolean(&Config::debug_rb));
-        add({"debug.pj"}, boolean(&Config::debug_pj));
 
         add({"solver.name", "integrator"}, [](Config& c, const std::string& v) {
             parseChoice(v, {"moreau", "first_order", "theta"});
@@ -201,7 +205,6 @@ const std::unordered_map<std::string, Setter>& setters() {
         add({"conicxx.warm_lambda"}, real(&Config::conicxx_warm_lambda));
         add({"conicxx.warm_start_after_setup"}, boolean(&Config::conicxx_warm_start_after_setup));
         add({"conicxx.compliant_rows"}, boolean(&Config::conicxx_compliant_rows));
-        add({"conicxx.verbose"}, intMin(&Config::conicxx_verbose, 0));
         add({"conicxx.dynamic_reg_eps"}, real(&Config::conicxx_dynamic_reg_eps));
         add({"conicxx.refine_tol"}, real(&Config::conicxx_refine_tol));
         add({"conicxx.max_step_fraction"}, real(&Config::conicxx_max_step_fraction));

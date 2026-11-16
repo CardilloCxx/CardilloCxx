@@ -1,6 +1,9 @@
 #include "physics_pipeline.hpp"
 
+#include <iomanip>
+#include <iostream>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 
 #include "../../collision/collision_coal.hpp"
@@ -93,6 +96,8 @@ PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::C
             throw std::runtime_error("solver.type = mosek, but CardilloCxx was built without it (configure with -DCARDILLO_WITH_MOSEK=ON)");
 #endif
     }
+    if (cfg.solver_criterion == config::TerminationCriterion::NaturalMap && !m_solver->stopsOnNaturalMap())
+        std::cerr << "Warning: solver.criterion = natural_map is ignored by " << m_solver->name() << ", which stops on its own criterion." << std::endl;
 
     // Choose integrator based on config
     using namespace integration;
@@ -112,10 +117,10 @@ PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::C
     // first write
     m_tracked_writer = std::make_unique<io::CsvWriter>(m_cfg);
 
-    // Create progress bar if sim parameters are available
+    // Progress bar if sim parameters are available; solver.verbosity >= 1 prints one line per step instead
     if (cfg.sim_dt > 0 && cfg.sim_T > 0) {
         m_total_steps = static_cast<int>(std::ceil(cfg.sim_T / cfg.sim_dt));
-        if (m_total_steps > 0) {
+        if (m_total_steps > 0 && cfg.solver_verbosity == 0) {
             m_pbar = std::make_unique<misc::ProgressBar>(static_cast<std::size_t>(m_total_steps), std::cout);
             m_pbar->set_description("Simulating");
         }
@@ -156,6 +161,8 @@ void PhysicsPipeline::step(real_t dt) {
         m_tracked_writer->writeTrackedState(m_current_time, m_world.ecs());
     }
 
+    if (m_cfg.solver_verbosity >= 1) printStep();
+
     // Update progress bar if present
     if (m_pbar) {
         int iters = m_solver->lastIterations();
@@ -167,6 +174,21 @@ void PhysicsPipeline::step(real_t dt) {
         m_finished = true;
         if (m_pbar) m_pbar->close();
     }
+}
+
+// One line per step (solver.verbosity >= 1): iterations, solve time and the final check.
+void PhysicsPipeline::printStep() const {
+    std::ostringstream line;
+    line << std::setprecision(3) << "step " << m_current_step;
+    if (m_total_steps > 0) line << "/" << m_total_steps;
+    line << " (t = " << m_current_time << " s): " << m_solver->lastIterations() << " iterations, solve " << std::fixed << std::setprecision(1) << 1e3 * m_integrator->lastSolveSeconds()
+         << std::defaultfloat << std::setprecision(3) << " ms";
+    if (const auto& residual = m_integrator->lastResidual()) {
+        line << ", natural map " << residual->contact << " m/s";
+        if (m_solver->contactLaw() == solver::ContactLaw::Convexified) line << " (Coulomb " << residual->coulomb << ")";
+        line << ", bilateral " << residual->bilateral;
+    }
+    std::cout << line.str() << std::endl;
 }
 
 }  // namespace pipeline

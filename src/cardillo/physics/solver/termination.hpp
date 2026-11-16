@@ -6,7 +6,7 @@
 namespace cardillo::solver::termination {
 
 // RMS of the generalized-velocity increment, each component scaled by tol_abs + tol_rel * max(|v|, |v_prev|)
-// (pj.criterion = velocity_rms); <= 1: converged. The alternative pj.criterion = natural_map is a
+// (solver.criterion = velocity_rms); <= 1: converged. The alternative solver.criterion = natural_map is a
 // residual of the contact law (misc::naturalMapError2).
 inline real_t velocityRms(const VectorXr& v, const VectorXr& v_prev, real_t tol_abs, real_t tol_rel) {
     if (v.size() == 0) return 0;

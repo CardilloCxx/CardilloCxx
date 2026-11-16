@@ -196,8 +196,8 @@ VectorXr NaiveSchurSolver::solve(real_t dt, real_t theta) {
     const bool useNesterov = m_cfg.pj_nesterov;
     const bool useChebyshev = m_cfg.pj_chebyshev && !useNesterov;
     const bool useAnderson = m_cfg.pj_anderson && !useNesterov && !useChebyshev;
-    if (useChebyshev && m_cfg.debug_pj) std::cout << "[NaiveSchur] pj.chebyshev is not supported; using the standard sweep." << std::endl;
-    if (m_cfg.debug_pj) std::cout << "[NaiveSchur] nContactRows=" << nC << " nBlocks=" << p.blocks.size() << " colors=" << p.coloring.numColors << std::endl;
+    if (useChebyshev && m_cfg.solver_verbosity >= 2) std::cout << "[NaiveSchur] pj.chebyshev is not supported; using the standard sweep." << std::endl;
+    if (m_cfg.solver_verbosity >= 2) std::cout << "[NaiveSchur] nContactRows=" << nC << " nBlocks=" << p.blocks.size() << " colors=" << p.coloring.numColors << std::endl;
     scSetup.stop();
     auto scSolve = m_dyn.timings()->scope(misc::TimingManager::TimerId::NaiveSchur);
 

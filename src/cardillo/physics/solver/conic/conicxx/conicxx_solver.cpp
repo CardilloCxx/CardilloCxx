@@ -45,7 +45,7 @@ conicxx::Settings ConicxxSolver::makeSettings() const {
     settings.warm_start = m_cfg.conicxx_warm_start;
     settings.warm_lambda = static_cast<conicxx::Scalar>(m_cfg.conicxx_warm_lambda);
     settings.validate_inputs = m_cfg.conicxx_validate_inputs;
-    settings.verbose = m_cfg.conicxx_verbose;
+    settings.verbose = m_cfg.solver_verbosity >= 3 ? 2 : 0;  // 2: ConicXX's iteration table per solve
     return settings;
 }
 
@@ -121,7 +121,7 @@ VectorXr ConicxxSolver::solve(real_t dt, real_t theta) {
         solution = &m_solver.solve();
     }
     m_last_iters = solution->info.iterations;
-    if (m_cfg.debug_pj) {
+    if (m_cfg.solver_verbosity >= 2) {
         const conicxx::Info& info = solution->info;
         std::cout << "ConicXX: " << (need_setup ? "setup" : "update") << ", zero=" << cone_spec.zero_dim << " nonneg=" << cone_spec.nonneg_dim
                   << " soc=" << cone_spec.soc_dims.size() << ", " << info.iterations << " iterations, " << info.kkt_factorizations << " factorizations, "

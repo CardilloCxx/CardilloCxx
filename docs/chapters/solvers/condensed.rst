@@ -631,7 +631,7 @@ actually added mid-simulation -- not exercised by any other example scene,
 all of which have static bilateral topology) is verified by
 ``examples/scenes/dynamic_constraint``: three point masses, one spring from
 the start, a second spring added via ``updateScene()`` partway through the
-run. Confirmed (via ``debug.pj=true``) that ``nSprings`` actually grows from 1
+run. Confirmed (via ``solver.verbosity = 2``) that ``nSprings`` actually grows from 1
 to 2 mid-run, and that ``condensed`` with ``true_schur=true`` (cache
 exercised, invalidates and recomputes at the structural change) produces a
 ``totalKE``/``posNormSum`` fingerprint identical to both PGS and ``condensed``

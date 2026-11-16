@@ -153,8 +153,8 @@ config::Config ballConfig() {
 void testProjectedJacobiNaturalMap(bool blockPreconditioner, real_t alpha, bool nesterov) {
     const std::string tag = std::string(blockPreconditioner ? "block" : "diagonal") + " preconditioner, alpha " + std::to_string(alpha) + (nesterov ? ", Nesterov" : ", standard loop");
     config::Config cfg = ballConfig();
-    cfg.pj_criterion = config::PjTerminationCriterion::NaturalMap;
-    cfg.pj_final_check = config::PjFinalCheck::NaturalMap;
+    cfg.solver_criterion = config::TerminationCriterion::NaturalMap;
+    cfg.solver_final_check = config::FinalCheck::NaturalMap;
     cfg.pj_rdiag_true_delassus = blockPreconditioner;
     cfg.pj_alpha = alpha;
     cfg.pj_nesterov = nesterov;
@@ -193,7 +193,7 @@ void testFinalCheckOptions() {
 
     // Pendulum on a perfect distance constraint: the bilateral row residual of PJ is round-off.
     config::Config cfg = ballConfig();
-    cfg.pj_final_check = config::PjFinalCheck::NaturalMap;
+    cfg.solver_final_check = config::FinalCheck::NaturalMap;
     cfg.collision_disable_all = true;
     physics::PhysicsEngine engine(cfg);
     const auto anchor = engine.addStaticBody(physics::SphereShape(0.01), physics::RigidState{});
@@ -209,17 +209,17 @@ void testConfigParsing() {
     {
         std::ofstream configFile(path);
         configFile << "solver.criterion = NaTuRaL_MaP\n";
-        configFile << "pj.final_check = Natural_Map\n";
+        configFile << "solver.final_check = Natural_Map\n";
         check((bool)configFile, "write temporary config");
     }
 
     const config::Config cfg = config::ConfigReader::fromFile(path.string());
     std::error_code error;
     std::filesystem::remove(path, error);
-    check(cfg.pj_criterion == config::PjTerminationCriterion::NaturalMap, "criterion config accepts solver alias and case-insensitive value");
-    check(cfg.pj_final_check == config::PjFinalCheck::NaturalMap, "final-check config accepts case-insensitive value");
-    check(config::Config{}.pj_criterion == config::PjTerminationCriterion::VelocityRms, "velocity_rms remains the default criterion");
-    check(config::Config{}.pj_final_check == config::PjFinalCheck::None, "final check disabled by default");
+    check(cfg.solver_criterion == config::TerminationCriterion::NaturalMap, "solver.criterion, case-insensitive value");
+    check(cfg.solver_final_check == config::FinalCheck::NaturalMap, "solver.final_check, case-insensitive value");
+    check(config::Config{}.solver_criterion == config::TerminationCriterion::VelocityRms, "velocity_rms remains the default criterion");
+    check(config::Config{}.solver_final_check == config::FinalCheck::None, "final check disabled by default");
 }
 
 }  // namespace
