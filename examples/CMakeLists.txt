@@ -15,6 +15,7 @@ cardillo_add_scene_example(spring_test "scenes/springTest/SpringTestScene.hpp" S
 cardillo_add_scene_example(rod_assembly "scenes/rodAssembly/RodAssemblyScene.hpp" RodAssemblyScene)
 cardillo_add_scene_example(net "scenes/net/NetScene.hpp" NetScene)
 cardillo_add_scene_example(net_detailed "scenes/net_detailed/NetDetailedScene.hpp" NetDetailedScene)
+cardillo_add_scene_example(net_wires "scenes/net_wires/NetWiresScene.hpp" NetWiresScene)
 cardillo_add_scene_example(wilberforce "scenes/wilberforce/WilberforcePendulum.hpp" WilberforcePendulumScene)
 cardillo_add_scene_example(hangbridge "scenes/hangbride/HangbrideScene.hpp" HangbrideScene)
 cardillo_add_scene_example(softbody "scenes/softbody/SoftbodyTestScene.hpp" SoftbodyTestScene)
