@@ -163,12 +163,16 @@ inline Contact makeContact(entt::entity ea, entt::entity eb, const RigidBody::Ri
     return c;
 }
 
-// Attach a beam-hull contact to the beam's two end entities. The contact point is expressed as a material
-// point of the beam: axial parameter s (interpolation weight between the end nodes) plus a lateral offset
-// d from the beam axis. Attaching xA + d to end A and xB + d to end B reproduces the contact point exactly
-// in the current configuration. Each patch point gets its own s and d, so multi-point patches (e.g. the
-// four corners of a cube resting on a flat beam face) are attached at their actual positions.
-inline void populateBeamHullSide(Contact& c, ContactSide& side, entt::entity beamEntity, const entt::registry& reg) {
+// Attach a beam-hull contact to the beam's two end nodes. A lateral contact point lies on a generator
+// P = (1 - λ) p_A + λ p_B of the hull between points p_A, p_B of the cross-sections' support sets in the outward
+// normal. These are material points of the nodes, and the normal part of (1 - λ) v_A(p_A) + λ v_B(p_B) is the
+// normal velocity of the hull surface at P (its tangential part defines the sliding velocity). The support function
+// gives one point a, b per cross-section; where a polygon's support set is an edge (another ring vertex within tol),
+// λ is measured across that edge, and the part of P - ((1 - λ) a + λ b) along it moves only the points on support
+// edges. The rest, the offset of P along the normal, is added to both points. A cross-section reaching further out
+// by more than tol carries an end-face contact alone.
+inline void populateBeamHullSide(ContactSide& side, entt::entity beamEntity, const entt::registry& reg, const BeamHullShape& shape, const Vector3r& point,
+                                 const Vector3r& outwardNormal, real_t tol) {
     if (!reg.any_of<C_Collider_BeamHull>(beamEntity)) return;
     const auto& collider = reg.get<C_Collider_BeamHull>(beamEntity);
     if (collider.endA == entt::null || collider.endB == entt::null) return;
@@ -176,19 +180,40 @@ inline void populateBeamHullSide(Contact& c, ContactSide& side, entt::entity bea
     const auto stateA = RigidBody::getState(reg, collider.endA);
     const auto stateB = RigidBody::getState(reg, collider.endB);
     const RigidBody::RigidState inertial = RigidBody::RigidState::inertial();
+    constexpr real_t eps = std::numeric_limits<real_t>::epsilon();
 
-    const Vector3r xA = stateA.position;
-    const Vector3r xB = stateB.position;
-    const Vector3r axis = xB - xA;
-    const real_t L2 = axis.squaredNorm();
-    const real_t s = L2 > std::numeric_limits<real_t>::epsilon() ? std::clamp((real_t)((c.point - xA).dot(axis) / L2), (real_t)0, (real_t)1) : (real_t)0.5;
-
-    // Lateral offset of the contact point from the beam axis at parameter s (world frame).
-    const Vector3r d = c.point - ((real_t)1 - s) * xA - s * xB;
+    const Vector3r a = shape.endpointSupport(outwardNormal, 0);
+    const Vector3r b = shape.endpointSupport(outwardNormal, 1);
+    const real_t reachB = outwardNormal.dot(b - a);  // how much further out cross-section B reaches
+    // Edge of a cross-section's support set, zero where the support point is unique: a polygon vertex, or a disc
+    // (a disc hull has empty rings; its lateral support set is one rim point, its end face is handled by reachB).
+    const auto supportEdge = [&](const std::vector<Vector3r>& ring, const Vector3r& x) -> Vector3r {
+        const auto it = std::find_if(ring.begin(), ring.end(), [&](const Vector3r& p) { return outwardNormal.dot(x - p) <= tol && (p - x).squaredNorm() > tol * tol; });
+        return it == ring.end() ? Vector3r::Zero() : Vector3r(*it - x);
+    };
+    const Vector3r edgeA = supportEdge(shape.ringA(), a);
+    const Vector3r edgeB = supportEdge(shape.ringB(), b);
+    const bool onEdgeA = edgeA.squaredNorm() > 0, onEdgeB = edgeB.squaredNorm() > 0;
+    const Vector3r u = onEdgeA ? edgeA : edgeB;
+    const Vector3r ab = onEdgeA || onEdgeB ? Vector3r(b - a - (b - a).dot(u) / u.squaredNorm() * u) : Vector3r(b - a);
+    real_t lambda = (real_t)0.5;
+    if (reachB > tol) {
+        lambda = 1;
+    } else if (reachB < -tol) {
+        lambda = 0;
+    } else if (ab.squaredNorm() > eps) {
+        lambda = std::clamp((real_t)((point - a).dot(ab) / ab.squaredNorm()), (real_t)0, (real_t)1);
+    }
+    const Vector3r r = point - ((1 - lambda) * a + lambda * b);
+    const Vector3r rEdge = onEdgeA || onEdgeB ? Vector3r(r.dot(u) / u.squaredNorm() * u) : Vector3r::Zero();
+    const real_t edgeWeight = (1 - lambda) * onEdgeA + lambda * onEdgeB;  // weight of the points that move along an edge
+    const Vector3r shared = edgeWeight > eps ? Vector3r(r - rEdge) : r;
+    const Vector3r pA = a + shared + (edgeWeight > eps ? onEdgeA / edgeWeight : 0) * rEdge;
+    const Vector3r pB = b + shared + (edgeWeight > eps ? onEdgeB / edgeWeight : 0) * rEdge;
 
     side.count = 2;
-    side.attachments[0] = ContactAttachment{collider.endA, (real_t)1 - s, transform::point(Vector3r(xA + d), inertial, stateA)};
-    side.attachments[1] = ContactAttachment{collider.endB, s, transform::point(Vector3r(xB + d), inertial, stateB)};
+    side.attachments[0] = ContactAttachment{collider.endA, 1 - lambda, transform::point(pA, inertial, stateA)};
+    side.attachments[1] = ContactAttachment{collider.endB, lambda, transform::point(pB, inertial, stateB)};
 }
 
 // Insert a contact into a ContactMap bucketed by (a,b)
@@ -212,7 +237,8 @@ inline void addContactToMap(ContactMap& cmap, const Contact& c) {
 // the same fallback so this stream is never less complete than the flattened contact list.
 inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity ea, entt::entity eb,
                                               const coal::CollisionResult& cres, const coal::ContactPatchResult& patch_res,
-                                              ContactMap& outMap, std::vector<ContactManifold>& manifolds, const std::string& frictionCombine, bool usePatchVertices) {
+                                              ContactMap& outMap, std::vector<ContactManifold>& manifolds, const std::string& frictionCombine, bool usePatchVertices,
+                                              const BeamHullShape* hullA, const BeamHullShape* hullB, real_t hullTol) {
     const RigidBody::RigidState stateA = RigidBody::getState(reg, ea);
     const RigidBody::RigidState stateB = RigidBody::getState(reg, eb);
     const real_t friction_mu = combineFrictionMu(reg, ea, eb, frictionCombine);
@@ -234,8 +260,8 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
                 const auto p1Wc = patch.getPointShape1(iv);
                 const auto p2Wc = patch.getPointShape2(iv);
                 Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, p1Wc, p2Wc, nW, depth);
-                populateBeamHullSide(c, c.sideA, ea, reg);
-                populateBeamHullSide(c, c.sideB, eb, reg);
+                if (hullA) populateBeamHullSide(c.sideA, ea, reg, *hullA, c.point, c.normal, hullTol);  // the normal points out of A
+                if (hullB) populateBeamHullSide(c.sideB, eb, reg, *hullB, c.point, -c.normal, hullTol);
                 if (iv == 0) {
                     cm.normal = c.normal;
                     cm.tangent1 = c.tangent1;
@@ -257,8 +283,8 @@ inline void appendContactsAndManifoldsForPair(entt::registry& reg, entt::entity 
     for (std::size_t k = 0; k < cres.numContacts(); ++k) {
         const coal::Contact c0 = cres.getContact(k);
         Contact c = makeContact(ea, eb, stateA, stateB, friction_mu, c0.nearest_points[0], c0.nearest_points[1], c0.normal, (real_t)c0.penetration_depth);
-        populateBeamHullSide(c, c.sideA, ea, reg);
-        populateBeamHullSide(c, c.sideB, eb, reg);
+        if (hullA) populateBeamHullSide(c.sideA, ea, reg, *hullA, c.point, c.normal, hullTol);
+        if (hullB) populateBeamHullSide(c.sideB, eb, reg, *hullB, c.point, -c.normal, hullTol);
 
         ContactManifold cm;
         cm.a = ea;
@@ -557,6 +583,7 @@ std::vector<Contact>& CollisionCoal::detectAll() {
 
         // Run narrowphase for this pair
         entt::entity ea, eb;
+        std::size_t iA = 0, iB = 0;
         {
             auto sc_c = m_timings->scope(misc::TimingManager::TimerId::CollisionNarrowphaseCollide);
 
@@ -564,7 +591,8 @@ std::vector<Contact>& CollisionCoal::detectAll() {
             auto idx1p = reinterpret_cast<std::uintptr_t>(o1->getUserData());
             auto idx2p = reinterpret_cast<std::uintptr_t>(o2->getUserData());
             if (!(idx1p > 0 && (idx1p - 1) < m_entities.size() && idx2p > 0 && (idx2p - 1) < m_entities.size())) continue;
-            std::size_t iA = idx1p - 1, iB = idx2p - 1;
+            iA = idx1p - 1;
+            iB = idx2p - 1;
 
             if (iB < iA) {
                 std::swap(o1, o2);
@@ -601,7 +629,11 @@ std::vector<Contact>& CollisionCoal::detectAll() {
         // doc comment above.
         {
             auto sc_p = m_timings->scope(misc::TimingManager::TimerId::CollisionMakeContact);
-            appendContactsAndManifoldsForPair(reg, ea, eb, cres, patch_res, mapCurr, m_contactManifolds, frictionCombine, usePatchVertices);
+            const auto hull = [&](std::size_t i, const coal::CollisionObject* o) {
+                return m_kinds[i] == ColliderKind::BeamHull ? static_cast<const BeamHullShape*>(o->collisionGeometry().get()) : nullptr;
+            };
+            appendContactsAndManifoldsForPair(reg, ea, eb, cres, patch_res, mapCurr, m_contactManifolds, frictionCombine, usePatchVertices, hull(iA, o1),
+                                              hull(iB, o2), patch_req.getPatchTolerance());
         }
     }
 
