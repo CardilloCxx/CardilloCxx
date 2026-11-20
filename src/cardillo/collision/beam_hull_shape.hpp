@@ -29,6 +29,10 @@ public:
     // Return the support witness on one endpoint cross-section
     Vector3r endpointSupport(const Vector3r& dir, int endpoint) const;
 
+    // Edge of the endpoint cross-section's support set in dir: another ring vertex within tol of the supporting plane
+    // minus the support point. Zero where the support point is unique (a polygon vertex, or a disc on the lateral surface).
+    Vector3r endpointSupportEdge(const Vector3r& dir, const Vector3r& support, int endpoint, real_t tol) const;
+
     coal::NODE_TYPE getNodeType() const override { return coal::GEOM_CUSTOM; }
 
     void computeShapeSupport(const Vector3r& dir, Vector3r& support, int& hint, coal::details::ShapeSupportData& data) const override;

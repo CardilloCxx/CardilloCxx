@@ -71,6 +71,13 @@ Vector3r BeamHullShape::endpointSupport(const Vector3r& dir, int endpoint) const
     return support;
 }
 
+Vector3r BeamHullShape::endpointSupportEdge(const Vector3r& dir, const Vector3r& support, int endpoint, real_t tol) const {
+    if (circular_) return Vector3r::Zero();
+    const auto& ring = endpoint == 0 ? ringA_ : ringB_;
+    const auto it = std::find_if(ring.begin(), ring.end(), [&](const Vector3r& p) { return dir.dot(support - p) <= tol && (p - support).squaredNorm() > tol * tol; });
+    return it == ring.end() ? Vector3r::Zero() : Vector3r(*it - support);
+}
+
 void BeamHullShape::computeShapeSupport(const Vector3r& dir, Vector3r& support, int& hint, coal::details::ShapeSupportData& /*data*/) const {
     const Vector3r supportA = endpointSupport(dir, 0);
     const Vector3r supportB = endpointSupport(dir, 1);

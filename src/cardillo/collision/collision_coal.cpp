@@ -185,25 +185,17 @@ inline void populateBeamHullSide(ContactSide& side, entt::entity beamEntity, con
     const Vector3r a = shape.endpointSupport(outwardNormal, 0);
     const Vector3r b = shape.endpointSupport(outwardNormal, 1);
     const real_t reachB = outwardNormal.dot(b - a);  // how much further out cross-section B reaches
-    // Edge of a cross-section's support set, zero where the support point is unique: a polygon vertex, or a disc
-    // (a disc hull has empty rings; its lateral support set is one rim point, its end face is handled by reachB).
-    const auto supportEdge = [&](const std::vector<Vector3r>& ring, const Vector3r& x) -> Vector3r {
-        const auto it = std::find_if(ring.begin(), ring.end(), [&](const Vector3r& p) { return outwardNormal.dot(x - p) <= tol && (p - x).squaredNorm() > tol * tol; });
-        return it == ring.end() ? Vector3r::Zero() : Vector3r(*it - x);
-    };
-    const Vector3r edgeA = supportEdge(shape.ringA(), a);
-    const Vector3r edgeB = supportEdge(shape.ringB(), b);
+    const Vector3r edgeA = shape.endpointSupportEdge(outwardNormal, a, 0, tol);  // zero unless the support set is an edge
+    const Vector3r edgeB = shape.endpointSupportEdge(outwardNormal, b, 1, tol);
     const bool onEdgeA = edgeA.squaredNorm() > 0, onEdgeB = edgeB.squaredNorm() > 0;
     const Vector3r u = onEdgeA ? edgeA : edgeB;
     const Vector3r ab = onEdgeA || onEdgeB ? Vector3r(b - a - (b - a).dot(u) / u.squaredNorm() * u) : Vector3r(b - a);
-    real_t lambda = (real_t)0.5;
-    if (reachB > tol) {
-        lambda = 1;
-    } else if (reachB < -tol) {
-        lambda = 0;
-    } else if (ab.squaredNorm() > eps) {
-        lambda = std::clamp((real_t)((point - a).dot(ab) / ab.squaredNorm()), (real_t)0, (real_t)1);
-    }
+    const real_t lambda = [&]() -> real_t {
+        if (reachB > tol) return 1;   // end face of B
+        if (reachB < -tol) return 0;  // end face of A
+        const real_t ab2 = ab.squaredNorm();
+        return ab2 > eps ? std::clamp((point - a).dot(ab) / ab2, real_t(0), real_t(1)) : real_t(0.5);  // lateral surface
+    }();
     const Vector3r r = point - ((1 - lambda) * a + lambda * b);
     const Vector3r rEdge = onEdgeA || onEdgeB ? Vector3r(r.dot(u) / u.squaredNorm() * u) : Vector3r::Zero();
     const real_t edgeWeight = (1 - lambda) * onEdgeA + lambda * onEdgeB;  // weight of the points that move along an edge
