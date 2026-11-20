@@ -39,6 +39,9 @@ option(CARDILLO_WITH_SCS "SCS ADMM backend" OFF)
 # MOSEK is not fetched: it needs an installation and a license (cmake/FindMOSEK.cmake, MOSEK_ROOT).
 option(CARDILLO_WITH_MOSEK "MOSEK interior-point backend (needs a MOSEK installation and license)" OFF)
 option(CARDILLO_SCS_OPENMP "Build SCS with its OpenMP-parallel cone projections" ON)
+# Export of one-step problems as ffclib files (fclib + compliance; ffclib.* config keys); needs the ffclib
+# library (Eigen + HDF5), see cmake/Ffclib.cmake.
+option(CARDILLO_WITH_FFCLIB "Export of one-step problems as ffclib files (needs the ffclib library and HDF5)" OFF)
 
 # --- Compile flags of this project and of the dependencies it fetches ---
 if(CARDILLO_ENABLE_TSAN AND CARDILLO_ENABLE_ASAN)
@@ -75,6 +78,7 @@ target_compile_options(cardillo_warnings INTERFACE
 
 include(cmake/Dependencies.cmake)
 include(cmake/ConicBackends.cmake)
+include(cmake/Ffclib.cmake)
 
 add_subdirectory(src)
 if(CARDILLO_BUILD_EXAMPLES)
@@ -88,4 +92,4 @@ if(CARDILLO_INSTALL)
     include(cmake/Install.cmake)
 endif()
 
-message(STATUS "CardilloCxx ${PROJECT_VERSION}: Clarabel=${CARDILLO_WITH_CLARABEL} QOCO=${CARDILLO_WITH_QOCO} ConicXX=${CARDILLO_WITH_CONICXX} SCS=${CARDILLO_WITH_SCS} MOSEK=${CARDILLO_WITH_MOSEK}")
+message(STATUS "CardilloCxx ${PROJECT_VERSION}: Clarabel=${CARDILLO_WITH_CLARABEL} QOCO=${CARDILLO_WITH_QOCO} ConicXX=${CARDILLO_WITH_CONICXX} SCS=${CARDILLO_WITH_SCS} MOSEK=${CARDILLO_WITH_MOSEK} ffclib=${CARDILLO_WITH_FFCLIB}")
