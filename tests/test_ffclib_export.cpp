@@ -225,18 +225,15 @@ void checkErrors(const std::string& label, const Capture& cap, real_t balanceTol
     const real_t balance = (v - sol.v).lpNorm<Eigen::Infinity>();
     check(balance <= balanceTol * scale, label + ": momentum balance " + sci(balance));
 
-    // The bilateral rows at the stored velocity: the engine's final check.
-    VectorXr rows = pb.b + pb.C * sol.lambda;
-    if (pb.nb() > 0) rows.noalias() += pb.G.transpose() * sol.v;
-    const real_t bilateral = pb.nb() > 0 ? rows.lpNorm<Eigen::Infinity>() : 0;
-    check(relDiff(bilateral, cap.engine.bilateral) < 1e-9 || std::abs(bilateral - cap.engine.bilateral) < 1e-13,
-          label + ": bilateral rows from the file " + sci(bilateral) + " vs engine " + sci(cap.engine.bilateral));
+    // ffclib's errors at the stored solution: the bilateral rows are the engine's final check; the contact error
+    // is the engine's natural map up to the norm (Euclidean per contact in ffclib).
+    const ffclib::Errors e = ffclib::errors(pb, sol);
+    check(relDiff(e.bilateral, cap.engine.bilateral) < 1e-9 || std::abs(e.bilateral - cap.engine.bilateral) < 1e-13,
+          label + ": bilateral rows from the file " + sci(e.bilateral) + " vs engine " + sci(cap.engine.bilateral));
 
     if (!cap.coulomb) return;  // the engine's conic backends solve the convexified law with the frozen shift
-    // ffclib's Coulomb error is evaluated at v(r, lambda), which differs from the stored velocity by the balance.
-    const real_t coulomb = ffclib::errors(pb, sol.r, sol.lambda).coulomb;
-    const real_t contactShift = 4 * (pb.H.transpose() * (v - sol.v)).lpNorm<Eigen::Infinity>() + 1e-14 * scale;
-    check(coulomb >= std::max(cap.engine.coulomb, bilateral) - contactShift && coulomb <= std::sqrt(2.0) * std::max(cap.engine.coulomb, bilateral) + contactShift,
+    const real_t coulomb = e.coulomb, roundOff = 1e-14 * scale;
+    check(coulomb >= cap.engine.coulomb - roundOff && coulomb <= std::sqrt(2.0) * cap.engine.coulomb + roundOff,
           label + ": ffclib's Coulomb error " + sci(coulomb) + " vs engine " + sci(cap.engine.coulomb));
     check(coulomb < 1e-5 * scale, label + ": the solution solves Coulomb's law (" + sci(coulomb) + ")");
 }

@@ -9,6 +9,7 @@ solver backends. Topic notes with more detail live in `.claude/docs/`:
 - `.claude/docs/time-integration.md` – position-level force law, sign conventions, drivers, joints
 - `.claude/docs/collision.md` – Coal fork, contact patches, beam hulls, mesh frames, surface velocity
 - `.claude/docs/known-issues.md` – open problems that are known and need not be re-investigated
+- `.claude/docs/ffclib-export.md` – ffclib export of one-step problems (fclib + compliance), conventions, findings
 
 ## Commands
 
@@ -40,6 +41,10 @@ cd docs && uv run make html               # Sphinx + Doxygen docs
   `<cardillo/...>`. The library is installable (`cmake --install`, `find_package(cardillo)`,
   target `cardillo::cardillo`) and usable as a subproject; build files: `CMakeLists.txt` (options),
   `cmake/Dependencies.cmake`, `cmake/ConicBackends.cmake`, `cmake/Install.cmake`.
+- `-DCARDILLO_WITH_FFCLIB=ON` builds the export of one-step problems as ffclib files (fclib's HDF5 format plus
+  the compliance `/fclib_global/C`; `src/cardillo/io/ffclib/`, `ffclib.*` config keys, `tests/test_ffclib_export`).
+  Format, reader and error measures are the ffclib library (Eigen + HDF5): installed
+  (`find_package(ffclib)`) or fetched from GitHub; local checkout: `-DFETCHCONTENT_SOURCE_DIR_FFCLIB=<path>`.
 - The conic backends (`src/cardillo/physics/solver/conic/<backend>/`) are optional: `CARDILLO_WITH_CLARABEL`,
   `_QOCO`, `_CONICXX`, `_SCS`, `_MOSEK` (all OFF); a scene selecting a backend that was not built throws.
 - Clarabel needs Rust/cargo. Its Rust core is built in cargo's release profile for Release,
@@ -114,7 +119,8 @@ registered with `cardillo_add_scene_example(...)` in `examples/CMakeLists.txt`; 
 (closed-form solution, convergence order), `test_condensed_true_schur` (condensed vs. PJ),
 `test_convexified_friction` (convexified Coulomb law of the conic solvers vs. closed form),
 `test_natural_map` (natural map of the contact law, PJ/PGS/condensed stopping on it, final check),
-`test_fixed_pattern_matrix` (pattern rules of `misc::FixedPatternMatrix`).
+`test_fixed_pattern_matrix` (pattern rules of `misc::FixedPatternMatrix`), `test_ffclib_export` (ffclib export:
+round trip, errors vs the final check, cone programs; only with `CARDILLO_WITH_FFCLIB`).
 
 ## Design decisions (do not undo without discussion)
 
