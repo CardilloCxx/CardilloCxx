@@ -7,6 +7,11 @@ file(GLOB_RECURSE CARDILLO_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 file(GLOB_RECURSE CARDILLO_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cardillo/*.hpp")
 list(FILTER CARDILLO_SOURCES EXCLUDE REGEX "/physics/solver/conic/")
 list(FILTER CARDILLO_HEADERS EXCLUDE REGEX "/physics/solver/conic/")
+# The ffclib export (cardillo/io/ffclib/) needs the ffclib library (cmake/Ffclib.cmake).
+if(NOT CARDILLO_WITH_FFCLIB)
+    list(FILTER CARDILLO_SOURCES EXCLUDE REGEX "/io/ffclib/")
+    list(FILTER CARDILLO_HEADERS EXCLUDE REGEX "/io/ffclib/")
+endif()
 
 if(CARDILLO_WITH_CLARABEL OR CARDILLO_WITH_SCS)
     # Cone program shared by Clarabel and SCS.
@@ -78,4 +83,10 @@ if(CARDILLO_WITH_MOSEK)
     get_filename_component(_mosek_lib_dir "${MOSEK_LIBRARY}" DIRECTORY)
     set_property(TARGET cardillo APPEND PROPERTY INSTALL_RPATH "${_mosek_lib_dir}")
     target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_MOSEK=1)
+endif()
+if(CARDILLO_WITH_FFCLIB)
+    # The ffclib library is a static PIC library inside libcardillo; HDF5 comes in through it.
+    target_link_libraries(cardillo PRIVATE $<BUILD_INTERFACE:ffclib::ffclib>)
+    target_compile_definitions(cardillo PUBLIC CARDILLO_HAVE_FFCLIB=1)
+    set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/cardillo/io/ffclib/ffclib_exporter.cpp" APPEND PROPERTY COMPILE_DEFINITIONS "CARDILLO_GIT_DESCRIBE=\"${CARDILLO_GIT_DESCRIBE}\"")
 endif()

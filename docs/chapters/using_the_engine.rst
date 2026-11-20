@@ -26,6 +26,7 @@ solves a concrete problem (a swinging pendulum) from scratch.
    using_the_engine/trajectories
    using_the_engine/beams
    using_the_engine/stepping
+   using_the_engine/ffclib_export
    using_the_engine/example
 
 For a complete list of all types, shapes, and components, see :doc:`types`.

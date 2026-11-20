@@ -28,6 +28,11 @@ class TimingManager;
 }
 }  // namespace cardillo
 namespace cardillo {
+namespace integration {
+class StepObserver;
+}
+}  // namespace cardillo
+namespace cardillo {
 namespace physics {
 namespace pipeline {
 class PhysicsPipeline;
@@ -225,6 +230,9 @@ class CARDILLO_API PhysicsEngine {
     /// Natural-map check of the last step (solver.final_check = natural_map, see solver/natural_map.hpp);
     /// empty if the check is disabled or no step was taken.
     const std::optional<solver::StepResidual>& lastStepResidual() const;
+    /// Observer of every step's one-step problem, called before and after the solve (diagnostics and
+    /// tests; not owned, nullptr removes it). Replaces the ffclib export of the ffclib.* keys.
+    void setStepObserver(integration::StepObserver* observer);
 
    private:
     std::unique_ptr<World> m_world;

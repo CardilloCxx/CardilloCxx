@@ -91,6 +91,46 @@ The simulation writes VTK output files that can be opened directly in
      - ``50``
      - Write one VTK frame every *N* time steps; 0 disables VTK output.
 
+Problem export (ffclib)
+~~~~~~~~~~~~~~~~~~~~~~~
+
+With ``-DCARDILLO_WITH_FFCLIB=ON`` (needs the ffclib library and HDF5) the one-step problems of selected steps
+are written as ffclib files (fclib's HDF5 format with compliance), see :doc:`ffclib_export`. Step *k* is the step from :math:`t_k` to
+:math:`t_k + h`; the export is off unless ``ffclib.interval_steps`` or ``ffclib.steps`` is set.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 35 15 25
+
+   * - Variable name
+     - cfg.txt key(s)
+     - Default
+     - Meaning
+   * - ``ffclib_folder``
+     - ``ffclib.folder``
+     - ``"./ffclib_out"``
+     - Directory of the files ``<output prefix>_<step>.hdf5`` and of ``manifest.csv``.
+   * - ``ffclib_interval_steps``
+     - ``ffclib.interval_steps``
+     - ``0``
+     - Export every *k*-th step from ``ffclib.first_step`` on; 0: none.
+   * - ``ffclib_first_step``
+     - ``ffclib.first_step``
+     - ``0``
+     - First step of the periodic export.
+   * - ``ffclib_last_step``
+     - ``ffclib.last_step``
+     - ``-1``
+     - Last step of the periodic export; -1: to the end.
+   * - ``ffclib_steps``
+     - ``ffclib.steps``
+     - (empty)
+     - Further steps to export, e.g. ``ffclib.steps = 120 340 512`` (the hardest steps of a previous run).
+   * - ``ffclib_min_contacts``
+     - ``ffclib.min_contacts``
+     - ``1``
+     - Skip steps with fewer contacts (fclib needs at least one).
+
 Collision settings
 ~~~~~~~~~~~~~~~~~~
 

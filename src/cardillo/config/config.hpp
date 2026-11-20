@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include "cardillo/misc/types.hpp"
 
 namespace cardillo::config {
@@ -33,6 +34,16 @@ struct Config {
     std::string output_folder{"./vtk_out"};       // output.folder
     std::string output_filename_prefix{""};  // output.filename_prefix (empty: outputPrefix() falls back to "scene")
     bool output_write_contact_manifolds{true};    // output.write_contact_manifolds
+
+    // Export of one-step problems as ffclib files (fclib + compliance; -DCARDILLO_WITH_FFCLIB=ON,
+    // io/ffclib/ffclib_exporter.hpp). Step k is the step from t_k to t_k + h.
+    std::string ffclib_folder{"./ffclib_out"};  // ffclib.folder
+    int ffclib_interval_steps{0};               // ffclib.interval_steps - every k-th step from ffclib.first_step; 0: none
+    int ffclib_first_step{0};                   // ffclib.first_step
+    int ffclib_last_step{-1};                   // ffclib.last_step (-1: to the end)
+    std::vector<int> ffclib_steps;              // ffclib.steps - further steps, e.g. "120 340 512"
+    int ffclib_min_contacts{1};                 // ffclib.min_contacts - skip steps with fewer contacts
+    bool ffclibEnabled() const { return ffclib_interval_steps > 0 || !ffclib_steps.empty(); }
 
     // Collision settings
     // collision.broadphase: one of [dynamic_aabb, dynamic_aabb_array, naive, sap, ssap]
