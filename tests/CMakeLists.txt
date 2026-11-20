@@ -17,6 +17,12 @@ cardillo_add_test(test_rod_stiffness test_rod_stiffness.cpp)
 cardillo_add_test(test_convex_hull test_convex_hull.cpp)
 cardillo_add_test(test_config test_config.cpp)
 
+# ffclib export: round trip, errors against the engine's final check, the cone program of the conic backends.
+if(CARDILLO_WITH_FFCLIB)
+    cardillo_add_test(test_ffclib_export test_ffclib_export.cpp)
+    target_link_libraries(test_ffclib_export PRIVATE ffclib::ffclib)
+endif()
+
 # MOSEK backend tests (cone programs against Clarabel and QOCO) and benchmark; they need a MOSEK
 # license at run time and use the backends' private headers.
 if(CARDILLO_WITH_MOSEK AND CARDILLO_WITH_CLARABEL AND CARDILLO_WITH_QOCO)

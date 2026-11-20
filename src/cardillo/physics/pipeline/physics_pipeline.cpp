@@ -17,6 +17,9 @@
 #include "../solver/naive_schur_solver.hpp"
 #include "../solver/projected_gauss_seidel.hpp"
 #include "../solver/projected_jacobi.hpp"
+#ifdef CARDILLO_HAVE_FFCLIB
+#include "../../io/ffclib/ffclib_exporter.hpp"
+#endif
 #ifdef CARDILLO_HAVE_CLARABEL
 #include "../solver/conic/clarabel/clarabel_solver.hpp"
 #endif
@@ -106,6 +109,15 @@ PhysicsPipeline::PhysicsPipeline(World& world, config::Config& cfg, collision::C
     } else {
         std::cerr << "Warning: Unrecognized integrator type in config; defaulting to Moreau." << std::endl;
         m_integrator = std::make_unique<MoreauIntegrator>(m_world, *m_solver, *m_dyn, *m_timings, m_cfg);
+    }
+
+    if (cfg.ffclibEnabled()) {
+#ifdef CARDILLO_HAVE_FFCLIB
+        m_ffclib_exporter = std::make_unique<io::ffclib_export::Exporter>(m_cfg);
+        m_integrator->setStepObserver(m_ffclib_exporter.get());
+#else
+        throw std::runtime_error("ffclib.* export keys are set, but CardilloCxx was built without the ffclib export (configure with -DCARDILLO_WITH_FFCLIB=ON)");
+#endif
     }
 
     // Create VTK writer if output is enabled

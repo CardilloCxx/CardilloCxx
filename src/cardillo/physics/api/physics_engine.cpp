@@ -56,6 +56,11 @@ const std::optional<solver::StepResidual>& PhysicsEngine::lastStepResidual() con
     return m_pipeline->integrator().lastResidual();
 }
 
+void PhysicsEngine::setStepObserver(integration::StepObserver* observer) {
+    if (!m_pipeline) throw std::runtime_error("PhysicsEngine::setStepObserver: no pipeline");
+    m_pipeline->integrator().setStepObserver(observer);
+}
+
 World& PhysicsEngine::world() {
     if (m_world) return *m_world;
     throw std::runtime_error("PhysicsEngine::world(): world not initialized");

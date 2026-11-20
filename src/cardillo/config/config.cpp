@@ -267,6 +267,22 @@ const std::unordered_map<std::string, Setter>& setters() {
         add({"output.interval_steps"}, intMin(&Config::output_interval_steps, 0));
         add({"output.folder"}, text(&Config::output_folder));
         add({"output.filename_prefix"}, text(&Config::output_filename_prefix));
+        add({"ffclib.folder"}, text(&Config::ffclib_folder));
+        add({"ffclib.interval_steps"}, intMin(&Config::ffclib_interval_steps, 0));
+        add({"ffclib.first_step"}, intMin(&Config::ffclib_first_step, 0));
+        add({"ffclib.last_step"}, intMin(&Config::ffclib_last_step, -1));
+        add({"ffclib.min_contacts"}, intMin(&Config::ffclib_min_contacts, 1));
+        add({"ffclib.steps"}, [](Config& c, const std::string& v) {
+            std::string list = v;
+            std::replace(list.begin(), list.end(), ',', ' ');
+            std::istringstream in(list);
+            c.ffclib_steps.clear();
+            for (std::string item; in >> item;) {
+                const int step = parseInt(item);
+                requireAtLeast(step, 0, v);
+                c.ffclib_steps.push_back(step);
+            }
+        });
 
         // Collision
         add({"collision.broadphase"}, choice(&Config::collision_broadphase, {"dynamic_aabb", "daabb", "default", "dynamic_aabb_array", "daabb_array", "naive", "bruteforce", "sap", "ssap"}));

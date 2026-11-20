@@ -14,10 +14,12 @@ void MoreauIntegrator::step(real_t dt) {
     explicitPositionUpdate(m_world, (1.0 - m_config.moreau_theta) * dt);
     m_dyn.advancePrescribedMotion((1.0 - m_config.moreau_theta) * dt);
     m_dyn.updateStateDependentTerms(dt);
+    if (m_observer) m_observer->beforeSolve(m_dyn);
     const auto solveStart = std::chrono::steady_clock::now();
     const VectorXr u = m_solver.solve(dt, m_config.moreau_theta);
     m_lastSolveSeconds = std::chrono::duration<real_t>(std::chrono::steady_clock::now() - solveStart).count();
     if (m_config.solver_final_check == config::FinalCheck::NaturalMap) m_lastResidual = solver::stepResidual(m_dyn, u, m_solver.contactLaw(), dt, m_config.moreau_theta);
+    if (m_observer) m_observer->afterSolve(m_dyn, u, dt, m_config.moreau_theta, m_solver, m_lastResidual, m_lastSolveSeconds);
     m_dyn.writeVelocityToSystem(u, dt);
     explicitPositionUpdate(m_world, m_config.moreau_theta * dt);
     m_dyn.advancePrescribedMotion(m_config.moreau_theta * dt);

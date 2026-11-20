@@ -15,6 +15,7 @@ class DynamicsAssembler;
 namespace cardillo {
 namespace integration {
 class IntegrationBase;
+class StepObserver;
 }
 }  // namespace cardillo
 namespace cardillo {
@@ -76,6 +77,8 @@ class PhysicsPipeline {
     // Owned pipeline components
     std::unique_ptr<physics::DynamicsAssembler> m_dyn;
     std::unique_ptr<integration::IntegrationBase> m_integrator;
+    // ffclib export of the one-step problems (ffclib.* keys), observes the integrator.
+    std::unique_ptr<integration::StepObserver> m_ffclib_exporter;
     std::unique_ptr<solver::SolverBase> m_solver;
     std::unique_ptr<io::VtkWriter> m_vtk_writer;
     std::unique_ptr<io::CsvWriter> m_tracked_writer;
